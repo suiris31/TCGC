@@ -3,6 +3,7 @@ import { api, formatEur, type Lang, type SetSummary } from '../api';
 import { CardGrid, hideBroken } from '../components/CardGrid';
 import { ColorSelect, SearchInput, SetSelect } from '../components/Filters';
 import { Icon } from '../components/Icon';
+import { locale, t, type MessageKey } from '../i18n';
 import { useApp } from '../store';
 import { useCards } from '../useCards';
 
@@ -43,11 +44,11 @@ export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse:
     return (
       <div className="empty">
         <div className="empty-art">☠</div>
-        <h2>Ta collection est vide</h2>
-        <p className="muted">Scanne tes cartes avec l'appareil photo ou cherche-les dans le catalogue.</p>
+        <h2>{t('collection.empty.title')}</h2>
+        <p className="muted">{t('collection.empty.text')}</p>
         <div className="empty-actions">
-          <button className="btn btn-primary" onClick={onScan}><Icon name="camera" size={18} /> Scanner une carte</button>
-          <button className="btn btn-ghost" onClick={onBrowse}><Icon name="search" size={18} /> Parcourir le catalogue</button>
+          <button className="btn btn-primary" onClick={onScan}><Icon name="camera" size={18} /> {t('collection.empty.scan')}</button>
+          <button className="btn btn-ghost" onClick={onBrowse}><Icon name="search" size={18} /> {t('collection.empty.browse')}</button>
         </div>
       </div>
     );
@@ -65,10 +66,10 @@ export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse:
   return (
     <div className="page">
       <div className="segmented view-switch" role="tablist">
-        {([['sets', 'Par set'], ['cards', 'Toutes mes cartes']] as const).map(([value, label]) => (
+        {(['sets', 'cards'] as const).map((value) => (
           <button key={value} role="tab" aria-selected={view === value}
             className={view === value ? 'segment segment-on' : 'segment'} onClick={() => changeView(value)}>
-            {label}
+            {t(`collection.view.${value}`)}
           </button>
         ))}
       </div>
@@ -89,6 +90,11 @@ function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (
   );
 }
 
+// "58 %" en français, "58%" en anglais
+function formatPercent(ratio: number) {
+  return new Intl.NumberFormat(locale(), { style: 'percent', maximumFractionDigits: 0 }).format(ratio);
+}
+
 function Progress({ owned, total }: { owned: number; total: number }) {
   return (
     <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={owned}>
@@ -100,11 +106,11 @@ function Progress({ owned, total }: { owned: number; total: number }) {
 // ---------- Liste des sets ----------
 
 const SET_LIST_SORTS = {
-  recent: { label: 'Plus récents', compare: (a: SetSummary, b: SetSummary) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '') },
-  code: { label: 'Par code', compare: (a: SetSummary, b: SetSummary) => (a.code ?? a.name).localeCompare(b.code ?? b.name, 'fr', { numeric: true }) },
-  value: { label: 'Plus de valeur', compare: (a: SetSummary, b: SetSummary) => b.valueEur - a.valueEur },
-  progress: { label: 'Plus complets', compare: (a: SetSummary, b: SetSummary) => b.owned / Math.max(1, b.total) - a.owned / Math.max(1, a.total) },
-};
+  recent: { label: 'sets.sort.recent', compare: (a: SetSummary, b: SetSummary) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '') },
+  code: { label: 'sets.sort.code', compare: (a: SetSummary, b: SetSummary) => (a.code ?? a.name).localeCompare(b.code ?? b.name, 'fr', { numeric: true }) },
+  value: { label: 'sets.sort.value', compare: (a: SetSummary, b: SetSummary) => b.valueEur - a.valueEur },
+  progress: { label: 'sets.sort.progress', compare: (a: SetSummary, b: SetSummary) => b.owned / Math.max(1, b.total) - a.owned / Math.max(1, a.total) },
+} satisfies Record<string, { label: MessageKey; compare: (a: SetSummary, b: SetSummary) => number }>;
 type SetListSort = keyof typeof SET_LIST_SORTS;
 
 function SetList({ onOpen }: { onOpen: (id: number) => void }) {
@@ -124,12 +130,12 @@ function SetList({ onOpen }: { onOpen: (id: number) => void }) {
   return (
     <>
       <div className="list-head">
-        <select className="select" value={sort} aria-label="Trier les sets"
+        <select className="select" value={sort} aria-label={t('sets.sort')}
           onChange={(e) => { setSort(e.target.value as SetListSort); writePref('tcgc.setSort', e.target.value); }}>
-          {Object.entries(SET_LIST_SORTS).map(([value, { label }]) => <option key={value} value={value}>{label}</option>)}
+          {Object.entries(SET_LIST_SORTS).map(([value, { label }]) => <option key={value} value={value}>{t(label)}</option>)}
         </select>
         <Toggle checked={showAll} onChange={(v) => { setShowAll(v); writePref('tcgc.allSets', v ? '1' : '0'); }}>
-          Tous les sets
+          {t('sets.showAll')}
         </Toggle>
       </div>
       {!sets && <div className="center"><div className="spinner" /></div>}
@@ -167,12 +173,12 @@ function SetTile({ set, onOpen }: { set: SetSummary; onOpen: () => void }) {
 // ---------- Cartes d'un set ----------
 
 const SET_SORTS = [
-  ['number', 'Par numéro'],
-  ['price', 'Plus chères'],
-  ['color', 'Par couleur'],
-  ['rarity', 'Par rareté'],
-  ['name', 'Par nom'],
-] as const;
+  ['number', 'sort.number'],
+  ['price', 'sort.price'],
+  ['color', 'sort.color'],
+  ['rarity', 'sort.rarity'],
+  ['name', 'sort.name'],
+] as const satisfies readonly (readonly [string, MessageKey])[];
 
 function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
   const { version } = useApp();
@@ -195,14 +201,14 @@ function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
   return (
     <div className="page">
       <div className="set-header">
-        <button className="back-btn" onClick={onBack}><span aria-hidden="true">‹</span> Sets</button>
+        <button className="back-btn" onClick={onBack}><span aria-hidden="true">‹</span> {t('set.back')}</button>
         <h2>{summary?.code ?? '…'} <span className="muted set-header-name">{summary?.name}</span></h2>
         {summary && (
           <>
             <div className="set-header-stats">
-              <span><strong>{summary.owned}</strong> / {summary.total} cartes</span>
-              <span>{Math.round((100 * summary.owned) / Math.max(1, summary.total))} %</span>
-              <span>{summary.copies} exemplaire{summary.copies > 1 ? 's' : ''}</span>
+              <span><strong>{summary.owned}</strong>{t('set.ofTotal', { total: summary.total })}</span>
+              <span>{formatPercent(summary.owned / Math.max(1, summary.total))}</span>
+              <span>{t('count.copies', { n: summary.copies })}</span>
               <span className="set-header-value">{formatEur(summary.valueEur)}</span>
             </div>
             <Progress owned={summary.owned} total={summary.total} />
@@ -212,17 +218,17 @@ function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
 
       <div className="list-head">
         <Toggle checked={showMissing} onChange={(v) => { setShowMissing(v); writePref('tcgc.showMissing', v ? '1' : '0'); }}>
-          Cartes manquantes
+          {t('set.showMissing')}
         </Toggle>
-        <select className="select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Trier">
-          {SET_SORTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        <select className="select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={t('common.sort')}>
+          {SET_SORTS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
         </select>
       </div>
 
       {loading && cards.length === 0 && <div className="center"><div className="spinner" /></div>}
-      {!loading && total === 0 && <p className="muted center-text">Aucune carte de ce set dans ta collection.</p>}
+      {!loading && total === 0 && <p className="muted center-text">{t('set.empty')}</p>}
       <CardGrid cards={cards} quickAdd dimMissing langMode="owned" />
-      {hasMore && <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={loading}>Voir plus</button>}
+      {hasMore && <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={loading}>{t('common.loadMore')}</button>}
     </div>
   );
 }
@@ -230,15 +236,15 @@ function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
 // ---------- Toutes les cartes possédées ----------
 
 const ALL_SORTS = [
-  ['price', 'Plus chères'],
-  ['price-asc', 'Moins chères'],
-  ['number', 'Par numéro'],
-  ['set', 'Par set'],
-  ['color', 'Par couleur'],
-  ['rarity', 'Par rareté'],
-  ['name', 'Par nom'],
-  ['added', 'Derniers ajouts'],
-] as const;
+  ['price', 'sort.price'],
+  ['price-asc', 'sort.priceAsc'],
+  ['number', 'sort.number'],
+  ['set', 'sort.set'],
+  ['color', 'sort.color'],
+  ['rarity', 'sort.rarity'],
+  ['name', 'sort.name'],
+  ['added', 'sort.added'],
+] as const satisfies readonly (readonly [string, MessageKey])[];
 
 function AllCards() {
   const [q, setQ] = useState('');
@@ -251,25 +257,25 @@ function AllCards() {
   return (
     <>
       <div className="toolbar">
-        <SearchInput value={q} onChange={setQ} placeholder="Chercher dans ma collection" />
+        <SearchInput value={q} onChange={setQ} placeholder={t('collection.search')} />
         <div className="toolbar-row">
           <select className="select" value={sort} onChange={(e) => { setSort(e.target.value as typeof sort); writePref('tcgc.collectionSort', e.target.value); }}
-            aria-label="Trier">
-            {ALL_SORTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            aria-label={t('common.sort')}>
+            {ALL_SORTS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
           </select>
           <SetSelect value={set} onChange={setSet} ownedOnly />
           <ColorSelect value={color} onChange={setColor} />
-          <select className="select" value={lang} onChange={(e) => setLang(e.target.value as Lang | '')} aria-label="Langue">
-            <option value="">Toutes langues</option>
-            <option value="fr">Français</option>
-            <option value="en">Anglais</option>
+          <select className="select" value={lang} onChange={(e) => setLang(e.target.value as Lang | '')} aria-label={t('lang.label')}>
+            <option value="">{t('lang.all')}</option>
+            <option value="fr">{t('lang.fr')}</option>
+            <option value="en">{t('lang.en')}</option>
           </select>
         </div>
       </div>
-      <div className="count muted small">{total} exemplaire{total > 1 ? 's' : ''} différent{total > 1 ? 's' : ''}</div>
+      <div className="count muted small">{t('count.entries', { n: total })}</div>
       <CardGrid cards={cards} />
       {loading && cards.length === 0 && <div className="center"><div className="spinner" /></div>}
-      {hasMore && <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={loading}>Voir plus</button>}
+      {hasMore && <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={loading}>{t('common.loadMore')}</button>}
     </>
   );
 }

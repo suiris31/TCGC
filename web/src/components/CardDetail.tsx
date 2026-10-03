@@ -1,24 +1,11 @@
 import { useEffect, useState } from 'react';
-import {
-  api, cardImage, cardImageLarge, cardName, formatDate, formatEur, LANG_LABEL, type CardDetail, type Lang,
-} from '../api';
+import { api, cardImage, cardImageLarge, cardName, formatDate, formatEur, type CardDetail, type Lang } from '../api';
+import { t } from '../i18n';
 import { useApp } from '../store';
 import { hideBroken } from './CardGrid';
 import { Icon } from './Icon';
 import { LangSwitch } from './LangSwitch';
 import { LineChart } from './LineChart';
-
-const CM_BASIS = {
-  trend: 'Tendance Cardmarket (Europe)',
-  avg30: 'Cardmarket : moyenne des ventes sur 30 jours',
-  avg7: 'Cardmarket : moyenne des ventes sur 7 jours',
-} as const;
-
-const TCG_BASIS = {
-  market: 'TCGplayer (USA) : moyenne des ventes récentes',
-  low: "TCGplayer (USA) : pas de vente récente, annonce la moins chère",
-  mid: 'TCGplayer (USA) : pas de vente récente, prix médian des annonces',
-} as const;
 
 export function CardDetailSheet() {
   const { openedCard, closeCard, openCard, cardChanged, toast, version } = useApp();
@@ -56,24 +43,24 @@ export function CardDetailSheet() {
     if (!card) return;
     const res = await api.setQuantity(card.id, Math.max(0, quantity), qtyLang);
     cardChanged(res.card, res.totals);
-    if (quantity <= 0) toast(`Exemplaire ${qtyLang.toUpperCase()} retiré de la collection`);
+    if (quantity <= 0) toast(t('detail.removed', { lang: qtyLang.toUpperCase() }));
   };
 
   const stats = card ? [
-    ['Rareté', card.rarity],
-    ['Type', card.type],
-    ['Couleur', card.color],
-    ['Coût', card.cost],
-    ['Puissance', card.power],
-    ['Counter', card.counter],
-    ['Vie', card.life],
-    ['Attribut', card.attribute],
+    [t('stat.rarity'), card.rarity],
+    [t('stat.type'), card.type],
+    [t('stat.color'), card.color],
+    [t('stat.cost'), card.cost],
+    [t('stat.power'), card.power],
+    [t('stat.counter'), card.counter],
+    [t('stat.life'), card.life],
+    [t('stat.attribute'), card.attribute],
   ].filter(([, v]) => v) : [];
 
   return (
     <div className="sheet-backdrop" onClick={closeCard}>
       <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <button className="sheet-close" onClick={closeCard} aria-label="Fermer"><Icon name="close" /></button>
+        <button className="sheet-close" onClick={closeCard} aria-label={t('common.close')}><Icon name="close" /></button>
         {!card ? (
           <div className="sheet-loading"><div className="spinner" /></div>
         ) : (
@@ -92,13 +79,13 @@ export function CardDetailSheet() {
               <div className="detail-title">
                 <div className="detail-title-row">
                   <h2>{cardName(card, lang)}</h2>
-                  <LangSwitch value={lang} onChange={setLang} compact label="Langue d'affichage" />
+                  <LangSwitch value={lang} onChange={setLang} compact label={t('detail.displayLang')} />
                 </div>
                 {cardName(card, lang === 'fr' ? 'en' : 'fr') !== cardName(card, lang) && (
                   <div className="muted small">{cardName(card, lang === 'fr' ? 'en' : 'fr')}</div>
                 )}
                 {lang === 'fr' && !card.imageFr && (
-                  <div className="muted small">Visuel VF indisponible, visuel anglais affiché</div>
+                  <div className="muted small">{t('detail.noFrImage')}</div>
                 )}
                 <div className="detail-sub">
                   <span className="chip chip-code">{card.number}</span>
@@ -112,41 +99,41 @@ export function CardDetailSheet() {
                 <div className="price-head">
                   <div className="price-main">{formatEur(card.price.eur)}</div>
                   <div className="muted small">
-                    {card.price.source === 'cardmarket' ? CM_BASIS[card.price.cardmarket!.basis]
-                      : card.price.source === 'tcgplayer' ? TCG_BASIS[card.price.tcgplayer!.basis]
-                        : 'Aucun prix connu'}
+                    {card.price.source === 'cardmarket' ? t(`price.cm.${card.price.cardmarket!.basis}`)
+                      : card.price.source === 'tcgplayer' ? t(`price.tcg.${card.price.tcgplayer!.basis}`)
+                        : t('price.none')}
                   </div>
                 </div>
                 <dl className="price-lines">
                   {card.price.cardmarket && (
                     <>
-                      <div><dt>Cardmarket tendance</dt><dd>{formatEur(card.price.cardmarket.trend)}</dd></div>
-                      <div><dt>Cardmarket moyenne 30 j</dt><dd>{formatEur(card.price.cardmarket.avg30)}</dd></div>
+                      <div><dt>{t('price.line.cmTrend')}</dt><dd>{formatEur(card.price.cardmarket.trend)}</dd></div>
+                      <div><dt>{t('price.line.cmAvg30')}</dt><dd>{formatEur(card.price.cardmarket.avg30)}</dd></div>
                     </>
                   )}
                   {card.price.tcgplayer && (
-                    <div><dt>TCGplayer (USA)</dt><dd>{formatEur(card.price.tcgplayer.eur)}</dd></div>
+                    <div><dt>{t('price.line.tcg')}</dt><dd>{formatEur(card.price.tcgplayer.eur)}</dd></div>
                   )}
                 </dl>
                 {card.price.cardmarket && (
                   <p className="muted small price-note">
-                    Cardmarket ne distingue pas les langues : sa tendance mélange VF et VO.
+                    {t('price.mixedLangs')}
                   </p>
                 )}
               </div>
 
               <section className="owned-langs">
-                <h3>Dans ma collection</h3>
+                <h3>{t('detail.inCollection')}</h3>
                 {(['fr', 'en'] as const).map((l) => (
                   <div key={l} className="qty-row">
-                    <span>{LANG_LABEL[l]}</span>
+                    <span>{t(`lang.${l}`)}</span>
                     <div className="stepper">
                       <button onClick={() => setQty(l, card.ownedByLang[l] - 1)} disabled={card.ownedByLang[l] === 0}
-                        aria-label={`Retirer un exemplaire ${l.toUpperCase()}`}>
+                        aria-label={t('detail.removeCopy', { lang: l.toUpperCase() })}>
                         <Icon name="minus" size={18} />
                       </button>
                       <span className="stepper-value">{card.ownedByLang[l]}</span>
-                      <button onClick={() => setQty(l, card.ownedByLang[l] + 1)} aria-label={`Ajouter un exemplaire ${l.toUpperCase()}`}>
+                      <button onClick={() => setQty(l, card.ownedByLang[l] + 1)} aria-label={t('detail.addCopy', { lang: l.toUpperCase() })}>
                         <Icon name="plus" size={18} />
                       </button>
                     </div>
@@ -154,25 +141,25 @@ export function CardDetailSheet() {
                 ))}
               </section>
               {card.owned > 1 && card.price.eur != null && (
-                <div className="muted small right">Total : {formatEur(card.price.eur * card.owned)}</div>
+                <div className="muted small right">{t('detail.total', { value: formatEur(card.price.eur * card.owned) })}</div>
               )}
 
               {card.history.length > 1 && (
                 <section>
-                  <h3>Évolution du prix</h3>
+                  <h3>{t('detail.priceHistory')}</h3>
                   <LineChart points={card.history.filter((h) => h.eur != null).map((h) => ({ date: h.date, value: h.eur! }))} height={110} />
                 </section>
               )}
 
               {card.versions.length > 0 && (
                 <section>
-                  <h3>Autres versions de {card.number}</h3>
+                  <h3>{t('detail.otherVersions', { code: card.number })}</h3>
                   <div className="versions">
                     {card.versions.map((v) => (
                       <button key={v.id} className="version" onClick={() => openCard(v.id, lang)}>
                         <img src={cardImage(v, lang)} alt={v.fullName} loading="lazy" onError={hideBroken} />
                         {v.owned > 0 && <span className="badge-owned">×{v.owned}</span>}
-                        <span className="version-label">{v.variant ?? 'Standard'}</span>
+                        <span className="version-label">{v.variant ?? t('common.standard')}</span>
                         <span className="version-set muted">{v.setCode}</span>
                         <span className="version-price">{formatEur(v.price.eur)}</span>
                       </button>
@@ -183,7 +170,7 @@ export function CardDetailSheet() {
 
               {stats.length > 0 && (
                 <section>
-                  <h3>Caractéristiques</h3>
+                  <h3>{t('detail.characteristics')}</h3>
                   <dl className="stats-grid">
                     {stats.map(([k, v]) => (<div key={k}><dt>{k}</dt><dd>{v}</dd></div>))}
                   </dl>

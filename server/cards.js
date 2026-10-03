@@ -302,21 +302,27 @@ export function collectionStats() {
   return { bySet, history, top };
 }
 
-export function collectionCsv() {
+// uiLang 'en' : en-têtes en anglais et format numérique anglais (virgule séparateur, point décimal)
+export function collectionCsv(uiLang = 'fr') {
+  const english = uiLang === 'en';
   const rows = db.prepare(`SELECT ${cardColumns(true)} ${cardFrom(true)} ORDER BY c.number, col.lang`).all().map(formatCard);
-  // Format Excel français : séparateur ";" et virgule décimale
+  // Format Excel français : séparateur ";" et virgule décimale ; anglais : séparateur "," et point décimal
+  const sep = english ? ',' : ';';
   const esc = (v) => {
     if (v == null) return '';
-    const s = typeof v === 'number' ? String(v).replace('.', ',') : String(v);
-    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    const s = typeof v === 'number' && !english ? String(v).replace('.', ',') : String(v);
+    return s.includes(sep) || /["\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const lines = [['Code', 'Nom', 'Langue', 'Variante', 'Extension', 'Rareté', 'Quantité', 'Prix unitaire (EUR)', 'Total (EUR)',
-    'Source du prix', 'Cardmarket tendance (EUR)', 'TCGplayer (EUR)', 'TCGplayer ID']];
+  const lines = [english
+    ? ['Code', 'Name', 'Language', 'Variant', 'Set', 'Rarity', 'Quantity', 'Unit price (EUR)', 'Total (EUR)',
+      'Price source', 'Cardmarket trend (EUR)', 'TCGplayer (EUR)', 'TCGplayer ID']
+    : ['Code', 'Nom', 'Langue', 'Variante', 'Extension', 'Rareté', 'Quantité', 'Prix unitaire (EUR)', 'Total (EUR)',
+      'Source du prix', 'Cardmarket tendance (EUR)', 'TCGplayer (EUR)', 'TCGplayer ID']];
   for (const c of rows) {
     const { lang, quantity } = c.entry;
     const total = c.price.eur == null ? null : Math.round(c.price.eur * quantity * 100) / 100;
     lines.push([c.number, lang === 'fr' ? (c.nameFr ?? c.name) : c.name, lang.toUpperCase(), c.variant, c.setName, c.rarity,
       quantity, c.price.eur, total, c.price.source, c.price.cardmarket?.trend ?? null, c.price.tcgplayer?.eur ?? null, String(c.id)]);
   }
-  return lines.map((l) => l.map(esc).join(';')).join('\r\n');
+  return lines.map((l) => l.map(esc).join(sep)).join('\r\n');
 }

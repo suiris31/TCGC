@@ -1,4 +1,5 @@
 import { api, cardImage, cardName, formatEur, type Card } from '../api';
+import { t } from '../i18n';
 import { useApp } from '../store';
 import { Icon } from './Icon';
 
@@ -27,7 +28,7 @@ export function CardTile({ card, quickAdd = false, dimMissing = false, langMode 
     e.stopPropagation();
     const { card: updated, totals } = await api.add(card.id, 1, inputLang);
     cardChanged(updated, totals);
-    toast(`${cardName(card, inputLang)} ajoutée en ${inputLang.toUpperCase()} (×${updated.ownedByLang[inputLang]})`);
+    toast(t('card.added', { name: cardName(card, inputLang), lang: inputLang.toUpperCase(), n: updated.ownedByLang[inputLang] }));
   };
 
   return (
@@ -38,7 +39,7 @@ export function CardTile({ card, quickAdd = false, dimMissing = false, langMode 
         {count > 0 && <span className="badge-owned">×{count}</span>}
         {card.entry && <span className="badge-lang">{card.entry.lang.toUpperCase()}</span>}
         {quickAdd && (
-          <button className="tile-add" onClick={add} aria-label={`Ajouter ${card.fullName} en ${inputLang.toUpperCase()}`}>
+          <button className="tile-add" onClick={add} aria-label={t('card.addAria', { name: card.fullName, lang: inputLang.toUpperCase() })}>
             <Icon name="plus" size={18} />
           </button>
         )}

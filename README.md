@@ -7,10 +7,11 @@ collection set by set, keep French and English printings apart, and see what it'
 your own PC and you use it from your phone over your home Wi-Fi. Free, no account, no paid service: card
 recognition runs locally.
 
+The interface is available in **English and French**: it follows your phone's language and can be changed in
+the Stats tab.
+
 > Unofficial community project, not affiliated with Bandai, TCGplayer or Cardmarket.
 > One Piece Card Game is a trademark of Bandai.
->
-> The app's interface is currently in French. Translations are welcome (see [Contributing](#contributing)).
 
 ## Getting started
 
@@ -126,7 +127,8 @@ npm run dev                 # server + UI with hot reload
 npx tsc -p tsconfig.json    # type-check the UI
 ```
 
-The code comments and the UI are in French for now; an English interface would be a great contribution.
+Code comments are in French. Interface texts live in `web/src/i18n.ts` (French and English): adding a language
+there is a welcome contribution.
 
 ## License
 

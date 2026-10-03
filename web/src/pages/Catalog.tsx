@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CardGrid } from '../components/CardGrid';
 import { ColorSelect, RaritySelect, SearchInput, SetSelect } from '../components/Filters';
 import { LangSwitch } from '../components/LangSwitch';
+import { t } from '../i18n';
 import { useApp } from '../store';
 import { useCards } from '../useCards';
 
@@ -18,23 +19,23 @@ export function Catalog() {
   return (
     <div className="page">
       <div className="toolbar">
-        <SearchInput value={q} onChange={setQ} placeholder="Nom, code (OP01-001), équipage..." />
+        <SearchInput value={q} onChange={setQ} placeholder={t('catalog.search')} />
         <div className="toolbar-row">
-          <LangSwitch value={lang} onChange={setLang} compact label="Langue des cartes ajoutées" />
+          <LangSwitch value={lang} onChange={setLang} compact label={t('catalog.addLang')} />
           <SetSelect value={set} onChange={setSet} />
           <ColorSelect value={color} onChange={setColor} />
           <RaritySelect value={rarity} onChange={setRarity} />
-          <select className="select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Trier">
-            <option value="number">Par code</option>
-            <option value="price">Plus chères</option>
-            <option value="name">Par nom</option>
-            <option value="recent">Plus récentes</option>
+          <select className="select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={t('common.sort')}>
+            <option value="number">{t('sort.code')}</option>
+            <option value="price">{t('sort.price')}</option>
+            <option value="name">{t('sort.name')}</option>
+            <option value="recent">{t('sort.recent')}</option>
           </select>
         </div>
       </div>
-      <div className="count muted small">{loading && !cards.length ? 'Recherche...' : `${total} carte${total > 1 ? 's' : ''}`}</div>
+      <div className="count muted small">{loading && !cards.length ? t('catalog.searching') : t('count.cards', { n: total })}</div>
       <CardGrid cards={cards} quickAdd />
-      {hasMore && <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={loading}>Voir plus</button>}
+      {hasMore && <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={loading}>{t('common.loadMore')}</button>}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, cardImage, cardName, formatEur, type Card, type Lang, type ScanResult } from '../api';
 import { Icon } from '../components/Icon';
 import { LangSwitch } from '../components/LangSwitch';
+import { t } from '../i18n';
 import { useApp } from '../store';
 
 const CARD_RATIO = 63 / 88; // largeur / hauteur d'une carte
@@ -208,7 +209,7 @@ export function Scanner({ active }: { active: boolean }) {
     try {
       const { cards } = await api.cards({ q, limit: 40 });
       if (!cards.length) {
-        setManualError(`Aucune carte trouvée pour « ${q} »`);
+        setManualError(t('scan.noMatch', { q }));
         return;
       }
       const candidates = cards.map((card) => ({ card, score: 0, sameArt: false }));
@@ -229,10 +230,9 @@ export function Scanner({ active }: { active: boolean }) {
     const res = await api.add(card.id, quantity, lang);
     cardChanged(res.card, res.totals);
     setAdded((list) => [{ card: res.card, quantity, lang }, ...list]);
-    const name = cardName(card, lang);
-    const what = `${quantity > 1 ? `${quantity} × ${name} ajoutées` : `${name} ajoutée`} en ${lang.toUpperCase()}`;
+    const what = t('scan.added', { n: quantity, name: cardName(card, lang), lang: lang.toUpperCase() });
     const owned = res.card.ownedByLang[lang];
-    toast(owned > quantity ? `${what} (×${owned} au total)` : what);
+    toast(owned > quantity ? t('scan.addedTotal', { what, n: owned }) : what);
     reset();
   };
 
@@ -240,7 +240,7 @@ export function Scanner({ active }: { active: boolean }) {
     const res = await api.add(entry.card.id, -entry.quantity, entry.lang);
     cardChanged(res.card, res.totals);
     setAdded((list) => list.filter((a) => a !== entry));
-    toast('Ajout annulé');
+    toast(t('scan.undone'));
   };
 
   const candidates = result?.candidates ?? [];
@@ -266,20 +266,17 @@ export function Scanner({ active }: { active: boolean }) {
             <Icon name="camera" size={40} />
             {cameraError === 'insecure' ? (
               <>
-                <p>Le navigateur bloque la caméra en direct sur une adresse <code>http://</code> locale.</p>
-                <p className="muted small">
-                  Tu peux quand même scanner avec l'appareil photo ci-dessous. Pour avoir la visée en direct, voir le
-                  guide dans l'onglet Stats ▸ « Caméra en direct ».
-                </p>
+                <p>{t('scan.insecure')}</p>
+                <p className="muted small">{t('scan.insecureHelp')}</p>
               </>
             ) : cameraError === 'denied' ? (
-              <p>Accès à la caméra refusé. Autorise-le dans les réglages du site, ou prends une photo.</p>
+              <p>{t('scan.denied')}</p>
             ) : cameraError === 'none' ? (
-              <p>Aucune caméra détectée sur cet appareil.</p>
+              <p>{t('scan.noCamera')}</p>
             ) : (
-              <p>Caméra indisponible ({cameraError}).</p>
+              <p>{t('scan.cameraError', { error: cameraError })}</p>
             )}
-            <p className="muted small">Cadre la carte bien à plat, en grand, sans reflet.</p>
+            <p className="muted small">{t('scan.tip')}</p>
           </div>
         )}
 
@@ -288,27 +285,27 @@ export function Scanner({ active }: { active: boolean }) {
             <div ref={guideRef} className="scanner-guide" style={{ aspectRatio: String(CARD_RATIO) }}>
               <span /><span /><span /><span />
             </div>
-            <p className="scanner-hint">Place la carte dans le cadre</p>
+            <p className="scanner-hint">{t('scan.hint')}</p>
           </div>
         )}
 
         {phase === 'aim' && (
           <div className="scanner-lang">
-            <LangSwitch value={lang} onChange={setLang} compact label="Langue des cartes scannées" />
+            <LangSwitch value={lang} onChange={setLang} compact label={t('scan.langAria')} />
           </div>
         )}
 
-        {phase !== 'aim' && preview && <img className="scanner-preview" src={preview} alt="Photo analysée" />}
-        {phase === 'analyzing' && <div className="scanner-busy"><div className="spinner" /><span>Analyse...</span></div>}
+        {phase !== 'aim' && preview && <img className="scanner-preview" src={preview} alt={t('scan.previewAlt')} />}
+        {phase === 'analyzing' && <div className="scanner-busy"><div className="spinner" /><span>{t('scan.analyzing')}</span></div>}
       </div>
 
       {added.length > 0 && phase === 'aim' && (
         <div className="scan-session">
           <div>
-            <strong>{sessionCards}</strong> carte{sessionCards > 1 ? 's' : ''} ajoutée{sessionCards > 1 ? 's' : ''} · <strong>{formatEur(sessionValue)}</strong>
+            <strong>{sessionCards}</strong> {t('scan.sessionCards', { n: sessionCards })} · <strong>{formatEur(sessionValue)}</strong>
           </div>
           <button className="link" onClick={() => undo(added[0])}>
-            Annuler « {added[0].quantity > 1 ? `${added[0].quantity} × ` : ''}{cardName(added[0].card, added[0].lang)} »
+            {t('scan.undo', { what: `${added[0].quantity > 1 ? `${added[0].quantity} × ` : ''}${cardName(added[0].card, added[0].lang)}` })}
           </button>
         </div>
       )}
@@ -317,24 +314,24 @@ export function Scanner({ active }: { active: boolean }) {
         <div className="scanner-controls">
           {useCamera ? (
             <>
-              <button className="round-btn" onClick={() => fileRef.current?.click()} aria-label="Prendre une photo">
+              <button className="round-btn" onClick={() => fileRef.current?.click()} aria-label={t('scan.takePhoto')}>
                 <Icon name="image" />
               </button>
-              <button className="shutter" onClick={capture} disabled={!indexReady} aria-label="Scanner" />
+              <button className="shutter" onClick={capture} disabled={!indexReady} aria-label={t('scan.shutter')} />
               <button className={torch ? 'round-btn round-btn-on' : 'round-btn'} onClick={toggleTorch}
-                disabled={torch === null} aria-label="Lampe">
+                disabled={torch === null} aria-label={t('scan.torch')}>
                 <Icon name="flash" />
               </button>
             </>
           ) : (
             <button className="btn btn-primary btn-lg" onClick={() => fileRef.current?.click()} disabled={!indexReady}>
-              <Icon name="camera" /> Prendre une photo
+              <Icon name="camera" /> {t('scan.takePhoto')}
             </button>
           )}
-          <button className="link scanner-manual" onClick={openManual}>Saisir un code à la main</button>
+          <button className="link scanner-manual" onClick={openManual}>{t('scan.manualLink')}</button>
           {!indexReady && (
             <p className="scanner-note">
-              Préparation de la reconnaissance : {status?.scan.indexed ?? 0}/{status?.scan.total ?? '…'} cartes analysées
+              {t('scan.preparing', { indexed: status?.scan.indexed ?? 0, total: status?.scan.total ?? '…' })}
             </p>
           )}
         </div>
@@ -344,8 +341,8 @@ export function Scanner({ active }: { active: boolean }) {
         <div className="scan-result">
           {!best ? (
             <div className="scan-error">
-              {error ? <p>{error}</p> : <p>Ajoute une carte à partir de son code.</p>}
-              <button className="btn btn-ghost" onClick={reset}>Retour au scan</button>
+              {error ? <p>{error}</p> : <p>{t('scan.manualIntro')}</p>}
+              <button className="btn btn-ghost" onClick={reset}>{t('scan.backToScan')}</button>
             </div>
           ) : (
             <>
@@ -361,59 +358,61 @@ export function Scanner({ active }: { active: boolean }) {
                   <div className="scan-best-price">{formatEur(best.card.price.eur)}</div>
                   {best.card.owned > 0 && (
                     <div className="muted small">
-                      Déjà dans ta collection : {(['fr', 'en'] as const).filter((l) => best.card.ownedByLang[l] > 0)
-                        .map((l) => `×${best.card.ownedByLang[l]} ${l.toUpperCase()}`).join(', ')}
+                      {t('scan.alreadyOwned', {
+                        list: (['fr', 'en'] as const).filter((l) => best.card.ownedByLang[l] > 0)
+                          .map((l) => `×${best.card.ownedByLang[l]} ${l.toUpperCase()}`).join(', '),
+                      })}
                     </div>
                   )}
                   {candidates[selected]?.sameArt && unsure && (
-                    <div className="warn small">Pas sûr de moi : vérifie dans les propositions</div>
+                    <div className="warn small">{t('scan.unsure')}</div>
                   )}
                 </div>
               </div>
 
               <div className="qty-row">
-                <span>Langue</span>
-                <LangSwitch value={lang} onChange={setLang} label="Langue de la carte" />
+                <span>{t('lang.label')}</span>
+                <LangSwitch value={lang} onChange={setLang} label={t('scan.cardLang')} />
               </div>
 
               <div className="qty-row">
-                <span>Exemplaires</span>
+                <span>{t('scan.copies')}</span>
                 <div className="stepper">
-                  <button onClick={() => setQuantity(clampQty(quantity - 1))} disabled={quantity <= 1} aria-label="Un exemplaire de moins">
+                  <button onClick={() => setQuantity(clampQty(quantity - 1))} disabled={quantity <= 1} aria-label={t('scan.lessAria')}>
                     <Icon name="minus" size={18} />
                   </button>
                   <input className="stepper-input" type="number" inputMode="numeric" min={1} max={MAX_QTY}
-                    value={quantityDraft ?? quantity} aria-label="Nombre d'exemplaires"
+                    value={quantityDraft ?? quantity} aria-label={t('scan.qtyAria')}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
                       setQuantityDraft(e.target.value);
                       if (e.target.value !== '') setQuantity(clampQty(Number(e.target.value)));
                     }}
                     onBlur={() => setQuantityDraft(null)} />
-                  <button onClick={() => setQuantity(clampQty(quantity + 1))} disabled={quantity >= MAX_QTY} aria-label="Un exemplaire de plus">
+                  <button onClick={() => setQuantity(clampQty(quantity + 1))} disabled={quantity >= MAX_QTY} aria-label={t('scan.moreAria')}>
                     <Icon name="plus" size={18} />
                   </button>
                 </div>
               </div>
 
               <div className="scan-actions">
-                <button className="btn btn-ghost" onClick={reset}>Rescanner</button>
+                <button className="btn btn-ghost" onClick={reset}>{t('scan.rescan')}</button>
                 <button className="btn btn-primary" onClick={() => addCard(best.card)}>
-                  <Icon name="plus" size={18} /> {quantity > 1 ? `Ajouter ×${quantity}` : 'Ajouter'}
+                  <Icon name="plus" size={18} /> {quantity > 1 ? t('scan.addN', { n: quantity }) : t('scan.add')}
                 </button>
               </div>
 
               {twins.length > 1 && (
                 <div className="scan-twins">
                   <div className="warn small">
-                    {twins.length} versions ont ce visuel : vérifie l'extension ou le tampon sur ta carte
+                    {t('scan.twins', { n: twins.length })}
                   </div>
                   <div className="scan-twins-list">
                     {twins.map((c) => {
                       const i = candidates.indexOf(c);
                       return (
                         <button key={c.card.id} className={i === selected ? 'twin twin-on' : 'twin'} onClick={() => setSelected(i)}>
-                          <span>{c.card.variant ?? 'Standard'}</span>
+                          <span>{c.card.variant ?? t('common.standard')}</span>
                           <span className="muted">{c.card.setCode}</span>
                           <strong>{formatEur(c.card.price.eur)}</strong>
                         </button>
@@ -426,11 +425,11 @@ export function Scanner({ active }: { active: boolean }) {
               <div className="scan-alts-title">
                 <span>
                   {manualFor
-                    ? `${candidates.length} résultat${candidates.length > 1 ? 's' : ''} pour « ${manualFor} »`
-                    : showAll ? 'Toutes les propositions' : 'Pas la bonne carte ?'}
+                    ? t('scan.results', { n: candidates.length, q: manualFor })
+                    : showAll ? t('scan.allSuggestions') : t('scan.notRight')}
                 </span>
                 {candidates.length > 6 && (
-                  <button className="link" onClick={() => setShowAll(!showAll)}>{showAll ? 'Moins' : 'Tout voir'}</button>
+                  <button className="link" onClick={() => setShowAll(!showAll)}>{showAll ? t('scan.less') : t('scan.seeAll')}</button>
                 )}
               </div>
               <div className={showAll ? 'scan-alts scan-alts-all' : 'scan-alts'}>
@@ -447,14 +446,14 @@ export function Scanner({ active }: { active: boolean }) {
 
           <form className="manual" onSubmit={searchManual}>
             <label htmlFor="manual-code" className="small muted">
-              {best ? 'Toujours pas ? ' : ''}Tape le code imprimé en bas à droite de la carte (ou son nom)
+              {best ? t('scan.stillNot') : ''}{t('scan.manualLabel')}
             </label>
             <div className="manual-row">
               <input id="manual-code" className="manual-input" value={manualQuery} placeholder="OP14-018"
                 onChange={(e) => setManualQuery(e.target.value)} autoFocus={!best && !error}
                 autoCapitalize="characters" autoCorrect="off" spellCheck={false} enterKeyHint="search" />
               <button className="btn btn-ghost" type="submit" disabled={searching || !manualQuery.trim()}>
-                {searching ? '…' : 'Chercher'}
+                {searching ? '…' : t('scan.search')}
               </button>
             </div>
             {manualError && <p className="warn small">{manualError}</p>}

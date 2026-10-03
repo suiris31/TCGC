@@ -69,7 +69,7 @@ app.get('/api/collection/sets', (req, res) => res.json(collectionSets({ all: req
 
 app.get('/api/cards/:id', (req, res) => {
   const card = getCardDetail(req.params.id);
-  if (!card) return res.status(404).json({ error: 'Carte inconnue' });
+  if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
   res.json(card);
 });
 
@@ -86,10 +86,10 @@ function langOf(req) {
 app.put('/api/collection/:id', (req, res) => {
   const quantity = Number(req.body?.quantity);
   const lang = langOf(req);
-  if (!Number.isInteger(quantity) || quantity < 0) return res.status(400).json({ error: 'Quantité invalide' });
-  if (!lang) return res.status(400).json({ error: 'Langue invalide' });
+  if (!Number.isInteger(quantity) || quantity < 0) return res.status(400).json({ code: 'invalid_quantity', error: 'Quantité invalide' });
+  if (!lang) return res.status(400).json({ code: 'invalid_lang', error: 'Langue invalide' });
   const card = setQuantity(Number(req.params.id), quantity, lang);
-  if (!card) return res.status(404).json({ error: 'Carte inconnue' });
+  if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
   logChange(card, lang, req);
   snapshotCollectionValue();
   res.json({ card, totals: collectionTotals() });
@@ -98,10 +98,10 @@ app.put('/api/collection/:id', (req, res) => {
 app.post('/api/collection/:id/add', (req, res) => {
   const delta = Number(req.body?.delta ?? 1);
   const lang = langOf(req);
-  if (!Number.isInteger(delta)) return res.status(400).json({ error: 'Quantité invalide' });
-  if (!lang) return res.status(400).json({ error: 'Langue invalide' });
+  if (!Number.isInteger(delta)) return res.status(400).json({ code: 'invalid_quantity', error: 'Quantité invalide' });
+  if (!lang) return res.status(400).json({ code: 'invalid_lang', error: 'Langue invalide' });
   const card = addToCollection(Number(req.params.id), delta, lang);
-  if (!card) return res.status(404).json({ error: 'Carte inconnue' });
+  if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
   logChange(card, lang, req);
   snapshotCollectionValue();
   res.json({ card, totals: collectionTotals() });
@@ -112,14 +112,19 @@ app.get('/api/stats', (req, res) => res.json({ totals: collectionTotals(), ...co
 app.get('/api/export.csv', (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="collection-one-piece-${new Date().toISOString().slice(0, 10)}.csv"`);
-  res.send(`﻿${collectionCsv()}`);
+  res.send(`﻿${collectionCsv(req.query.lang === 'en' ? 'en' : 'fr')}`);
 });
 
 app.post('/api/scan', express.raw({ type: 'image/*', limit: '20mb' }), async (req, res) => {
-  if (!req.body?.length) return res.status(400).json({ error: 'Aucune image reçue' });
+  if (!req.body?.length) return res.status(400).json({ code: 'no_image', error: 'Aucune image reçue' });
   const status = indexStatus();
   if (!status.indexed) {
-    return res.status(503).json({ error: `L'index de reconnaissance est en cours de construction (${status.indexed}/${status.total})` });
+    return res.status(503).json({
+      code: 'index_building',
+      indexed: status.indexed,
+      total: status.total,
+      error: `L'index de reconnaissance est en cours de construction (${status.indexed}/${status.total})`,
+    });
   }
   try {
     const started = Date.now();
@@ -172,6 +177,21 @@ app.get('/img-fr-hd/:id.webp', async (req, res) => {
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
+// Manifeste de l'appli installable dans la langue du téléphone (nom affiché sur l'écran d'accueil)
+const MANIFEST_TEXTS = {
+  fr: { name: 'Ma Collection One Piece', short_name: 'Ma Collection', description: 'Scan, inventaire et estimation de mes cartes One Piece TCG' },
+  en: { name: 'My One Piece Collection', short_name: 'My Collection', description: 'Scan, track and value my One Piece TCG cards' },
+};
+
+app.get('/manifest.webmanifest', (req, res, next) => {
+  const file = path.join(config.distDir, 'manifest.webmanifest');
+  if (!fs.existsSync(file)) return next();
+  const lang = req.acceptsLanguages('fr', 'en') === 'fr' ? 'fr' : 'en';
+  const manifest = { ...JSON.parse(fs.readFileSync(file, 'utf8')), ...MANIFEST_TEXTS[lang], lang };
+  res.setHeader('Vary', 'Accept-Language');
+  res.type('application/manifest+json').send(JSON.stringify(manifest));
+});
+
 // Application web (build Vite)
 if (fs.existsSync(config.distDir)) {
   app.use(express.static(config.distDir, {
@@ -185,7 +205,7 @@ if (fs.existsSync(config.distDir)) {
 app.use((err, req, res, next) => {
   log('Erreur :', err);
   if (res.headersSent) return next(err);
-  res.status(err.status ?? 500).json({ error: err.expose ? err.message : 'Erreur interne du serveur' });
+  res.status(err.status ?? 500).json(err.expose ? { error: err.message } : { code: 'server', error: 'Erreur interne du serveur' });
 });
 
 app.listen(config.port, config.host, () => {

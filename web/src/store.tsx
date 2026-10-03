@@ -1,15 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, type Card, type Lang, type Status, type Totals } from './api';
+import { getUiLang, setUiLang as applyUiLang, type UiLang } from './i18n';
 
-// Langue de saisie (scan, ajout depuis le catalogue) : français par défaut, la dernière choisie est retenue
+// Langue de saisie des cartes (scan, ajout depuis le catalogue) : la dernière choisie est retenue,
+// sinon celle de l'interface
 const LANG_KEY = 'tcgc.lang';
 
 function readLang(): Lang {
   try {
-    return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'fr';
-  } catch {
-    return 'fr';
-  }
+    const stored = localStorage.getItem(LANG_KEY);
+    if (stored === 'fr' || stored === 'en') return stored;
+  } catch { /* stockage indisponible */ }
+  return getUiLang();
 }
 
 export interface OpenedCard { id: number; lang: Lang }
@@ -26,6 +28,9 @@ interface AppState {
   openedCard: OpenedCard | null;
   lang: Lang;
   setLang: (lang: Lang) => void;
+  // Langue de l'interface (indépendante de la langue des cartes)
+  uiLang: UiLang;
+  setUiLang: (lang: UiLang) => void;
   closeCard: () => void;
   toast: (message: string) => void;
   toastMessage: string | null;
@@ -39,6 +44,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState(0);
   const [openedCard, setOpenedCard] = useState<OpenedCard | null>(null);
   const [lang, setLangState] = useState<Lang>(readLang);
+  const [uiLang, setUiLangState] = useState<UiLang>(getUiLang);
+
+  const setUiLang = useCallback((next: UiLang) => {
+    applyUiLang(next);
+    setUiLangState(next);
+  }, []);
 
   const setLang = useCallback((next: Lang) => {
     setLangState(next);
@@ -77,7 +88,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       status, totals, refreshStatus, version, cardChanged,
-      openCard, openedCard, closeCard: () => setOpenedCard(null), lang, setLang,
+      openCard, openedCard, closeCard: () => setOpenedCard(null), lang, setLang, uiLang, setUiLang,
       toast, toastMessage,
     }}>
       {children}

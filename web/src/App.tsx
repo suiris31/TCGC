@@ -5,16 +5,17 @@ import { Icon, type IconName } from './components/Icon';
 import { Catalog } from './pages/Catalog';
 import { Collection } from './pages/Collection';
 import { Scanner } from './pages/Scanner';
+import { t } from './i18n';
 import { StatsPage } from './pages/Stats';
 import { AppProvider, useApp } from './store';
 
 type Tab = 'collection' | 'scan' | 'catalog' | 'stats';
 
-const TABS: { id: Tab; label: string; icon: IconName }[] = [
-  { id: 'collection', label: 'Collection', icon: 'cards' },
-  { id: 'scan', label: 'Scanner', icon: 'camera' },
-  { id: 'catalog', label: 'Catalogue', icon: 'search' },
-  { id: 'stats', label: 'Stats', icon: 'chart' },
+const TABS: { id: Tab; icon: IconName }[] = [
+  { id: 'collection', icon: 'cards' },
+  { id: 'scan', icon: 'camera' },
+  { id: 'catalog', icon: 'search' },
+  { id: 'stats', icon: 'chart' },
 ];
 
 function readTab(): Tab {
@@ -43,12 +44,12 @@ function Shell() {
         <header className="topbar">
           <div className="brand">
             <span className="brand-mark">☠</span>
-            <span>Ma Collection</span>
+            <span>{t('app.name')}</span>
           </div>
           {totals && (
-            <button className="value-pill" onClick={() => go('stats')} title="Valeur estimée de la collection">
+            <button className="value-pill" onClick={() => go('stats')} title={t('app.valueTitle')}>
               <span className="value-pill-amount">{formatEur(totals.valueEur, true)}</span>
-              <span className="value-pill-count">{totals.cards} carte{totals.cards > 1 ? 's' : ''}</span>
+              <span className="value-pill-count">{t('count.cards', { n: totals.cards })}</span>
             </button>
           )}
         </header>
@@ -62,10 +63,10 @@ function Shell() {
       </main>
 
       <nav className="tabbar">
-        {TABS.map((t) => (
-          <button key={t.id} className={t.id === tab ? 'tab tab-active' : 'tab'} onClick={() => go(t.id)}>
-            <Icon name={t.icon} />
-            <span>{t.label}</span>
+        {TABS.map((item) => (
+          <button key={item.id} className={item.id === tab ? 'tab tab-active' : 'tab'} onClick={() => go(item.id)}>
+            <Icon name={item.icon} />
+            <span>{t(`tab.${item.id}`)}</span>
           </button>
         ))}
       </nav>
@@ -76,10 +77,16 @@ function Shell() {
   );
 }
 
+// Changer la langue de l'interface redessine toute l'appli
+function LocalizedShell() {
+  const { uiLang } = useApp();
+  return <Shell key={uiLang} />;
+}
+
 export function App() {
   return (
     <AppProvider>
-      <Shell />
+      <LocalizedShell />
     </AppProvider>
   );
 }

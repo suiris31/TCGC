@@ -1,8 +1,9 @@
+import { hasMessage, locale, t } from './i18n';
+
 export type PriceSource = 'cardmarket' | 'tcgplayer';
 
 // Langue d'un exemplaire possédé
 export type Lang = 'fr' | 'en';
-export const LANG_LABEL: Record<Lang, string> = { fr: 'Français', en: 'Anglais' };
 
 export interface Price {
   // Estimation retenue (source choisie dans les réglages, l'autre en secours)
@@ -139,7 +140,11 @@ export interface CardQuery {
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? `Erreur ${res.status}`);
+  if (!res.ok) {
+    // Le serveur renvoie un code d'erreur traduit ici ; à défaut, son message tel quel
+    const key = `error.${body.code}`;
+    throw new Error(body.code && hasMessage(key) ? t(key, body) : body.error ?? t('error.http', { n: res.status }));
+  }
   return body as T;
 }
 
@@ -176,12 +181,19 @@ export const api = {
     request<ScanResult>(`/api/scan?mode=${mode}`, { method: 'POST', headers: { 'Content-Type': image.type || 'image/jpeg' }, body: image }),
 };
 
-const eurFormat = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
-const eurFormatRound = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const eurFormats = new Map<string, Intl.NumberFormat>();
+
+function eurFormat(round: boolean) {
+  const key = `${locale()}|${round}`;
+  if (!eurFormats.has(key)) {
+    eurFormats.set(key, new Intl.NumberFormat(locale(), { style: 'currency', currency: 'EUR', ...(round ? { maximumFractionDigits: 0 } : {}) }));
+  }
+  return eurFormats.get(key)!;
+}
 
 export function formatEur(value: number | null | undefined, round = false) {
   if (value == null) return '—';
-  return (round && value >= 1000 ? eurFormatRound : eurFormat).format(value);
+  return eurFormat(round && value >= 1000).format(value);
 }
 
 // Une carte s'affiche dans sa langue : nom et visuel VF pour une carte française (quand on les connaît),
@@ -200,5 +212,5 @@ export function cardImageLarge(card: Card, lang: Lang) {
 
 export function formatDate(iso: string | null | undefined) {
   if (!iso) return '—';
-  return new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }

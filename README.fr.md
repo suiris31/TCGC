@@ -7,6 +7,9 @@ inventaire par set, cartes VF et VO, et estimation de la valeur en euros. Elle t
 s'utilise depuis le téléphone via le réseau local (Wi-Fi). Gratuite, sans compte, sans service payant :
 la reconnaissance des cartes tourne en local.
 
+L'interface existe en **français et en anglais** : elle suit la langue du téléphone et se change dans l'onglet
+Stats.
+
 > Projet communautaire non officiel, sans lien avec Bandai, TCGplayer ou Cardmarket.
 > One Piece Card Game est une marque de Bandai.
 
@@ -127,7 +130,8 @@ npm run dev                 # serveur + interface avec rechargement automatique
 npx tsc -p tsconfig.json    # vérification des types de l'interface
 ```
 
-Le code et les commentaires sont en français.
+Le code et les commentaires sont en français. Les textes de l'interface sont dans `web/src/i18n.ts` (français et
+anglais) : ajouter une langue y est une contribution bienvenue.
 
 ## Licence
 

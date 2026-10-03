@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api, type SetInfo } from '../api';
+import { t } from '../i18n';
 import { useApp } from '../store';
 import { Icon } from './Icon';
 
-export const COLORS = ['Red', 'Green', 'Blue', 'Purple', 'Black', 'Yellow'];
-const COLOR_FR: Record<string, string> = {
-  Red: 'Rouge', Green: 'Vert', Blue: 'Bleu', Purple: 'Violet', Black: 'Noir', Yellow: 'Jaune',
-};
+export const COLORS = ['Red', 'Green', 'Blue', 'Purple', 'Black', 'Yellow'] as const;
 export const RARITIES = ['L', 'C', 'UC', 'R', 'SR', 'SEC', 'SP', 'P', 'TR'];
 
 export function useSets() {
@@ -23,7 +21,7 @@ export function SearchInput({ value, onChange, placeholder }: { value: string; o
       <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         autoCapitalize="off" autoCorrect="off" spellCheck={false} enterKeyHint="search" />
       {value && (
-        <button className="search-clear" onClick={() => onChange('')} aria-label="Effacer"><Icon name="close" size={16} /></button>
+        <button className="search-clear" onClick={() => onChange('')} aria-label={t('common.clear')}><Icon name="close" size={16} /></button>
       )}
     </label>
   );
@@ -33,7 +31,7 @@ export function SetSelect({ value, onChange, ownedOnly = false }: { value: strin
   const sets = useSets().filter((s) => !ownedOnly || s.owned > 0);
   return (
     <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Toutes les extensions</option>
+      <option value="">{t('filter.allSets')}</option>
       {sets.map((s) => (
         <option key={s.id} value={s.id}>
           {s.code ? `${s.code} · ` : ''}{s.name}{ownedOnly ? ` (${s.owned})` : ''}
@@ -46,8 +44,8 @@ export function SetSelect({ value, onChange, ownedOnly = false }: { value: strin
 export function ColorSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Couleur</option>
-      {COLORS.map((c) => <option key={c} value={c}>{COLOR_FR[c]}</option>)}
+      <option value="">{t('filter.color')}</option>
+      {COLORS.map((c) => <option key={c} value={c}>{t(`color.${c}`)}</option>)}
     </select>
   );
 }
@@ -55,7 +53,7 @@ export function ColorSelect({ value, onChange }: { value: string; onChange: (v: 
 export function RaritySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Rareté</option>
+      <option value="">{t('filter.rarity')}</option>
       {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
     </select>
   );

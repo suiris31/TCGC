@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatDate, formatEur } from '../api';
+import { t } from '../i18n';
 
 interface Point { date: string; value: number }
 
@@ -7,7 +8,7 @@ interface Point { date: string; value: number }
 export function LineChart({ points, height = 140 }: { points: Point[]; height?: number }) {
   const [hover, setHover] = useState<number | null>(null);
   if (points.length < 2) {
-    return <p className="muted small">L'historique se construit jour après jour, à chaque mise à jour des prix.</p>;
+    return <p className="muted small">{t('chart.empty')}</p>;
   }
   const width = 320;
   const pad = { top: 12, right: 8, bottom: 20, left: 8 };
@@ -35,7 +36,7 @@ export function LineChart({ points, height = 140 }: { points: Point[]; height?: 
         <span className="muted">{formatDate(points[active].date)}</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" onPointerMove={onMove}
-        onPointerLeave={() => setHover(null)} role="img" aria-label="Évolution de la valeur">
+        onPointerLeave={() => setHover(null)} role="img" aria-label={t('chart.aria')}>
         <path d={area} className="chart-area" />
         <path d={line} className="chart-line" vectorEffect="non-scaling-stroke" />
         <line x1={x(active)} x2={x(active)} y1={pad.top} y2={height - pad.bottom} className="chart-cursor" vectorEffect="non-scaling-stroke" />
