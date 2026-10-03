@@ -22,6 +22,11 @@ ExecStart=/opt/tcgc/node/bin/node --no-warnings=ExperimentalWarning server/index
 Restart=on-failure
 RestartSec=5
 
+# Serveur partagé avec d'autres sites : TCGC passe après eux pour le processeur et les disques
+Nice=10
+CPUWeight=50
+IOWeight=50
+
 # Durcissement : l'appli ne peut écrire que dans son dossier
 NoNewPrivileges=true
 PrivateTmp=true
