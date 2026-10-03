@@ -1,0 +1,3 @@
+# Sauvegarde quotidienne de la base à 4 h (garde les 14 dernières, dans /opt/tcgc/app/data/backups)
+# Copie : sudo cp /opt/tcgc/app/deploy/tcgc.cron /etc/cron.d/tcgc
+0 4 * * * tcgc cd /opt/tcgc/app && /usr/bin/node --no-warnings=ExperimentalWarning server/backup.js >> /opt/tcgc/backup.log 2>&1

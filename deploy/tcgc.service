@@ -1,0 +1,31 @@
+# Service systemd de TCGC sur un serveur Linux (voir README, « Héberger en ligne »).
+# Copie : sudo cp /opt/tcgc/app/deploy/tcgc.service /etc/systemd/system/tcgc.service
+[Unit]
+Description=TCGC - collection One Piece Card Game
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tcgc
+Group=tcgc
+WorkingDirectory=/opt/tcgc/app
+Environment=NODE_ENV=production
+# Écoute seulement en local : seul nginx (même machine) peut joindre l'appli
+Environment=HOST=127.0.0.1
+Environment=PORT=3001
+# Sous-dossier public de l'appli (https://exemple.fr/tcgc) ; laisser vide si servie à la racine d'un domaine
+Environment=PUBLIC_PATH=/tcgc
+ExecStart=/usr/bin/node --no-warnings=ExperimentalWarning server/index.js
+Restart=on-failure
+RestartSec=5
+
+# Durcissement : l'appli ne peut écrire que dans son dossier
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/tcgc
+
+[Install]
+WantedBy=multi-user.target

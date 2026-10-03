@@ -99,11 +99,11 @@ export function formatCard(row, viewer) {
     setCode: row.set_code,
     setName: row.set_name,
     releaseDate: row.published_on?.slice(0, 10) ?? null,
-    image: `/img/${row.product_id}.jpg`,
+    image: `img/${row.product_id}.jpg`,
     imageLarge: cdnImage(row.product_id, 'in_1000x1000'),
     // Visuel VF officiel quand la carte existe en français
-    imageFr: row.fr_image ? `/img-fr/${row.fr_image}.jpg` : null,
-    imageFrLarge: row.fr_image ? `/img-fr-hd/${row.fr_image}.webp` : null,
+    imageFr: row.fr_image ? `img-fr/${row.fr_image}.jpg` : null,
+    imageFrLarge: row.fr_image ? `img-fr-hd/${row.fr_image}.webp` : null,
     tcgplayerUrl: row.url,
     cardmarketUrl: row.number && row.number !== 'DON!!'
       ? `https://www.cardmarket.com/fr/OnePiece/Products/Search?searchString=${encodeURIComponent(row.number)}`
@@ -275,8 +275,8 @@ export function collectionSets(viewer, { all = false } = {}) {
       valueEur: Math.round(s.value_eur * 100) / 100,
       cover: cover && {
         id: cover.product_id,
-        image: `/img/${cover.product_id}.jpg`,
-        imageFr: cover.fr_image ? `/img-fr/${cover.fr_image}.jpg` : null,
+        image: `img/${cover.product_id}.jpg`,
+        imageFr: cover.fr_image ? `img-fr/${cover.fr_image}.jpg` : null,
         // langue de l'exemplaire possédé (VF en priorité), null si la carte n'est pas possédée
         ownedLang: cover.owned_fr > 0 ? 'fr' : cover.owned_en > 0 ? 'en' : null,
       },

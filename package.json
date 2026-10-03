@@ -9,7 +9,8 @@
     "build": "vite build",
     "start": "node --no-warnings=ExperimentalWarning server/index.js",
     "sync": "node --no-warnings=ExperimentalWarning server/sync.js",
-    "index-images": "node --no-warnings=ExperimentalWarning server/scan-index.js"
+    "index-images": "node --no-warnings=ExperimentalWarning server/scan-index.js",
+    "backup": "node --no-warnings=ExperimentalWarning server/backup.js"
   },
   "engines": {
     "node": ">=22.13"

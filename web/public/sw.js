@@ -1,10 +1,12 @@
-// Service worker : l'interface et les visuels de cartes restent disponibles même si le PC répond lentement.
-// Les données (/api) passent toujours par le réseau.
-const SHELL = 'tcgc-shell-v1';
-const IMAGES = 'tcgc-images-v1';
+// Service worker : l'interface et les visuels de cartes restent disponibles même si le serveur répond lentement.
+// Les données (api/) passent toujours par le réseau.
+// BASE = chemin de l'appli ("/" ou un sous-dossier comme "/tcgc/"), déduit de l'emplacement du service worker.
+const BASE = new URL(self.registration.scope).pathname;
+const SHELL = 'tcgc-shell-v2';
+const IMAGES = 'tcgc-images-v2';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg'])));
+  event.waitUntil(caches.open(SHELL).then((c) => c.addAll([BASE, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`])));
   self.skipWaiting();
 });
 
@@ -17,12 +19,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  if (event.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith(`${BASE}api/`)) return;
 
-  // Visuels et fichiers versionnés : cache d'abord
-  if (url.pathname.startsWith('/img/') || url.pathname.startsWith('/assets/')) {
-    const cacheName = url.pathname.startsWith('/img/') ? IMAGES : SHELL;
-    event.respondWith(caches.open(cacheName).then(async (cache) => {
+  // Visuels (img/, img-fr/, img-fr-hd/) et fichiers versionnés : cache d'abord
+  const isImage = url.pathname.startsWith(`${BASE}img`);
+  if (isImage || url.pathname.startsWith(`${BASE}assets/`)) {
+    event.respondWith(caches.open(isImage ? IMAGES : SHELL).then(async (cache) => {
       const hit = await cache.match(event.request);
       if (hit) return hit;
       const res = await fetch(event.request);
@@ -35,8 +37,8 @@ self.addEventListener('fetch', (event) => {
   // Pages : réseau d'abord, cache en secours
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request).then((res) => {
-      caches.open(SHELL).then((c) => c.put('/', res.clone()));
+      caches.open(SHELL).then((c) => c.put(BASE, res.clone()));
       return res;
-    }).catch(() => caches.match('/')));
+    }).catch(() => caches.match(BASE)));
   }
 });

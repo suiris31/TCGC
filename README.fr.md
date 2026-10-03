@@ -47,6 +47,12 @@ Si tu utilisais l'appli avant l'arrivée des comptes, **le premier compte créé
 
 ### L'héberger en ligne
 
+Des fichiers prêts à l'emploi sont dans [`deploy/`](deploy) : un service systemd (`tcgc.service`), un bloc nginx
+pour servir l'appli dans un sous-dossier comme `https://exemple.fr/tcgc/` (`nginx-tcgc.conf`), une sauvegarde
+quotidienne de la base (`tcgc.cron`, `npm run backup`) et un script de mise à jour (`update.sh`). Variables
+d'environnement : `HOST` (`127.0.0.1` derrière un proxy), `PORT`, `PUBLIC_PATH` (ex. `/tcgc` pour un
+sous-dossier), `TRUST_PROXY`.
+
 - Place l'appli derrière un proxy **HTTPS** (Caddy, nginx...). Les cookies de session sont alors marqués `Secure`.
 - Si le proxy est sur une autre machine, renseigne `TRUST_PROXY` (ex. `TRUST_PROXY=1`) pour que l'appli voie la
   vraie adresse IP et le protocole du visiteur. La valeur par défaut (`loopback`) convient à un proxy sur la même

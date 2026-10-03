@@ -7,6 +7,9 @@ export const config = {
   root,
   port: Number(process.env.PORT ?? 3000),
   host: process.env.HOST ?? '0.0.0.0',
+  // Chemin public de l'appli quand elle est servie dans un sous-dossier d'un site (ex. /tcgc derrière nginx) :
+  // le cookie de session est limité à ce chemin et n'est pas envoyé au reste du site
+  publicPath: `/${(process.env.PUBLIC_PATH ?? '').replace(/^\/+|\/+$/g, '')}`,
   dataDir: path.join(root, 'data'),
   dbPath: process.env.TCGC_DB ?? path.join(root, 'data', 'tcgc.db'),
   imagesDir: path.join(root, 'data', 'images'),

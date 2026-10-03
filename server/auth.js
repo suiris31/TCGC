@@ -4,6 +4,7 @@
 // - nombre de tentatives de connexion / inscription limité par adresse IP
 import crypto from 'node:crypto';
 import { promisify } from 'node:util';
+import { config } from './config.js';
 import { db, LEGACY_USER, transaction } from './db.js';
 
 const scrypt = promisify(crypto.scrypt);
@@ -90,7 +91,7 @@ function readCookie(req, name) {
 }
 
 function setSessionCookie(req, res, token, maxAgeSeconds) {
-  const parts = [`${COOKIE}=${token}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAgeSeconds}`];
+  const parts = [`${COOKIE}=${token}`, `Path=${config.publicPath}`, 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAgeSeconds}`];
   // Derrière HTTPS (directement ou via un proxy déclaré avec TRUST_PROXY), le cookie n'est jamais envoyé en clair
   if (req.secure) parts.push('Secure');
   res.setHeader('Set-Cookie', parts.join('; '));

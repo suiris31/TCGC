@@ -119,12 +119,14 @@ export function StatsPage() {
           <button className="btn btn-ghost" onClick={sync} disabled={status?.syncing}>
             <Icon name="refresh" size={18} /> {status?.syncing ? t('stats.updating') : t('stats.update')}
           </button>
-          <a className="btn btn-ghost" href={`/api/export.csv?lang=${getUiLang()}`} download>
+          <a className="btn btn-ghost" href={`api/export.csv?lang=${getUiLang()}`} download>
             <Icon name="download" size={18} /> {t('stats.export')}
           </a>
         </div>
       </section>
 
+      {/* En HTTPS (appli en ligne), la caméra en direct fonctionne sans réglage : l'aide ne sert qu'en local */}
+      {window.location.protocol !== 'https:' && (
       <section className="panel">
         <button className="collapse" onClick={() => setShowCameraHelp(!showCameraHelp)}>
           <h3>{t('cam.title')}</h3>
@@ -143,6 +145,7 @@ export function StatsPage() {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }

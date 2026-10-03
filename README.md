@@ -47,6 +47,11 @@ If you used the app before accounts existed, **the first account you create gets
 
 ### Hosting it publicly
 
+Ready-made files are in [`deploy/`](deploy): a systemd service (`tcgc.service`), an nginx block to serve the app
+under a sub-path such as `https://example.com/tcgc/` (`nginx-tcgc.conf`), a daily database backup (`tcgc.cron`,
+`npm run backup`) and an update script (`update.sh`). Environment variables: `HOST` (use `127.0.0.1` behind a
+proxy), `PORT`, `PUBLIC_PATH` (e.g. `/tcgc` when served under a sub-path), `TRUST_PROXY`.
+
 - Put the app behind an **HTTPS** reverse proxy (Caddy, nginx...). Session cookies are then marked `Secure`.
 - If the proxy runs on another machine, set `TRUST_PROXY` (e.g. `TRUST_PROXY=1`) so the app sees the real
   client IP and protocol. The default (`loopback`) suits a proxy on the same machine.

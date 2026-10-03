@@ -169,6 +169,7 @@ function qs(params: Record<string, unknown>) {
   return sp.toString();
 }
 
+// Les adresses de l'API sont relatives à la page : l'appli fonctionne aussi dans un sous-dossier (ex. /tcgc/)
 const json = (method: string, body: unknown): RequestInit => ({
   method,
   headers: { 'Content-Type': 'application/json' },
@@ -176,28 +177,28 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
-  me: () => request<{ user: User | null }>('/api/auth/me'),
+  me: () => request<{ user: User | null }>('api/auth/me'),
   signup: (pseudo: string, email: string, password: string) =>
-    request<{ user: User }>('/api/auth/signup', json('POST', { pseudo, email, password })),
+    request<{ user: User }>('api/auth/signup', json('POST', { pseudo, email, password })),
   login: (identifier: string, password: string) =>
-    request<{ user: User }>('/api/auth/login', json('POST', { identifier, password })),
-  logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
-  deleteAccount: (password: string) => request<{ ok: boolean }>('/api/auth/account', json('DELETE', { password })),
-  status: () => request<Status>('/api/status'),
-  sync: () => request<{ started: boolean }>('/api/sync', { method: 'POST' }),
+    request<{ user: User }>('api/auth/login', json('POST', { identifier, password })),
+  logout: () => request<{ ok: boolean }>('api/auth/logout', { method: 'POST' }),
+  deleteAccount: (password: string) => request<{ ok: boolean }>('api/auth/account', json('DELETE', { password })),
+  status: () => request<Status>('api/status'),
+  sync: () => request<{ started: boolean }>('api/sync', { method: 'POST' }),
   setPriceSource: (priceSource: PriceSource) =>
-    request<{ priceSource: PriceSource; totals: Totals }>('/api/settings', json('PUT', { priceSource })),
-  sets: () => request<SetInfo[]>('/api/sets'),
-  collectionSets: (all: boolean) => request<SetSummary[]>(`/api/collection/sets${all ? '?all=1' : ''}`),
-  cards: (query: CardQuery) => request<{ total: number; cards: Card[] }>(`/api/cards?${qs({ ...query })}`),
-  card: (id: number) => request<CardDetail>(`/api/cards/${id}`),
+    request<{ priceSource: PriceSource; totals: Totals }>('api/settings', json('PUT', { priceSource })),
+  sets: () => request<SetInfo[]>('api/sets'),
+  collectionSets: (all: boolean) => request<SetSummary[]>(`api/collection/sets${all ? '?all=1' : ''}`),
+  cards: (query: CardQuery) => request<{ total: number; cards: Card[] }>(`api/cards?${qs({ ...query })}`),
+  card: (id: number) => request<CardDetail>(`api/cards/${id}`),
   setQuantity: (id: number, quantity: number, lang: Lang) =>
-    request<{ card: Card; totals: Totals }>(`/api/collection/${id}`, json('PUT', { quantity, lang })),
+    request<{ card: Card; totals: Totals }>(`api/collection/${id}`, json('PUT', { quantity, lang })),
   add: (id: number, delta: number, lang: Lang) =>
-    request<{ card: Card; totals: Totals }>(`/api/collection/${id}/add`, json('POST', { delta, lang })),
-  stats: () => request<Stats>('/api/stats'),
+    request<{ card: Card; totals: Totals }>(`api/collection/${id}/add`, json('POST', { delta, lang })),
+  stats: () => request<Stats>('api/stats'),
   scan: (image: Blob, mode: 'guide' | 'photo') =>
-    request<ScanResult>(`/api/scan?mode=${mode}`, { method: 'POST', headers: { 'Content-Type': image.type || 'image/jpeg' }, body: image }),
+    request<ScanResult>(`api/scan?mode=${mode}`, { method: 'POST', headers: { 'Content-Type': image.type || 'image/jpeg' }, body: image }),
 };
 
 const eurFormats = new Map<string, Intl.NumberFormat>();

@@ -1,0 +1,3 @@
+# Fichiers exécutés sur un serveur Linux : toujours en fins de ligne LF
+*.sh text eol=lf
+deploy/* text eol=lf
