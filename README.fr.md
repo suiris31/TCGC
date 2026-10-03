@@ -36,6 +36,27 @@ Le premier démarrage prend une dizaine de minutes, le temps de :
 
 Les fois suivantes, c'est immédiat. Les prix se mettent à jour tout seuls une fois par jour.
 
+## Comptes
+
+Chaque personne crée un compte (pseudo, e-mail, mot de passe) et a sa propre collection, privée. L'onglet
+**Profil** affiche le compte, permet de changer la langue de l'interface, de se déconnecter et de **supprimer le
+compte** : tout ce qui s'y rattache (collection, historique de valeur, sessions) est alors définitivement effacé,
+après confirmation par mot de passe.
+
+Si tu utilisais l'appli avant l'arrivée des comptes, **le premier compte créé récupère ta collection existante**.
+
+### L'héberger en ligne
+
+- Place l'appli derrière un proxy **HTTPS** (Caddy, nginx...). Les cookies de session sont alors marqués `Secure`.
+- Si le proxy est sur une autre machine, renseigne `TRUST_PROXY` (ex. `TRUST_PROXY=1`) pour que l'appli voie la
+  vraie adresse IP et le protocole du visiteur. La valeur par défaut (`loopback`) convient à un proxy sur la même
+  machine.
+- Mots de passe hachés avec scrypt ; sessions = jetons aléatoires dans un cookie HttpOnly (seul leur hachage est
+  stocké) ; tentatives de connexion et d'inscription limitées ; requêtes venant d'autres sites refusées.
+- Pas encore disponible : vérification de l'adresse e-mail et réinitialisation du mot de passe par e-mail.
+- Le catalogue et les prix sont communs à tous les comptes ; la mise à jour manuelle des prix est limitée à une
+  fois par heure, et chaque compte peut scanner jusqu'à 60 cartes par minute.
+
 ## Caméra en direct sur Android
 
 Chrome n'autorise la caméra en direct que sur une adresse sécurisée (https ou localhost). Sans réglage, le

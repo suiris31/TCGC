@@ -12,6 +12,9 @@ const PATHS = {
   download: 'M12 4v11m-5-5 5 5 5-5M5 20h14',
   image: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm0 10 4.5-4.5L13 16m-2-2 2.5-2.5L20 18M15.5 9.5a1 1 0 1 0 0-.01',
   flash: 'M13 3 5 14h6l-1 7 8-11h-6l1-7Z',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7.5 8a7.5 7.5 0 0 1 15 0',
+  logout: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',
 } as const;
 
 export type IconName = keyof typeof PATHS;

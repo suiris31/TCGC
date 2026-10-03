@@ -1,16 +1,12 @@
-import { db, getMeta, setMeta } from './db.js';
+import { db, getMeta } from './db.js';
 
 export const PRICE_SOURCES = ['cardmarket', 'tcgplayer'];
 
-// Source de prix principale : Cardmarket (marché européen, en €) par défaut, TCGplayer (USA) au choix.
-// Quand la source principale n'a pas de prix pour une carte, on prend l'autre.
-export function priceSource() {
-  return getMeta('price_source') === 'tcgplayer' ? 'tcgplayer' : 'cardmarket';
-}
-
-export function setPriceSource(source) {
+// Source de prix principale de chaque utilisateur : Cardmarket (marché européen, en €) par défaut,
+// TCGplayer (USA) au choix. Quand la source principale n'a pas de prix pour une carte, on prend l'autre.
+export function setPriceSource(userId, source) {
   if (!PRICE_SOURCES.includes(source)) throw new Error(`Source de prix inconnue : ${source}`);
-  setMeta('price_source', source);
+  db.prepare('UPDATE users SET price_source = ? WHERE id = ?').run(source, userId);
 }
 
 export function usdPerEur() {
@@ -32,19 +28,20 @@ export function priceJoins(productIdColumn) {
 export const TCG_USD_SQL = 'COALESCE(p.market, p.low, p.mid)';
 export const CM_EUR_SQL = 'COALESCE(cm.trend, cm.avg30, cm.avg7)';
 
-export function estimateEurSql(source = priceSource()) {
+export function estimateEurSql(source) {
   const tcg = `(${TCG_USD_SQL} / ${usdPerEur()})`;
-  return source === 'cardmarket' ? `COALESCE(${CM_EUR_SQL}, ${tcg})` : `COALESCE(${tcg}, ${CM_EUR_SQL})`;
+  return source === 'tcgplayer' ? `COALESCE(${tcg}, ${CM_EUR_SQL})` : `COALESCE(${CM_EUR_SQL}, ${tcg})`;
 }
 
-export function collectionTotals(source = priceSource()) {
+export function collectionTotals(userId, source) {
   const estimate = estimateEurSql(source);
   const row = db.prepare(`
     SELECT COUNT(DISTINCT col.product_id) AS distinct_cards,
            COALESCE(SUM(col.quantity), 0) AS cards,
            COALESCE(SUM(col.quantity * ${estimate}), 0) AS value_eur,
            COALESCE(SUM(CASE WHEN ${estimate} IS NULL THEN 1 ELSE 0 END), 0) AS unpriced
-    FROM collection col ${priceJoins('col.product_id')}`).get();
+    FROM collection col ${priceJoins('col.product_id')}
+    WHERE col.user_id = ?`).get(userId);
   return {
     distinctCards: row.distinct_cards,
     cards: row.cards,
@@ -53,21 +50,29 @@ export function collectionTotals(source = priceSource()) {
   };
 }
 
-// Une ligne par jour, pour tracer l'évolution de la valeur de la collection, selon chacune des deux sources
-export function snapshotCollectionValue() {
-  const cm = collectionTotals('cardmarket');
-  const tcg = collectionTotals('tcgplayer');
+// Une ligne par utilisateur et par jour, pour tracer l'évolution de la valeur, selon chacune des deux sources
+export function snapshotCollectionValue(userId) {
+  const cm = collectionTotals(userId, 'cardmarket');
+  const tcg = collectionTotals(userId, 'tcgplayer');
   const date = new Date().toISOString().slice(0, 10);
   db.prepare(`
-    INSERT INTO value_history (date, value_eur, value_cm, value_tcg, cards) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(date) DO UPDATE SET value_eur = excluded.value_eur, value_cm = excluded.value_cm,
+    INSERT INTO value_history (user_id, date, value_eur, value_cm, value_tcg, cards) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, date) DO UPDATE SET value_eur = excluded.value_eur, value_cm = excluded.value_cm,
       value_tcg = excluded.value_tcg, cards = excluded.cards`)
-    .run(date, tcg.valueEur, cm.valueEur, tcg.valueEur, cm.cards);
+    .run(userId, date, tcg.valueEur, cm.valueEur, tcg.valueEur, cm.cards);
+}
+
+// Après une mise à jour des prix : un point d'historique pour chaque utilisateur qui a des cartes
+export function snapshotAllUsers() {
+  for (const { user_id: userId } of db.prepare('SELECT DISTINCT user_id FROM collection').all()) {
+    snapshotCollectionValue(userId);
+  }
 }
 
 // Évolution de la valeur dans la source choisie ; les jours d'avant l'arrivée de Cardmarket n'ont que TCGplayer
-export function valueHistory(source = priceSource()) {
-  const rows = db.prepare('SELECT date, value_cm, value_tcg, value_eur, cards FROM value_history ORDER BY date').all();
+export function valueHistory(userId, source) {
+  const rows = db.prepare('SELECT date, value_cm, value_tcg, value_eur, cards FROM value_history WHERE user_id = ? ORDER BY date')
+    .all(userId);
   const pick = (r) => (source === 'cardmarket' ? r.value_cm : r.value_tcg ?? r.value_eur);
   const own = rows.filter((r) => pick(r) != null);
   return (own.length ? own : rows).map((r) => ({ date: r.date, valueEur: pick(r) ?? r.value_eur, cards: r.cards }));

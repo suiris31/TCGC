@@ -2,6 +2,17 @@ import { hasMessage, locale, t } from './i18n';
 
 export type PriceSource = 'cardmarket' | 'tcgplayer';
 
+export interface User {
+  id: number;
+  pseudo: string;
+  email: string;
+  createdAt: string;
+  priceSource: PriceSource;
+}
+
+// Émis quand le serveur répond que la session n'est plus valide : l'appli revient à l'écran de connexion
+export const LOGGED_OUT_EVENT = 'tcgc:logged-out';
+
 // Langue d'un exemplaire possédé
 export type Lang = 'fr' | 'en';
 
@@ -141,6 +152,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 && body.code === 'unauthorized') window.dispatchEvent(new Event(LOGGED_OUT_EVENT));
     // Le serveur renvoie un code d'erreur traduit ici ; à défaut, son message tel quel
     const key = `error.${body.code}`;
     throw new Error(body.code && hasMessage(key) ? t(key, body) : body.error ?? t('error.http', { n: res.status }));
@@ -164,6 +176,13 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
+  me: () => request<{ user: User | null }>('/api/auth/me'),
+  signup: (pseudo: string, email: string, password: string) =>
+    request<{ user: User }>('/api/auth/signup', json('POST', { pseudo, email, password })),
+  login: (identifier: string, password: string) =>
+    request<{ user: User }>('/api/auth/login', json('POST', { identifier, password })),
+  logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
+  deleteAccount: (password: string) => request<{ ok: boolean }>('/api/auth/account', json('DELETE', { password })),
   status: () => request<Status>('/api/status'),
   sync: () => request<{ started: boolean }>('/api/sync', { method: 'POST' }),
   setPriceSource: (priceSource: PriceSource) =>

@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { config } from './config.js';
 import { db, getMeta, setMeta, transaction } from './db.js';
 import { syncCardmarket } from './cardmarket.js';
-import { snapshotCollectionValue } from './valuation.js';
+import { snapshotAllUsers } from './valuation.js';
 
 const USER_AGENT = 'TCGC-personal-collection/0.1';
 
@@ -166,17 +166,17 @@ async function doSync(log) {
     log(`Prix Cardmarket indisponibles (${err.message}), on garde les précédents`);
   }
 
-  snapshotCollectionValue();
+  snapshotAllUsers();
 
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   log(`Synchro terminée en ${seconds}s : ${cardCount} cartes, ${priceCount} prix (date ${priceDate}), 1 € = ${getMeta('usd_per_eur')} $`);
   return { cards: cardCount, prices: priceCount, priceDate, usdPerEur: Number(getMeta('usd_per_eur')) };
 }
 
-export function syncIsStale() {
+export function syncIsStale(maxAgeHours = config.syncMaxAgeHours) {
   const last = getMeta('last_sync');
   if (!last) return true;
-  return Date.now() - new Date(last).getTime() > config.syncMaxAgeHours * 3600_000;
+  return Date.now() - new Date(last).getTime() > maxAgeHours * 3600_000;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

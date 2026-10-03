@@ -62,20 +62,47 @@ db.exec(`
     PRIMARY KEY (product_id, date)
   ) WITHOUT ROWID;
 
-  -- Une ligne par carte et par langue possédée (une même carte peut être en VF et en VO)
+  -- Comptes utilisateurs (mot de passe haché avec scrypt, voir auth.js)
+  CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY,
+    pseudo        TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    price_source  TEXT NOT NULL DEFAULT 'cardmarket',
+    created_at    TEXT NOT NULL
+  );
+
+  -- Sessions de connexion : seul le hachage du jeton est stocké, le jeton lui-même est dans le cookie
+  CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+
+  -- Une ligne par utilisateur, carte et langue possédée (une même carte peut être en VF et en VO).
+  -- user_id 0 : collection d'avant les comptes, attribuée au premier compte créé (voir auth.js)
   CREATE TABLE IF NOT EXISTS collection (
+    user_id    INTEGER NOT NULL,
     product_id INTEGER NOT NULL REFERENCES cards(product_id),
     lang       TEXT NOT NULL DEFAULT 'fr',
     quantity   INTEGER NOT NULL CHECK (quantity > 0),
     added_at   TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    PRIMARY KEY (product_id, lang)
+    PRIMARY KEY (user_id, product_id, lang)
   );
 
+  -- Valeur de la collection de chaque utilisateur, jour par jour, selon chaque source de prix
+  -- (value_eur : ancienne colonne, source TCGplayer)
   CREATE TABLE IF NOT EXISTS value_history (
-    date      TEXT PRIMARY KEY,
+    user_id   INTEGER NOT NULL,
+    date      TEXT NOT NULL,
     value_eur REAL NOT NULL,
-    cards     INTEGER NOT NULL
+    value_cm  REAL,
+    value_tcg REAL,
+    cards     INTEGER NOT NULL,
+    PRIMARY KEY (user_id, date)
   );
 
   CREATE TABLE IF NOT EXISTS meta (
@@ -134,6 +161,50 @@ if (!db.prepare('PRAGMA table_info(collection)').all().some((c) => c.name === 'l
       SELECT product_id, 'fr', quantity, added_at, updated_at FROM collection;
     DROP TABLE collection;
     ALTER TABLE collection_new RENAME TO collection;
+    COMMIT;
+  `);
+}
+
+// Base d'avant les comptes : la collection et son historique passent sous l'utilisateur 0, en attendant
+// d'être attribués au premier compte créé
+export const LEGACY_USER = 0;
+
+if (!db.prepare('PRAGMA table_info(collection)').all().some((c) => c.name === 'user_id')) {
+  db.exec(`
+    BEGIN;
+    CREATE TABLE collection_new (
+      user_id    INTEGER NOT NULL,
+      product_id INTEGER NOT NULL REFERENCES cards(product_id),
+      lang       TEXT NOT NULL DEFAULT 'fr',
+      quantity   INTEGER NOT NULL CHECK (quantity > 0),
+      added_at   TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, product_id, lang)
+    );
+    INSERT INTO collection_new (user_id, product_id, lang, quantity, added_at, updated_at)
+      SELECT ${LEGACY_USER}, product_id, lang, quantity, added_at, updated_at FROM collection;
+    DROP TABLE collection;
+    ALTER TABLE collection_new RENAME TO collection;
+    COMMIT;
+  `);
+}
+
+if (!db.prepare('PRAGMA table_info(value_history)').all().some((c) => c.name === 'user_id')) {
+  db.exec(`
+    BEGIN;
+    CREATE TABLE value_history_new (
+      user_id   INTEGER NOT NULL,
+      date      TEXT NOT NULL,
+      value_eur REAL NOT NULL,
+      value_cm  REAL,
+      value_tcg REAL,
+      cards     INTEGER NOT NULL,
+      PRIMARY KEY (user_id, date)
+    );
+    INSERT INTO value_history_new (user_id, date, value_eur, value_cm, value_tcg, cards)
+      SELECT ${LEGACY_USER}, date, value_eur, value_cm, value_tcg, cards FROM value_history;
+    DROP TABLE value_history;
+    ALTER TABLE value_history_new RENAME TO value_history;
     COMMIT;
   `);
 }

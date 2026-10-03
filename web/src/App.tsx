@@ -2,30 +2,33 @@ import { useEffect, useState } from 'react';
 import { formatEur } from './api';
 import { CardDetailSheet } from './components/CardDetail';
 import { Icon, type IconName } from './components/Icon';
+import { t } from './i18n';
+import { AuthPage } from './pages/Auth';
 import { Catalog } from './pages/Catalog';
 import { Collection } from './pages/Collection';
+import { ProfilePage } from './pages/Profile';
 import { Scanner } from './pages/Scanner';
-import { t } from './i18n';
 import { StatsPage } from './pages/Stats';
 import { AppProvider, useApp } from './store';
 
-type Tab = 'collection' | 'scan' | 'catalog' | 'stats';
+type Tab = 'collection' | 'scan' | 'catalog' | 'stats' | 'profile';
 
 const TABS: { id: Tab; icon: IconName }[] = [
   { id: 'collection', icon: 'cards' },
   { id: 'scan', icon: 'camera' },
   { id: 'catalog', icon: 'search' },
   { id: 'stats', icon: 'chart' },
+  { id: 'profile', icon: 'user' },
 ];
 
 function readTab(): Tab {
   const hash = window.location.hash.slice(1) as Tab;
-  return TABS.some((t) => t.id === hash) ? hash : 'collection';
+  return TABS.some((item) => item.id === hash) ? hash : 'collection';
 }
 
 function Shell() {
   const [tab, setTab] = useState<Tab>(readTab);
-  const { totals, toastMessage, openedCard } = useApp();
+  const { totals, openedCard } = useApp();
 
   useEffect(() => {
     const onHash = () => setTab(readTab());
@@ -33,9 +36,9 @@ function Shell() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const go = (t: Tab) => {
-    window.location.hash = t;
-    setTab(t);
+  const go = (next: Tab) => {
+    window.location.hash = next;
+    setTab(next);
   };
 
   return (
@@ -60,6 +63,7 @@ function Shell() {
         {tab === 'scan' && <Scanner active={tab === 'scan' && openedCard === null} />}
         {tab === 'catalog' && <Catalog />}
         {tab === 'stats' && <StatsPage />}
+        {tab === 'profile' && <ProfilePage />}
       </main>
 
       <nav className="tabbar">
@@ -72,21 +76,32 @@ function Shell() {
       </nav>
 
       <CardDetailSheet />
-      {toastMessage && <div className="toast" role="status">{toastMessage}</div>}
     </div>
   );
 }
 
-// Changer la langue de l'interface redessine toute l'appli
-function LocalizedShell() {
-  const { uiLang } = useApp();
-  return <Shell key={uiLang} />;
+// Page d'accueil (connexion / inscription) tant qu'on n'est pas connecté, sinon l'appli.
+// Changer de langue d'interface ou de compte redessine toute l'appli.
+function Gate() {
+  const { user, uiLang, toastMessage } = useApp();
+  return (
+    <>
+      {user === undefined ? (
+        <div className="center splash"><div className="spinner" /></div>
+      ) : user === null ? (
+        <AuthPage key={uiLang} />
+      ) : (
+        <Shell key={`${uiLang}-${user.id}`} />
+      )}
+      {toastMessage && <div className="toast" role="status">{toastMessage}</div>}
+    </>
+  );
 }
 
 export function App() {
   return (
     <AppProvider>
-      <LocalizedShell />
+      <Gate />
     </AppProvider>
   );
 }

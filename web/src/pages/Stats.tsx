@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api, cardImage, cardName, formatDate, formatEur, type PriceSource, type Stats } from '../api';
 import { Icon } from '../components/Icon';
-import { LangSwitch } from '../components/LangSwitch';
 import { LineChart } from '../components/LineChart';
 import { getUiLang, locale, t } from '../i18n';
 import { useApp } from '../store';
 
 export function StatsPage() {
-  const { status, refreshStatus, version, toast, openCard, cardChanged, uiLang, setUiLang } = useApp();
+  const { status, refreshStatus, version, toast, openCard, cardChanged } = useApp();
   const [stats, setStats] = useState<Stats | null>(null);
   const [showCameraHelp, setShowCameraHelp] = useState(false);
 
@@ -20,8 +19,8 @@ export function StatsPage() {
   };
 
   const sync = async () => {
-    await api.sync();
-    toast(t('stats.updateStarted'));
+    const { started } = await api.sync();
+    toast(t(started ? 'stats.updateStarted' : 'stats.alreadyFresh'));
     window.setTimeout(refreshStatus, 1500);
   };
 
@@ -86,12 +85,6 @@ export function StatsPage() {
           </ul>
         </section>
       )}
-
-      <section className="panel">
-        <h3>{t('stats.uiLang')}</h3>
-        {/* chaque langue est écrite dans sa propre langue, pour être reconnue quelle que soit la langue actuelle */}
-        <LangSwitch value={uiLang} onChange={setUiLang} label={t('stats.uiLang')} names={{ fr: 'Français', en: 'English' }} />
-      </section>
 
       <section className="panel">
         <h3>{t('stats.priceSource')}</h3>

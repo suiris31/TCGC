@@ -36,6 +36,26 @@ The first start takes about ten minutes, to:
 
 After that, startup is instant. Prices update automatically once a day.
 
+## Accounts
+
+Each person creates an account (username, email, password) and gets their own private collection. The
+**Profile** tab shows the account, lets you change the interface language, log out, and **delete the account**:
+this permanently erases everything linked to it (collection, value history, sessions), after confirming with
+the password.
+
+If you used the app before accounts existed, **the first account you create gets your existing collection**.
+
+### Hosting it publicly
+
+- Put the app behind an **HTTPS** reverse proxy (Caddy, nginx...). Session cookies are then marked `Secure`.
+- If the proxy runs on another machine, set `TRUST_PROXY` (e.g. `TRUST_PROXY=1`) so the app sees the real
+  client IP and protocol. The default (`loopback`) suits a proxy on the same machine.
+- Passwords are hashed with scrypt; sessions are random tokens in an HttpOnly cookie (only their hash is stored);
+  login and sign-up attempts are rate-limited; requests from other sites are refused.
+- Not included yet: email verification and password reset by email.
+- Catalog and prices are shared by all accounts; a manual price update can run at most once an hour, and each
+  account can scan up to 60 cards a minute.
+
 ## Live camera on Android
 
 Chrome only allows the live camera on a secure address (https or localhost). Without any setup, scanning still

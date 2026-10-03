@@ -1,45 +1,59 @@
-// Requêtes sur le catalogue et la collection, mises en forme pour l'API
+// Requêtes sur le catalogue et la collection, mises en forme pour l'API.
+// viewer = { userId, source } : l'utilisateur connecté (sa collection) et sa source de prix
 import { db } from './db.js';
 import { cdnImage } from './images.js';
-import { estimateEurSql, priceJoins, priceSource, toEur, valueHistory } from './valuation.js';
+import { estimateEurSql, priceJoins, toEur, valueHistory } from './valuation.js';
 
 // Langues dans lesquelles on peut posséder une carte
 export const LANGS = ['fr', 'en'];
 
+export function viewerOf(user) {
+  return { userId: user.id, source: user.price_source };
+}
+
+// Identifiant d'utilisateur inséré dans le SQL des jointures : toujours un entier venu de la base
+function uid(viewer) {
+  const id = Number(viewer.userId);
+  if (!Number.isSafeInteger(id)) throw new Error('Utilisateur invalide');
+  return id;
+}
+
 // L'estimation dépend de la source de prix choisie et du taux du jour : colonnes calculées à chaque requête.
 // entries : une ligne par carte possédée et par langue (vue collection) au lieu d'une par carte (catalogue)
-function cardColumns(entries = false) {
+function cardColumns(viewer, entries = false) {
   return `
   c.product_id, c.name, c.name_fr, c.full_name, c.variant, c.number, c.rarity, c.color, c.card_type, c.cost,
   c.power, c.counter, c.life, c.attribute, c.subtypes, c.description, c.url,
   s.code AS set_code, s.name AS set_name, s.published_on,
   p.market, p.low, p.mid, p.date AS price_date,
   cm.trend AS cm_trend, cm.avg30 AS cm_avg30, cm.avg7 AS cm_avg7, cm.low AS cm_low, cm.date AS cm_date,
-  ${estimateEurSql()} AS estimate_eur,
+  ${estimateEurSql(viewer.source)} AS estimate_eur,
   (SELECT MIN(f.image_id) FROM fr_cards f WHERE f.product_id = c.product_id) AS fr_image,
   own.owned, own.owned_fr, own.owned_en
   ${entries ? ', col.lang AS entry_lang, col.quantity AS entry_quantity' : ''}`;
 }
 
-// Quantités possédées par carte, toutes langues confondues et par langue
-const OWNED_JOIN = `
+// Quantités possédées par l'utilisateur pour chaque carte, toutes langues confondues et par langue
+function ownedJoin(viewer) {
+  return `
   LEFT JOIN (
     SELECT product_id, SUM(quantity) AS owned, MAX(updated_at) AS updated_at,
            SUM(CASE WHEN lang = 'fr' THEN quantity ELSE 0 END) AS owned_fr,
            SUM(CASE WHEN lang = 'en' THEN quantity ELSE 0 END) AS owned_en
-    FROM collection GROUP BY product_id
+    FROM collection WHERE user_id = ${uid(viewer)} GROUP BY product_id
   ) own ON own.product_id = c.product_id`;
+}
 
-function cardFrom(entries = false) {
+function cardFrom(viewer, entries = false) {
   return `
   FROM cards c
   JOIN sets s ON s.group_id = c.group_id
   ${priceJoins('c.product_id')}
-  ${OWNED_JOIN}
-  ${entries ? 'JOIN collection col ON col.product_id = c.product_id' : ''}`;
+  ${ownedJoin(viewer)}
+  ${entries ? `JOIN collection col ON col.product_id = c.product_id AND col.user_id = ${uid(viewer)}` : ''}`;
 }
 
-function formatPrice(row) {
+function formatPrice(row, viewer) {
   const cmEur = row.cm_trend ?? row.cm_avg30 ?? row.cm_avg7 ?? null;
   const tcgUsd = row.market ?? row.low ?? row.mid ?? null;
   const cardmarket = cmEur == null ? null : {
@@ -58,13 +72,13 @@ function formatPrice(row) {
     lowEur: toEur(row.low),
     date: row.price_date,
   };
-  const order = priceSource() === 'cardmarket' ? ['cardmarket', 'tcgplayer'] : ['tcgplayer', 'cardmarket'];
+  const order = viewer.source === 'tcgplayer' ? ['tcgplayer', 'cardmarket'] : ['cardmarket', 'tcgplayer'];
   const source = order.find((s) => (s === 'cardmarket' ? cardmarket : tcgplayer)) ?? null;
   const eur = source === 'cardmarket' ? cardmarket.eur : source === 'tcgplayer' ? tcgplayer.eur : null;
   return { eur, source, cardmarket, tcgplayer };
 }
 
-export function formatCard(row) {
+export function formatCard(row, viewer) {
   return {
     id: row.product_id,
     name: row.name,
@@ -94,7 +108,7 @@ export function formatCard(row) {
     cardmarketUrl: row.number && row.number !== 'DON!!'
       ? `https://www.cardmarket.com/fr/OnePiece/Products/Search?searchString=${encodeURIComponent(row.number)}`
       : null,
-    price: formatPrice(row),
+    price: formatPrice(row, viewer),
     owned: row.owned ?? 0,
     ownedByLang: { fr: row.owned_fr ?? 0, en: row.owned_en ?? 0 },
     // Vue collection : la langue et la quantité de cet exemplaire
@@ -135,7 +149,7 @@ function normalizeCode(q) {
 
 // owned : vue collection, une entrée par carte et par langue possédée (filtrable par langue)
 // status (vue catalogue) : 'owned' = seulement les cartes possédées, 'missing' = seulement les manquantes
-export function searchCards({ q, set, color, rarity, type, owned, lang, status, sort = 'number', limit = 60, offset = 0 } = {}) {
+export function searchCards(viewer, { q, set, color, rarity, type, owned, lang, status, sort = 'number', limit = 60, offset = 0 } = {}) {
   const where = [];
   const params = [];
   if (q?.trim()) {
@@ -175,28 +189,28 @@ export function searchCards({ q, set, color, rarity, type, owned, lang, status, 
     }
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const total = db.prepare(`SELECT COUNT(*) AS n ${cardFrom(entries)} ${whereSql}`).get(...params).n;
-  const rows = db.prepare(`SELECT ${cardColumns(entries)} ${cardFrom(entries)} ${whereSql} ORDER BY ${order} LIMIT ? OFFSET ?`)
+  const total = db.prepare(`SELECT COUNT(*) AS n ${cardFrom(viewer, entries)} ${whereSql}`).get(...params).n;
+  const rows = db.prepare(`SELECT ${cardColumns(viewer, entries)} ${cardFrom(viewer, entries)} ${whereSql} ORDER BY ${order} LIMIT ? OFFSET ?`)
     .all(...params, ...orderParams, Math.min(Number(limit) || 60, 500), Number(offset) || 0);
-  return { total, cards: rows.map(formatCard) };
+  return { total, cards: rows.map((r) => formatCard(r, viewer)) };
 }
 
-export function getCards(ids) {
+export function getCards(viewer, ids) {
   if (!ids.length) return [];
-  const rows = db.prepare(`SELECT ${cardColumns()} ${cardFrom()} WHERE c.product_id IN (${ids.map(() => '?').join(',')})`).all(...ids);
-  const byId = new Map(rows.map((r) => [r.product_id, formatCard(r)]));
+  const rows = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)} WHERE c.product_id IN (${ids.map(() => '?').join(',')})`).all(...ids);
+  const byId = new Map(rows.map((r) => [r.product_id, formatCard(r, viewer)]));
   return ids.map((id) => byId.get(id)).filter(Boolean);
 }
 
-export function getCard(id) {
-  return getCards([Number(id)])[0] ?? null;
+export function getCard(viewer, id) {
+  return getCards(viewer, [Number(id)])[0] ?? null;
 }
 
-export function getCardDetail(id) {
-  const card = getCard(id);
+export function getCardDetail(viewer, id) {
+  const card = getCard(viewer, id);
   if (!card) return null;
-  const versions = db.prepare(`SELECT ${cardColumns()} ${cardFrom()} WHERE c.number = ? AND c.product_id != ? ORDER BY s.published_on, c.product_id`)
-    .all(card.number, card.id).map(formatCard);
+  const versions = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)} WHERE c.number = ? AND c.product_id != ? ORDER BY s.published_on, c.product_id`)
+    .all(card.number, card.id).map((r) => formatCard(r, viewer));
   // Historique dans la source du prix affiché (sans mélanger les deux marchés sur une même courbe)
   const history = db.prepare('SELECT date, market, low, cm FROM price_history WHERE product_id = ? ORDER BY date')
     .all(card.id)
@@ -205,21 +219,22 @@ export function getCardDetail(id) {
   return { ...card, versions: card.number === 'DON!!' ? [] : versions, history };
 }
 
-export function listSets() {
+export function listSets(viewer) {
   return db.prepare(`
     SELECT s.group_id, s.code, s.name, s.published_on,
            COUNT(c.product_id) AS cards,
-           SUM(CASE WHEN EXISTS (SELECT 1 FROM collection col WHERE col.product_id = c.product_id) THEN 1 ELSE 0 END) AS owned
+           SUM(CASE WHEN EXISTS (SELECT 1 FROM collection col WHERE col.product_id = c.product_id AND col.user_id = ?)
+             THEN 1 ELSE 0 END) AS owned
     FROM sets s
     JOIN cards c ON c.group_id = s.group_id
     GROUP BY s.group_id
-    ORDER BY s.published_on DESC`).all()
+    ORDER BY s.published_on DESC`).all(uid(viewer))
     .map((s) => ({ id: s.group_id, code: s.code, name: s.name, releaseDate: s.published_on?.slice(0, 10), cards: s.cards, owned: s.owned }));
 }
 
 // Sets (extensions) vus depuis la collection : progression, valeur possédée et carte d'illustration
-export function collectionSets({ all = false } = {}) {
-  const estimate = estimateEurSql();
+export function collectionSets(viewer, { all = false } = {}) {
+  const estimate = estimateEurSql(viewer.source);
   const sets = db.prepare(`
     SELECT s.group_id, s.code, s.name, s.published_on,
            COUNT(*) AS total,
@@ -229,7 +244,7 @@ export function collectionSets({ all = false } = {}) {
     FROM cards c
     JOIN sets s ON s.group_id = c.group_id
     ${priceJoins('c.product_id')}
-    ${OWNED_JOIN}
+    ${ownedJoin(viewer)}
     GROUP BY s.group_id
     ${all ? '' : 'HAVING owned_cards > 0'}
     ORDER BY s.published_on DESC, s.group_id`).all();
@@ -244,7 +259,7 @@ export function collectionSets({ all = false } = {}) {
              ) AS rank
       FROM cards c
       ${priceJoins('c.product_id')}
-      ${OWNED_JOIN}
+      ${ownedJoin(viewer)}
     ) WHERE rank = 1`).all().map((r) => [r.group_id, r]));
 
   return sets.map((s) => {
@@ -269,43 +284,46 @@ export function collectionSets({ all = false } = {}) {
   });
 }
 
-export function setQuantity(productId, quantity, lang = 'fr') {
+export function setQuantity(viewer, productId, quantity, lang = 'fr') {
   if (!LANGS.includes(lang)) throw Object.assign(new Error(`Langue inconnue : ${lang}`), { status: 400, expose: true });
   if (!db.prepare('SELECT 1 FROM cards WHERE product_id = ?').get(productId)) return null;
   const now = new Date().toISOString();
   if (quantity <= 0) {
-    db.prepare('DELETE FROM collection WHERE product_id = ? AND lang = ?').run(productId, lang);
+    db.prepare('DELETE FROM collection WHERE user_id = ? AND product_id = ? AND lang = ?').run(uid(viewer), productId, lang);
   } else {
-    db.prepare(`INSERT INTO collection (product_id, lang, quantity, added_at, updated_at) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(product_id, lang) DO UPDATE SET quantity = excluded.quantity, updated_at = excluded.updated_at`)
-      .run(productId, lang, quantity, now, now);
+    db.prepare(`INSERT INTO collection (user_id, product_id, lang, quantity, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, product_id, lang) DO UPDATE SET quantity = excluded.quantity, updated_at = excluded.updated_at`)
+      .run(uid(viewer), productId, lang, quantity, now, now);
   }
-  return getCard(productId);
+  return getCard(viewer, productId);
 }
 
-export function addToCollection(productId, delta = 1, lang = 'fr') {
-  const current = db.prepare('SELECT quantity FROM collection WHERE product_id = ? AND lang = ?').get(productId, lang)?.quantity ?? 0;
-  return setQuantity(productId, current + delta, lang);
+export function addToCollection(viewer, productId, delta = 1, lang = 'fr') {
+  const current = db.prepare('SELECT quantity FROM collection WHERE user_id = ? AND product_id = ? AND lang = ?')
+    .get(uid(viewer), productId, lang)?.quantity ?? 0;
+  return setQuantity(viewer, productId, current + delta, lang);
 }
 
-export function collectionStats() {
+export function collectionStats(viewer) {
   const bySet = db.prepare(`
-    SELECT s.code, s.name, SUM(col.quantity) AS cards, SUM(col.quantity * ${estimateEurSql()}) AS value_eur
+    SELECT s.code, s.name, SUM(col.quantity) AS cards, SUM(col.quantity * ${estimateEurSql(viewer.source)}) AS value_eur
     FROM collection col
     JOIN cards c ON c.product_id = col.product_id
     JOIN sets s ON s.group_id = c.group_id
     ${priceJoins('c.product_id')}
-    GROUP BY s.group_id ORDER BY value_eur DESC`).all()
+    WHERE col.user_id = ?
+    GROUP BY s.group_id ORDER BY value_eur DESC`).all(uid(viewer))
     .map((r) => ({ code: r.code, name: r.name, cards: r.cards, valueEur: Math.round((r.value_eur ?? 0) * 100) / 100 }));
-  const history = valueHistory();
-  const top = searchCards({ owned: true, sort: 'price', limit: 10 }).cards;
+  const history = valueHistory(uid(viewer), viewer.source);
+  const top = searchCards(viewer, { owned: true, sort: 'price', limit: 10 }).cards;
   return { bySet, history, top };
 }
 
 // uiLang 'en' : en-têtes en anglais et format numérique anglais (virgule séparateur, point décimal)
-export function collectionCsv(uiLang = 'fr') {
+export function collectionCsv(viewer, uiLang = 'fr') {
   const english = uiLang === 'en';
-  const rows = db.prepare(`SELECT ${cardColumns(true)} ${cardFrom(true)} ORDER BY c.number, col.lang`).all().map(formatCard);
+  const rows = db.prepare(`SELECT ${cardColumns(viewer, true)} ${cardFrom(viewer, true)} ORDER BY c.number, col.lang`).all()
+    .map((r) => formatCard(r, viewer));
   // Format Excel français : séparateur ";" et virgule décimale ; anglais : séparateur "," et point décimal
   const sep = english ? ',' : ';';
   const esc = (v) => {

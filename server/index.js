@@ -2,20 +2,50 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
+import { AuthError, deleteAccount, loadUser, login, logout, publicUser, rateLimit, requireUser, signup } from './auth.js';
 import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
 import {
   addToCollection, collectionCsv, collectionSets, collectionStats, getCardDetail, getCards, LANGS, listSets, searchCards,
-  setQuantity,
+  setQuantity, viewerOf,
 } from './cards.js';
 import { downloadThumb, thumbPath } from './images.js';
 import { buildIndex, identify, indexStatus } from './scan.js';
 import { runSync, syncInProgress, syncIsStale } from './sync.js';
-import { collectionTotals, priceSource, setPriceSource, snapshotCollectionValue } from './valuation.js';
+import { collectionTotals, setPriceSource, snapshotCollectionValue } from './valuation.js';
 
 const app = express();
+
+// Derrière un proxy HTTPS (nginx, Caddy...), TRUST_PROXY permet de connaître la vraie IP et le protocole :
+// "loopback" par défaut (proxy sur la même machine), un nombre de proxys, ou une liste d'adresses
+function trustProxy() {
+  const value = process.env.TRUST_PROXY ?? 'loopback';
+  if (/^\d+$/.test(value)) return Number(value);
+  if (value === 'true' || value === 'false') return value === 'true';
+  return value;
+}
+app.set('trust proxy', trustProxy());
+app.disable('x-powered-by');
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  next();
+});
 app.use(express.json());
+app.use(loadUser);
+
+// Protection contre les requêtes envoyées depuis un autre site (CSRF) : toute modification doit venir de l'appli
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') return next();
+  const origin = req.get('origin');
+  if (origin && new URL(origin).host !== req.get('host')) {
+    return res.status(403).json({ code: 'forbidden_origin', error: 'Origine non autorisée' });
+  }
+  next();
+});
 
 const log = (...args) => console.log(new Date().toLocaleTimeString('fr-FR'), ...args);
 
@@ -28,53 +58,89 @@ function refresh() {
     .catch((err) => { lastError = err.message; log('Erreur de mise à jour :', err.message); });
 }
 
+// ---------- Comptes ----------
+
+app.get('/api/auth/me', (req, res) => res.json({ user: req.user ? publicUser(req.user) : null }));
+
+app.post('/api/auth/signup', async (req, res) => {
+  const user = await signup(req, res);
+  log(`Nouveau compte : ${user.pseudo}`);
+  res.status(201).json({ user: publicUser(user) });
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const user = await login(req, res);
+  res.json({ user: publicUser(user) });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  logout(req, res);
+  res.json({ ok: true });
+});
+
+app.delete('/api/auth/account', requireUser, async (req, res) => {
+  const { pseudo } = req.user;
+  await deleteAccount(req, res);
+  log(`Compte supprimé avec toutes ses données : ${pseudo}`);
+  res.json({ ok: true });
+});
+
+// Tout le reste de l'API demande d'être connecté
+app.use('/api', requireUser);
+
+// ---------- Collection et catalogue (pour l'utilisateur connecté) ----------
+
 app.get('/api/status', (req, res) => {
   res.json({
     lastSync: getMeta('last_sync'),
     priceDate: getMeta('price_date'),
     cmPriceDate: getMeta('cm_price_date'),
-    priceSource: priceSource(),
+    priceSource: req.user.price_source,
     usdPerEur: Number(getMeta('usd_per_eur')) || null,
     syncing: syncInProgress(),
     scan: indexStatus(),
     error: lastError,
-    totals: collectionTotals(),
+    totals: collectionTotals(req.user.id, req.user.price_source),
   });
 });
 
 app.put('/api/settings', (req, res) => {
   try {
-    if (req.body?.priceSource) setPriceSource(req.body.priceSource);
+    if (req.body?.priceSource) setPriceSource(req.user.id, req.body.priceSource);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
-  snapshotCollectionValue();
-  res.json({ priceSource: priceSource(), totals: collectionTotals() });
+  const source = req.body?.priceSource ?? req.user.price_source;
+  res.json({ priceSource: source, totals: collectionTotals(req.user.id, source) });
 });
 
+// Mise à jour manuelle des prix : au plus une fois par heure, quel que soit le nombre d'utilisateurs
 app.post('/api/sync', (req, res) => {
+  if (!syncIsStale(1)) return res.json({ started: false });
   refresh();
   res.json({ started: true });
 });
 
-app.get('/api/sets', (req, res) => res.json(listSets()));
+app.get('/api/sets', (req, res) => res.json(listSets(viewerOf(req.user))));
 
 app.get('/api/cards', (req, res) => {
   const { q, set, color, rarity, type, owned, lang, status, sort, limit, offset } = req.query;
-  res.json(searchCards({ q, set, color, rarity, type, owned: owned === '1' || owned === 'true', lang, status, sort, limit, offset }));
+  res.json(searchCards(viewerOf(req.user), {
+    q, set, color, rarity, type, owned: owned === '1' || owned === 'true', lang, status, sort, limit, offset,
+  }));
 });
 
 // all=1 : aussi les sets dont on ne possède aucune carte
-app.get('/api/collection/sets', (req, res) => res.json(collectionSets({ all: req.query.all === '1' })));
+app.get('/api/collection/sets', (req, res) => res.json(collectionSets(viewerOf(req.user), { all: req.query.all === '1' })));
 
 app.get('/api/cards/:id', (req, res) => {
-  const card = getCardDetail(req.params.id);
+  const card = getCardDetail(viewerOf(req.user), req.params.id);
   if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
   res.json(card);
 });
 
 function logChange(card, lang, req) {
-  log(`Collection : ${card.fullName} [${card.number}, ${card.setCode}] ${lang.toUpperCase()} -> x${card.ownedByLang[lang]} (depuis ${req.ip})`);
+  log(`Collection de ${req.user.pseudo} : ${card.fullName} [${card.number}, ${card.setCode}] ${lang.toUpperCase()} -> x${card.ownedByLang[lang]}`);
 }
 
 // Langue de l'exemplaire : 'fr' par défaut
@@ -88,11 +154,11 @@ app.put('/api/collection/:id', (req, res) => {
   const lang = langOf(req);
   if (!Number.isInteger(quantity) || quantity < 0) return res.status(400).json({ code: 'invalid_quantity', error: 'Quantité invalide' });
   if (!lang) return res.status(400).json({ code: 'invalid_lang', error: 'Langue invalide' });
-  const card = setQuantity(Number(req.params.id), quantity, lang);
+  const card = setQuantity(viewerOf(req.user), Number(req.params.id), quantity, lang);
   if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
   logChange(card, lang, req);
-  snapshotCollectionValue();
-  res.json({ card, totals: collectionTotals() });
+  snapshotCollectionValue(req.user.id);
+  res.json({ card, totals: collectionTotals(req.user.id, req.user.price_source) });
 });
 
 app.post('/api/collection/:id/add', (req, res) => {
@@ -100,22 +166,26 @@ app.post('/api/collection/:id/add', (req, res) => {
   const lang = langOf(req);
   if (!Number.isInteger(delta)) return res.status(400).json({ code: 'invalid_quantity', error: 'Quantité invalide' });
   if (!lang) return res.status(400).json({ code: 'invalid_lang', error: 'Langue invalide' });
-  const card = addToCollection(Number(req.params.id), delta, lang);
+  const card = addToCollection(viewerOf(req.user), Number(req.params.id), delta, lang);
   if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
   logChange(card, lang, req);
-  snapshotCollectionValue();
-  res.json({ card, totals: collectionTotals() });
+  snapshotCollectionValue(req.user.id);
+  res.json({ card, totals: collectionTotals(req.user.id, req.user.price_source) });
 });
 
-app.get('/api/stats', (req, res) => res.json({ totals: collectionTotals(), ...collectionStats() }));
+app.get('/api/stats', (req, res) => {
+  res.json({ totals: collectionTotals(req.user.id, req.user.price_source), ...collectionStats(viewerOf(req.user)) });
+});
 
 app.get('/api/export.csv', (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="collection-one-piece-${new Date().toISOString().slice(0, 10)}.csv"`);
-  res.send(`﻿${collectionCsv(req.query.lang === 'en' ? 'en' : 'fr')}`);
+  res.send(`﻿${collectionCsv(viewerOf(req.user), req.query.lang === 'en' ? 'en' : 'fr')}`);
 });
 
 app.post('/api/scan', express.raw({ type: 'image/*', limit: '20mb' }), async (req, res) => {
+  // La reconnaissance sollicite le processeur : 60 scans par minute et par compte au maximum
+  rateLimit(`scan:${req.user.id}`, 60, 60_000);
   if (!req.body?.length) return res.status(400).json({ code: 'no_image', error: 'Aucune image reçue' });
   const status = indexStatus();
   if (!status.indexed) {
@@ -130,7 +200,7 @@ app.post('/api/scan', express.raw({ type: 'image/*', limit: '20mb' }), async (re
     const started = Date.now();
     // mode=photo : photo entière prise avec l'appareil photo ; sinon image déjà recadrée sur le cadre de visée
     const { matches, margin } = await identify(req.body, { limit: 12, mode: req.query.mode === 'photo' ? 'photo' : 'guide' });
-    const cards = new Map(getCards(matches.map((m) => m.productId)).map((c) => [c.id, c]));
+    const cards = new Map(getCards(viewerOf(req.user), matches.map((m) => m.productId)).map((c) => [c.id, c]));
     res.json({
       ms: Date.now() - started,
       margin: Math.round(margin * 1000) / 1000,
@@ -203,8 +273,10 @@ if (fs.existsSync(config.distDir)) {
 }
 
 app.use((err, req, res, next) => {
-  log('Erreur :', err);
   if (res.headersSent) return next(err);
+  // Erreurs prévues (identifiants incorrects, pseudo déjà pris...) : code traduit par l'interface
+  if (err instanceof AuthError) return res.status(err.status).json({ code: err.code, error: err.message });
+  log('Erreur :', err);
   res.status(err.status ?? 500).json(err.expose ? { error: err.message } : { code: 'server', error: 'Erreur interne du serveur' });
 });
 

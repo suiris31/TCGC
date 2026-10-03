@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, type Card, type Lang, type Status, type Totals } from './api';
+import { api, LOGGED_OUT_EVENT, type Card, type Lang, type Status, type Totals, type User } from './api';
 import { getUiLang, setUiLang as applyUiLang, type UiLang } from './i18n';
 
 // Langue de saisie des cartes (scan, ajout depuis le catalogue) : la dernière choisie est retenue,
@@ -17,6 +17,9 @@ function readLang(): Lang {
 export interface OpenedCard { id: number; lang: Lang }
 
 interface AppState {
+  // undefined : vérification de la session en cours ; null : déconnecté
+  user: User | null | undefined;
+  setUser: (user: User | null) => void;
   status: Status | null;
   totals: Totals | null;
   refreshStatus: () => void;
@@ -39,6 +42,7 @@ interface AppState {
 const Ctx = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [user, setUserState] = useState<User | null | undefined>(undefined);
   const [status, setStatus] = useState<Status | null>(null);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [version, setVersion] = useState(0);
@@ -67,12 +71,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }).catch(() => {});
   }, []);
 
+  // Session : vérifiée au démarrage, perdue dès que le serveur répond « non connecté »
+  const setUser = useCallback((next: User | null) => {
+    setUserState(next);
+    setStatus(null);
+    setTotals(null);
+    setOpenedCard(null);
+  }, []);
+
   useEffect(() => {
+    api.me().then((res) => setUserState(res.user)).catch(() => setUserState(null));
+    const onLoggedOut = () => setUser(null);
+    window.addEventListener(LOGGED_OUT_EVENT, onLoggedOut);
+    return () => window.removeEventListener(LOGGED_OUT_EVENT, onLoggedOut);
+  }, [setUser]);
+
+  const userId = user?.id ?? null;
+  useEffect(() => {
+    if (userId === null) return;
     refreshStatus();
     // Pendant une synchro ou la construction de l'index, on rafraîchit l'état régulièrement
     const timer = window.setInterval(refreshStatus, 15000);
     return () => window.clearInterval(timer);
-  }, [refreshStatus]);
+  }, [refreshStatus, userId]);
 
   const cardChanged = useCallback((_card: Card | null, newTotals: Totals) => {
     setTotals(newTotals);
@@ -87,7 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      status, totals, refreshStatus, version, cardChanged,
+      user, setUser, status, totals, refreshStatus, version, cardChanged,
       openCard, openedCard, closeCard: () => setOpenedCard(null), lang, setLang, uiLang, setUiLang,
       toast, toastMessage,
     }}>
