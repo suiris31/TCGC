@@ -1,18 +1,22 @@
 # Ma Collection One Piece (TCGC)
 
-Appli pour gérer une collection de cartes **One Piece Card Game** : scan par la caméra du téléphone,
-inventaire par set, cartes VF et VO, et estimation de la valeur en euros. Elle tourne sur ton PC et
-s'utilise depuis le téléphone via le réseau local (Wi-Fi). Gratuite, sans compte, sans service payant :
-la reconnaissance des cartes tourne en local.
+**English** · [Français](README.fr.md)
 
-> Projet communautaire non officiel, sans lien avec Bandai, TCGplayer ou Cardmarket.
-> One Piece Card Game est une marque de Bandai.
+A collection manager for the **One Piece Card Game**: scan your cards with your phone's camera, track your
+collection set by set, keep French and English printings apart, and see what it's worth in euros. It runs on
+your own PC and you use it from your phone over your home Wi-Fi. Free, no account, no paid service: card
+recognition runs locally.
 
-## Démarrer
+> Unofficial community project, not affiliated with Bandai, TCGplayer or Cardmarket.
+> One Piece Card Game is a trademark of Bandai.
+>
+> The app's interface is currently in French. Translations are welcome (see [Contributing](#contributing)).
 
-Prérequis : [Node.js](https://nodejs.org) 22.13 ou plus récent.
+## Getting started
 
-Double-clic sur `start.bat`, ou :
+Requirements: [Node.js](https://nodejs.org) 22.13 or newer.
+
+On Windows, double-click `start.bat`. On any system:
 
 ```bash
 npm install
@@ -20,111 +24,111 @@ npm run build
 npm start
 ```
 
-Le terminal affiche l'adresse à ouvrir sur le téléphone, par exemple `http://192.168.1.42:3000`.
-Le téléphone doit être sur le même Wi-Fi que le PC. Au premier lancement, Windows demande d'autoriser
-Node.js sur le pare-feu : coche **Réseaux privés**.
+The terminal prints the address to open on your phone, for example `http://192.168.1.42:3000`. Your phone
+must be on the same Wi-Fi network as the PC. On Windows, the first launch asks to allow Node.js through the
+firewall: tick **Private networks**.
 
-Le premier démarrage prend une dizaine de minutes, le temps de :
-1. télécharger le catalogue et les prix (environ 7 000 cartes, quelques secondes) ;
-2. télécharger les visuels des cartes (~150 Mo de visuels VO et ~90 Mo de visuels VF dans `data/`) ;
-3. télécharger le modèle de vision (~90 Mo) et analyser chaque visuel pour la reconnaissance.
+The first start takes about ten minutes, to:
+1. download the card catalog and prices (about 7,000 cards, a few seconds);
+2. download the card images (~150 MB of English and ~90 MB of French images, in `data/`);
+3. download the vision model (~90 MB) and analyze every image for recognition.
 
-Les fois suivantes, c'est immédiat. Les prix se mettent à jour tout seuls une fois par jour.
+After that, startup is instant. Prices update automatically once a day.
 
-## Caméra en direct sur Android
+## Live camera on Android
 
-Chrome n'autorise la caméra en direct que sur une adresse sécurisée (https ou localhost). Sans réglage, le
-scan marche quand même en passant par l'appli appareil photo. Pour avoir la visée en direct et pouvoir
-installer l'appli sur l'écran d'accueil :
+Chrome only allows the live camera on a secure address (https or localhost). Without any setup, scanning still
+works through the phone's camera app. To get the live viewfinder and be able to install the app on your home
+screen:
 
-1. Dans Chrome sur le téléphone, ouvre `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
-2. Passe le réglage sur **Enabled** et saisis l'adresse de l'appli (ex. `http://192.168.1.42:3000`)
-3. Appuie sur **Relaunch**
-4. Ouvre l'appli, puis menu ⋮ ▸ **Installer l'application**
+1. In Chrome on your phone, open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+2. Set it to **Enabled** and enter the app's address (e.g. `http://192.168.1.42:3000`)
+3. Tap **Relaunch**
+4. Open the app, then menu ⋮ ▸ **Install app**
 
-Astuce : donne une IP fixe au PC dans ta box (bail DHCP statique) pour que l'adresse ne change pas.
+Tip: give your PC a fixed IP address in your router (static DHCP lease) so the address never changes.
 
-## Collection
+## Features
 
-- **Par set** : chaque extension avec sa carte la plus chère en illustration, le nombre de cartes
-  possédées sur le total (toutes versions : normale, parallèle, manga...), la progression et la valeur.
-  « Tous les sets » affiche aussi ceux dont tu n'as encore rien.
-- **Un set** : toutes ses cartes, en couleur si tu les as, grisées sinon (interrupteur « Cartes manquantes »
-  pour les masquer). Le bouton + ajoute directement une carte manquante.
-- **Toutes mes cartes** : tous les exemplaires, triables par valeur, numéro, set, couleur, rareté, nom ou
-  date d'ajout, et filtrables par set, couleur et langue.
+### Scanning
 
-## Langues (VF / VO)
+- **Live camera with a card-shaped viewfinder**: the most reliable mode. Line the card up with the frame, flat.
+- **Photo** (without the setup above): keep the card centered, filling at least half of the picture.
+- Avoid glare (shiny sleeves, a lamp right above the card).
+- Choose the **language** of the card you're scanning (FR / EN, French by default; the last choice is
+  remembered on each phone) and the **number of copies** before adding it.
+- When several printings share **exactly the same artwork** (reprint, stamped tournament version...), the app
+  lists them with their prices so you can pick the right one. It preselects the standard, most common one.
+- Card not recognized? Type its code (`OP14-018`, `op1418`...) or its name.
 
-Chaque exemplaire de la collection a une langue : une même carte peut être possédée en français et en
-anglais, avec une quantité pour chacune. Une carte française s'affiche avec son nom et son visuel VF,
-une carte anglaise avec ceux de la VO.
+Measured on simulated photos (tilt, glare, blur, background): the right card comes first in ~99% of cases with
+the viewfinder, ~94% in photo mode, and is almost always among the suggestions.
 
-- **Scanner** et **Catalogue** : sélecteur FR / EN, français par défaut. La dernière langue choisie est
-  retenue (sur chaque téléphone).
-- **Fiche d'une carte** : bascule FR / EN de l'affichage, et une quantité par langue.
-- Le prix ne dépend pas de la langue (Cardmarket ne sépare pas les langues dans ses prix publics).
+### Collection
 
-## Bien scanner
+- **By set**: each expansion with your most valuable card as its cover, how many of its cards you own out of the
+  total (all printings: regular, parallel, manga...), your progress and the value. "All sets" also shows the
+  ones you don't own anything from yet.
+- **Inside a set**: all its cards, in color if you own them, grayed out otherwise (toggle "missing cards" to hide
+  them). The + button adds a missing card directly.
+- **All my cards**: every copy you own, sortable by value, number, set, color, rarity, name or date added, and
+  filterable by set, color and language.
 
-- **Caméra en direct (cadre de visée)** : le mode le plus fiable. Aligne la carte sur le cadre, bien à plat.
-- **Photo** (sans le réglage ci-dessus) : la carte doit être au centre et occuper au moins la moitié de la photo.
-- Évite les reflets (pochettes brillantes, lampe juste au-dessus).
-- Quand plusieurs versions ont **exactement le même visuel** (réimpression, version tournoi tamponnée...),
-  l'appli les liste avec leur prix : vérifie le code d'extension ou le tampon sur ta carte. Par défaut elle
-  propose la version standard, la plus courante.
+### French and English printings
 
-Mesures sur des photos simulées (inclinaison, reflet, flou, fond) : la bonne carte arrive en premier dans
-~99 % des cas avec le cadre de visée, ~94 % en mode photo, et figure presque toujours dans les propositions.
+Every copy in your collection has a language: you can own the same card in French and in English, with a
+quantity for each. A French copy is shown with its French name and artwork, an English copy with the English
+ones. On a card's page you can switch the display language and adjust the quantity per language.
 
-## Comment ça marche
+Prices don't depend on the language (Cardmarket's public price data doesn't separate languages).
 
-| Partie | Source / technique |
+## How it works
+
+| Part | Source / technique |
 |---|---|
-| Catalogue (cartes, variantes, visuels) | TCGplayer, via le miroir public quotidien [tcgcsv.com](https://tcgcsv.com) |
-| Cartes VF | Liste officielle française [fr.onepiece-cardgame.com](https://fr.onepiece-cardgame.com/cardlist/) : noms français et visuels VF (actualisés chaque semaine) |
-| Prix (par défaut) | **Cardmarket**, tendance des prix en € (fichiers publics quotidiens). C'est le marché de référence en Europe, mais il ne sépare pas les langues : VF et VO sont mélangées. |
-| Prix (secours ou au choix) | « Market price » TCGplayer (moyenne des ventes aux USA, cartes anglaises), converti en € au taux BCE du jour |
-| Reconnaissance | Modèle de vision DINOv2 exécuté en local (aucun service payant) : chaque visuel (VO TCGplayer + VF officiel) est transformé en vecteur, la photo est comparée à tous ces vecteurs. La bande où les visuels officiels portent le filigrane « SAMPLE » est floutée des deux côtés, sinon les vraies cartes (sans filigrane) sont mal reconnues. |
-| Stockage | SQLite (`data/tcgc.db`), intégré à Node.js |
+| Catalog (cards, printings, images) | TCGplayer, through the public daily mirror [tcgcsv.com](https://tcgcsv.com) |
+| French cards | Official French card list [fr.onepiece-cardgame.com](https://fr.onepiece-cardgame.com/cardlist/): French names and artwork (refreshed weekly) |
+| Prices (default) | **Cardmarket** price trend in € (daily public files). The reference market in Europe, but it doesn't separate languages. |
+| Prices (fallback or by choice) | TCGplayer "market price" (average of recent US sales, English cards), converted to € at the daily ECB rate |
+| Recognition | DINOv2 vision model running locally: every image (TCGplayer English + official French) becomes a vector and the photo is compared against all of them. The band where official images carry a "SAMPLE" watermark is blurred on both sides, otherwise real (unwatermarked) cards are poorly recognized. |
+| Storage | SQLite (`data/tcgc.db`), built into Node.js |
 
-La source de prix se choisit dans l'onglet Stats ; si elle n'a pas de prix pour une carte, l'autre prend le relais.
+The price source can be changed in the Stats tab; when it has no price for a card, the other one is used.
 
-Les fichiers publics de Cardmarket ne disent ni la variante (normale, parallèle, manga...) ni la langue de
-chaque produit. L'appli les rattache au catalogue (voir `server/cardmarket.js`) : les extensions japonaises
-sont repérées grâce aux noms des produits scellés (« Non-English », « Asia Region Legal »), puis les variantes
-sont appariées par ordre d'ajout en vérifiant que les prix des deux marchés restent cohérents. Environ 85 %
-des cartes ont un prix Cardmarket ; les autres (surtout des promos) restent sur TCGplayer.
+Cardmarket's public files tell neither the printing (regular, parallel, manga...) nor the language of each
+product. The app matches them to the catalog (see `server/cardmarket.js`): Japanese expansions are detected
+from the names of their sealed products ("Non-English", "Asia Region Legal"), then printings are paired in
+catalog order, checking that prices on both markets stay consistent. About 85% of cards get a Cardmarket price;
+the rest (mostly promos) keep the TCGplayer one.
 
-## Développement
+## Development
 
 ```bash
-npm run dev            # serveur (port 3000) + interface Vite avec rechargement (port 5173)
-npm run sync           # forcer la mise à jour du catalogue et des prix
-npm run index-images   # compléter l'index de reconnaissance (ajoute -- --rebuild pour tout recalculer)
+npm run dev            # server (port 3000) + Vite UI with hot reload (port 5173)
+npm run sync           # force a catalog and price update
+npm run index-images   # complete the recognition index (add -- --rebuild to recompute everything)
 ```
 
-- `server/` : API Express, synchro des données, reconnaissance d'image
-- `web/` : interface React (PWA)
-- `data/` : base, visuels, modèle et index (non versionné, recréé automatiquement)
+- `server/`: Express API, data sync, image recognition
+- `web/`: React UI (PWA)
+- `data/`: database, images, model and index (not versioned, recreated automatically)
 
-Ta collection est uniquement dans `data/tcgc.db` : sauvegarde ce fichier (ou utilise l'export CSV dans
-l'onglet Stats).
+Your collection lives only in `data/tcgc.db`: back this file up (or use the CSV export in the Stats tab).
 
-## Contribuer
+## Contributing
 
-Les suggestions et pull requests sont les bienvenues : ouvre une issue pour discuter d'une idée ou d'un bug,
-ou propose directement une modification.
+Suggestions and pull requests are welcome: open an issue to discuss an idea or a bug, or send a change directly.
+Issues and pull requests can be written in English or French.
 
 ```bash
 npm install
-npm run dev                 # serveur + interface avec rechargement automatique
-npx tsc -p tsconfig.json    # vérification des types de l'interface
+npm run dev                 # server + UI with hot reload
+npx tsc -p tsconfig.json    # type-check the UI
 ```
 
-Le code et les commentaires sont en français.
+The code comments and the UI are in French for now; an English interface would be a great contribution.
 
-## Licence
+## License
 
-[MIT](LICENSE). Les données (catalogue, prix, visuels) ne font pas partie du dépôt : elles sont téléchargées
-par l'appli depuis leurs sources publiques et restent soumises aux conditions de ces sources.
+[MIT](LICENSE). The data (catalog, prices, images) is not part of this repository: the app downloads it from its
+public sources, and it remains subject to those sources' terms.
