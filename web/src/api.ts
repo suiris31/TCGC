@@ -197,6 +197,10 @@ export const api = {
   add: (id: number, delta: number, lang: Lang) =>
     request<{ card: Card; totals: Totals }>(`api/collection/${id}/add`, json('POST', { delta, lang })),
   stats: () => request<Stats>('api/stats'),
+  importCollection: (csv: string) =>
+    request<{ cards: number; copies: number; skipped: number; totals: Totals }>('api/collection/import', {
+      method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: csv,
+    }),
   scan: (image: Blob, mode: 'guide' | 'photo') =>
     request<ScanResult>(`api/scan?mode=${mode}`, { method: 'POST', headers: { 'Content-Type': image.type || 'image/jpeg' }, body: image }),
 };

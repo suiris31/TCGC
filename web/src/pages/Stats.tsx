@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, cardImage, cardName, formatDate, formatEur, type PriceSource, type Stats } from '../api';
 import { Icon } from '../components/Icon';
 import { LineChart } from '../components/LineChart';
@@ -9,6 +9,26 @@ export function StatsPage() {
   const { status, refreshStatus, version, toast, openCard, cardChanged } = useApp();
   const [stats, setStats] = useState<Stats | null>(null);
   const [showCameraHelp, setShowCameraHelp] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+
+  // Import d'un export CSV (ex. collection d'une autre installation de TCGC)
+  const importCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await api.importCollection(await file.text());
+      const skipped = res.skipped ? ` · ${t('stats.importSkipped', { n: res.skipped })}` : '';
+      toast(`${t('stats.imported', { n: res.cards, copies: res.copies })}${skipped}`);
+      cardChanged(null, res.totals);
+    } catch (err) {
+      toast((err as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   useEffect(() => { api.stats().then(setStats).catch(() => {}); }, [version, status?.priceDate, status?.priceSource]);
 
@@ -122,7 +142,12 @@ export function StatsPage() {
           <a className="btn btn-ghost" href={`api/export.csv?lang=${getUiLang()}`} download>
             <Icon name="download" size={18} /> {t('stats.export')}
           </a>
+          <button className="btn btn-ghost" onClick={() => importRef.current?.click()} disabled={importing}>
+            <Icon name="upload" size={18} /> {importing ? '…' : t('stats.import')}
+          </button>
+          <input ref={importRef} type="file" accept=".csv,text/csv" hidden onChange={importCsv} />
         </div>
+        <p className="muted small">{t('stats.importHelp')}</p>
       </section>
 
       {/* En HTTPS (appli en ligne), la caméra en direct fonctionne sans réglage : l'aide ne sert qu'en local */}

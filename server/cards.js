@@ -1,6 +1,6 @@
 // Requêtes sur le catalogue et la collection, mises en forme pour l'API.
 // viewer = { userId, source } : l'utilisateur connecté (sa collection) et sa source de prix
-import { db } from './db.js';
+import { db, transaction } from './db.js';
 import { cdnImage } from './images.js';
 import { estimateEurSql, priceJoins, toEur, valueHistory } from './valuation.js';
 
@@ -343,4 +343,83 @@ export function collectionCsv(viewer, uiLang = 'fr') {
       quantity, c.price.eur, total, c.price.source, c.price.cardmarket?.trend ?? null, c.price.tcgplayer?.eur ?? null, String(c.id)]);
   }
   return lines.map((l) => l.map(esc).join(sep)).join('\r\n');
+}
+
+// ---------- Import ----------
+
+// Lecture d'un CSV (séparateur ";" ou ",", champs entre guillemets possibles)
+function parseCsv(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const firstLine = text.split(/\r?\n/, 1)[0];
+  const sep = (firstLine.split(';').length >= firstLine.split(',').length) ? ';' : ',';
+  const rows = [];
+  let row = [];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; } else if (ch === '"') quoted = false; else field += ch;
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === sep) {
+      row.push(field);
+      field = '';
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += ch;
+    }
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim()));
+}
+
+function invalidCsv() {
+  return Object.assign(new Error('Fichier CSV non reconnu'), { status: 400, expose: true, code: 'invalid_csv' });
+}
+
+// Import d'un export CSV de TCGC (français ou anglais) : pour chaque carte et langue du fichier, la quantité de la
+// collection prend la valeur du fichier ; les autres cartes ne sont pas touchées (réimporter ne double rien)
+export function importCollection(viewer, csvText) {
+  const rows = parseCsv(String(csvText ?? ''));
+  if (rows.length < 2 || rows.length > 20001) throw invalidCsv();
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const col = (...names) => header.findIndex((h) => names.includes(h));
+  const idCol = col('tcgplayer id');
+  const qtyCol = col('quantité', 'quantity');
+  const langCol = col('langue', 'language');
+  if (idCol < 0 || qtyCol < 0) throw invalidCsv();
+
+  const exists = db.prepare('SELECT 1 FROM cards WHERE product_id = ?');
+  const wanted = new Map(); // "id|lang" -> quantité
+  let skipped = 0;
+  for (const row of rows.slice(1)) {
+    const productId = Number(row[idCol]);
+    const quantity = Number(String(row[qtyCol]).trim());
+    const lang = langCol >= 0 ? String(row[langCol] ?? '').trim().toLowerCase() || 'fr' : 'fr';
+    if (!Number.isSafeInteger(productId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 9999
+      || !LANGS.includes(lang) || !exists.get(productId)) {
+      skipped++;
+      continue;
+    }
+    const key = `${productId}|${lang}`;
+    wanted.set(key, (wanted.get(key) ?? 0) + quantity);
+  }
+
+  const now = new Date().toISOString();
+  const upsert = db.prepare(`INSERT INTO collection (user_id, product_id, lang, quantity, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, product_id, lang) DO UPDATE SET quantity = excluded.quantity, updated_at = excluded.updated_at`);
+  transaction(() => {
+    for (const [key, quantity] of wanted) {
+      const [productId, lang] = key.split('|');
+      upsert.run(uid(viewer), Number(productId), lang, quantity, now, now);
+    }
+  });
+  const copies = [...wanted.values()].reduce((sum, q) => sum + q, 0);
+  return { cards: wanted.size, copies, skipped };
 }

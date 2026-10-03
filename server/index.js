@@ -7,8 +7,8 @@ import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
 import {
-  addToCollection, collectionCsv, collectionSets, collectionStats, getCardDetail, getCards, LANGS, listSets, searchCards,
-  setQuantity, viewerOf,
+  addToCollection, collectionCsv, collectionSets, collectionStats, getCardDetail, getCards, importCollection, LANGS, listSets,
+  searchCards, setQuantity, viewerOf,
 } from './cards.js';
 import { downloadThumb, thumbPath } from './images.js';
 import { buildIndex, identify, indexStatus } from './scan.js';
@@ -183,6 +183,15 @@ app.get('/api/export.csv', (req, res) => {
   res.send(`﻿${collectionCsv(viewerOf(req.user), req.query.lang === 'en' ? 'en' : 'fr')}`);
 });
 
+// Import d'un export CSV de TCGC (pour reprendre une collection d'une autre installation)
+app.post('/api/collection/import', express.text({ type: () => true, limit: '2mb' }), (req, res) => {
+  rateLimit(`import:${req.user.id}`, 20, 60 * 60_000);
+  const result = importCollection(viewerOf(req.user), req.body);
+  log(`Import CSV pour ${req.user.pseudo} : ${result.cards} cartes, ${result.copies} exemplaires, ${result.skipped} lignes ignorées`);
+  snapshotCollectionValue(req.user.id);
+  res.json({ ...result, totals: collectionTotals(req.user.id, req.user.price_source) });
+});
+
 app.post('/api/scan', express.raw({ type: 'image/*', limit: '20mb' }), async (req, res) => {
   // La reconnaissance sollicite le processeur : 60 scans par minute et par compte au maximum
   rateLimit(`scan:${req.user.id}`, 60, 60_000);
@@ -277,7 +286,7 @@ app.use((err, req, res, next) => {
   // Erreurs prévues (identifiants incorrects, pseudo déjà pris...) : code traduit par l'interface
   if (err instanceof AuthError) return res.status(err.status).json({ code: err.code, error: err.message });
   log('Erreur :', err);
-  res.status(err.status ?? 500).json(err.expose ? { error: err.message } : { code: 'server', error: 'Erreur interne du serveur' });
+  res.status(err.status ?? 500).json(err.expose ? { code: err.code, error: err.message } : { code: 'server', error: 'Erreur interne du serveur' });
 });
 
 app.listen(config.port, config.host, () => {

@@ -183,6 +183,11 @@ const fr = {
   'stats.updating': 'Mise à jour...',
   'stats.updateStarted': 'Mise à jour des prix lancée',
   'stats.export': 'Exporter (CSV)',
+  'stats.import': 'Importer (CSV)',
+  'stats.importHelp': "L'import reprend un export CSV de TCGC : les quantités des cartes du fichier sont mises à jour, les autres cartes ne bougent pas.",
+  'stats.imported': ['{n} carte importée ({copies} ex.)', '{n} cartes importées ({copies} ex.)'],
+  'stats.importSkipped': '{n} ligne(s) ignorée(s)',
+  'error.invalid_csv': "Fichier non reconnu : utilise un export CSV de TCGC",
 
   'cam.title': 'Caméra en direct sur Android',
   'cam.intro': "Chrome n'autorise la caméra en direct (et l'installation comme appli) que sur une adresse sécurisée. Comme l'appli tourne sur ton PC en http://, il faut déclarer cette adresse comme sûre, une seule fois :",
@@ -420,6 +425,11 @@ const en: { [K in MessageKey]: Entry } = {
   'stats.updating': 'Updating...',
   'stats.updateStarted': 'Price update started',
   'stats.export': 'Export (CSV)',
+  'stats.import': 'Import (CSV)',
+  'stats.importHelp': 'Import takes a CSV export from TCGC: quantities of the cards in the file are updated, other cards are left untouched.',
+  'stats.imported': ['{n} card imported ({copies} copies)', '{n} cards imported ({copies} copies)'],
+  'stats.importSkipped': '{n} line(s) skipped',
+  'error.invalid_csv': 'File not recognized: use a CSV export from TCGC',
 
   'cam.title': 'Live camera on Android',
   'cam.intro': 'Chrome only allows the live camera (and installing the app) on a secure address. Since the app runs on your PC over http://, you need to mark this address as safe, once:',
