@@ -42,7 +42,10 @@ export interface Price {
 }
 
 // Bon moment pour acheter ? (calculé par le serveur, voir server/insight.js)
-export type InsightKind = 'upcoming' | 'new' | 'new-falling' | 'rising' | 'falling' | 'good' | 'stable' | 'cheap';
+export type InsightKind = 'upcoming' | 'banned' | 'new' | 'new-falling' | 'rising' | 'falling' | 'good' | 'stable' | 'cheap';
+
+// Statut en tournoi officiel : bannie, limitée, bannie en paire
+export type RegulationStatus = 'banned' | 'restricted' | 'pair';
 
 export interface Insight {
   kind: InsightKind | null;
@@ -50,6 +53,8 @@ export interface Insight {
   change: number | null;
   // semaines depuis la sortie du set (ou avant sa sortie)
   weeks: number | null;
+  // bannissement récent : statut et date de l'annonce
+  ban: { status: RegulationStatus; announced: string } | null;
   // prix cible proposé pour une liste de souhaits
   target: number | null;
 }
@@ -90,6 +95,7 @@ export interface Card {
   price: Price;
   insight: Insight | null;
   wish: Wish | null;
+  regulation: { status: RegulationStatus; announced: string | null; effective: string | null } | null;
   // Exemplaires possédés, toutes langues confondues et par langue
   owned: number;
   ownedByLang: Record<Lang, number>;
@@ -199,6 +205,7 @@ export interface NotifyPrefs {
   targets: boolean;
   weekly: boolean;
   trades: boolean;
+  bans: boolean;
 }
 
 // Échanges entre membres

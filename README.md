@@ -128,7 +128,11 @@ the app installed on the home screen). After the daily price update, the app sen
 
 - **Target price reached**: a wishlist card dropped below your target (once, until it goes back above);
 - **Weekly summary**: your collection's value and its change over 7 days, with the biggest rise;
-- **Trades available**: a member taking part in trades has a spare copy of a card you want.
+- **Trades available**: a member taking part in trades has a spare copy of a card you want;
+- **Bans**: a card you own or want has just been banned or restricted in official tournaments.
+
+The official banned / restricted list ([fr.onepiece-cardgame.com](https://fr.onepiece-cardgame.com/news/restriction.html))
+is checked at each price update; the page of an affected card says so ("Banned in tournaments"...).
 
 Each type can be turned off. The server's VAPID keys are created on first start and stored in the database.
 
@@ -139,6 +143,7 @@ history the app records every day and the set release date (`server/insight.js`)
 
 | Badge | When | Advice |
 |---|---|---|
+| Ban | card banned or restricted in tournaments, announced less than 2 months ago | prices often drop sharply: wait, or trade spare copies soon |
 | Wait | set less than 5 months old whose price is still falling | cards in this situation are usually much cheaper 2 months later |
 | New release | set released less than 8 weeks ago | prices move a lot, no rush |
 | Rising | +15% or more recently | the price moves fast, compare listings |

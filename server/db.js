@@ -171,6 +171,16 @@ db.exec(`
     seen_at    TEXT NOT NULL,
     PRIMARY KEY (user_id, other_id, product_id, lang)
   );
+
+  -- Cartes bannies / limitées en tournoi officiel (liste officielle française, voir regulations.js)
+  CREATE TABLE IF NOT EXISTS regulations (
+    number     TEXT PRIMARY KEY,           -- "OP14-020" : toutes les versions de la carte sont concernées
+    status     TEXT NOT NULL,              -- 'banned' | 'restricted' | 'pair' (paire bannie)
+    announced  TEXT,                       -- date de l'annonce officielle, si connue
+    effective  TEXT,                       -- date d'application de la liste
+    first_seen TEXT NOT NULL,              -- date où l'appli a vu ce statut pour la première fois
+    notified   INTEGER NOT NULL DEFAULT 0  -- alertes déjà envoyées
+  );
 `);
 
 // Migrations des bases créées par une version précédente

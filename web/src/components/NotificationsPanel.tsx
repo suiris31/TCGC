@@ -69,6 +69,7 @@ export function NotificationsPanel() {
               <Toggle checked={prefs.targets} disabled={busy} onChange={(v) => changePref('targets', v)}>{t('notify.targets')}</Toggle>
               <Toggle checked={prefs.weekly} disabled={busy} onChange={(v) => changePref('weekly', v)}>{t('notify.weekly')}</Toggle>
               <Toggle checked={prefs.trades} disabled={busy} onChange={(v) => changePref('trades', v)}>{t('notify.trades')}</Toggle>
+              <Toggle checked={prefs.bans} disabled={busy} onChange={(v) => changePref('bans', v)}>{t('notify.bans')}</Toggle>
             </>
           )}
           <p className="muted small flush">{t('notify.when')}</p>

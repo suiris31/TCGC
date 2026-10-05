@@ -93,6 +93,11 @@ export function CardDetailSheet() {
                   <span className="chip chip-code">{card.number}</span>
                   {card.variant && <span className="chip chip-variant">{card.variant}</span>}
                   {card.rarity && <span className="chip">{card.rarity}</span>}
+                  {card.regulation && (
+                    <span className="chip chip-ban" title={card.regulation.effective ? t('reg.since', { date: formatDate(card.regulation.effective) }) : undefined}>
+                      {t(`reg.${card.regulation.status}`)}
+                    </span>
+                  )}
                 </div>
                 <div className="muted small">{card.setName}{card.releaseDate && ` · ${formatDate(card.releaseDate)}`}</div>
               </div>

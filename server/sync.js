@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { config } from './config.js';
 import { db, getMeta, setMeta, transaction } from './db.js';
 import { syncCardmarket } from './cardmarket.js';
+import { syncRegulations } from './regulations.js';
 import { snapshotAllUsers } from './valuation.js';
 
 const USER_AGENT = 'TCGC-personal-collection/0.1';
@@ -164,6 +165,12 @@ async function doSync(log) {
     await syncCardmarket({ log });
   } catch (err) {
     log(`Prix Cardmarket indisponibles (${err.message}), on garde les précédents`);
+  }
+
+  try {
+    await syncRegulations({ log });
+  } catch (err) {
+    log(`Liste des cartes bannies indisponible (${err.message})`);
   }
 
   snapshotAllUsers();

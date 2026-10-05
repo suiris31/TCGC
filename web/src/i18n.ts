@@ -425,6 +425,17 @@ const fr = {
   'recap.new': 'Nouvelle session',
   'recap.newConfirm': 'Commencer une nouvelle session ? Les cartes restent dans ta collection, seul le récap repart de zéro.',
   'recap.note': "Valeur au prix du jour des cartes ajoutées pendant cette session (gardée jusqu'à la fermeture du navigateur).",
+
+  'insight.label.banned': 'Bannissement',
+  'insight.text.banned': "Carte {status} en tournoi officiel (annonce du {date}) : après un bannissement, le prix chute souvent fortement pendant quelques semaines. Patiente si tu la cherches ; si tu l'as en double, échange-la vite.",
+  'reg.banned': 'Bannie en tournoi',
+  'reg.restricted': 'Limitée en tournoi',
+  'reg.pair': 'Paire bannie',
+  'reg.since': 'Liste officielle applicable à partir du {date}',
+  'reg.word.banned': 'bannie',
+  'reg.word.restricted': 'limitée',
+  'reg.word.pair': 'bannie en paire',
+  'notify.bans': 'Bannissements en tournoi (cartes que tu as ou cherches)',
 } as const satisfies Record<string, Entry>;
 
 export type MessageKey = keyof typeof fr;
@@ -849,6 +860,17 @@ const en: { [K in MessageKey]: Entry } = {
   'recap.new': 'New session',
   'recap.newConfirm': 'Start a new session? The cards stay in your collection, only the summary starts over.',
   'recap.note': "Value at today's prices of the cards added during this session (kept until the browser is closed).",
+
+  'insight.label.banned': 'Ban',
+  'insight.text.banned': 'Card {status} in official tournaments (announced {date}): after a ban, the price often drops sharply for a few weeks. Wait if you want it; if you have spare copies, trade them soon.',
+  'reg.banned': 'Banned in tournaments',
+  'reg.restricted': 'Restricted in tournaments',
+  'reg.pair': 'Pair-banned',
+  'reg.since': 'Official list effective from {date}',
+  'reg.word.banned': 'banned',
+  'reg.word.restricted': 'restricted',
+  'reg.word.pair': 'pair-banned',
+  'notify.bans': 'Tournament bans (cards you own or want)',
 };
 
 const MESSAGES: Record<UiLang, { [K in MessageKey]: Entry }> = { fr, en };

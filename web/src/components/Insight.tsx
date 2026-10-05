@@ -1,9 +1,10 @@
-import { formatPct, type Card, type InsightKind } from '../api';
+import { formatDate, formatPct, type Card, type InsightKind } from '../api';
 import { t } from '../i18n';
 
 // Couleur de chaque lecture du prix : vert = bon moment, ambre = patienter, rouge = emballement
 const TONE: Record<InsightKind, 'good' | 'wait' | 'hot' | 'neutral'> = {
   upcoming: 'wait',
+  banned: 'hot',
   new: 'wait',
   'new-falling': 'wait',
   falling: 'wait',
@@ -21,7 +22,12 @@ export function InsightChip({ kind }: { kind: InsightKind }) {
 export function InsightBox({ card }: { card: Card }) {
   const insight = card.insight;
   if (!insight?.kind) return null;
-  const vars = { n: insight.weeks ?? 0, pct: insight.change != null ? formatPct(insight.change) : '' };
+  const vars = {
+    n: insight.weeks ?? 0,
+    pct: insight.change != null ? formatPct(insight.change) : '',
+    status: insight.ban ? t(`reg.word.${insight.ban.status}`) : '',
+    date: insight.ban ? formatDate(insight.ban.announced) : '',
+  };
   return (
     <section className={`insight insight-${TONE[insight.kind]}`}>
       <div className="insight-head">

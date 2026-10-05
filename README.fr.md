@@ -113,7 +113,11 @@ avec l'appli installée sur l'écran d'accueil). Après la mise à jour quotidie
 - **Prix cible atteint** : une carte de tes recherches est passée sous ton prix cible (une seule fois, jusqu'à ce
   qu'elle repasse au-dessus) ;
 - **Résumé de la semaine** : la valeur de ta collection et son évolution sur 7 jours, avec la plus forte hausse ;
-- **Échanges possibles** : un membre qui participe aux échanges a en double une carte que tu cherches.
+- **Échanges possibles** : un membre qui participe aux échanges a en double une carte que tu cherches ;
+- **Bannissements** : une carte que tu as ou que tu cherches vient d'être bannie ou limitée en tournoi officiel.
+
+La liste officielle des cartes bannies / limitées ([fr.onepiece-cardgame.com](https://fr.onepiece-cardgame.com/news/restriction.html))
+est relue à chaque mise à jour des prix ; la fiche d'une carte concernée l'indique (« Bannie en tournoi »...).
 
 Chaque type peut être coupé. Les clés VAPID du serveur sont créées au premier démarrage et gardées dans la base.
 
@@ -125,6 +129,7 @@ La fiche de chaque carte indique où en est son prix, à partir des prix Cardmar
 
 | Badge | Quand | Conseil |
 |---|---|---|
+| Bannissement | carte bannie ou limitée en tournoi, annoncée il y a moins de 2 mois | le prix chute souvent fortement : patienter, ou échanger vite ses doubles |
 | Patiente | set de moins de 5 mois dont le prix baisse encore | les cartes dans ce cas sont le plus souvent nettement moins chères 2 mois plus tard |
 | Nouveauté | set sorti il y a moins de 8 semaines | les prix bougent beaucoup, rien ne presse |
 | En hausse | +15 % ou plus récemment | le prix bouge vite, comparer les annonces |

@@ -33,7 +33,8 @@ function cardColumns(viewer, entries = false) {
   ${priceTwoWeeksAgo('cm', 'cm.date')} AS cm_14d,
   ${priceTwoWeeksAgo('market', 'p.date')} AS tcg_14d,
   own.owned, own.owned_fr, own.owned_en,
-  w.lang AS wish_lang, w.target_eur AS wish_target, w.added_at AS wish_added
+  w.lang AS wish_lang, w.target_eur AS wish_target, w.added_at AS wish_added,
+  r.status AS reg_status, r.announced AS reg_announced, r.effective AS reg_effective
   ${entries ? ', col.lang AS entry_lang, col.quantity AS entry_quantity' : ''}`;
 }
 
@@ -62,6 +63,7 @@ function cardFrom(viewer, entries = false) {
   ${priceJoins('c.product_id')}
   ${ownedJoin(viewer)}
   LEFT JOIN wishlist w ON w.product_id = c.product_id AND w.user_id = ${uid(viewer)}
+  LEFT JOIN regulations r ON r.number = c.number
   ${entries ? `JOIN collection col ON col.product_id = c.product_id AND col.user_id = ${uid(viewer)}` : ''}`;
 }
 
@@ -131,6 +133,8 @@ export function formatCard(row, viewer) {
     entry: row.entry_lang ? { lang: row.entry_lang, quantity: row.entry_quantity } : null,
     // Carte dans les recherches de l'utilisateur
     wish: row.wish_added ? { lang: row.wish_lang, targetEur: row.wish_target, addedAt: row.wish_added } : null,
+    // Bannie ou limitée en tournoi officiel
+    regulation: row.reg_status ? { status: row.reg_status, announced: row.reg_announced, effective: row.reg_effective } : null,
   };
 }
 

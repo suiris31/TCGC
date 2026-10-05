@@ -9,7 +9,7 @@ import { db, getMeta, setMeta } from './db.js';
 import { estimateEurSql, priceJoins, toEur, valueHistory } from './valuation.js';
 
 // Types de notifications, tous activés par défaut ; chaque utilisateur peut les couper (colonne users.notify_prefs)
-export const NOTIFY_TYPES = ['targets', 'weekly', 'trades'];
+export const NOTIFY_TYPES = ['targets', 'weekly', 'trades', 'bans'];
 
 const MESSAGES = {
   fr: {
@@ -25,6 +25,13 @@ const MESSAGES = {
     tradeOneBody: '{pseudo} a en double {name} ({number}), que tu cherches.',
     tradeManyTitle: 'Échanges possibles',
     tradeManyBody: "{n} cartes que tu cherches sont en double chez d'autres membres.",
+    banTitle: 'Bannissement en tournoi',
+    banOwned: "{name} ({number}) vient d'être {status} en tournoi officiel. Tu en as {n} : son prix risque de chuter, échange-la vite si tu veux t'en séparer.",
+    banWished: "{name} ({number}), que tu cherches, vient d'être {status} en tournoi officiel : patiente, son prix risque de baisser.",
+    banMany: "{n} cartes de ta collection ou de tes recherches viennent d'être bannies ou limitées en tournoi officiel.",
+    banned: 'bannie',
+    restricted: 'limitée',
+    pair: 'bannie en paire',
   },
   en: {
     targetOneTitle: 'Target price reached',
@@ -39,6 +46,13 @@ const MESSAGES = {
     tradeOneBody: '{pseudo} has a spare {name} ({number}), which you are looking for.',
     tradeManyTitle: 'Trades available',
     tradeManyBody: '{n} cards you are looking for are spare copies of other members.',
+    banTitle: 'Tournament ban',
+    banOwned: '{name} ({number}) has just been {status} in official tournaments. You have {n}: its price may drop, trade it soon if you want to part with it.',
+    banWished: '{name} ({number}), which you are looking for, has just been {status} in official tournaments: wait, its price may drop.',
+    banMany: '{n} cards from your collection or wishlist have just been banned or restricted in official tournaments.',
+    banned: 'banned',
+    restricted: 'restricted',
+    pair: 'pair-banned',
   },
 };
 
@@ -251,9 +265,29 @@ async function notifyTrades(user) {
   return sent;
 }
 
+// Bannissements : cartes nouvellement bannies ou limitées que l'utilisateur possède ou cherche
+async function notifyBans(user, fresh) {
+  const owned = db.prepare(`SELECT COALESCE(SUM(col.quantity), 0) AS n FROM collection col JOIN cards k ON k.product_id = col.product_id
+    WHERE col.user_id = ? AND k.number = ?`);
+  const wished = db.prepare(`SELECT COUNT(*) AS n FROM wishlist w JOIN cards k ON k.product_id = w.product_id
+    WHERE w.user_id = ? AND k.number = ?`);
+  const affected = fresh
+    .map((r) => ({ ...r, owned: owned.get(user.id, r.number).n, wished: wished.get(user.id, r.number).n }))
+    .filter((r) => r.owned || r.wished);
+  if (!affected.length) return 0;
+  const one = affected[0];
+  const card = db.prepare('SELECT name, name_fr FROM cards WHERE number = ? ORDER BY product_id LIMIT 1').get(one.number);
+  return sendToUser(user.id, (lang) => {
+    if (affected.length > 1) return { title: text(lang, 'banTitle'), body: text(lang, 'banMany', { n: affected.length }), url: '#collection', tag: 'bans' };
+    const vars = { name: lang === 'fr' ? card?.name_fr ?? card?.name : card?.name, number: one.number, status: text(lang, one.status), n: one.owned };
+    return { title: text(lang, 'banTitle'), body: text(lang, one.owned ? 'banOwned' : 'banWished', vars), url: '#collection', tag: 'bans' };
+  });
+}
+
 // Appelé après chaque mise à jour des prix, pour chaque utilisateur qui a au moins un appareil abonné
 export async function notifyAfterSync({ log = console.log } = {}) {
   const users = db.prepare('SELECT * FROM users WHERE id IN (SELECT user_id FROM push_subscriptions)').all();
+  const freshBans = db.prepare('SELECT * FROM regulations WHERE notified = 0').all();
   let sent = 0;
   for (const user of users) {
     const prefs = notifyPrefs(user);
@@ -261,10 +295,13 @@ export async function notifyAfterSync({ log = console.log } = {}) {
       if (prefs.targets) sent += await notifyTargets(user);
       if (prefs.weekly) sent += await weeklyDigest(user);
       if (prefs.trades) sent += await notifyTrades(user);
+      if (prefs.bans && freshBans.length) sent += await notifyBans(user, freshBans);
     } catch (err) {
       log(`Notifications de ${user.pseudo} : ${err.message}`);
     }
   }
+  // chaque bannissement n'est signalé qu'une fois
+  if (freshBans.length) db.prepare('UPDATE regulations SET notified = 1 WHERE notified = 0').run();
   if (sent) log(`${sent} notification(s) envoyée(s)`);
   return sent;
 }

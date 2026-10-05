@@ -9,6 +9,7 @@ const DAY = 86_400_000;
 const RECENT_SET_DAYS = 150; // set récent (règle A1)
 const NEW_SET_DAYS = 56;     // 8 premières semaines après la sortie
 const CHEAP_EUR = 1;
+const RECENT_BAN_DAYS = 60;  // après l'annonce d'un bannissement, le prix chute souvent pendant quelques semaines
 
 function change(now, before) {
   return now != null && before ? now / before - 1 : null;
@@ -31,10 +32,17 @@ export function priceInsight(row, fallbackEur = null, today = Date.now()) {
   const eu = change(now, row.cm_14d) ?? change(avg7, avg30);
   const us = change(row.market, row.tcg_14d);
 
+  // Bannie ou limitée récemment (annonce officielle de moins de 2 mois)
+  const recentBan = (row.reg_status === 'banned' || row.reg_status === 'restricted') && row.reg_announced
+    && (today - Date.parse(row.reg_announced)) / DAY <= RECENT_BAN_DAYS;
+
   let kind = null;
   let pct = null;
   if (age != null && age < 0) {
     kind = 'upcoming';
+  } else if (recentBan) {
+    kind = 'banned';
+    pct = eu != null && eu < 0 ? eu : null;
   } else if (now == null) {
     if (age != null && age <= NEW_SET_DAYS) kind = 'new';
   } else if (now < CHEAP_EUR) {
@@ -63,14 +71,16 @@ export function priceInsight(row, fallbackEur = null, today = Date.now()) {
   // quand le prix baisse ou que le set vient de sortir (inutile sous 1 €)
   const recent = [row.cm_trend, avg7, avg30].filter((v) => v > 0);
   const base = recent.length ? Math.min(...recent) : fallbackEur;
-  const discount = ['upcoming', 'new', 'new-falling', 'falling'].includes(kind) ? 0.8 : 0.9;
-  const target = base && kind !== 'cheap' && !(kind === null && base < CHEAP_EUR) ? floorNice(base * discount) : null;
+  const discount = kind === 'banned' ? 0.7 : ['upcoming', 'new', 'new-falling', 'falling'].includes(kind) ? 0.8 : 0.9;
+  const target = base >= CHEAP_EUR ? floorNice(base * discount) : null;
 
   if (!kind && !target) return null;
   return {
     kind,
     change: pct == null ? null : Math.round(pct * 1000) / 1000,
     weeks: age == null ? null : Math.max(1, Math.ceil(Math.abs(age) / 7)),
+    // bannissement : statut et date de l'annonce
+    ban: kind === 'banned' ? { status: row.reg_status, announced: row.reg_announced } : null,
     target,
   };
 }

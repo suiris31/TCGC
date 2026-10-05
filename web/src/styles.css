@@ -269,6 +269,7 @@ h3 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
 .chip { font-size: 12px; padding: 2px 8px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line); }
 .chip-code { font-family: ui-monospace, Consolas, monospace; }
 .chip-variant { color: #d6b8ff; border-color: #4b3a75; background: #2a2148; }
+.chip-ban { color: #ff8d84; border-color: rgba(226, 85, 74, 0.5); background: rgba(226, 85, 74, 0.14); font-weight: 700; }
 .price-box {
   display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
   padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
