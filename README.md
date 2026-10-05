@@ -147,6 +147,7 @@ Prices don't depend on the language (Cardmarket's public price data doesn't sepa
 | Prices (default) | **Cardmarket** price trend in € (daily public files). The reference market in Europe, but it doesn't separate languages. |
 | Prices (fallback or by choice) | TCGplayer "market price" (average of recent US sales, English cards), converted to € at the daily ECB rate |
 | Recognition | DINOv2 vision model running locally: every image (TCGplayer English + official French) becomes a vector and the photo is compared against all of them. The band where official images carry a "SAMPLE" watermark is blurred on both sides, otherwise real (unwatermarked) cards are poorly recognized. |
+| Price history | Every day, every field of the Cardmarket price guide (trend, 1/7/30-day averages, average, lowest price) and TCGplayer prices (market, low, mid): Cardmarket only publishes today's prices |
 | Storage | SQLite (`data/tcgc.db`), built into Node.js |
 
 The price source can be changed in the Stats tab; when it has no price for a card, the other one is used.

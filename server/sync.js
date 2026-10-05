@@ -116,8 +116,8 @@ async function doSync(log) {
     ON CONFLICT(product_id) DO UPDATE SET sub_type = excluded.sub_type, market = excluded.market, low = excluded.low,
       mid = excluded.mid, high = excluded.high, direct_low = excluded.direct_low, date = excluded.date`);
   const upsertHistory = db.prepare(`
-    INSERT INTO price_history (product_id, date, market, low) VALUES (?, ?, ?, ?)
-    ON CONFLICT(product_id, date) DO UPDATE SET market = excluded.market, low = excluded.low`);
+    INSERT INTO price_history (product_id, date, market, low, tcg_mid) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(product_id, date) DO UPDATE SET market = excluded.market, low = excluded.low, tcg_mid = excluded.tcg_mid`);
 
   let cardCount = 0;
   let priceCount = 0;
@@ -151,7 +151,7 @@ async function doSync(log) {
       }
       for (const pr of best.values()) {
         upsertPrice.run(pr.productId, pr.subTypeName, pr.marketPrice, pr.lowPrice, pr.midPrice, pr.highPrice, pr.directLowPrice, priceDate);
-        upsertHistory.run(pr.productId, priceDate, pr.marketPrice, pr.lowPrice);
+        upsertHistory.run(pr.productId, priceDate, pr.marketPrice, pr.lowPrice, pr.midPrice);
         priceCount++;
       }
     }

@@ -159,6 +159,13 @@ function addColumn(table, column, type) {
 }
 addColumn('cards', 'name_fr', 'TEXT');
 addColumn('price_history', 'cm', 'REAL'); // prix Cardmarket en €
+// Tous les champs du guide de prix Cardmarket (€) et le prix médian TCGplayer ($), jour par jour : Cardmarket ne
+// publie que les prix du jour, l'historique permet d'analyser et de tester des règles d'achat plus tard
+for (const column of ['cm_trend', 'cm_avg', 'cm_avg1', 'cm_avg7', 'cm_avg30', 'cm_low', 'tcg_mid']) {
+  addColumn('price_history', column, 'REAL');
+}
+addColumn('cm_prices', 'avg1', 'REAL');
+addColumn('cm_prices', 'avg', 'REAL');
 // valeur de la collection selon chaque source de prix (value_eur : ancienne colonne, source TCGplayer)
 addColumn('value_history', 'value_cm', 'REAL');
 addColumn('value_history', 'value_tcg', 'REAL');

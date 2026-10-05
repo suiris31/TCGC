@@ -134,17 +134,24 @@ export async function syncCardmarket({ log = console.log } = {}) {
     if (cmList.length) matchByPrice(tcgList, cmList, guideById, 3, take);
   }
 
-  const upsert = db.prepare(`INSERT INTO cm_prices (product_id, cm_id, trend, avg30, avg7, low, date) VALUES (?, ?, ?, ?, ?, ?, ?)
+  const upsert = db.prepare(`INSERT INTO cm_prices (product_id, cm_id, trend, avg30, avg7, avg1, avg, low, date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(product_id) DO UPDATE SET cm_id = excluded.cm_id, trend = excluded.trend, avg30 = excluded.avg30,
-      avg7 = excluded.avg7, low = excluded.low, date = excluded.date`);
-  const history = db.prepare(`INSERT INTO price_history (product_id, date, cm) VALUES (?, ?, ?)
-    ON CONFLICT(product_id, date) DO UPDATE SET cm = excluded.cm`);
+      avg7 = excluded.avg7, avg1 = excluded.avg1, avg = excluded.avg, low = excluded.low, date = excluded.date`);
+  const history = db.prepare(`INSERT INTO price_history (product_id, date, cm, cm_trend, cm_avg, cm_avg1, cm_avg7, cm_avg30, cm_low)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(product_id, date) DO UPDATE SET cm = excluded.cm, cm_trend = excluded.cm_trend, cm_avg = excluded.cm_avg,
+      cm_avg1 = excluded.cm_avg1, cm_avg7 = excluded.cm_avg7, cm_avg30 = excluded.cm_avg30, cm_low = excluded.cm_low`);
+  // 0 dans le guide = pas de vente sur la période
+  const value = (v) => v || null;
   transaction(() => {
     db.exec('DELETE FROM cm_prices');
     for (const [id, p] of pairs) {
       const g = guideById.get(p.idProduct);
-      upsert.run(id, p.idProduct, g?.trend || null, g?.avg30 || null, g?.avg7 || null, g?.low || null, priceDate);
-      if (cmPrice(g) != null) history.run(id, priceDate, cmPrice(g));
+      upsert.run(id, p.idProduct, value(g?.trend), value(g?.avg30), value(g?.avg7), value(g?.avg1), value(g?.avg), value(g?.low), priceDate);
+      if (cmPrice(g) != null) {
+        history.run(id, priceDate, cmPrice(g), value(g.trend), value(g.avg), value(g.avg1), value(g.avg7), value(g.avg30), value(g.low));
+      }
     }
     setMeta('cm_price_date', priceDate);
   });

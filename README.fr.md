@@ -154,6 +154,7 @@ Mesures sur des photos simulées (inclinaison, reflet, flou, fond) : la bonne ca
 | Prix (par défaut) | **Cardmarket**, tendance des prix en € (fichiers publics quotidiens). C'est le marché de référence en Europe, mais il ne sépare pas les langues : VF et VO sont mélangées. |
 | Prix (secours ou au choix) | « Market price » TCGplayer (moyenne des ventes aux USA, cartes anglaises), converti en € au taux BCE du jour |
 | Reconnaissance | Modèle de vision DINOv2 exécuté en local (aucun service payant) : chaque visuel (VO TCGplayer + VF officiel) est transformé en vecteur, la photo est comparée à tous ces vecteurs. La bande où les visuels officiels portent le filigrane « SAMPLE » est floutée des deux côtés, sinon les vraies cartes (sans filigrane) sont mal reconnues. |
+| Historique des prix | Chaque jour, tous les champs du guide Cardmarket (tendance, moyennes 1, 7 et 30 jours, moyenne, prix le plus bas) et les prix TCGplayer (market, low, mid) : Cardmarket ne publie que les prix du jour |
 | Stockage | SQLite (`data/tcgc.db`), intégré à Node.js |
 
 La source de prix se choisit dans l'onglet Stats ; si elle n'a pas de prix pour une carte, l'autre prend le relais.
