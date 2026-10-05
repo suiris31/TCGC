@@ -68,6 +68,29 @@ ex. `mailto:toi@exemple.fr` ; par défaut la page GitHub du projet).
 - **Mentions légales et politique de confidentialité** (`#legal`, liens sur l'écran de connexion, le profil et les
   pages partagées) : l'éditeur, le contact et l'hébergeur viennent de `LEGAL_PUBLISHER`, `LEGAL_CONTACT` et `LEGAL_HOST`.
 - Pas encore disponible : vérification de l'adresse e-mail.
+
+#### Sauvegarde hors du serveur
+
+Le serveur sauvegarde la base chaque nuit (`deploy/tcgc.cron`), mais sur lui-même. Pour en garder une copie
+ailleurs, [`deploy/pull-backup.ps1`](deploy/pull-backup.ps1) rapatrie la dernière sauvegarde sur un PC Windows (et
+garde les 14 dernières dans `Documents\TCGC-sauvegardes`). Une seule fois, dans PowerShell sur le PC :
+
+```powershell
+# 1. Clé SSH (laisse la phrase de passe vide pour que la tâche tourne seule), puis autorisation sur le serveur
+ssh-keygen -t ed25519
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh ubuntu@mon-serveur "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+
+# 2. Essai (le script est dans le dossier deploy du dépôt)
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\chemin\TCGC\deploy\pull-backup.ps1 -Server ubuntu@mon-serveur
+
+# 3. Tous les jours à midi, ou au prochain démarrage du PC s'il était éteint
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -File "C:\chemin\TCGC\deploy\pull-backup.ps1" -Server ubuntu@mon-serveur'
+Register-ScheduledTask -TaskName 'TCGC sauvegarde' -Action $action -Trigger (New-ScheduledTaskTrigger -Daily -At 12:00) -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
+```
+
+Le journal des copies est dans `Documents\TCGC-sauvegardes\pull-backup.log`. Ces copies contiennent les comptes
+(e-mails, mots de passe hachés) : garde-les pour toi. Pour restaurer : arrêter le service, remplacer
+`/opt/tcgc/app/data/tcgc.db` par la copie, relancer le service.
 - Le catalogue et les prix sont communs à tous les comptes ; la mise à jour manuelle des prix est limitée à une
   fois par heure, et chaque compte peut scanner jusqu'à 60 cartes par minute.
 

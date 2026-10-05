@@ -66,6 +66,29 @@ proxy), `PORT`, `PUBLIC_PATH` (e.g. `/tcgc` when served under a sub-path), `TRUS
 - **Legal notice and privacy policy** (`#legal`, linked from the login screen, the profile and shared pages): the
   publisher, contact and host come from `LEGAL_PUBLISHER`, `LEGAL_CONTACT` and `LEGAL_HOST`.
 - Not included: email address verification.
+
+#### Off-server backup
+
+The server backs up the database every night (`deploy/tcgc.cron`), but onto itself. To keep a copy elsewhere,
+[`deploy/pull-backup.ps1`](deploy/pull-backup.ps1) fetches the latest backup onto a Windows PC (and keeps the last 14
+in `Documents\TCGC-sauvegardes`). Once, in PowerShell on the PC:
+
+```powershell
+# 1. SSH key (leave the passphrase empty so the task can run unattended), then authorize it on the server
+ssh-keygen -t ed25519
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh ubuntu@my-server "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+
+# 2. Try it (the script is in the repository's deploy folder)
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\path\TCGC\deploy\pull-backup.ps1 -Server ubuntu@my-server
+
+# 3. Every day at noon, or at the next start of the PC if it was off
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -File "C:\path\TCGC\deploy\pull-backup.ps1" -Server ubuntu@my-server'
+Register-ScheduledTask -TaskName 'TCGC backup' -Action $action -Trigger (New-ScheduledTaskTrigger -Daily -At 12:00) -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
+```
+
+The copy log is in `Documents\TCGC-sauvegardes\pull-backup.log`. These copies contain the accounts (emails, hashed
+passwords): keep them private. To restore: stop the service, replace `/opt/tcgc/app/data/tcgc.db` with the copy,
+start the service again.
 - Catalog and prices are shared by all accounts; a manual price update can run at most once an hour, and each
   account can scan up to 60 cards a minute.
 
