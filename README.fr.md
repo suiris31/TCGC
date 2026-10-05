@@ -116,6 +116,9 @@ Astuce : donne une IP fixe au PC dans ta box (bail DHCP statique) pour que l'adr
   Manquantes). Le bouton + ajoute directement une carte manquante. En haut, le coût pour compléter le set
   (« Il te manque 23 cartes, ≈ 87 € au total », et sans les 3 plus chères) et un bouton pour ajouter toutes
   les manquantes à tes recherches.
+- **Deck préconstruit** (« Ajouter un deck préconstruit » dans Par set, ou « J'ai ce deck » sur la page d'un deck
+  pour débutant) : toutes les cartes du deck en une fois, d'après la liste officielle française (rééditions comprises),
+  avec les quantités pré-remplies quand la liste est connue (`server/decks.js`), modifiables avant l'ajout.
 - **Mes cartes** : tous les exemplaires, triables par valeur, numéro, set, couleur, rareté, nom ou
   date d'ajout, et filtrables par set, couleur et langue.
 - **Doubles** : les exemplaires en plus de ceux que tu gardes (1 par carte et par langue pour une collection,

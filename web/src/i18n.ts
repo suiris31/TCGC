@@ -452,6 +452,23 @@ const fr = {
 
   'legal.link': 'Mentions légales et confidentialité',
   'auth.privacy': 'Tes données servent uniquement à faire fonctionner ton compte :',
+
+  'deck.add': 'Ajouter un deck préconstruit',
+  'deck.title': 'Ajouter un deck préconstruit',
+  'deck.pick': 'Choisis le deck pour débutant que tu as acheté :',
+  'deck.fullList': 'liste complète',
+  'deck.knownList': 'Liste du deck pré-remplie : vérifie avec tes cartes et ajuste si besoin. Les cartes du booster offert sont à scanner à part.',
+  'deck.unknownList': "Bandai ne publie pas les quantités de ce deck : 1 exemplaire par carte est proposé. Ajuste avec tes cartes (51 cartes avec le Leader).",
+  'deck.lang': 'Langue des cartes',
+  'deck.back': 'Autres decks',
+  'deck.submit': ['Ajouter {n} carte', 'Ajouter {n} cartes'],
+  'deck.added': ['{code} : {n} carte ajoutée à ta collection', '{code} : {n} cartes ajoutées à ta collection'],
+  'deck.iHaveIt': "J'ai ce deck : tout ajouter",
+  'error.unknown_deck': 'Deck inconnu',
+  'cardtype.Leader': 'Leader',
+  'cardtype.Character': 'Personnage',
+  'cardtype.Event': 'Événement',
+  'cardtype.Stage': 'Lieu',
 } as const satisfies Record<string, Entry>;
 
 export type MessageKey = keyof typeof fr;
@@ -903,6 +920,23 @@ const en: { [K in MessageKey]: Entry } = {
 
   'legal.link': 'Legal notice and privacy',
   'auth.privacy': 'Your data is only used to run your account:',
+
+  'deck.add': 'Add a starter deck',
+  'deck.title': 'Add a starter deck',
+  'deck.pick': 'Pick the starter deck you bought:',
+  'deck.fullList': 'full list',
+  'deck.knownList': 'Deck list pre-filled: check it against your cards and adjust if needed. Scan the bonus booster cards separately.',
+  'deck.unknownList': "Bandai doesn't publish the quantities for this deck: 1 copy per card is suggested. Adjust with your cards (51 cards including the Leader).",
+  'deck.lang': 'Card language',
+  'deck.back': 'Other decks',
+  'deck.submit': ['Add {n} card', 'Add {n} cards'],
+  'deck.added': ['{code}: {n} card added to your collection', '{code}: {n} cards added to your collection'],
+  'deck.iHaveIt': 'I have this deck: add it all',
+  'error.unknown_deck': 'Unknown deck',
+  'cardtype.Leader': 'Leader',
+  'cardtype.Character': 'Character',
+  'cardtype.Event': 'Event',
+  'cardtype.Stage': 'Stage',
 };
 
 const MESSAGES: Record<UiLang, { [K in MessageKey]: Entry }> = { fr, en };

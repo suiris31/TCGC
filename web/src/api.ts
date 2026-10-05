@@ -226,6 +226,21 @@ export interface TradeMatch {
   theyWant: TradeCard[];  // mes doubles qu'il cherche
 }
 
+// Deck pour débutant du catalogue ; known : quantités connues (liste complète)
+export interface StarterDeck {
+  id: number;
+  code: string;
+  name: string;
+  releaseDate: string | null;
+  known: boolean;
+}
+
+export interface DeckContents {
+  set: { id: number; code: string; name: string };
+  known: boolean;
+  items: { card: Card; quantity: number }[];
+}
+
 export interface Stats {
   totals: Totals;
   bySet: { code: string | null; name: string; cards: number; valueEur: number }[];
@@ -325,6 +340,10 @@ export const api = {
   add: (id: number, delta: number, lang: Lang) =>
     request<{ card: Card; totals: Totals }>(`api/collection/${id}/add`, json('POST', { delta, lang })),
   stats: () => request<Stats>('api/stats'),
+  decks: () => request<StarterDeck[]>('api/decks'),
+  deck: (id: number) => request<DeckContents>(`api/decks/${id}`),
+  addDeck: (id: number, lang: Lang, items: { id: number; quantity: number }[]) =>
+    request<{ cards: number; copies: number; totals: Totals }>(`api/decks/${id}/add`, json('POST', { lang, items })),
   wishlist: () => request<{ cards: Card[]; deals: Card[] }>('api/wishlist'),
   // targetEur absent : prix cible proposé ; null : aucun prix cible
   wish: (id: number, body: { lang?: Lang; targetEur?: number | null }) =>

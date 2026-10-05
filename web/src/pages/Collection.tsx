@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, formatEur, type Card, type Lang, type SetSummary } from '../api';
 import { CardGrid, hideBroken } from '../components/CardGrid';
+import { DeckSheet } from '../components/DeckSheet';
 import { ColorSelect, SearchInput, SetSelect } from '../components/Filters';
 import { Icon } from '../components/Icon';
 import { Toggle } from '../components/Toggle';
@@ -30,6 +31,7 @@ export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse:
   const { totals, status } = useApp();
   const [view, setView] = useState<View>(() => viewFromHash() ?? readPref('tcgc.collectionView', VIEWS, 'sets'));
   const reached = status?.wishlist.reached ?? 0;
+  const [deckOpen, setDeckOpen] = useState(false);
   const [setId, setSetId] = useState<number | null>(setFromHash);
 
   useEffect(() => {
@@ -45,12 +47,14 @@ export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse:
   if (totals && totals.cards === 0 && setId === null) {
     return (
       <div className="empty">
+        {deckOpen && <DeckSheet onClose={() => setDeckOpen(false)} />}
         <div className="empty-art">☠</div>
         <h2>{t('collection.empty.title')}</h2>
         <p className="muted">{t('collection.empty.text')}</p>
         <div className="empty-actions">
           <button className="btn btn-primary" onClick={onScan}><Icon name="camera" size={18} /> {t('collection.empty.scan')}</button>
           <button className="btn btn-ghost" onClick={onBrowse}><Icon name="search" size={18} /> {t('collection.empty.browse')}</button>
+          <button className="btn btn-ghost" onClick={() => setDeckOpen(true)}><Icon name="cards" size={18} /> {t('deck.title')}</button>
         </div>
       </div>
     );
@@ -109,6 +113,7 @@ type SetListSort = keyof typeof SET_LIST_SORTS;
 
 function SetList({ onOpen }: { onOpen: (id: number) => void }) {
   const { version } = useApp();
+  const [deckOpen, setDeckOpen] = useState(false);
   const [showAll, setShowAll] = useState(() => readPref('tcgc.allSets', ['1', '0'] as const, '0') === '1');
   const [sort, setSort] = useState<SetListSort>(() =>
     readPref('tcgc.setSort', Object.keys(SET_LIST_SORTS) as SetListSort[], 'recent'));
@@ -132,6 +137,10 @@ function SetList({ onOpen }: { onOpen: (id: number) => void }) {
           {t('sets.showAll')}
         </Toggle>
       </div>
+      <button className="btn btn-ghost btn-sm deck-add" onClick={() => setDeckOpen(true)}>
+        <Icon name="plus" size={16} /> {t('deck.add')}
+      </button>
+      {deckOpen && <DeckSheet onClose={() => setDeckOpen(false)} />}
       {!sets && <div className="center"><div className="spinner" /></div>}
       <div className="set-grid">
         {sorted?.map((s) => <SetTile key={s.id} set={s} onOpen={() => onOpen(s.id)} />)}
@@ -194,6 +203,8 @@ function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
   const [filter, setFilter] = useState<SetFilter>(readSetFilter);
   const [sort, setSort] = useState('number');
   const [wishing, setWishing] = useState(false);
+  const [deckOpen, setDeckOpen] = useState(false);
+  const isStarter = /^ST-?\d/.test(summary?.code ?? '');
   const { cards, total, loading, hasMore, loadMore } = useCards(
     { set: String(setId), sort, status: filter === 'all' ? undefined : filter },
     { pageSize: 250 },
@@ -241,8 +252,14 @@ function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
               <span className="set-header-value">{formatEur(summary.valueEur)}</span>
             </div>
             <Progress owned={summary.owned} total={summary.total} />
+            {isStarter && (
+              <button className="btn btn-ghost btn-sm deck-add" onClick={() => setDeckOpen(true)}>
+                <Icon name="cards" size={16} /> {t('deck.iHaveIt')}
+              </button>
+            )}
           </>
         )}
+        {deckOpen && <DeckSheet initialDeck={setId} onClose={() => setDeckOpen(false)} />}
         {missing && missing.length > 0 && (
           <div className="set-missing">
             <div>

@@ -132,6 +132,9 @@ the viewfinder, ~94% in photo mode, and is almost always among the suggestions.
 - **Inside a set**: all its cards, in color if you own them, grayed out otherwise (show all / owned / missing).
   The + button adds a missing card directly. At the top, the cost to complete the set ("23 cards missing,
   ≈ €87 in total", and without the 3 most expensive) and a button to add every missing card to your wishlist.
+- **Starter deck** ("Add a starter deck" in By set, or "I have this deck" on a starter deck's page): every card of
+  the deck at once, from the official French card list (reprints included), with quantities pre-filled when the deck
+  list is known (`server/decks.js`), editable before adding.
 - **My cards**: every copy you own, sortable by value, number, set, color, rarity, name or date added, and
   filterable by set, color and language.
 - **Duplicates**: the copies above the ones you keep (1 per card and language for a collection, up to 4 to play),

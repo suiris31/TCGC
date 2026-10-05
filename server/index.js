@@ -8,6 +8,7 @@ import {
 import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
+import { addDeck, deckContents, starterDecks } from './decks.js';
 import { mailConfigured } from './mail.js';
 import {
   addToCollection, collectionCsv, collectionSets, collectionStats, doubles, getCardDetail, getCards, importCollection, LANGS,
@@ -219,6 +220,25 @@ app.post('/api/collection/:id/add', (req, res) => {
   logChange(card, lang, req);
   snapshotCollectionValue(req.user.id);
   res.json({ card, totals: collectionTotals(req.user.id, req.user.price_source) });
+});
+
+// ---------- Decks préconstruits ----------
+
+app.get('/api/decks', (req, res) => res.json(starterDecks()));
+
+app.get('/api/decks/:id', (req, res) => {
+  const deck = deckContents(viewerOf(req.user), Number(req.params.id));
+  if (!deck) return res.status(404).json({ code: 'unknown_deck', error: 'Deck inconnu' });
+  res.json(deck);
+});
+
+// Ajoute à la collection les cartes d'un deck : { lang, items: [{ id, quantity }] }
+app.post('/api/decks/:id/add', (req, res) => {
+  const result = addDeck(viewerOf(req.user), Number(req.params.id), req.body?.lang ?? 'fr', req.body?.items);
+  if (!result) return res.status(404).json({ code: 'unknown_deck', error: 'Deck inconnu' });
+  log(`Deck ${result.set.code} ajouté à la collection de ${req.user.pseudo} : ${result.copies} cartes`);
+  snapshotCollectionValue(req.user.id);
+  res.json({ ...result, totals: collectionTotals(req.user.id, req.user.price_source) });
 });
 
 // ---------- Recherches (liste de souhaits) ----------
