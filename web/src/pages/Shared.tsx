@@ -4,6 +4,7 @@ import { hideBroken } from '../components/CardGrid';
 import { SearchInput } from '../components/Filters';
 import { Icon } from '../components/Icon';
 import { LangSwitch } from '../components/LangSwitch';
+import { LegalLink } from './Legal';
 import { t, type MessageKey } from '../i18n';
 import { useApp } from '../store';
 
@@ -218,6 +219,7 @@ function Cta() {
     <section className="panel stack-tight shared-cta">
       <p className="flush">{t('shared.cta')}</p>
       <a className="btn btn-ghost" href="#">{t('shared.ctaButton')}</a>
+      <LegalLink />
     </section>
   );
 }

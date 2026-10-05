@@ -3,6 +3,7 @@ import { api, formatDate } from '../api';
 import { Icon } from '../components/Icon';
 import { LangSwitch } from '../components/LangSwitch';
 import { NotificationsPanel } from '../components/NotificationsPanel';
+import { LegalLink } from './Legal';
 import { t } from '../i18n';
 import { useApp } from '../store';
 
@@ -87,6 +88,7 @@ export function ProfilePage() {
           </form>
         )}
       </section>
+      <LegalLink />
     </div>
   );
 }

@@ -107,6 +107,15 @@ app.delete('/api/auth/account', requireUser, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Mentions légales : éditeur, contact et hébergeur du site (variables d'environnement, voir deploy/tcgc.env.example)
+app.get('/api/legal', (req, res) => {
+  res.json({
+    publisher: process.env.LEGAL_PUBLISHER ?? '',
+    contact: process.env.LEGAL_CONTACT ?? '',
+    host: process.env.LEGAL_HOST ?? '',
+  });
+});
+
 // Page publique d'un lien de partage : sans compte, en lecture seule
 app.get('/api/shared/:token', (req, res) => {
   rateLimit(`shared:${req.ip}`, 120, 60_000);

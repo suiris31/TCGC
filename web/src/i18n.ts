@@ -449,6 +449,9 @@ const fr = {
   'reset.done': 'Mot de passe changé, tu es connecté',
   'error.invalid_reset': 'Lien invalide ou expiré : refais une demande de mot de passe oublié.',
   'error.mail_unavailable': "L'envoi d'e-mails n'est pas configuré sur ce site.",
+
+  'legal.link': 'Mentions légales et confidentialité',
+  'auth.privacy': 'Tes données servent uniquement à faire fonctionner ton compte :',
 } as const satisfies Record<string, Entry>;
 
 export type MessageKey = keyof typeof fr;
@@ -897,6 +900,9 @@ const en: { [K in MessageKey]: Entry } = {
   'reset.done': 'Password changed, you are logged in',
   'error.invalid_reset': 'Invalid or expired link: request a new password reset.',
   'error.mail_unavailable': 'Sending emails is not set up on this site.',
+
+  'legal.link': 'Legal notice and privacy',
+  'auth.privacy': 'Your data is only used to run your account:',
 };
 
 const MESSAGES: Record<UiLang, { [K in MessageKey]: Entry }> = { fr, en };

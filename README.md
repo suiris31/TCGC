@@ -63,6 +63,8 @@ proxy), `PORT`, `PUBLIC_PATH` (e.g. `/tcgc` when served under a sub-path), `TRUS
   used in the link; never taken from the request). Without them, the "Forgot your password?" link is hidden.
   `SMTP_URL=log` writes the emails to the server log instead of sending them (local testing). On a server, put these
   private settings in `/opt/tcgc/tcgc.env` (see `deploy/tcgc.env.example`), read by the systemd service.
+- **Legal notice and privacy policy** (`#legal`, linked from the login screen, the profile and shared pages): the
+  publisher, contact and host come from `LEGAL_PUBLISHER`, `LEGAL_CONTACT` and `LEGAL_HOST`.
 - Not included: email address verification.
 - Catalog and prices are shared by all accounts; a manual price update can run at most once an hour, and each
   account can scan up to 60 cards a minute.

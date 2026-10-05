@@ -6,6 +6,7 @@ import { t } from './i18n';
 import { AuthPage } from './pages/Auth';
 import { Catalog } from './pages/Catalog';
 import { Collection } from './pages/Collection';
+import { LegalPage } from './pages/Legal';
 import { ProfilePage } from './pages/Profile';
 import { ResetPage } from './pages/Reset';
 import { Scanner } from './pages/Scanner';
@@ -89,10 +90,11 @@ function Shell() {
 }
 
 // Pages accessibles sans être connecté : lien de partage (#partage/<jeton>), lien de réinitialisation du mot de
-// passe reçu par e-mail (#reset/<jeton>)
-type SpecialRoute = { kind: 'share' | 'reset'; token: string } | null;
+// passe reçu par e-mail (#reset/<jeton>), mentions légales (#legal)
+type SpecialRoute = { kind: 'share' | 'reset'; token: string } | { kind: 'legal' } | null;
 
 function readRoute(): SpecialRoute {
+  if (window.location.hash === '#legal') return { kind: 'legal' };
   const share = window.location.hash.match(/^#(?:partage|share)\/([A-Za-z0-9_-]+)/);
   if (share) return { kind: 'share', token: share[1] };
   const reset = window.location.hash.match(/^#reset\/([A-Za-z0-9_-]+)/);
@@ -117,6 +119,8 @@ function Gate() {
         <SharedPage key={route.token} token={route.token} />
       ) : route?.kind === 'reset' ? (
         <ResetPage key={`${uiLang}-${route.token}`} token={route.token} />
+      ) : route?.kind === 'legal' ? (
+        <LegalPage />
       ) : user === undefined ? (
         <div className="center splash"><div className="spinner" /></div>
       ) : user === null ? (

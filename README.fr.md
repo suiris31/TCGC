@@ -65,6 +65,8 @@ ex. `mailto:toi@exemple.fr` ; par défaut la page GitHub du projet).
   l'appli, utilisée dans le lien ; jamais déduite de la requête). Sans eux, le lien « Mot de passe oublié ? » est masqué.
   `SMTP_URL=log` écrit les e-mails dans le journal au lieu de les envoyer (essais en local). Sur un serveur, mets ces
   réglages privés dans `/opt/tcgc/tcgc.env` (voir `deploy/tcgc.env.example`), lu par le service systemd.
+- **Mentions légales et politique de confidentialité** (`#legal`, liens sur l'écran de connexion, le profil et les
+  pages partagées) : l'éditeur, le contact et l'hébergeur viennent de `LEGAL_PUBLISHER`, `LEGAL_CONTACT` et `LEGAL_HOST`.
 - Pas encore disponible : vérification de l'adresse e-mail.
 - Le catalogue et les prix sont communs à tous les comptes ; la mise à jour manuelle des prix est limitée à une
   fois par heure, et chaque compte peut scanner jusqu'à 60 cartes par minute.

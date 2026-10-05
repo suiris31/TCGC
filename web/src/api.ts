@@ -291,6 +291,7 @@ export const api = {
     request<{ user: User }>('api/auth/login', json('POST', { identifier, password })),
   logout: () => request<{ ok: boolean }>('api/auth/logout', { method: 'POST' }),
   authConfig: () => request<{ passwordReset: boolean }>('api/auth/config'),
+  legal: () => request<{ publisher: string; contact: string; host: string }>('api/legal'),
   forgotPassword: (email: string, lang: string) => request<{ ok: boolean }>('api/auth/forgot', json('POST', { email, lang })),
   resetPassword: (token: string, password: string) => request<{ user: User }>('api/auth/reset', json('POST', { token, password })),
   deleteAccount: (password: string) => request<{ ok: boolean }>('api/auth/account', json('DELETE', { password })),

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { LangSwitch } from '../components/LangSwitch';
+import { LegalLink } from './Legal';
 import { t } from '../i18n';
 import { useApp } from '../store';
 
@@ -137,6 +138,7 @@ export function AuthPage() {
           </label>
 
           {error && <p className="form-error" role="alert">{error}</p>}
+          {mode === 'signup' && <p className="muted small flush">{t('auth.privacy')} <a className="link" href="#legal">{t('legal.link')}</a></p>}
 
           <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
             {busy ? '…' : t(mode === 'login' ? 'auth.submitLogin' : 'auth.submitSignup')}
@@ -147,6 +149,7 @@ export function AuthPage() {
         )}
       </div>
       )}
+      <LegalLink />
     </div>
   );
 }
