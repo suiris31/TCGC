@@ -100,6 +100,13 @@ the viewfinder, ~94% in photo mode, and is almost always among the suggestions.
   ≈ €87 in total", and without the 3 most expensive) and a button to add every missing card to your wishlist.
 - **My cards**: every copy you own, sortable by value, number, set, color, rarity, name or date added, and
   filterable by set, color and language.
+- **Duplicates**: the copies above the ones you keep (1 per card and language for a collection, up to 4 to play),
+  with their value: your trading stock. Rising or falling prices are flagged.
+- **Share** (in Duplicates): a secret link to send to a friend. Without an account, they see your duplicates (or
+  your whole collection, your choice) and your wishlist, tick the cards they want and the ones they have from your
+  wishlist, then send you their selection through the phone's share menu (WhatsApp, SMS...). Nothing goes through
+  the server. You choose whether prices are shown; your email and target prices never are. "Change the link"
+  makes the old one stop working, "Disable" removes the page.
 - **Wishlist**: the cards you want, each with a **target price** (the most you are willing to pay, to copy into
   your Cardmarket wants list). At the top, the cards whose price dropped below their target (green badge on the
   Collection tab), then **deals** among the cards missing from your sets: at least 10% below their monthly

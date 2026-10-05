@@ -7,11 +7,12 @@ import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
 import {
-  addToCollection, collectionCsv, collectionSets, collectionStats, getCardDetail, getCards, importCollection, LANGS, listSets,
-  removeWish, searchCards, setQuantity, setWish, viewerOf, wishlist, wishlistCounts, wishMissing,
+  addToCollection, collectionCsv, collectionSets, collectionStats, doubles, getCardDetail, getCards, importCollection, LANGS,
+  listSets, removeWish, searchCards, setKeepCopies, setQuantity, setWish, viewerOf, wishlist, wishlistCounts, wishMissing,
 } from './cards.js';
 import { downloadThumb, thumbPath } from './images.js';
 import { buildIndex, identify, indexStatus } from './scan.js';
+import { deleteShare, getShare, regenerateShare, saveShare, sharedView } from './share.js';
 import { runSync, syncInProgress, syncIsStale } from './sync.js';
 import { collectionTotals, setPriceSource, snapshotCollectionValue } from './valuation.js';
 
@@ -85,6 +86,15 @@ app.delete('/api/auth/account', requireUser, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Page publique d'un lien de partage : sans compte, en lecture seule
+app.get('/api/shared/:token', (req, res) => {
+  rateLimit(`shared:${req.ip}`, 120, 60_000);
+  const view = sharedView(req.params.token);
+  if (!view) return res.status(404).json({ code: 'share_not_found', error: 'Lien de partage introuvable' });
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(view);
+});
+
 // Tout le reste de l'API demande d'être connecté
 app.use('/api', requireUser);
 
@@ -108,11 +118,16 @@ app.get('/api/status', (req, res) => {
 app.put('/api/settings', (req, res) => {
   try {
     if (req.body?.priceSource) setPriceSource(req.user.id, req.body.priceSource);
+    if (req.body?.keepCopies !== undefined) setKeepCopies(req.user.id, Number(req.body.keepCopies));
   } catch (err) {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ code: err.code, error: err.message });
   }
   const source = req.body?.priceSource ?? req.user.price_source;
-  res.json({ priceSource: source, totals: collectionTotals(req.user.id, source) });
+  res.json({
+    priceSource: source,
+    keepCopies: req.body?.keepCopies !== undefined ? Number(req.body.keepCopies) : req.user.keep_copies,
+    totals: collectionTotals(req.user.id, source),
+  });
 });
 
 // Mise à jour manuelle des prix : au plus une fois par heure, quel que soit le nombre d'utilisateurs
@@ -200,6 +215,30 @@ app.post('/api/wishlist/missing/:setId', (req, res) => {
   const added = wishMissing(viewerOf(req.user), Number(req.params.setId), lang);
   log(`Recherches de ${req.user.pseudo} : ${added} cartes manquantes du set ${req.params.setId} ajoutées`);
   res.json({ added });
+});
+
+// ---------- Doubles et lien de partage ----------
+
+app.get('/api/doubles', (req, res) => res.json(doubles(viewerOf(req.user), req.user.keep_copies)));
+
+app.get('/api/share', (req, res) => res.json({ share: getShare(req.user.id) }));
+
+// Crée le lien de partage ou change ce qu'il montre (scope, showPrices, showWishlist)
+app.put('/api/share', (req, res) => {
+  const existed = Boolean(getShare(req.user.id));
+  const share = saveShare(req.user.id, req.body ?? {});
+  if (!existed) log(`Lien de partage créé par ${req.user.pseudo}`);
+  res.json({ share });
+});
+
+app.post('/api/share/regenerate', (req, res) => {
+  if (!getShare(req.user.id)) return res.status(404).json({ code: 'share_not_found', error: 'Aucun lien de partage' });
+  res.json({ share: regenerateShare(req.user.id) });
+});
+
+app.delete('/api/share', (req, res) => {
+  deleteShare(req.user.id);
+  res.json({ share: null });
 });
 
 app.get('/api/stats', (req, res) => {

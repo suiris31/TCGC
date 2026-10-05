@@ -107,7 +107,10 @@ function startSession(req, res, userId) {
 }
 
 export function publicUser(user) {
-  return { id: user.id, pseudo: user.pseudo, email: user.email, createdAt: user.created_at, priceSource: user.price_source };
+  return {
+    id: user.id, pseudo: user.pseudo, email: user.email, createdAt: user.created_at, priceSource: user.price_source,
+    keepCopies: user.keep_copies,
+  };
 }
 
 // Middleware : req.user = utilisateur connecté (ou null)
@@ -170,7 +173,7 @@ export function logout(req, res) {
   setSessionCookie(req, res, '', 0);
 }
 
-// Supprime le compte et tout ce qui s'y rattache : collection, recherches, historique de valeur, sessions
+// Supprime le compte et tout ce qui s'y rattache : collection, recherches, lien de partage, historique de valeur, sessions
 export async function deleteAccount(req, res) {
   rateLimit(`delete:${req.user.id}`, 10, 15 * 60_000);
   const ok = await verifyPassword(String(req.body?.password ?? ''), req.user.password_hash);
@@ -178,6 +181,7 @@ export async function deleteAccount(req, res) {
   transaction(() => {
     db.prepare('DELETE FROM collection WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM wishlist WHERE user_id = ?').run(req.user.id);
+    db.prepare('DELETE FROM shares WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM value_history WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);

@@ -371,11 +371,15 @@ function invalid(code, message) {
   return Object.assign(new Error(message), { status: 400, expose: true, code });
 }
 
+export function wishlistCards(viewer) {
+  return db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)} WHERE w.product_id IS NOT NULL
+    ORDER BY w.added_at DESC, c.number`).all().map((r) => formatCard(r, viewer));
+}
+
 // Les cartes recherchées, et les bonnes affaires parmi les cartes manquantes des sets commencés : au moins 10 % sous
 // leur moyenne du mois et prix qui ne baisse plus (voir insight.js), à partir d'1 €
 export function wishlist(viewer) {
-  const cards = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)} WHERE w.product_id IS NOT NULL
-    ORDER BY w.added_at DESC, c.number`).all().map((r) => formatCard(r, viewer));
+  const cards = wishlistCards(viewer);
   const deals = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)}
     WHERE own.owned IS NULL AND w.product_id IS NULL AND cm.trend >= 1 AND cm.trend <= cm.avg30 * 0.9
       AND c.group_id IN (SELECT k.group_id FROM collection col JOIN cards k ON k.product_id = col.product_id WHERE col.user_id = ?)`)
@@ -430,6 +434,30 @@ export function wishMissing(viewer, groupId, lang = 'fr') {
     for (const card of cards) insert.run(uid(viewer), card.id, lang, card.insight?.target ?? null, now);
   });
   return cards.length;
+}
+
+// ---------- Doubles ----------
+
+// Exemplaires gardés par carte et par langue (1 pour une collection, 4 pour jouer...) : au-delà, ce sont des doubles
+export const KEEP_MAX = 10;
+
+export function setKeepCopies(userId, keep) {
+  if (!Number.isInteger(keep) || keep < 1 || keep > KEEP_MAX) throw invalid('invalid_keep', "Nombre d'exemplaires invalide");
+  db.prepare('UPDATE users SET keep_copies = ? WHERE id = ?').run(keep, userId);
+}
+
+// Cartes possédées en au moins minQuantity exemplaires (une ligne par carte et par langue), les plus chères d'abord
+export function collectionEntries(viewer, minQuantity = 1) {
+  return db.prepare(`SELECT ${cardColumns(viewer, true)} ${cardFrom(viewer, true)} WHERE col.quantity >= ?
+    ORDER BY ${SORTS.price}, c.number, col.lang DESC`).all(minQuantity).map((r) => formatCard(r, viewer));
+}
+
+// Doubles : exemplaires au-delà de ceux qu'on garde, avec leur valeur
+export function doubles(viewer, keep) {
+  const cards = collectionEntries(viewer, keep + 1).map((c) => ({ ...c, extra: c.entry.quantity - keep }));
+  const copies = cards.reduce((sum, c) => sum + c.extra, 0);
+  const value = cards.reduce((sum, c) => sum + c.extra * (c.price.eur ?? 0), 0);
+  return { keep, copies, distinct: cards.length, valueEur: Math.round(value * 100) / 100, cards };
 }
 
 // ---------- Import ----------

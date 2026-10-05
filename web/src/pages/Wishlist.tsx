@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { api, cardImage, cardName, formatEur, formatPct, type Card } from '../api';
-import { hideBroken } from '../components/CardGrid';
+import { api, formatEur, formatPct, type Card } from '../api';
+import { CardRow } from '../components/CardRow';
 import { InsightChip } from '../components/Insight';
 import { wishGap } from '../components/WishBox';
 import { t, type MessageKey } from '../i18n';
@@ -38,7 +38,7 @@ export function Wishlist() {
   const total = data.cards.reduce((sum, c) => sum + (c.price.eur ?? 0), 0);
 
   return (
-    <div className="wishlist">
+    <div className="stack">
       {data.cards.length === 0 ? (
         <section className="panel">
           <h3>{t('wishlist.empty.title')}</h3>
@@ -58,7 +58,7 @@ export function Wishlist() {
       {reached.length > 0 && (
         <section>
           <h3 className="wish-ok">{t('wishlist.reached')}</h3>
-          <ul className="wish-list">{reached.sort(SORTS.gap.compare).map((c) => <WishRow key={c.id} card={c} />)}</ul>
+          <ul className="card-list">{reached.sort(SORTS.gap.compare).map((c) => <WishRow key={c.id} card={c} />)}</ul>
         </section>
       )}
 
@@ -66,7 +66,7 @@ export function Wishlist() {
         <section>
           <h3>{t('wishlist.deals')}</h3>
           <p className="muted small wish-section-help">{t('wishlist.dealsHelp')}</p>
-          <ul className="wish-list">
+          <ul className="card-list">
             {data.deals.map((c) => (
               <WishRow key={c.id} card={c} lang={lang}
                 extra={c.insight?.change != null && <span className="small wish-ok">{t('wishlist.vsAvg', { pct: formatPct(c.insight.change) })}</span>} />
@@ -84,7 +84,7 @@ export function Wishlist() {
               {Object.entries(SORTS).map(([value, { label }]) => <option key={value} value={value}>{t(label)}</option>)}
             </select>
           </div>
-          <ul className="wish-list">{others.map((c) => <WishRow key={c.id} card={c} />)}</ul>
+          <ul className="card-list">{others.map((c) => <WishRow key={c.id} card={c} />)}</ul>
         </section>
       )}
     </div>
@@ -97,23 +97,14 @@ function WishRow({ card, lang, extra }: { card: Card; lang?: 'fr' | 'en'; extra?
   const shown = card.wish?.lang ?? lang ?? 'fr';
   const status = wishGap(card);
   return (
-    <li>
-      <button className="wish-item" onClick={() => openCard(card.id, shown)}>
-        <img src={cardImage(card, shown)} alt="" loading="lazy" onError={hideBroken} />
-        <span className="wish-item-name">
-          <span className="wish-item-title">{cardName(card, shown)} <span className="muted">{shown.toUpperCase()}</span></span>
-          <span className="muted small wish-item-meta">{card.number}{card.variant && ` · ${card.variant}`}{card.setCode && ` · ${card.setCode}`}</span>
-          {card.insight?.kind && <span><InsightChip kind={card.insight.kind} /></span>}
+    <CardRow card={card} lang={shown} onClick={() => openCard(card.id, shown)}
+      chip={card.insight?.kind && <InsightChip kind={card.insight.kind} />}>
+      <span className="toplist-price">{formatEur(card.price.eur)}</span>
+      {card.wish ? (
+        <span className={status?.reached ? 'small wish-ok' : 'small muted'}>
+          {card.wish.targetEur != null ? t('wish.target.short', { price: formatEur(card.wish.targetEur) }) : t('wish.noTarget')}
         </span>
-        <span className="wish-item-price">
-          <span className="toplist-price">{formatEur(card.price.eur)}</span>
-          {card.wish ? (
-            <span className={status?.reached ? 'small wish-ok' : 'small muted'}>
-              {card.wish.targetEur != null ? t('wish.target.short', { price: formatEur(card.wish.targetEur) }) : t('wish.noTarget')}
-            </span>
-          ) : extra}
-        </span>
-      </button>
-    </li>
+      ) : extra}
+    </CardRow>
   );
 }

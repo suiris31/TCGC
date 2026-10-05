@@ -87,6 +87,13 @@ Astuce : donne une IP fixe au PC dans ta box (bail DHCP statique) pour que l'adr
   les manquantes à tes recherches.
 - **Mes cartes** : tous les exemplaires, triables par valeur, numéro, set, couleur, rareté, nom ou
   date d'ajout, et filtrables par set, couleur et langue.
+- **Doubles** : les exemplaires en plus de ceux que tu gardes (1 par carte et par langue pour une collection,
+  jusqu'à 4 pour jouer), avec leur valeur : ta monnaie d'échange. Une hausse ou une baisse en cours est signalée.
+- **Partager** (dans Doubles) : un lien secret à envoyer à un ami. Sans créer de compte, il voit tes doubles (ou
+  toute ta collection, au choix) et tes recherches, coche les cartes qui l'intéressent et celles qu'il a parmi
+  tes recherches, puis t'envoie sa sélection par le menu de partage du téléphone (WhatsApp, SMS...). Rien ne
+  passe par le serveur. Tu choisis d'afficher ou non les prix ; ton e-mail et tes prix cibles n'apparaissent
+  jamais. « Changer le lien » rend l'ancien inutilisable, « Désactiver » supprime la page.
 - **Recherches** : les cartes que tu veux, chacune avec un **prix cible** (le prix maximum que tu veux
   payer, à reporter dans ta liste de souhaits Cardmarket). En haut, les cartes passées sous leur prix cible
   (pastille verte sur l'onglet Collection), puis les **bonnes affaires** parmi les cartes qui te manquent dans

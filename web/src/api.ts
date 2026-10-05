@@ -8,6 +8,8 @@ export interface User {
   email: string;
   createdAt: string;
   priceSource: PriceSource;
+  // exemplaires gardés par carte et par langue : au-delà, ce sont des doubles
+  keepCopies: number;
 }
 
 // Émis quand le serveur répond que la session n'est plus valide : l'appli revient à l'écran de connexion
@@ -144,6 +146,54 @@ export interface SetSummary {
   cover: { id: number; image: string; imageFr: string | null; ownedLang: Lang | null } | null;
 }
 
+// Doubles : exemplaires au-delà de ceux qu'on garde (extra), avec leur valeur
+export interface Doubles {
+  keep: number;
+  copies: number;
+  distinct: number;
+  valueEur: number;
+  cards: (Card & { extra: number })[];
+}
+
+export type ShareScope = 'doubles' | 'collection';
+
+// Lien de partage de l'utilisateur connecté
+export interface Share {
+  token: string;
+  scope: ShareScope;
+  showPrices: boolean;
+  showWishlist: boolean;
+  createdAt: string;
+}
+
+// Page publique d'un lien de partage : cartes réduites à ce qui peut être montré
+export interface SharedCard {
+  id: number;
+  name: string;
+  nameFr: string | null;
+  number: string;
+  variant: string | null;
+  rarity: string | null;
+  setCode: string | null;
+  setName: string;
+  releaseDate: string | null;
+  image: string;
+  imageFr: string | null;
+  lang: Lang;
+  quantity: number;
+  price: number | null;
+}
+
+export interface SharedView {
+  pseudo: string;
+  scope: ShareScope;
+  showPrices: boolean;
+  keep: number;
+  updatedAt: string | null;
+  cards: SharedCard[];
+  wanted: SharedCard[];
+}
+
 export interface Stats {
   totals: Totals;
   bySet: { code: string | null; name: string; cards: number; valueEur: number }[];
@@ -213,6 +263,14 @@ export const api = {
   sync: () => request<{ started: boolean }>('api/sync', { method: 'POST' }),
   setPriceSource: (priceSource: PriceSource) =>
     request<{ priceSource: PriceSource; totals: Totals }>('api/settings', json('PUT', { priceSource })),
+  setKeepCopies: (keepCopies: number) => request<{ keepCopies: number }>('api/settings', json('PUT', { keepCopies })),
+  doubles: () => request<Doubles>('api/doubles'),
+  share: () => request<{ share: Share | null }>('api/share'),
+  saveShare: (options: { scope?: ShareScope; showPrices?: boolean; showWishlist?: boolean }) =>
+    request<{ share: Share }>('api/share', json('PUT', options)),
+  regenerateShare: () => request<{ share: Share }>('api/share/regenerate', { method: 'POST' }),
+  deleteShare: () => request<{ share: null }>('api/share', { method: 'DELETE' }),
+  shared: (token: string) => request<SharedView>(`api/shared/${encodeURIComponent(token)}`),
   sets: () => request<SetInfo[]>('api/sets'),
   collectionSets: (all: boolean) => request<SetSummary[]>(`api/collection/sets${all ? '?all=1' : ''}`),
   cards: (query: CardQuery) => request<{ total: number; cards: Card[] }>(`api/cards?${qs({ ...query })}`),
@@ -253,11 +311,11 @@ export function formatEur(value: number | null | undefined, round = false) {
 
 // Une carte s'affiche dans sa langue : nom et visuel VF pour une carte française (quand on les connaît),
 // VO sinon
-export function cardName(card: Card, lang: Lang) {
+export function cardName(card: Pick<Card, 'name' | 'nameFr'>, lang: Lang) {
   return lang === 'fr' ? (card.nameFr ?? card.name) : card.name;
 }
 
-export function cardImage(card: Card, lang: Lang) {
+export function cardImage(card: Pick<Card, 'image' | 'imageFr'>, lang: Lang) {
   return lang === 'fr' ? (card.imageFr ?? card.image) : card.image;
 }
 
@@ -268,6 +326,11 @@ export function cardImageLarge(card: Card, lang: Lang) {
 // "−15 %" en français, "−15%" en anglais (signe toujours affiché)
 export function formatPct(ratio: number) {
   return new Intl.NumberFormat(locale(), { style: 'percent', maximumFractionDigits: 0, signDisplay: 'exceptZero' }).format(ratio);
+}
+
+// Adresse d'un lien de partage (l'appli peut être dans un sous-dossier, ex. /tcgc/)
+export function shareUrl(token: string) {
+  return `${window.location.origin}${window.location.pathname}#partage/${token}`;
 }
 
 export function formatDate(iso: string | null | undefined) {

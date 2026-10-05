@@ -140,6 +140,16 @@ db.exec(`
     added_at   TEXT NOT NULL,
     PRIMARY KEY (user_id, product_id)
   );
+
+  -- Lien de partage (page publique en lecture seule) : un par utilisateur, jeton secret aléatoire
+  CREATE TABLE IF NOT EXISTS shares (
+    user_id       INTEGER PRIMARY KEY,
+    token         TEXT NOT NULL UNIQUE,
+    scope         TEXT NOT NULL DEFAULT 'doubles', -- 'doubles' : les doubles ; 'collection' : toute la collection
+    show_prices   INTEGER NOT NULL DEFAULT 1,
+    show_wishlist INTEGER NOT NULL DEFAULT 1,
+    created_at    TEXT NOT NULL
+  );
 `);
 
 // Migrations des bases créées par une version précédente
@@ -153,6 +163,8 @@ addColumn('price_history', 'cm', 'REAL'); // prix Cardmarket en €
 addColumn('value_history', 'value_cm', 'REAL');
 addColumn('value_history', 'value_tcg', 'REAL');
 addColumn('fr_cards', 'product_id', 'INTEGER');
+// exemplaires gardés par carte et par langue : au-delà, ce sont des doubles
+addColumn('users', 'keep_copies', 'INTEGER NOT NULL DEFAULT 1');
 db.exec('CREATE INDEX IF NOT EXISTS fr_cards_product ON fr_cards(product_id)');
 
 // Collection sans langue (avant la gestion VF/VO) : les cartes déjà saisies sont considérées en VF

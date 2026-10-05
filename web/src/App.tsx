@@ -8,6 +8,7 @@ import { Catalog } from './pages/Catalog';
 import { Collection } from './pages/Collection';
 import { ProfilePage } from './pages/Profile';
 import { Scanner } from './pages/Scanner';
+import { SharedPage } from './pages/Shared';
 import { StatsPage } from './pages/Stats';
 import { AppProvider, useApp } from './store';
 
@@ -83,13 +84,29 @@ function Shell() {
   );
 }
 
-// Page d'accueil (connexion / inscription) tant qu'on n'est pas connecté, sinon l'appli.
-// Changer de langue d'interface ou de compte redessine toute l'appli.
+// Lien de partage : #partage/<jeton>
+function readShareToken() {
+  const m = window.location.hash.match(/^#(?:partage|share)\/([A-Za-z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+// Page publique d'un lien de partage (avec ou sans compte), sinon page d'accueil (connexion / inscription) tant qu'on
+// n'est pas connecté, sinon l'appli. Changer de langue d'interface ou de compte redessine toute l'appli.
 function Gate() {
   const { user, uiLang, toastMessage } = useApp();
+  const [shareToken, setShareToken] = useState(readShareToken);
+
+  useEffect(() => {
+    const onHash = () => setShareToken(readShareToken());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   return (
     <>
-      {user === undefined ? (
+      {shareToken ? (
+        <SharedPage key={shareToken} token={shareToken} />
+      ) : user === undefined ? (
         <div className="center splash"><div className="spinner" /></div>
       ) : user === null ? (
         <AuthPage key={uiLang} />

@@ -3,13 +3,15 @@ import { api, formatEur, type Card, type Lang, type SetSummary } from '../api';
 import { CardGrid, hideBroken } from '../components/CardGrid';
 import { ColorSelect, SearchInput, SetSelect } from '../components/Filters';
 import { Icon } from '../components/Icon';
+import { Toggle } from '../components/Toggle';
 import { locale, t, type MessageKey } from '../i18n';
 import { readPref, writePref } from '../prefs';
 import { useApp } from '../store';
 import { useCards } from '../useCards';
+import { DoublesView } from './Doubles';
 import { Wishlist } from './Wishlist';
 
-const VIEWS = ['sets', 'cards', 'wishlist'] as const;
+const VIEWS = ['sets', 'cards', 'doubles', 'wishlist'] as const;
 type View = typeof VIEWS[number];
 
 // Un set ouvert a sa propre adresse (#collection/set/<id>) : le bouton retour du téléphone ramène à la liste
@@ -55,29 +57,20 @@ export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse:
 
   return (
     <div className="page">
-      <div className="segmented segmented-3 view-switch" role="tablist">
+      <div className="segmented segmented-4 view-switch" role="tablist">
         {VIEWS.map((value) => (
           <button key={value} role="tab" aria-selected={view === value}
             className={view === value ? 'segment segment-on' : 'segment'} onClick={() => changeView(value)}>
             {t(`collection.view.${value}`)}
-            {value === 'wishlist' && reached > 0 && <span className="segment-badge">{reached}</span>}
+            {value === 'wishlist' && reached > 0 && <span className="segment-dot" aria-hidden="true" />}
           </button>
         ))}
       </div>
       {view === 'sets' && <SetList onOpen={(id) => { window.location.hash = `collection/set/${id}`; }} />}
       {view === 'cards' && <AllCards />}
+      {view === 'doubles' && <DoublesView />}
       {view === 'wishlist' && <Wishlist />}
     </div>
-  );
-}
-
-function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
-  return (
-    <label className="toggle">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="toggle-track" aria-hidden="true"><span /></span>
-      <span>{children}</span>
-    </label>
   );
 }
 
