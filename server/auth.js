@@ -173,8 +173,8 @@ export function logout(req, res) {
   setSessionCookie(req, res, '', 0);
 }
 
-// Supprime le compte et tout ce qui s'y rattache : collection, recherches, lien de partage, notifications, historique de
-// valeur, sessions
+// Supprime le compte et tout ce qui s'y rattache : collection, recherches, lien de partage, notifications, échanges,
+// historique de valeur, sessions
 export async function deleteAccount(req, res) {
   rateLimit(`delete:${req.user.id}`, 10, 15 * 60_000);
   const ok = await verifyPassword(String(req.body?.password ?? ''), req.user.password_hash);
@@ -184,6 +184,7 @@ export async function deleteAccount(req, res) {
     db.prepare('DELETE FROM wishlist WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM shares WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM push_subscriptions WHERE user_id = ?').run(req.user.id);
+    db.prepare('DELETE FROM trade_seen WHERE user_id = ? OR other_id = ?').run(req.user.id, req.user.id);
     db.prepare('DELETE FROM value_history WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);

@@ -90,6 +90,10 @@ Astuce : donne une IP fixe au PC dans ta box (bail DHCP statique) pour que l'adr
   date d'ajout, et filtrables par set, couleur et langue.
 - **Doubles** : les exemplaires en plus de ceux que tu gardes (1 par carte et par langue pour une collection,
   jusqu'à 4 pour jouer), avec leur valeur : ta monnaie d'échange. Une hausse ou une baisse en cours est signalée.
+- **Échanges entre membres** (dans Doubles) : si tu participes, l'appli te montre les membres qui ont en double
+  des cartes que tu cherches (dans la même langue) et ceux qui cherchent tes doubles, avec le moyen de contact et
+  la ville ou région qu'ils ont choisi d'indiquer. La participation est volontaire : seuls les participants sont
+  rapprochés, entre eux. Une notification signale les nouveaux échanges possibles.
 - **Partager** (dans Doubles) : un lien secret à envoyer à un ami. Sans créer de compte, il voit tes doubles (ou
   toute ta collection, au choix) et tes recherches, coche les cartes qui l'intéressent et celles qu'il a parmi
   tes recherches, puis t'envoie sa sélection par le menu de partage du téléphone (WhatsApp, SMS...). Rien ne
@@ -108,7 +112,8 @@ avec l'appli installée sur l'écran d'accueil). Après la mise à jour quotidie
 
 - **Prix cible atteint** : une carte de tes recherches est passée sous ton prix cible (une seule fois, jusqu'à ce
   qu'elle repasse au-dessus) ;
-- **Résumé de la semaine** : la valeur de ta collection et son évolution sur 7 jours, avec la plus forte hausse.
+- **Résumé de la semaine** : la valeur de ta collection et son évolution sur 7 jours, avec la plus forte hausse ;
+- **Échanges possibles** : un membre qui participe aux échanges a en double une carte que tu cherches.
 
 Chaque type peut être coupé. Les clés VAPID du serveur sont créées au premier démarrage et gardées dans la base.
 

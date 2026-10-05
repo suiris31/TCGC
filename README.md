@@ -103,6 +103,10 @@ the viewfinder, ~94% in photo mode, and is almost always among the suggestions.
   filterable by set, color and language.
 - **Duplicates**: the copies above the ones you keep (1 per card and language for a collection, up to 4 to play),
   with their value: your trading stock. Rising or falling prices are flagged.
+- **Trades between members** (in Duplicates): if you join, the app shows the members who have spare copies of the
+  cards you want (in the same language) and those who want your duplicates, with the contact and city or region
+  they chose to give. Joining is opt-in: only participants are matched, with each other. A notification flags
+  new possible trades.
 - **Share** (in Duplicates): a secret link to send to a friend. Without an account, they see your duplicates (or
   your whole collection, your choice) and your wishlist, tick the cards they want and the ones they have from your
   wishlist, then send you their selection through the phone's share menu (WhatsApp, SMS...). Nothing goes through
@@ -120,7 +124,8 @@ In Profile, "Enable on this device" subscribes the phone to push notifications (
 the app installed on the home screen). After the daily price update, the app sends:
 
 - **Target price reached**: a wishlist card dropped below your target (once, until it goes back above);
-- **Weekly summary**: your collection's value and its change over 7 days, with the biggest rise.
+- **Weekly summary**: your collection's value and its change over 7 days, with the biggest rise;
+- **Trades available**: a member taking part in trades has a spare copy of a card you want.
 
 Each type can be turned off. The server's VAPID keys are created on first start and stored in the database.
 

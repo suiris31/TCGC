@@ -198,6 +198,25 @@ export interface SharedView {
 export interface NotifyPrefs {
   targets: boolean;
   weekly: boolean;
+  trades: boolean;
+}
+
+// Échanges entre membres
+export interface TradeSettings {
+  enabled: boolean;
+  contact: string;
+  region: string;
+}
+
+// Carte d'un échange : langue de l'exemplaire et nombre de doubles disponibles
+export type TradeCard = Card & { tradeLang: Lang; extra: number };
+
+export interface TradeMatch {
+  pseudo: string;
+  contact: string;
+  region: string;
+  theyHave: TradeCard[];  // ses doubles que je cherche
+  theyWant: TradeCard[];  // mes doubles qu'il cherche
 }
 
 export interface Stats {
@@ -277,6 +296,9 @@ export const api = {
   regenerateShare: () => request<{ share: Share }>('api/share/regenerate', { method: 'POST' }),
   deleteShare: () => request<{ share: null }>('api/share', { method: 'DELETE' }),
   shared: (token: string) => request<SharedView>(`api/shared/${encodeURIComponent(token)}`),
+  trades: () => request<{ settings: TradeSettings; matches: TradeMatch[] }>('api/trades'),
+  setTradeSettings: (settings: Partial<TradeSettings>) =>
+    request<{ settings: TradeSettings }>('api/trades/settings', json('PUT', settings)),
   push: () => request<{ publicKey: string; prefs: NotifyPrefs }>('api/push'),
   pushSubscribe: (subscription: PushSubscriptionJSON, lang: string) =>
     request<{ ok: boolean }>('api/push/subscribe', json('POST', { subscription, lang })),

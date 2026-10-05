@@ -8,7 +8,8 @@ import { config } from './config.js';
 import { getMeta } from './db.js';
 import {
   addToCollection, collectionCsv, collectionSets, collectionStats, doubles, getCardDetail, getCards, importCollection, LANGS,
-  listSets, removeWish, searchCards, setKeepCopies, setQuantity, setWish, viewerOf, wishlist, wishlistCounts, wishMissing,
+  listSets, removeWish, searchCards, setKeepCopies, setQuantity, setTradeSettings, setWish, tradeMatches, tradeSettings,
+  viewerOf, wishlist, wishlistCounts, wishMissing,
 } from './cards.js';
 import { downloadThumb, thumbPath } from './images.js';
 import { buildIndex, identify, indexStatus } from './scan.js';
@@ -244,6 +245,20 @@ app.post('/api/share/regenerate', (req, res) => {
 app.delete('/api/share', (req, res) => {
   deleteShare(req.user.id);
   res.json({ share: null });
+});
+
+// ---------- Échanges entre membres ----------
+
+app.get('/api/trades', (req, res) => {
+  res.json({ settings: tradeSettings(req.user), matches: tradeMatches(viewerOf(req.user), req.user) });
+});
+
+app.put('/api/trades/settings', (req, res) => {
+  const settings = setTradeSettings(req.user, req.body ?? {});
+  if (settings.enabled !== Boolean(req.user.trade_enabled)) {
+    log(`Échanges : ${req.user.pseudo} ${settings.enabled ? 'participe' : 'ne participe plus'}`);
+  }
+  res.json({ settings });
 });
 
 // ---------- Notifications ----------

@@ -4,6 +4,7 @@ import { CardRow } from '../components/CardRow';
 import { Icon } from '../components/Icon';
 import { InsightChip } from '../components/Insight';
 import { Toggle } from '../components/Toggle';
+import { TradesPanel } from '../components/TradesPanel';
 import { t, type MessageKey } from '../i18n';
 import { readPref, writePref } from '../prefs';
 import { useApp } from '../store';
@@ -74,6 +75,7 @@ export function DoublesView() {
         <p className="muted small flush">{t('doubles.keepHelp')}</p>
       </section>
 
+      <TradesPanel />
       <SharePanel />
 
       {cards.length > 0 && (

@@ -460,6 +460,87 @@ export function doubles(viewer, keep) {
   return { keep, copies, distinct: cards.length, valueEur: Math.round(value * 100) / 100, cards };
 }
 
+// ---------- Échanges entre membres ----------
+// Seuls les membres qui participent (users.trade_enabled) sont rapprochés, et seulement entre eux : une carte
+// recherchée par l'un, en double chez l'autre, dans la même langue.
+
+// Ses cartes recherchées que d'autres membres ont en double : { other, product_id, lang, extra }
+export function tradeOffersFor(userId) {
+  return db.prepare(`
+    SELECT col.user_id AS other, col.product_id, col.lang, col.quantity - u.keep_copies AS extra
+    FROM wishlist w
+    JOIN collection col ON col.product_id = w.product_id AND col.lang = w.lang AND col.user_id != w.user_id
+    JOIN users u ON u.id = col.user_id
+    WHERE w.user_id = ? AND u.trade_enabled = 1 AND col.quantity > u.keep_copies`).all(userId);
+}
+
+const TRADE_CONTACT_MAX = 100;
+const TRADE_REGION_MAX = 60;
+
+function cleanText(value, max) {
+  // une ligne, sans caractères de contrôle
+  const text = String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  if (text.length > max) throw invalid('invalid_trade', 'Texte trop long');
+  return text || null;
+}
+
+export function tradeSettings(user) {
+  return { enabled: Boolean(user.trade_enabled), contact: user.trade_contact ?? '', region: user.trade_region ?? '' };
+}
+
+export function setTradeSettings(user, { enabled, contact, region } = {}) {
+  const next = {
+    enabled: typeof enabled === 'boolean' ? enabled : Boolean(user.trade_enabled),
+    contact: contact === undefined ? user.trade_contact : cleanText(contact, TRADE_CONTACT_MAX),
+    region: region === undefined ? user.trade_region : cleanText(region, TRADE_REGION_MAX),
+  };
+  db.prepare('UPDATE users SET trade_enabled = ?, trade_contact = ?, trade_region = ? WHERE id = ?')
+    .run(Number(next.enabled), next.contact, next.region, user.id);
+  return { enabled: next.enabled, contact: next.contact ?? '', region: next.region ?? '' };
+}
+
+// Échanges possibles pour un membre qui participe : pour chaque autre participant, les cartes qu'il a en double et
+// que le membre cherche (theyHave), et les doubles du membre qu'il cherche (theyWant). Les plus intéressants d'abord.
+export function tradeMatches(viewer, user) {
+  if (!user.trade_enabled) return [];
+  const keep = user.keep_copies;
+  const theyWant = db.prepare(`
+    SELECT w.user_id AS other, col.product_id, col.lang, col.quantity - ? AS extra
+    FROM collection col
+    JOIN wishlist w ON w.product_id = col.product_id AND w.lang = col.lang AND w.user_id != col.user_id
+    JOIN users u ON u.id = w.user_id
+    WHERE col.user_id = ? AND col.quantity > ? AND u.trade_enabled = 1`).all(keep, user.id, keep);
+  const theyHave = tradeOffersFor(user.id);
+
+  const byMember = new Map();
+  const entry = (other) => {
+    if (!byMember.has(other)) byMember.set(other, { other, theyHave: [], theyWant: [] });
+    return byMember.get(other);
+  };
+  for (const r of theyHave) entry(r.other).theyHave.push(r);
+  for (const r of theyWant) entry(r.other).theyWant.push(r);
+  if (!byMember.size) return [];
+
+  const members = [...byMember.values()]
+    .sort((a, b) => b.theyHave.length - a.theyHave.length || b.theyWant.length - a.theyWant.length)
+    .slice(0, 30);
+  const ids = [...new Set(members.flatMap((m) => [...m.theyHave, ...m.theyWant].map((r) => r.product_id)))];
+  const cards = new Map(getCards(viewer, ids).map((c) => [c.id, c]));
+  const people = new Map(db.prepare(`SELECT id, pseudo, trade_contact, trade_region FROM users
+    WHERE id IN (${members.map(() => '?').join(',')})`).all(...members.map((m) => m.other)).map((u) => [u.id, u]));
+  const withCard = (r) => cards.has(r.product_id) && { ...cards.get(r.product_id), tradeLang: r.lang, extra: r.extra };
+  return members.map((m) => {
+    const person = people.get(m.other);
+    return {
+      pseudo: person.pseudo,
+      contact: person.trade_contact ?? '',
+      region: person.trade_region ?? '',
+      theyHave: m.theyHave.map(withCard).filter(Boolean),
+      theyWant: m.theyWant.map(withCard).filter(Boolean),
+    };
+  });
+}
+
 // ---------- Import ----------
 
 // Lecture d'un CSV (séparateur ";" ou ",", champs entre guillemets possibles)

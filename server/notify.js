@@ -4,11 +4,12 @@
 // - chaque appareil abonné est une ligne de push_subscriptions, avec la langue de l'interface au moment de l'abonnement
 // - les notifications partent après la mise à jour quotidienne des prix (voir index.js)
 import webpush from 'web-push';
+import { tradeOffersFor } from './cards.js';
 import { db, getMeta, setMeta } from './db.js';
 import { estimateEurSql, priceJoins, toEur, valueHistory } from './valuation.js';
 
 // Types de notifications, tous activés par défaut ; chaque utilisateur peut les couper (colonne users.notify_prefs)
-export const NOTIFY_TYPES = ['targets', 'weekly'];
+export const NOTIFY_TYPES = ['targets', 'weekly', 'trades'];
 
 const MESSAGES = {
   fr: {
@@ -20,6 +21,10 @@ const MESSAGES = {
     weeklyTop: ' Plus forte hausse : {name} ({gain}).',
     testTitle: 'Notifications activées',
     testBody: 'Tu recevras ici les alertes de tes recherches et le résumé de ta semaine.',
+    tradeOneTitle: 'Échange possible',
+    tradeOneBody: '{pseudo} a en double {name} ({number}), que tu cherches.',
+    tradeManyTitle: 'Échanges possibles',
+    tradeManyBody: "{n} cartes que tu cherches sont en double chez d'autres membres.",
   },
   en: {
     targetOneTitle: 'Target price reached',
@@ -30,6 +35,10 @@ const MESSAGES = {
     weeklyTop: ' Biggest rise: {name} ({gain}).',
     testTitle: 'Notifications enabled',
     testBody: "You'll get your wishlist alerts and your weekly summary here.",
+    tradeOneTitle: 'Trade available',
+    tradeOneBody: '{pseudo} has a spare {name} ({number}), which you are looking for.',
+    tradeManyTitle: 'Trades available',
+    tradeManyBody: '{n} cards you are looking for are spare copies of other members.',
   },
 };
 
@@ -217,6 +226,31 @@ async function weeklyDigest(user) {
   return sent;
 }
 
+// Échanges : cartes recherchées devenues disponibles en double chez un autre participant depuis la dernière alerte
+async function notifyTrades(user) {
+  if (!user.trade_enabled) return 0;
+  const seen = db.prepare('SELECT 1 FROM trade_seen WHERE user_id = ? AND other_id = ? AND product_id = ? AND lang = ?');
+  const fresh = tradeOffersFor(user.id).filter((r) => !seen.get(user.id, r.other, r.product_id, r.lang));
+  if (!fresh.length) return 0;
+  const first = db.prepare('SELECT u.pseudo, c.name, c.name_fr, c.number FROM users u, cards c WHERE u.id = ? AND c.product_id = ?')
+    .get(fresh[0].other, fresh[0].product_id);
+  const cardsCount = new Set(fresh.map((r) => `${r.product_id}|${r.lang}`)).size;
+  const sent = await sendToUser(user.id, (lang) => (cardsCount === 1 && first
+    ? {
+      title: text(lang, 'tradeOneTitle'),
+      body: text(lang, 'tradeOneBody', { pseudo: first.pseudo, name: fresh[0].lang === 'fr' ? first.name_fr ?? first.name : first.name, number: first.number }),
+      url: '#collection/doubles',
+      tag: 'trades',
+    }
+    : { title: text(lang, 'tradeManyTitle'), body: text(lang, 'tradeManyBody', { n: cardsCount }), url: '#collection/doubles', tag: 'trades' }));
+  if (sent) {
+    const mark = db.prepare('INSERT OR IGNORE INTO trade_seen (user_id, other_id, product_id, lang, seen_at) VALUES (?, ?, ?, ?, ?)');
+    const now = new Date().toISOString();
+    for (const r of fresh) mark.run(user.id, r.other, r.product_id, r.lang, now);
+  }
+  return sent;
+}
+
 // Appelé après chaque mise à jour des prix, pour chaque utilisateur qui a au moins un appareil abonné
 export async function notifyAfterSync({ log = console.log } = {}) {
   const users = db.prepare('SELECT * FROM users WHERE id IN (SELECT user_id FROM push_subscriptions)').all();
@@ -226,6 +260,7 @@ export async function notifyAfterSync({ log = console.log } = {}) {
     try {
       if (prefs.targets) sent += await notifyTargets(user);
       if (prefs.weekly) sent += await weeklyDigest(user);
+      if (prefs.trades) sent += await notifyTrades(user);
     } catch (err) {
       log(`Notifications de ${user.pseudo} : ${err.message}`);
     }
