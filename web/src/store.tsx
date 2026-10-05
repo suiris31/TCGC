@@ -26,6 +26,8 @@ interface AppState {
   // Incrémenté à chaque modification de la collection ou des prix : les listes l'utilisent pour se recharger
   version: number;
   cardChanged: (card: Card | null, totals: Totals) => void;
+  // Recherches modifiées : les listes se rechargent et le compteur de cartes sous leur prix cible se met à jour
+  wishChanged: () => void;
   // lang : langue dans laquelle afficher la carte (par défaut la langue de saisie)
   openCard: (id: number, lang?: Lang) => void;
   openedCard: OpenedCard | null;
@@ -100,6 +102,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setVersion((v) => v + 1);
   }, []);
 
+  const wishChanged = useCallback(() => {
+    setVersion((v) => v + 1);
+    refreshStatus();
+  }, [refreshStatus]);
+
   const toast = useCallback((message: string) => {
     setToastMessage(message);
     window.clearTimeout(toastTimer.current);
@@ -108,7 +115,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      user, setUser, status, totals, refreshStatus, version, cardChanged,
+      user, setUser, status, totals, refreshStatus, version, cardChanged, wishChanged,
       openCard, openedCard, closeCard: () => setOpenedCard(null), lang, setLang, uiLang, setUiLang,
       toast, toastMessage,
     }}>

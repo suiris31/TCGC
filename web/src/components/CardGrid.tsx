@@ -38,6 +38,7 @@ export function CardTile({ card, quickAdd = false, dimMissing = false, langMode 
         <img src={cardImage(card, lang)} alt={card.fullName} loading="lazy" onError={hideBroken} />
         {count > 0 && <span className="badge-owned">×{count}</span>}
         {card.entry && <span className="badge-lang">{card.entry.lang.toUpperCase()}</span>}
+        {card.wish && <span className="badge-wish" title={t('wish.badge')} aria-label={t('wish.badge')}>★</span>}
         {quickAdd && (
           <button className="tile-add" onClick={add} aria-label={t('card.addAria', { name: card.fullName, lang: inputLang.toUpperCase() })}>
             <Icon name="plus" size={18} />

@@ -130,6 +130,16 @@ db.exec(`
     low        REAL,
     date       TEXT
   );
+
+  -- Recherches (liste de souhaits) : cartes voulues, langue voulue et prix maximum que l'utilisateur veut payer
+  CREATE TABLE IF NOT EXISTS wishlist (
+    user_id    INTEGER NOT NULL,
+    product_id INTEGER NOT NULL REFERENCES cards(product_id),
+    lang       TEXT NOT NULL DEFAULT 'fr',
+    target_eur REAL,
+    added_at   TEXT NOT NULL,
+    PRIMARY KEY (user_id, product_id)
+  );
 `);
 
 // Migrations des bases créées par une version précédente

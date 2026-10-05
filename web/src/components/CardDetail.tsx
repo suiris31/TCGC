@@ -4,8 +4,10 @@ import { t } from '../i18n';
 import { useApp } from '../store';
 import { hideBroken } from './CardGrid';
 import { Icon } from './Icon';
+import { InsightBox } from './Insight';
 import { LangSwitch } from './LangSwitch';
 import { LineChart } from './LineChart';
+import { WishBox } from './WishBox';
 
 export function CardDetailSheet() {
   const { openedCard, closeCard, openCard, cardChanged, toast, version } = useApp();
@@ -108,6 +110,7 @@ export function CardDetailSheet() {
                   {card.price.cardmarket && (
                     <>
                       <div><dt>{t('price.line.cmTrend')}</dt><dd>{formatEur(card.price.cardmarket.trend)}</dd></div>
+                      <div><dt>{t('price.line.cmAvg7')}</dt><dd>{formatEur(card.price.cardmarket.avg7)}</dd></div>
                       <div><dt>{t('price.line.cmAvg30')}</dt><dd>{formatEur(card.price.cardmarket.avg30)}</dd></div>
                     </>
                   )}
@@ -121,6 +124,9 @@ export function CardDetailSheet() {
                   </p>
                 )}
               </div>
+
+              <InsightBox card={card} />
+              <WishBox card={card} lang={lang} />
 
               <section className="owned-langs">
                 <h3>{t('detail.inCollection')}</h3>

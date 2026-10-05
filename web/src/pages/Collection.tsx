@@ -1,27 +1,16 @@
 import { useEffect, useState } from 'react';
-import { api, formatEur, type Lang, type SetSummary } from '../api';
+import { api, formatEur, type Card, type Lang, type SetSummary } from '../api';
 import { CardGrid, hideBroken } from '../components/CardGrid';
 import { ColorSelect, SearchInput, SetSelect } from '../components/Filters';
 import { Icon } from '../components/Icon';
 import { locale, t, type MessageKey } from '../i18n';
+import { readPref, writePref } from '../prefs';
 import { useApp } from '../store';
 import { useCards } from '../useCards';
+import { Wishlist } from './Wishlist';
 
-type View = 'sets' | 'cards';
-
-// Préférences d'affichage retenues sur l'appareil
-function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
-  try {
-    const value = localStorage.getItem(key) as T | null;
-    return value && allowed.includes(value) ? value : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writePref(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch { /* stockage indisponible */ }
-}
+const VIEWS = ['sets', 'cards', 'wishlist'] as const;
+type View = typeof VIEWS[number];
 
 // Un set ouvert a sa propre adresse (#collection/set/<id>) : le bouton retour du téléphone ramène à la liste
 function setFromHash() {
@@ -30,8 +19,9 @@ function setFromHash() {
 }
 
 export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse: () => void }) {
-  const { totals } = useApp();
-  const [view, setView] = useState<View>(() => readPref('tcgc.collectionView', ['sets', 'cards'] as const, 'sets'));
+  const { totals, status } = useApp();
+  const [view, setView] = useState<View>(() => readPref('tcgc.collectionView', VIEWS, 'sets'));
+  const reached = status?.wishlist.reached ?? 0;
   const [setId, setSetId] = useState<number | null>(setFromHash);
 
   useEffect(() => {
@@ -65,17 +55,18 @@ export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse:
 
   return (
     <div className="page">
-      <div className="segmented view-switch" role="tablist">
-        {(['sets', 'cards'] as const).map((value) => (
+      <div className="segmented segmented-3 view-switch" role="tablist">
+        {VIEWS.map((value) => (
           <button key={value} role="tab" aria-selected={view === value}
             className={view === value ? 'segment segment-on' : 'segment'} onClick={() => changeView(value)}>
             {t(`collection.view.${value}`)}
+            {value === 'wishlist' && reached > 0 && <span className="segment-badge">{reached}</span>}
           </button>
         ))}
       </div>
-      {view === 'sets'
-        ? <SetList onOpen={(id) => { window.location.hash = `collection/set/${id}`; }} />
-        : <AllCards />}
+      {view === 'sets' && <SetList onOpen={(id) => { window.location.hash = `collection/set/${id}`; }} />}
+      {view === 'cards' && <AllCards />}
+      {view === 'wishlist' && <Wishlist />}
     </div>
   );
 }
@@ -175,26 +166,61 @@ function SetTile({ set, onOpen }: { set: SetSummary; onOpen: () => void }) {
 const SET_SORTS = [
   ['number', 'sort.number'],
   ['price', 'sort.price'],
+  ['price-asc', 'sort.priceAsc'],
   ['color', 'sort.color'],
   ['rarity', 'sort.rarity'],
   ['name', 'sort.name'],
 ] as const satisfies readonly (readonly [string, MessageKey])[];
 
+const SET_FILTERS = ['all', 'owned', 'missing'] as const;
+type SetFilter = typeof SET_FILTERS[number];
+
+// Cartes affichées dans un set ; reprend l'ancien réglage « Cartes manquantes » (interrupteur) s'il existe
+function readSetFilter(): SetFilter {
+  const legacy = readPref('tcgc.showMissing', ['1', '0'] as const, '1') === '0' ? 'owned' : 'all';
+  return readPref('tcgc.setFilter', SET_FILTERS, legacy);
+}
+
+// Nombre de cartes les plus chères mises à part dans le coût pour compléter un set
+const TOP_MISSING = 3;
+
 function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
-  const { version } = useApp();
+  const { version, lang, toast, wishChanged } = useApp();
   const [summary, setSummary] = useState<SetSummary | null>(null);
-  const [showMissing, setShowMissing] = useState(() => readPref('tcgc.showMissing', ['1', '0'] as const, '1') === '1');
+  const [missing, setMissing] = useState<Card[] | null>(null);
+  const [filter, setFilter] = useState<SetFilter>(readSetFilter);
   const [sort, setSort] = useState('number');
+  const [wishing, setWishing] = useState(false);
   const { cards, total, loading, hasMore, loadMore } = useCards(
-    { set: String(setId), sort, status: showMissing ? undefined : 'owned' },
+    { set: String(setId), sort, status: filter === 'all' ? undefined : filter },
     { pageSize: 250 },
   );
 
   useEffect(() => {
     let cancelled = false;
     api.collectionSets(true).then((list) => { if (!cancelled) setSummary(list.find((s) => s.id === setId) ?? null); }).catch(() => {});
+    // Cartes manquantes, de la plus chère à la moins chère : coût pour compléter le set
+    api.cards({ set: String(setId), status: 'missing', sort: 'price', limit: 500 })
+      .then((res) => { if (!cancelled) setMissing(res.cards); }).catch(() => {});
     return () => { cancelled = true; };
   }, [setId, version]);
+
+  const missingTotal = missing?.reduce((sum, c) => sum + (c.price.eur ?? 0), 0) ?? 0;
+  const withoutTop = missing?.slice(TOP_MISSING).reduce((sum, c) => sum + (c.price.eur ?? 0), 0) ?? 0;
+  const notWished = missing?.filter((c) => !c.wish).length ?? 0;
+
+  const wishAll = async () => {
+    setWishing(true);
+    try {
+      const { added } = await api.wishMissing(setId, lang);
+      wishChanged();
+      toast(t('set.wishedMissing', { n: added }));
+    } catch (err) {
+      toast((err as Error).message);
+    } finally {
+      setWishing(false);
+    }
+  };
 
   useEffect(() => { window.scrollTo(0, 0); }, [setId]);
 
@@ -214,19 +240,38 @@ function SetDetail({ setId, onBack }: { setId: number; onBack: () => void }) {
             <Progress owned={summary.owned} total={summary.total} />
           </>
         )}
+        {missing && missing.length > 0 && (
+          <div className="set-missing">
+            <div>
+              <strong>{t('set.missing', { n: missing.length })}</strong>
+              <span className="muted"> · {t('set.missingValue', { value: formatEur(missingTotal, true) })}</span>
+            </div>
+            {missing.length > TOP_MISSING + 2 && (
+              <div className="muted small">{t('set.missingWithoutTop', { value: formatEur(withoutTop, true), n: TOP_MISSING })}</div>
+            )}
+            {notWished > 0 ? (
+              <button className="btn btn-ghost btn-sm" onClick={wishAll} disabled={wishing}>
+                <span aria-hidden="true">☆</span> {t('set.wishMissing', { n: notWished })}
+              </button>
+            ) : (
+              <div className="muted small"><span aria-hidden="true">★</span> {t('set.allWished')}</div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="list-head">
-        <Toggle checked={showMissing} onChange={(v) => { setShowMissing(v); writePref('tcgc.showMissing', v ? '1' : '0'); }}>
-          {t('set.showMissing')}
-        </Toggle>
+        <select className="select" value={filter} aria-label={t('set.filter')}
+          onChange={(e) => { setFilter(e.target.value as SetFilter); writePref('tcgc.setFilter', e.target.value); }}>
+          {SET_FILTERS.map((value) => <option key={value} value={value}>{t(`set.filter.${value}`)}</option>)}
+        </select>
         <select className="select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={t('common.sort')}>
           {SET_SORTS.map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
         </select>
       </div>
 
       {loading && cards.length === 0 && <div className="center"><div className="spinner" /></div>}
-      {!loading && total === 0 && <p className="muted center-text">{t('set.empty')}</p>}
+      {!loading && total === 0 && filter === 'owned' && <p className="muted center-text">{t('set.empty')}</p>}
       <CardGrid cards={cards} quickAdd dimMissing langMode="owned" />
       {hasMore && <button className="btn btn-ghost btn-block" onClick={loadMore} disabled={loading}>{t('common.loadMore')}</button>}
     </div>

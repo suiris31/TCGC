@@ -8,7 +8,7 @@ import { config } from './config.js';
 import { getMeta } from './db.js';
 import {
   addToCollection, collectionCsv, collectionSets, collectionStats, getCardDetail, getCards, importCollection, LANGS, listSets,
-  searchCards, setQuantity, viewerOf,
+  removeWish, searchCards, setQuantity, setWish, viewerOf, wishlist, wishlistCounts, wishMissing,
 } from './cards.js';
 import { downloadThumb, thumbPath } from './images.js';
 import { buildIndex, identify, indexStatus } from './scan.js';
@@ -101,6 +101,7 @@ app.get('/api/status', (req, res) => {
     scan: indexStatus(),
     error: lastError,
     totals: collectionTotals(req.user.id, req.user.price_source),
+    wishlist: wishlistCounts(viewerOf(req.user)),
   });
 });
 
@@ -171,6 +172,34 @@ app.post('/api/collection/:id/add', (req, res) => {
   logChange(card, lang, req);
   snapshotCollectionValue(req.user.id);
   res.json({ card, totals: collectionTotals(req.user.id, req.user.price_source) });
+});
+
+// ---------- Recherches (liste de souhaits) ----------
+
+app.get('/api/wishlist', (req, res) => res.json(wishlist(viewerOf(req.user))));
+
+// targetEur : prix cible en € (null : aucun) ; absent : prix cible proposé pour une nouvelle recherche
+app.put('/api/wishlist/:id', (req, res) => {
+  const raw = req.body?.targetEur;
+  const targetEur = raw === undefined || raw === null ? raw : Number(raw);
+  const card = setWish(viewerOf(req.user), Number(req.params.id), { lang: req.body?.lang, targetEur });
+  if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
+  res.json({ card });
+});
+
+app.delete('/api/wishlist/:id', (req, res) => {
+  const card = removeWish(viewerOf(req.user), Number(req.params.id));
+  if (!card) return res.status(404).json({ code: 'unknown_card', error: 'Carte inconnue' });
+  res.json({ card });
+});
+
+// Toutes les cartes manquantes d'un set dans les recherches
+app.post('/api/wishlist/missing/:setId', (req, res) => {
+  const lang = langOf(req);
+  if (!lang) return res.status(400).json({ code: 'invalid_lang', error: 'Langue invalide' });
+  const added = wishMissing(viewerOf(req.user), Number(req.params.setId), lang);
+  log(`Recherches de ${req.user.pseudo} : ${added} cartes manquantes du set ${req.params.setId} ajoutées`);
+  res.json({ added });
 });
 
 app.get('/api/stats', (req, res) => {

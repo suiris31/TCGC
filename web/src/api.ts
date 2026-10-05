@@ -24,6 +24,7 @@ export interface Price {
     eur: number;
     basis: 'trend' | 'avg30' | 'avg7';
     trend: number | null;
+    avg7: number | null;
     avg30: number | null;
     low: number | null;
     date: string | null;
@@ -36,6 +37,26 @@ export interface Price {
     lowEur: number | null;
     date: string | null;
   } | null;
+}
+
+// Bon moment pour acheter ? (calculé par le serveur, voir server/insight.js)
+export type InsightKind = 'upcoming' | 'new' | 'new-falling' | 'rising' | 'falling' | 'good' | 'stable' | 'cheap';
+
+export interface Insight {
+  kind: InsightKind | null;
+  // variation récente du prix (−0,15 = −15 %) pour new-falling, rising, falling et good
+  change: number | null;
+  // semaines depuis la sortie du set (ou avant sa sortie)
+  weeks: number | null;
+  // prix cible proposé pour une liste de souhaits
+  target: number | null;
+}
+
+// Carte dans les recherches (liste de souhaits)
+export interface Wish {
+  lang: Lang;
+  targetEur: number | null;
+  addedAt: string;
 }
 
 export interface Card {
@@ -65,6 +86,8 @@ export interface Card {
   tcgplayerUrl: string | null;
   cardmarketUrl: string | null;
   price: Price;
+  insight: Insight | null;
+  wish: Wish | null;
   // Exemplaires possédés, toutes langues confondues et par langue
   owned: number;
   ownedByLang: Record<Lang, number>;
@@ -94,6 +117,8 @@ export interface Status {
   scan: { indexed: number; total: number; building: boolean };
   error: string | null;
   totals: Totals;
+  // reached : cartes recherchées dont le prix est passé sous le prix cible
+  wishlist: { count: number; reached: number };
 }
 
 export interface SetInfo {
@@ -197,6 +222,12 @@ export const api = {
   add: (id: number, delta: number, lang: Lang) =>
     request<{ card: Card; totals: Totals }>(`api/collection/${id}/add`, json('POST', { delta, lang })),
   stats: () => request<Stats>('api/stats'),
+  wishlist: () => request<{ cards: Card[]; deals: Card[] }>('api/wishlist'),
+  // targetEur absent : prix cible proposé ; null : aucun prix cible
+  wish: (id: number, body: { lang?: Lang; targetEur?: number | null }) =>
+    request<{ card: Card }>(`api/wishlist/${id}`, json('PUT', body)),
+  unwish: (id: number) => request<{ card: Card }>(`api/wishlist/${id}`, { method: 'DELETE' }),
+  wishMissing: (setId: number, lang: Lang) => request<{ added: number }>(`api/wishlist/missing/${setId}`, json('POST', { lang })),
   importCollection: (csv: string) =>
     request<{ cards: number; copies: number; skipped: number; totals: Totals }>('api/collection/import', {
       method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: csv,
@@ -232,6 +263,11 @@ export function cardImage(card: Card, lang: Lang) {
 
 export function cardImageLarge(card: Card, lang: Lang) {
   return lang === 'fr' && card.imageFrLarge ? card.imageFrLarge : card.imageLarge;
+}
+
+// "−15 %" en français, "−15%" en anglais (signe toujours affiché)
+export function formatPct(ratio: number) {
+  return new Intl.NumberFormat(locale(), { style: 'percent', maximumFractionDigits: 0, signDisplay: 'exceptZero' }).format(ratio);
 }
 
 export function formatDate(iso: string | null | undefined) {

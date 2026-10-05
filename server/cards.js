@@ -2,6 +2,7 @@
 // viewer = { userId, source } : l'utilisateur connecté (sa collection) et sa source de prix
 import { db, transaction } from './db.js';
 import { cdnImage } from './images.js';
+import { priceInsight } from './insight.js';
 import { estimateEurSql, priceJoins, toEur, valueHistory } from './valuation.js';
 
 // Langues dans lesquelles on peut posséder une carte
@@ -29,8 +30,18 @@ function cardColumns(viewer, entries = false) {
   cm.trend AS cm_trend, cm.avg30 AS cm_avg30, cm.avg7 AS cm_avg7, cm.low AS cm_low, cm.date AS cm_date,
   ${estimateEurSql(viewer.source)} AS estimate_eur,
   (SELECT MIN(f.image_id) FROM fr_cards f WHERE f.product_id = c.product_id) AS fr_image,
-  own.owned, own.owned_fr, own.owned_en
+  ${priceTwoWeeksAgo('cm', 'cm.date')} AS cm_14d,
+  ${priceTwoWeeksAgo('market', 'p.date')} AS tcg_14d,
+  own.owned, own.owned_fr, own.owned_en,
+  w.lang AS wish_lang, w.target_eur AS wish_target, w.added_at AS wish_added
   ${entries ? ', col.lang AS entry_lang, col.quantity AS entry_quantity' : ''}`;
+}
+
+// Prix enregistré environ 14 jours avant le dernier prix connu (pour mesurer la variation récente)
+function priceTwoWeeksAgo(column, dateColumn) {
+  return `(SELECT h.${column} FROM price_history h WHERE h.product_id = c.product_id AND h.${column} IS NOT NULL
+    AND h.date BETWEEN date(${dateColumn}, '-17 days') AND date(${dateColumn}, '-11 days')
+    ORDER BY ABS(julianday(h.date) - julianday(${dateColumn}, '-14 days')) LIMIT 1)`;
 }
 
 // Quantités possédées par l'utilisateur pour chaque carte, toutes langues confondues et par langue
@@ -50,6 +61,7 @@ function cardFrom(viewer, entries = false) {
   JOIN sets s ON s.group_id = c.group_id
   ${priceJoins('c.product_id')}
   ${ownedJoin(viewer)}
+  LEFT JOIN wishlist w ON w.product_id = c.product_id AND w.user_id = ${uid(viewer)}
   ${entries ? `JOIN collection col ON col.product_id = c.product_id AND col.user_id = ${uid(viewer)}` : ''}`;
 }
 
@@ -60,6 +72,7 @@ function formatPrice(row, viewer) {
     eur: cmEur,
     basis: row.cm_trend != null ? 'trend' : row.cm_avg30 != null ? 'avg30' : 'avg7',
     trend: row.cm_trend,
+    avg7: row.cm_avg7,
     avg30: row.cm_avg30,
     low: row.cm_low,
     date: row.cm_date,
@@ -79,6 +92,7 @@ function formatPrice(row, viewer) {
 }
 
 export function formatCard(row, viewer) {
+  const price = formatPrice(row, viewer);
   return {
     id: row.product_id,
     name: row.name,
@@ -108,11 +122,15 @@ export function formatCard(row, viewer) {
     cardmarketUrl: row.number && row.number !== 'DON!!'
       ? `https://www.cardmarket.com/fr/OnePiece/Products/Search?searchString=${encodeURIComponent(row.number)}`
       : null,
-    price: formatPrice(row, viewer),
+    price,
+    // Bon moment pour l'acheter ? (voir insight.js)
+    insight: priceInsight(row, price.eur),
     owned: row.owned ?? 0,
     ownedByLang: { fr: row.owned_fr ?? 0, en: row.owned_en ?? 0 },
     // Vue collection : la langue et la quantité de cet exemplaire
     entry: row.entry_lang ? { lang: row.entry_lang, quantity: row.entry_quantity } : null,
+    // Carte dans les recherches de l'utilisateur
+    wish: row.wish_added ? { lang: row.wish_lang, targetEur: row.wish_target, addedAt: row.wish_added } : null,
   };
 }
 
@@ -294,6 +312,8 @@ export function setQuantity(viewer, productId, quantity, lang = 'fr') {
     db.prepare(`INSERT INTO collection (user_id, product_id, lang, quantity, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id, product_id, lang) DO UPDATE SET quantity = excluded.quantity, updated_at = excluded.updated_at`)
       .run(uid(viewer), productId, lang, quantity, now, now);
+    // Carte trouvée : elle sort des recherches si elle y était dans cette langue
+    db.prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ? AND lang = ?').run(uid(viewer), productId, lang);
   }
   return getCard(viewer, productId);
 }
@@ -343,6 +363,73 @@ export function collectionCsv(viewer, uiLang = 'fr') {
       quantity, c.price.eur, total, c.price.source, c.price.cardmarket?.trend ?? null, c.price.tcgplayer?.eur ?? null, String(c.id)]);
   }
   return lines.map((l) => l.map(esc).join(sep)).join('\r\n');
+}
+
+// ---------- Recherches (liste de souhaits) ----------
+
+function invalid(code, message) {
+  return Object.assign(new Error(message), { status: 400, expose: true, code });
+}
+
+// Les cartes recherchées, et les bonnes affaires parmi les cartes manquantes des sets commencés : au moins 10 % sous
+// leur moyenne du mois et prix qui ne baisse plus (voir insight.js), à partir d'1 €
+export function wishlist(viewer) {
+  const cards = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)} WHERE w.product_id IS NOT NULL
+    ORDER BY w.added_at DESC, c.number`).all().map((r) => formatCard(r, viewer));
+  const deals = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)}
+    WHERE own.owned IS NULL AND w.product_id IS NULL AND cm.trend >= 1 AND cm.trend <= cm.avg30 * 0.9
+      AND c.group_id IN (SELECT k.group_id FROM collection col JOIN cards k ON k.product_id = col.product_id WHERE col.user_id = ?)`)
+    .all(uid(viewer))
+    .map((r) => formatCard(r, viewer))
+    .filter((c) => c.insight?.kind === 'good')
+    .sort((a, b) => a.insight.change - b.insight.change)
+    .slice(0, 24);
+  return { cards, deals };
+}
+
+// Nombre de cartes recherchées et, parmi elles, celles dont le prix est passé sous le prix cible
+export function wishlistCounts(viewer) {
+  const row = db.prepare(`
+    SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN w.target_eur IS NOT NULL AND ${estimateEurSql(viewer.source)} <= w.target_eur
+      THEN 1 ELSE 0 END), 0) AS reached
+    FROM wishlist w ${priceJoins('w.product_id')}
+    WHERE w.user_id = ?`).get(uid(viewer));
+  return { count: row.n, reached: row.reached };
+}
+
+// Ajoute une carte aux recherches ou modifie sa langue / son prix cible (null : pas de prix cible).
+// Sans prix cible précisé, une nouvelle recherche prend le prix cible proposé par insight.js
+export function setWish(viewer, productId, { lang, targetEur } = {}) {
+  const card = getCard(viewer, productId);
+  if (!card) return null;
+  const nextLang = lang ?? card.wish?.lang ?? 'fr';
+  if (!LANGS.includes(nextLang)) throw invalid('invalid_lang', 'Langue invalide');
+  if (targetEur !== undefined && targetEur !== null && !(Number.isFinite(targetEur) && targetEur > 0 && targetEur <= 100000)) {
+    throw invalid('invalid_target', 'Prix cible invalide');
+  }
+  const target = targetEur !== undefined ? targetEur : card.wish ? card.wish.targetEur : card.insight?.target ?? null;
+  db.prepare(`INSERT INTO wishlist (user_id, product_id, lang, target_eur, added_at) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, product_id) DO UPDATE SET lang = excluded.lang, target_eur = excluded.target_eur`)
+    .run(uid(viewer), productId, nextLang, target == null ? null : Math.round(target * 100) / 100, new Date().toISOString());
+  return getCard(viewer, productId);
+}
+
+export function removeWish(viewer, productId) {
+  db.prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?').run(uid(viewer), productId);
+  return getCard(viewer, productId);
+}
+
+// Toutes les cartes manquantes d'un set (pas encore possédées ni recherchées) passent dans les recherches
+export function wishMissing(viewer, groupId, lang = 'fr') {
+  if (!LANGS.includes(lang)) throw invalid('invalid_lang', 'Langue invalide');
+  const cards = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)}
+    WHERE c.group_id = ? AND own.owned IS NULL AND w.product_id IS NULL`).all(groupId).map((r) => formatCard(r, viewer));
+  const insert = db.prepare('INSERT INTO wishlist (user_id, product_id, lang, target_eur, added_at) VALUES (?, ?, ?, ?, ?)');
+  const now = new Date().toISOString();
+  transaction(() => {
+    for (const card of cards) insert.run(uid(viewer), card.id, lang, card.insight?.target ?? null, now);
+  });
+  return cards.length;
 }
 
 // ---------- Import ----------

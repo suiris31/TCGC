@@ -95,10 +95,33 @@ the viewfinder, ~94% in photo mode, and is almost always among the suggestions.
 - **By set**: each expansion with your most valuable card as its cover, how many of its cards you own out of the
   total (all printings: regular, parallel, manga...), your progress and the value. "All sets" also shows the
   ones you don't own anything from yet.
-- **Inside a set**: all its cards, in color if you own them, grayed out otherwise (toggle "missing cards" to hide
-  them). The + button adds a missing card directly.
-- **All my cards**: every copy you own, sortable by value, number, set, color, rarity, name or date added, and
+- **Inside a set**: all its cards, in color if you own them, grayed out otherwise (show all / owned / missing).
+  The + button adds a missing card directly. At the top, the cost to complete the set ("23 cards missing,
+  ≈ €87 in total", and without the 3 most expensive) and a button to add every missing card to your wishlist.
+- **My cards**: every copy you own, sortable by value, number, set, color, rarity, name or date added, and
   filterable by set, color and language.
+- **Wishlist**: the cards you want, each with a **target price** (the most you are willing to pay, to copy into
+  your Cardmarket wants list). At the top, the cards whose price dropped below their target (green badge on the
+  Collection tab), then **deals** among the cards missing from your sets: at least 10% below their monthly
+  average, at a level confirmed over the week. A card added to your collection in the wanted language leaves
+  the wishlist.
+
+### Good time to buy?
+
+Each card's page tells where its price stands, from Cardmarket prices (trend, 7- and 30-day averages), the
+history the app records every day and the set release date (`server/insight.js`):
+
+| Badge | When | Advice |
+|---|---|---|
+| Wait | set less than 5 months old whose price is still falling | cards in this situation are usually much cheaper 2 months later |
+| New release | set released less than 8 weeks ago | prices move a lot, no rush |
+| Rising | +15% or more recently | the price moves fast, compare listings |
+| Falling | −10% or more and still falling, or a sudden drop | no rush |
+| Good price | at least 10% below the monthly average, level confirmed over the week | a good time if you want it |
+| Stable price / Cheap | otherwise / under €1 | |
+
+These are hints, not predictions: Cardmarket prices mix all languages and conditions. The suggested target
+price is about 10% below recent prices (20% when the price is falling or the set is new); you set the final one.
 
 ### French and English printings
 

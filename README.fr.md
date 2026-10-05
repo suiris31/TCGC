@@ -81,10 +81,36 @@ Astuce : donne une IP fixe au PC dans ta box (bail DHCP statique) pour que l'adr
 - **Par set** : chaque extension avec sa carte la plus chère en illustration, le nombre de cartes
   possédées sur le total (toutes versions : normale, parallèle, manga...), la progression et la valeur.
   « Tous les sets » affiche aussi ceux dont tu n'as encore rien.
-- **Un set** : toutes ses cartes, en couleur si tu les as, grisées sinon (interrupteur « Cartes manquantes »
-  pour les masquer). Le bouton + ajoute directement une carte manquante.
-- **Toutes mes cartes** : tous les exemplaires, triables par valeur, numéro, set, couleur, rareté, nom ou
+- **Un set** : toutes ses cartes, en couleur si tu les as, grisées sinon (choix Toutes / Possédées /
+  Manquantes). Le bouton + ajoute directement une carte manquante. En haut, le coût pour compléter le set
+  (« Il te manque 23 cartes, ≈ 87 € au total », et sans les 3 plus chères) et un bouton pour ajouter toutes
+  les manquantes à tes recherches.
+- **Mes cartes** : tous les exemplaires, triables par valeur, numéro, set, couleur, rareté, nom ou
   date d'ajout, et filtrables par set, couleur et langue.
+- **Recherches** : les cartes que tu veux, chacune avec un **prix cible** (le prix maximum que tu veux
+  payer, à reporter dans ta liste de souhaits Cardmarket). En haut, les cartes passées sous leur prix cible
+  (pastille verte sur l'onglet Collection), puis les **bonnes affaires** parmi les cartes qui te manquent dans
+  tes sets : au moins 10 % sous leur moyenne du mois, à un niveau confirmé sur la semaine. Une carte ajoutée
+  à la collection dans la langue recherchée sort des recherches.
+
+## Bon moment pour acheter ?
+
+La fiche de chaque carte indique où en est son prix, à partir des prix Cardmarket (tendance, moyennes 7 et
+30 jours), de l'historique enregistré chaque jour par l'appli et de la date de sortie du set
+(`server/insight.js`) :
+
+| Badge | Quand | Conseil |
+|---|---|---|
+| Patiente | set de moins de 5 mois dont le prix baisse encore | les cartes dans ce cas sont le plus souvent nettement moins chères 2 mois plus tard |
+| Nouveauté | set sorti il y a moins de 8 semaines | les prix bougent beaucoup, rien ne presse |
+| En hausse | +15 % ou plus récemment | le prix bouge vite, comparer les annonces |
+| En baisse | −10 % ou plus et la baisse continue, ou chute brutale | rien ne presse |
+| Bon prix | au moins 10 % sous la moyenne du mois, niveau confirmé sur la semaine | bon moment si on la veut |
+| Prix stable / Petit prix | sinon / moins d'1 € | |
+
+Ce sont des indications, pas des prédictions : les prix Cardmarket mélangent toutes les langues et tous les
+états. Le prix cible proposé est environ 10 % sous les prix récents (20 % quand le prix baisse ou que le set
+est récent) ; c'est toi qui le fixes.
 
 ## Langues (VF / VO)
 

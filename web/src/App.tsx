@@ -28,7 +28,9 @@ function readTab(): Tab {
 
 function Shell() {
   const [tab, setTab] = useState<Tab>(readTab);
-  const { totals, openedCard } = useApp();
+  const { totals, openedCard, status } = useApp();
+  // Cartes recherchées passées sous leur prix cible : pastille sur l'onglet Collection
+  const reached = status?.wishlist.reached ?? 0;
 
   useEffect(() => {
     const onHash = () => setTab(readTab());
@@ -71,6 +73,7 @@ function Shell() {
           <button key={item.id} className={item.id === tab ? 'tab tab-active' : 'tab'} onClick={() => go(item.id)}>
             <Icon name={item.icon} />
             <span>{t(`tab.${item.id}`)}</span>
+            {item.id === 'collection' && reached > 0 && <span className="tab-badge">{reached}</span>}
           </button>
         ))}
       </nav>
