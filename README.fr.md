@@ -60,7 +60,12 @@ ex. `mailto:toi@exemple.fr` ; par défaut la page GitHub du projet).
   machine.
 - Mots de passe hachés avec scrypt ; sessions = jetons aléatoires dans un cookie HttpOnly (seul leur hachage est
   stocké) ; tentatives de connexion et d'inscription limitées ; requêtes venant d'autres sites refusées.
-- Pas encore disponible : vérification de l'adresse e-mail et réinitialisation du mot de passe par e-mail.
+- **Mot de passe oublié** : un lien à usage unique, valable 1 heure, envoyé par e-mail. Renseigne `SMTP_URL` (ex.
+  `smtps://adresse%40exemple.fr:motdepasse@ssl0.ovh.net:465`), `MAIL_FROM` et `PUBLIC_URL` (adresse publique de
+  l'appli, utilisée dans le lien ; jamais déduite de la requête). Sans eux, le lien « Mot de passe oublié ? » est masqué.
+  `SMTP_URL=log` écrit les e-mails dans le journal au lieu de les envoyer (essais en local). Sur un serveur, mets ces
+  réglages privés dans `/opt/tcgc/tcgc.env` (voir `deploy/tcgc.env.example`), lu par le service systemd.
+- Pas encore disponible : vérification de l'adresse e-mail.
 - Le catalogue et les prix sont communs à tous les comptes ; la mise à jour manuelle des prix est limitée à une
   fois par heure, et chaque compte peut scanner jusqu'à 60 cartes par minute.
 

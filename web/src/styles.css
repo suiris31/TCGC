@@ -218,6 +218,7 @@ h3 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
 .field input:focus { border-color: var(--accent); }
 .password-row { display: flex; align-items: center; gap: 10px; }
 .password-row input { flex: 1; min-width: 0; }
+.center-link { align-self: center; }
 .form-error { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; background: rgba(226, 85, 74, 0.12); color: #ff9b92; border: 1px solid rgba(226, 85, 74, 0.35); }
 
 /* ---------- Profil ---------- */

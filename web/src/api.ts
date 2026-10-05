@@ -290,6 +290,9 @@ export const api = {
   login: (identifier: string, password: string) =>
     request<{ user: User }>('api/auth/login', json('POST', { identifier, password })),
   logout: () => request<{ ok: boolean }>('api/auth/logout', { method: 'POST' }),
+  authConfig: () => request<{ passwordReset: boolean }>('api/auth/config'),
+  forgotPassword: (email: string, lang: string) => request<{ ok: boolean }>('api/auth/forgot', json('POST', { email, lang })),
+  resetPassword: (token: string, password: string) => request<{ user: User }>('api/auth/reset', json('POST', { token, password })),
   deleteAccount: (password: string) => request<{ ok: boolean }>('api/auth/account', json('DELETE', { password })),
   status: () => request<Status>('api/status'),
   sync: () => request<{ started: boolean }>('api/sync', { method: 'POST' }),

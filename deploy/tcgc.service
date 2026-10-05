@@ -18,6 +18,8 @@ Environment=HOST=127.0.0.1
 Environment=PORT=3001
 # Sous-dossier public de l'appli (https://exemple.fr/tcgc) ; laisser vide si servie à la racine d'un domaine
 Environment=PUBLIC_PATH=/tcgc
+# Réglages privés (e-mails, adresse publique...) hors du dépôt : voir deploy/tcgc.env.example ("-" : facultatif)
+EnvironmentFile=-/opt/tcgc/tcgc.env
 ExecStart=/opt/tcgc/node/bin/node --no-warnings=ExperimentalWarning server/index.js
 Restart=on-failure
 RestartSec=5

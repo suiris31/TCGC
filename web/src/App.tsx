@@ -7,6 +7,7 @@ import { AuthPage } from './pages/Auth';
 import { Catalog } from './pages/Catalog';
 import { Collection } from './pages/Collection';
 import { ProfilePage } from './pages/Profile';
+import { ResetPage } from './pages/Reset';
 import { Scanner } from './pages/Scanner';
 import { SharedPage } from './pages/Shared';
 import { StatsPage } from './pages/Stats';
@@ -87,28 +88,35 @@ function Shell() {
   );
 }
 
-// Lien de partage : #partage/<jeton>
-function readShareToken() {
-  const m = window.location.hash.match(/^#(?:partage|share)\/([A-Za-z0-9_-]+)/);
-  return m ? m[1] : null;
+// Pages accessibles sans être connecté : lien de partage (#partage/<jeton>), lien de réinitialisation du mot de
+// passe reçu par e-mail (#reset/<jeton>)
+type SpecialRoute = { kind: 'share' | 'reset'; token: string } | null;
+
+function readRoute(): SpecialRoute {
+  const share = window.location.hash.match(/^#(?:partage|share)\/([A-Za-z0-9_-]+)/);
+  if (share) return { kind: 'share', token: share[1] };
+  const reset = window.location.hash.match(/^#reset\/([A-Za-z0-9_-]+)/);
+  return reset ? { kind: 'reset', token: reset[1] } : null;
 }
 
 // Page publique d'un lien de partage (avec ou sans compte), sinon page d'accueil (connexion / inscription) tant qu'on
 // n'est pas connecté, sinon l'appli. Changer de langue d'interface ou de compte redessine toute l'appli.
 function Gate() {
   const { user, uiLang, toastMessage } = useApp();
-  const [shareToken, setShareToken] = useState(readShareToken);
+  const [route, setRoute] = useState(readRoute);
 
   useEffect(() => {
-    const onHash = () => setShareToken(readShareToken());
+    const onHash = () => setRoute(readRoute());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
   return (
     <>
-      {shareToken ? (
-        <SharedPage key={shareToken} token={shareToken} />
+      {route?.kind === 'share' ? (
+        <SharedPage key={route.token} token={route.token} />
+      ) : route?.kind === 'reset' ? (
+        <ResetPage key={`${uiLang}-${route.token}`} token={route.token} />
       ) : user === undefined ? (
         <div className="center splash"><div className="spinner" /></div>
       ) : user === null ? (

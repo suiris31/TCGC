@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { LangSwitch } from '../components/LangSwitch';
 import { t } from '../i18n';
 import { useApp } from '../store';
 
-type Mode = 'login' | 'signup';
+type Mode = 'login' | 'signup' | 'forgot';
 
 // Page d'accueil pour les visiteurs non connectés : connexion ou création de compte
 export function AuthPage() {
@@ -17,10 +17,30 @@ export function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Mot de passe oublié : proposé seulement si le site sait envoyer des e-mails
+  const [canReset, setCanReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  useEffect(() => { api.authConfig().then((c) => setCanReset(c.passwordReset)).catch(() => {}); }, []);
 
   const switchMode = (next: Mode) => {
     setMode(next);
     setError(null);
+    setResetSent(false);
+  };
+
+  const forgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api.forgotPassword(email, uiLang);
+      setResetSent(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -50,6 +70,26 @@ export function AuthPage() {
         <p className="muted">{t('auth.tagline')}</p>
       </div>
 
+      {mode === 'forgot' ? (
+        <div className="auth-card">
+          <h3 className="flush">{t('auth.forgotTitle')}</h3>
+          {resetSent ? (
+            <p className="flush">{t('auth.forgotSent')}</p>
+          ) : (
+            <form className="auth-form" onSubmit={forgot}>
+              <p className="muted small flush">{t('auth.forgotText')}</p>
+              <label className="field">
+                <span>{t('auth.email')}</span>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email"
+                  autoCapitalize="off" spellCheck={false} required autoFocus />
+              </label>
+              {error && <p className="form-error" role="alert">{error}</p>}
+              <button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy ? '…' : t('auth.forgotSubmit')}</button>
+            </form>
+          )}
+          <button className="link center-link" onClick={() => switchMode('login')}>{t('auth.backToLogin')}</button>
+        </div>
+      ) : (
       <div className="auth-card">
         <div className="segmented" role="tablist">
           {(['login', 'signup'] as const).map((m) => (
@@ -102,7 +142,11 @@ export function AuthPage() {
             {busy ? '…' : t(mode === 'login' ? 'auth.submitLogin' : 'auth.submitSignup')}
           </button>
         </form>
+        {mode === 'login' && canReset && (
+          <button className="link center-link" onClick={() => switchMode('forgot')}>{t('auth.forgot')}</button>
+        )}
       </div>
+      )}
     </div>
   );
 }

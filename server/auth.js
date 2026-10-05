@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { promisify } from 'node:util';
 import { config } from './config.js';
 import { db, LEGACY_USER, transaction } from './db.js';
+import { mailConfigured, publicUrl, sendMail } from './mail.js';
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -173,6 +174,62 @@ export function logout(req, res) {
   setSessionCookie(req, res, '', 0);
 }
 
+// ---------- Mot de passe oublié ----------
+
+const RESET_MINUTES = 60;
+
+const RESET_MAIL = {
+  fr: {
+    subject: 'Ma Collection : réinitialisation du mot de passe',
+    text: "Bonjour {pseudo},\n\nTu as demandé à changer le mot de passe de ton compte Ma Collection. Ouvre ce lien pour en choisir un nouveau (valable 1 heure) :\n\n{link}\n\nSi tu n'es pas à l'origine de cette demande, ignore ce message : ton mot de passe actuel reste valable.\n",
+  },
+  en: {
+    subject: 'My Collection: password reset',
+    text: 'Hi {pseudo},\n\nYou asked to change the password of your My Collection account. Open this link to choose a new one (valid for 1 hour):\n\n{link}\n\nIf you did not ask for this, ignore this message: your current password still works.\n',
+  },
+};
+
+// Envoie un lien de réinitialisation à l'adresse indiquée, si un compte existe. La réponse est la même dans tous les
+// cas, et l'e-mail part en arrière-plan : on ne peut pas savoir si une adresse a un compte.
+export function requestPasswordReset(req, log = console.log) {
+  if (!mailConfigured()) throw new AuthError('mail_unavailable', 503);
+  rateLimit(`forgot:${req.ip}`, 5, 60 * 60_000);
+  const email = String(req.body?.email ?? '').trim().toLowerCase();
+  if (email.length > 254 || !EMAIL_RE.test(email)) throw new AuthError('invalid_email');
+  rateLimit(`forgot:${email}`, 3, 60 * 60_000);
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  if (!user) return;
+  const token = crypto.randomBytes(32).toString('base64url');
+  const expires = new Date(Date.now() + RESET_MINUTES * 60_000).toISOString();
+  transaction(() => {
+    db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(user.id);
+    db.prepare('INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(tokenHash(token), user.id, expires);
+  });
+  const mail = RESET_MAIL[req.body?.lang === 'en' ? 'en' : 'fr'];
+  const vars = { pseudo: user.pseudo, link: `${publicUrl}#reset/${token}` };
+  sendMail({ to: user.email, subject: mail.subject, text: mail.text.replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m) })
+    .then(() => log(`E-mail de réinitialisation envoyé à ${user.pseudo}`))
+    .catch((err) => log(`E-mail de réinitialisation non envoyé (${user.pseudo}) : ${err.message}`));
+}
+
+// Nouveau mot de passe avec un lien valide : toutes les sessions ouvertes sont fermées, puis l'utilisateur est connecté
+export async function resetPassword(req, res) {
+  rateLimit(`reset:${req.ip}`, 10, 15 * 60_000);
+  const token = String(req.body?.token ?? '');
+  const password = String(req.body?.password ?? '');
+  const row = db.prepare('SELECT * FROM password_resets WHERE token_hash = ? AND expires_at > ?').get(tokenHash(token), new Date().toISOString());
+  if (!row) throw new AuthError('invalid_reset');
+  if (password.length < 8 || password.length > 200) throw new AuthError('weak_password');
+  const passwordHash = await hashPassword(password);
+  transaction(() => {
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, row.user_id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.user_id);
+    db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(row.user_id);
+  });
+  startSession(req, res, row.user_id);
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
+}
+
 // Supprime le compte et tout ce qui s'y rattache : collection, recherches, lien de partage, notifications, échanges,
 // historique de valeur, sessions
 export async function deleteAccount(req, res) {
@@ -187,12 +244,15 @@ export async function deleteAccount(req, res) {
     db.prepare('DELETE FROM trade_seen WHERE user_id = ? OR other_id = ?').run(req.user.id, req.user.id);
     db.prepare('DELETE FROM value_history WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(req.user.id);
+    db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
   });
   setSessionCookie(req, res, '', 0);
 }
 
-// Sessions expirées : nettoyage quotidien
+// Sessions et liens de réinitialisation expirés : nettoyage quotidien
 setInterval(() => {
-  db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(new Date().toISOString());
+  const now = new Date().toISOString();
+  db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now);
+  db.prepare('DELETE FROM password_resets WHERE expires_at <= ?').run(now);
 }, 24 * 3600_000).unref();

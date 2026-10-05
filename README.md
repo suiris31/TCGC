@@ -58,7 +58,12 @@ proxy), `PORT`, `PUBLIC_PATH` (e.g. `/tcgc` when served under a sub-path), `TRUS
   client IP and protocol. The default (`loopback`) suits a proxy on the same machine.
 - Passwords are hashed with scrypt; sessions are random tokens in an HttpOnly cookie (only their hash is stored);
   login and sign-up attempts are rate-limited; requests from other sites are refused.
-- Not included yet: email verification and password reset by email.
+- **Forgot password**: a single-use link valid for 1 hour, sent by email. Set `SMTP_URL` (e.g.
+  `smtps://user%40example.com:password@smtp.example.com:465`), `MAIL_FROM` and `PUBLIC_URL` (the app's public address,
+  used in the link; never taken from the request). Without them, the "Forgot your password?" link is hidden.
+  `SMTP_URL=log` writes the emails to the server log instead of sending them (local testing). On a server, put these
+  private settings in `/opt/tcgc/tcgc.env` (see `deploy/tcgc.env.example`), read by the systemd service.
+- Not included: email address verification.
 - Catalog and prices are shared by all accounts; a manual price update can run at most once an hour, and each
   account can scan up to 60 cards a minute.
 

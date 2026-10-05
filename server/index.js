@@ -2,10 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
-import { AuthError, deleteAccount, loadUser, login, logout, publicUser, rateLimit, requireUser, signup } from './auth.js';
+import {
+  AuthError, deleteAccount, loadUser, login, logout, publicUser, rateLimit, requestPasswordReset, requireUser, resetPassword, signup,
+} from './auth.js';
 import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
+import { mailConfigured } from './mail.js';
 import {
   addToCollection, collectionCsv, collectionSets, collectionStats, doubles, getCardDetail, getCards, importCollection, LANGS,
   listSets, removeWish, searchCards, setKeepCopies, setQuantity, setTradeSettings, setWish, tradeMatches, tradeSettings,
@@ -75,6 +78,20 @@ app.post('/api/auth/signup', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   const user = await login(req, res);
+  res.json({ user: publicUser(user) });
+});
+
+// Fonctions disponibles avant connexion (mot de passe oublié seulement si l'envoi d'e-mails est configuré)
+app.get('/api/auth/config', (req, res) => res.json({ passwordReset: mailConfigured() }));
+
+app.post('/api/auth/forgot', (req, res) => {
+  requestPasswordReset(req, log);
+  res.json({ ok: true });
+});
+
+app.post('/api/auth/reset', async (req, res) => {
+  const user = await resetPassword(req, res);
+  log(`Mot de passe réinitialisé : ${user.pseudo}`);
   res.json({ user: publicUser(user) });
 });
 

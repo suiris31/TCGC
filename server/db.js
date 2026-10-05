@@ -81,6 +81,13 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
 
+  -- Liens de réinitialisation du mot de passe (envoyés par e-mail) : seul le hachage du jeton est stocké
+  CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+
   -- Une ligne par utilisateur, carte et langue possédée (une même carte peut être en VF et en VO).
   -- user_id 0 : collection d'avant les comptes, attribuée au premier compte créé (voir auth.js)
   CREATE TABLE IF NOT EXISTS collection (

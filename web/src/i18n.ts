@@ -436,6 +436,19 @@ const fr = {
   'reg.word.restricted': 'limitée',
   'reg.word.pair': 'bannie en paire',
   'notify.bans': 'Bannissements en tournoi (cartes que tu as ou cherches)',
+
+  'auth.forgot': 'Mot de passe oublié ?',
+  'auth.forgotTitle': 'Mot de passe oublié',
+  'auth.forgotText': "Indique l'adresse e-mail de ton compte : tu recevras un lien pour choisir un nouveau mot de passe.",
+  'auth.forgotSubmit': 'Envoyer le lien',
+  'auth.forgotSent': "Si un compte existe avec cette adresse, un e-mail vient de partir. Le lien est valable 1 heure (pense à regarder dans les spams).",
+  'auth.backToLogin': 'Retour à la connexion',
+  'reset.title': 'Nouveau mot de passe',
+  'reset.text': 'Choisis un nouveau mot de passe pour ton compte.',
+  'reset.submit': 'Changer mon mot de passe',
+  'reset.done': 'Mot de passe changé, tu es connecté',
+  'error.invalid_reset': 'Lien invalide ou expiré : refais une demande de mot de passe oublié.',
+  'error.mail_unavailable': "L'envoi d'e-mails n'est pas configuré sur ce site.",
 } as const satisfies Record<string, Entry>;
 
 export type MessageKey = keyof typeof fr;
@@ -871,6 +884,19 @@ const en: { [K in MessageKey]: Entry } = {
   'reg.word.restricted': 'restricted',
   'reg.word.pair': 'pair-banned',
   'notify.bans': 'Tournament bans (cards you own or want)',
+
+  'auth.forgot': 'Forgot your password?',
+  'auth.forgotTitle': 'Forgot your password',
+  'auth.forgotText': "Enter your account's email address: you'll receive a link to choose a new password.",
+  'auth.forgotSubmit': 'Send the link',
+  'auth.forgotSent': 'If an account exists with this address, an email is on its way. The link is valid for 1 hour (check your spam folder).',
+  'auth.backToLogin': 'Back to login',
+  'reset.title': 'New password',
+  'reset.text': 'Choose a new password for your account.',
+  'reset.submit': 'Change my password',
+  'reset.done': 'Password changed, you are logged in',
+  'error.invalid_reset': 'Invalid or expired link: request a new password reset.',
+  'error.mail_unavailable': 'Sending emails is not set up on this site.',
 };
 
 const MESSAGES: Record<UiLang, { [K in MessageKey]: Entry }> = { fr, en };
