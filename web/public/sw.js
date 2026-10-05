@@ -1,5 +1,5 @@
 // Service worker : l'interface et les visuels de cartes restent disponibles même si le serveur répond lentement.
-// Les données (api/) passent toujours par le réseau.
+// Les données (api/) passent toujours par le réseau. Il affiche aussi les notifications envoyées par le serveur.
 // BASE = chemin de l'appli ("/" ou un sous-dossier comme "/tcgc/"), déduit de l'emplacement du service worker.
 const BASE = new URL(self.registration.scope).pathname;
 const SHELL = 'tcgc-shell-v2';
@@ -41,4 +41,30 @@ self.addEventListener('fetch', (event) => {
       return res;
     }).catch(() => caches.match(BASE)));
   }
+});
+
+// Notification reçue : { title, body, url (ex. "#collection/wishlist"), tag }
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data?.text() }; }
+  event.waitUntil(self.registration.showNotification(data.title || 'TCGC', {
+    body: data.body || '',
+    icon: `${BASE}icon-192.png`,
+    tag: data.tag,
+    data: { hash: data.url || '' },
+  }));
+});
+
+// Appui sur la notification : l'appli s'ouvre (ou revient au premier plan) sur la bonne page
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const hash = event.notification.data?.hash || '';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    const client = clients.find((c) => c.url.startsWith(self.registration.scope));
+    if (client) {
+      client.postMessage({ type: 'tcgc:navigate', hash });
+      return client.focus();
+    }
+    return self.clients.openWindow(`${BASE}${hash}`);
+  }));
 });

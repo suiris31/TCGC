@@ -50,7 +50,8 @@ If you used the app before accounts existed, **the first account you create gets
 Ready-made files are in [`deploy/`](deploy): a systemd service (`tcgc.service`), an nginx block to serve the app
 under a sub-path such as `https://example.com/tcgc/` (`nginx-tcgc.conf`), a daily database backup (`tcgc.cron`,
 `npm run backup`) and an update script (`update.sh`). Environment variables: `HOST` (use `127.0.0.1` behind a
-proxy), `PORT`, `PUBLIC_PATH` (e.g. `/tcgc` when served under a sub-path), `TRUST_PROXY`.
+proxy), `PORT`, `PUBLIC_PATH` (e.g. `/tcgc` when served under a sub-path), `TRUST_PROXY`, `VAPID_SUBJECT`
+(contact sent to browser push services, e.g. `mailto:you@example.com`; defaults to the project's GitHub page).
 
 - Put the app behind an **HTTPS** reverse proxy (Caddy, nginx...). Session cookies are then marked `Secure`.
 - If the proxy runs on another machine, set `TRUST_PROXY` (e.g. `TRUST_PROXY=1`) so the app sees the real
@@ -112,6 +113,16 @@ the viewfinder, ~94% in photo mode, and is almost always among the suggestions.
   Collection tab), then **deals** among the cards missing from your sets: at least 10% below their monthly
   average, at a level confirmed over the week. A card added to your collection in the wanted language leaves
   the wishlist.
+
+### Notifications
+
+In Profile, "Enable on this device" subscribes the phone to push notifications (HTTPS required, works best with
+the app installed on the home screen). After the daily price update, the app sends:
+
+- **Target price reached**: a wishlist card dropped below your target (once, until it goes back above);
+- **Weekly summary**: your collection's value and its change over 7 days, with the biggest rise.
+
+Each type can be turned off. The server's VAPID keys are created on first start and stored in the database.
 
 ### Good time to buy?
 

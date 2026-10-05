@@ -150,6 +150,17 @@ db.exec(`
     show_wishlist INTEGER NOT NULL DEFAULT 1,
     created_at    TEXT NOT NULL
   );
+
+  -- Appareils abonnés aux notifications (Web Push), avec la langue de l'interface au moment de l'abonnement
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    endpoint   TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    p256dh     TEXT NOT NULL,
+    auth       TEXT NOT NULL,
+    lang       TEXT NOT NULL DEFAULT 'fr',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS push_subscriptions_user ON push_subscriptions(user_id);
 `);
 
 // Migrations des bases créées par une version précédente
@@ -172,6 +183,11 @@ addColumn('value_history', 'value_tcg', 'REAL');
 addColumn('fr_cards', 'product_id', 'INTEGER');
 // exemplaires gardés par carte et par langue : au-delà, ce sont des doubles
 addColumn('users', 'keep_copies', 'INTEGER NOT NULL DEFAULT 1');
+// notifications : types coupés par l'utilisateur (JSON), date du dernier résumé de la semaine
+addColumn('users', 'notify_prefs', 'TEXT');
+addColumn('users', 'last_digest_at', 'TEXT');
+// carte recherchée déjà signalée sous son prix cible (remis à zéro quand le prix remonte)
+addColumn('wishlist', 'notified_at', 'TEXT');
 db.exec('CREATE INDEX IF NOT EXISTS fr_cards_product ON fr_cards(product_id)');
 
 // Collection sans langue (avant la gestion VF/VO) : les cartes déjà saisies sont considérées en VF

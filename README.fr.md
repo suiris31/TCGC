@@ -51,7 +51,8 @@ Des fichiers prêts à l'emploi sont dans [`deploy/`](deploy) : un service syste
 pour servir l'appli dans un sous-dossier comme `https://exemple.fr/tcgc/` (`nginx-tcgc.conf`), une sauvegarde
 quotidienne de la base (`tcgc.cron`, `npm run backup`) et un script de mise à jour (`update.sh`). Variables
 d'environnement : `HOST` (`127.0.0.1` derrière un proxy), `PORT`, `PUBLIC_PATH` (ex. `/tcgc` pour un
-sous-dossier), `TRUST_PROXY`.
+sous-dossier), `TRUST_PROXY`, `VAPID_SUBJECT` (contact transmis aux services de notification des navigateurs,
+ex. `mailto:toi@exemple.fr` ; par défaut la page GitHub du projet).
 
 - Place l'appli derrière un proxy **HTTPS** (Caddy, nginx...). Les cookies de session sont alors marqués `Secure`.
 - Si le proxy est sur une autre machine, renseigne `TRUST_PROXY` (ex. `TRUST_PROXY=1`) pour que l'appli voie la
@@ -99,6 +100,17 @@ Astuce : donne une IP fixe au PC dans ta box (bail DHCP statique) pour que l'adr
   (pastille verte sur l'onglet Collection), puis les **bonnes affaires** parmi les cartes qui te manquent dans
   tes sets : au moins 10 % sous leur moyenne du mois, à un niveau confirmé sur la semaine. Une carte ajoutée
   à la collection dans la langue recherchée sort des recherches.
+
+## Notifications
+
+Dans Profil, « Activer sur cet appareil » abonne le téléphone aux notifications (https obligatoire, idéalement
+avec l'appli installée sur l'écran d'accueil). Après la mise à jour quotidienne des prix, l'appli envoie :
+
+- **Prix cible atteint** : une carte de tes recherches est passée sous ton prix cible (une seule fois, jusqu'à ce
+  qu'elle repasse au-dessus) ;
+- **Résumé de la semaine** : la valeur de ta collection et son évolution sur 7 jours, avec la plus forte hausse.
+
+Chaque type peut être coupé. Les clés VAPID du serveur sont créées au premier démarrage et gardées dans la base.
 
 ## Bon moment pour acheter ?
 

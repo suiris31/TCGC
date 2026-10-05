@@ -10,6 +10,7 @@ import { ProfilePage } from './pages/Profile';
 import { Scanner } from './pages/Scanner';
 import { SharedPage } from './pages/Shared';
 import { StatsPage } from './pages/Stats';
+import { refreshPushSubscription } from './push';
 import { AppProvider, useApp } from './store';
 
 type Tab = 'collection' | 'scan' | 'catalog' | 'stats' | 'profile';
@@ -22,8 +23,9 @@ const TABS: { id: Tab; icon: IconName }[] = [
   { id: 'profile', icon: 'user' },
 ];
 
+// "#stats", "#collection/wishlist"... : l'onglet est la première partie de l'adresse
 function readTab(): Tab {
-  const hash = window.location.hash.slice(1) as Tab;
+  const hash = window.location.hash.slice(1).split('/')[0] as Tab;
   return TABS.some((item) => item.id === hash) ? hash : 'collection';
 }
 
@@ -36,6 +38,7 @@ function Shell() {
   useEffect(() => {
     const onHash = () => setTab(readTab());
     window.addEventListener('hashchange', onHash);
+    refreshPushSubscription();
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 

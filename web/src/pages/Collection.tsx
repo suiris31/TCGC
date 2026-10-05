@@ -14,6 +14,12 @@ import { Wishlist } from './Wishlist';
 const VIEWS = ['sets', 'cards', 'doubles', 'wishlist'] as const;
 type View = typeof VIEWS[number];
 
+// Une vue peut être ouverte par son adresse (#collection/wishlist), par exemple depuis une notification
+function viewFromHash(): View | null {
+  const m = window.location.hash.match(/^#collection\/(\w+)$/);
+  return m && (VIEWS as readonly string[]).includes(m[1]) ? m[1] as View : null;
+}
+
 // Un set ouvert a sa propre adresse (#collection/set/<id>) : le bouton retour du téléphone ramène à la liste
 function setFromHash() {
   const m = window.location.hash.match(/^#collection\/set\/(\d+)/);
@@ -22,12 +28,16 @@ function setFromHash() {
 
 export function Collection({ onScan, onBrowse }: { onScan: () => void; onBrowse: () => void }) {
   const { totals, status } = useApp();
-  const [view, setView] = useState<View>(() => readPref('tcgc.collectionView', VIEWS, 'sets'));
+  const [view, setView] = useState<View>(() => viewFromHash() ?? readPref('tcgc.collectionView', VIEWS, 'sets'));
   const reached = status?.wishlist.reached ?? 0;
   const [setId, setSetId] = useState<number | null>(setFromHash);
 
   useEffect(() => {
-    const onHash = () => setSetId(setFromHash());
+    const onHash = () => {
+      setSetId(setFromHash());
+      const fromHash = viewFromHash();
+      if (fromHash) setView(fromHash);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);

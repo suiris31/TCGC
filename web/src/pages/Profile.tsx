@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, formatDate } from '../api';
 import { Icon } from '../components/Icon';
 import { LangSwitch } from '../components/LangSwitch';
+import { NotificationsPanel } from '../components/NotificationsPanel';
 import { t } from '../i18n';
 import { useApp } from '../store';
 
@@ -57,6 +58,8 @@ export function ProfilePage() {
         {/* chaque langue est écrite dans sa propre langue, pour être reconnue quelle que soit la langue actuelle */}
         <LangSwitch value={uiLang} onChange={setUiLang} label={t('stats.uiLang')} names={{ fr: 'Français', en: 'English' }} />
       </section>
+
+      <NotificationsPanel />
 
       <section className="panel panel-danger">
         <h3>{t('profile.delete')}</h3>

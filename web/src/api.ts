@@ -194,6 +194,12 @@ export interface SharedView {
   wanted: SharedCard[];
 }
 
+// Types de notifications que l'utilisateur peut couper
+export interface NotifyPrefs {
+  targets: boolean;
+  weekly: boolean;
+}
+
 export interface Stats {
   totals: Totals;
   bySet: { code: string | null; name: string; cards: number; valueEur: number }[];
@@ -271,6 +277,12 @@ export const api = {
   regenerateShare: () => request<{ share: Share }>('api/share/regenerate', { method: 'POST' }),
   deleteShare: () => request<{ share: null }>('api/share', { method: 'DELETE' }),
   shared: (token: string) => request<SharedView>(`api/shared/${encodeURIComponent(token)}`),
+  push: () => request<{ publicKey: string; prefs: NotifyPrefs }>('api/push'),
+  pushSubscribe: (subscription: PushSubscriptionJSON, lang: string) =>
+    request<{ ok: boolean }>('api/push/subscribe', json('POST', { subscription, lang })),
+  pushUnsubscribe: (endpoint: string) => request<{ ok: boolean }>('api/push/unsubscribe', json('POST', { endpoint })),
+  pushTest: () => request<{ sent: number }>('api/push/test', { method: 'POST' }),
+  setNotifyPrefs: (notify: Partial<NotifyPrefs>) => request<{ notify: NotifyPrefs }>('api/settings', json('PUT', { notify })),
   sets: () => request<SetInfo[]>('api/sets'),
   collectionSets: (all: boolean) => request<SetSummary[]>(`api/collection/sets${all ? '?all=1' : ''}`),
   cards: (query: CardQuery) => request<{ total: number; cards: Card[] }>(`api/cards?${qs({ ...query })}`),

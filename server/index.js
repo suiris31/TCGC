@@ -12,6 +12,7 @@ import {
 } from './cards.js';
 import { downloadThumb, thumbPath } from './images.js';
 import { buildIndex, identify, indexStatus } from './scan.js';
+import { notifyAfterSync, notifyPrefs, pushPublicKey, sendTest, setNotifyPrefs, subscribe, unsubscribe } from './notify.js';
 import { deleteShare, getShare, regenerateShare, saveShare, sharedView } from './share.js';
 import { runSync, syncInProgress, syncIsStale } from './sync.js';
 import { collectionTotals, setPriceSource, snapshotCollectionValue } from './valuation.js';
@@ -50,10 +51,12 @@ app.use('/api', (req, res, next) => {
 
 const log = (...args) => console.log(new Date().toLocaleTimeString('fr-FR'), ...args);
 
-// Synchro des prix puis mise à jour de l'index de scan (nouvelles cartes), en tâche de fond
+// Synchro des prix, notifications (prix cibles atteints...), puis mise à jour de l'index de scan (nouvelles cartes),
+// en tâche de fond
 let lastError = null;
 function refresh() {
   return runSync({ log })
+    .then(() => notifyAfterSync({ log }).catch((err) => log('Erreur de notification :', err.message)))
     .then(() => buildIndex({ log }))
     .then(() => { lastError = null; })
     .catch((err) => { lastError = err.message; log('Erreur de mise à jour :', err.message); });
@@ -119,6 +122,7 @@ app.put('/api/settings', (req, res) => {
   try {
     if (req.body?.priceSource) setPriceSource(req.user.id, req.body.priceSource);
     if (req.body?.keepCopies !== undefined) setKeepCopies(req.user.id, Number(req.body.keepCopies));
+    if (req.body?.notify) req.user.notify_prefs = JSON.stringify(setNotifyPrefs(req.user, req.body.notify));
   } catch (err) {
     return res.status(400).json({ code: err.code, error: err.message });
   }
@@ -126,6 +130,7 @@ app.put('/api/settings', (req, res) => {
   res.json({
     priceSource: source,
     keepCopies: req.body?.keepCopies !== undefined ? Number(req.body.keepCopies) : req.user.keep_copies,
+    notify: notifyPrefs(req.user),
     totals: collectionTotals(req.user.id, source),
   });
 });
@@ -239,6 +244,25 @@ app.post('/api/share/regenerate', (req, res) => {
 app.delete('/api/share', (req, res) => {
   deleteShare(req.user.id);
   res.json({ share: null });
+});
+
+// ---------- Notifications ----------
+
+app.get('/api/push', (req, res) => res.json({ publicKey: pushPublicKey(), prefs: notifyPrefs(req.user) }));
+
+app.post('/api/push/subscribe', (req, res) => {
+  subscribe(req.user.id, req.body?.subscription, req.body?.lang);
+  res.json({ ok: true });
+});
+
+app.post('/api/push/unsubscribe', (req, res) => {
+  unsubscribe(req.user.id, req.body?.endpoint);
+  res.json({ ok: true });
+});
+
+app.post('/api/push/test', async (req, res) => {
+  rateLimit(`push-test:${req.user.id}`, 10, 60 * 60_000);
+  res.json({ sent: await sendTest(req.user.id) });
 });
 
 app.get('/api/stats', (req, res) => {
