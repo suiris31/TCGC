@@ -87,6 +87,9 @@ Tip: give your PC a fixed IP address in your router (static DHCP lease) so the a
 - When several printings share **exactly the same artwork** (reprint, stamped tournament version...), the app
   lists them with their prices so you can pick the right one. It preselects the standard, most common one.
 - Card not recognized? Type its code (`OP14-018`, `op1418`...) or its name.
+- **Opening boosters**: the "Summary" button in the session bar shows the value of the cards added, rare cards and
+  special printings, the best pulls and, if you enter the price paid, the balance. The session is kept until the
+  browser is closed (you can switch tabs); the summary can be shared.
 
 Measured on simulated photos (tilt, glare, blur, background): the right card comes first in ~99% of cases with
 the viewfinder, ~94% in photo mode, and is almost always among the suggestions.

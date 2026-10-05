@@ -155,6 +155,9 @@ une carte anglaise avec ceux de la VO.
 - Choisis la **langue** de la carte scannée (FR / EN, français par défaut, la dernière choisie est retenue) et
   le **nombre d'exemplaires** avant de l'ajouter.
 - Carte non reconnue ? Tape son code (`OP14-018`, `op1418`...) ou son nom.
+- **Ouverture de boosters** : le bouton « Récap » de la barre de session montre la valeur des cartes ajoutées, les
+  cartes rares et les versions spéciales, les meilleures cartes et, si tu indiques le prix payé, le bilan. La
+  session est gardée jusqu'à la fermeture du navigateur (tu peux changer d'onglet) ; le récap se partage.
 - Quand plusieurs versions ont **exactement le même visuel** (réimpression, version tournoi tamponnée...),
   l'appli les liste avec leur prix : vérifie le code d'extension ou le tampon sur ta carte. Par défaut elle
   propose la version standard, la plus courante.

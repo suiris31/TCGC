@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, cardImage, cardName, formatEur, type Card, type Lang, type ScanResult } from '../api';
 import { Icon } from '../components/Icon';
 import { LangSwitch } from '../components/LangSwitch';
+import { SessionRecap, type SessionEntry } from '../components/SessionRecap';
 import { t } from '../i18n';
 import { useApp } from '../store';
 
@@ -12,7 +13,23 @@ const MAX_QTY = 99;
 
 type Phase = 'aim' | 'analyzing' | 'result';
 
-interface Added { card: Card; quantity: number; lang: Lang }
+type Added = SessionEntry;
+
+// Session de scan (cartes ajoutées, prix payé) gardée le temps de la session du navigateur : on peut changer
+// d'onglet pendant une ouverture de boosters sans perdre le récap
+const SESSION_KEY = 'tcgc.scanSession';
+
+function readSession(): { added: Added[]; paid: number | null } {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null');
+    if (stored && Array.isArray(stored.added)) return { added: stored.added, paid: typeof stored.paid === 'number' ? stored.paid : null };
+  } catch { /* stockage indisponible ou illisible */ }
+  return { added: [], paid: null };
+}
+
+function writeSession(added: Added[], paid: number | null) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ added, paid })); } catch { /* stockage indisponible */ }
+}
 
 const cameraSupported = () => Boolean(navigator.mediaDevices?.getUserMedia);
 
@@ -54,7 +71,9 @@ export function Scanner({ active }: { active: boolean }) {
   const [selected, setSelected] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [added, setAdded] = useState<Added[]>([]);
+  const [added, setAdded] = useState<Added[]>(() => readSession().added);
+  const [paid, setPaid] = useState<number | null>(() => readSession().paid);
+  const [recap, setRecap] = useState(false);
   // Nombre d'exemplaires à ajouter pour la carte scannée (doublons...), remis à 1 à chaque scan
   const [quantity, setQuantity] = useState(1);
   // Texte en cours de saisie au clavier (peut être vide le temps de taper un nombre)
@@ -64,6 +83,8 @@ export function Scanner({ active }: { active: boolean }) {
   const [manualFor, setManualFor] = useState<string | null>(null);
   const [manualError, setManualError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+
+  useEffect(() => { writeSession(added, paid); }, [added, paid]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -303,6 +324,7 @@ export function Scanner({ active }: { active: boolean }) {
         <div className="scan-session">
           <div>
             <strong>{sessionCards}</strong> {t('scan.sessionCards', { n: sessionCards })} · <strong>{formatEur(sessionValue)}</strong>
+            {' · '}<button className="link" onClick={() => setRecap(true)}>{t('scan.recap')}</button>
           </div>
           <button className="link" onClick={() => undo(added[0])}>
             {t('scan.undo', { what: `${added[0].quantity > 1 ? `${added[0].quantity} × ` : ''}${cardName(added[0].card, added[0].lang)}` })}
@@ -459,6 +481,10 @@ export function Scanner({ active }: { active: boolean }) {
             {manualError && <p className="warn small">{manualError}</p>}
           </form>
         </div>
+      )}
+      {recap && (
+        <SessionRecap entries={added} paid={paid} onPaid={setPaid} onClose={() => setRecap(false)}
+          onReset={() => { setAdded([]); setPaid(null); setRecap(false); }} />
       )}
     </div>
   );

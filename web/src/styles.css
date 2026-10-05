@@ -461,6 +461,13 @@ section.insight-hot { border-color: rgba(226, 85, 74, 0.45); }
 .card-row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
 
+/* ---------- Récap d'une session de scan ---------- */
+.recap-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.recap-body h2 { font-size: 20px; }
+.recap-hero { display: flex; flex-direction: column; gap: 2px; }
+.recap-balance { font-size: 15px; }
+.recap-loss { color: #ff8d84; font-weight: 700; }
+
 /* ---------- Échanges entre membres ---------- */
 .trade-match { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .trade-contact-value { font-weight: 600; user-select: all; word-break: break-word; }

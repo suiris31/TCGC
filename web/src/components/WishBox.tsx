@@ -4,15 +4,16 @@ import { getUiLang, t } from '../i18n';
 import { useApp } from '../store';
 import { LangSwitch } from './LangSwitch';
 
-// "12,5" ou "12.5" -> 12.5 ; vide -> null (pas de prix cible) ; invalide -> undefined
-function parseEur(text: string): number | null | undefined {
+// "12,5" ou "12.5" -> 12.5 ; vide -> null (pas de montant) ; invalide -> undefined
+export function parseEur(text: string): number | null | undefined {
   const s = text.trim().replace(',', '.').replace(/\s|€/g, '');
   if (!s) return null;
   const value = Number(s);
   return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : undefined;
 }
 
-function inputValue(value: number | null | undefined) {
+// Montant affiché dans un champ de saisie (virgule décimale en français)
+export function inputEur(value: number | null | undefined) {
   if (value == null) return '';
   return getUiLang() === 'fr' ? String(value).replace('.', ',') : String(value);
 }
@@ -27,12 +28,12 @@ export function wishGap(card: Card) {
 // Fiche d'une carte : ajout aux recherches, prix cible et langue recherchée
 export function WishBox({ card, lang }: { card: Card; lang: Lang }) {
   const { wishChanged, toast } = useApp();
-  const [target, setTarget] = useState(inputValue(card.wish?.targetEur));
+  const [target, setTarget] = useState(inputEur(card.wish?.targetEur));
   const [busy, setBusy] = useState(false);
   const saved = card.wish?.targetEur ?? null;
   const suggested = card.insight?.target ?? null;
 
-  useEffect(() => { setTarget(inputValue(saved)); }, [saved, card.id]);
+  useEffect(() => { setTarget(inputEur(saved)); }, [saved, card.id]);
 
   const run = async (action: () => Promise<unknown>, message?: string) => {
     setBusy(true);

@@ -409,6 +409,22 @@ const fr = {
   'trade.theyWant': ['Cherche {n} de tes doubles', 'Cherche {n} de tes doubles'],
   'notify.trades': 'Échanges possibles avec des membres',
   'error.invalid_trade': 'Texte trop long',
+
+  'scan.recap': 'Récap',
+  'recap.title': 'Récap de la session',
+  'recap.average': 'moyenne {value} par carte',
+  'recap.hits': 'Cartes rares (SR, SEC, L, SP...)',
+  'recap.special': 'Versions spéciales (parallèles, manga...)',
+  'recap.paid': 'Prix payé (facultatif)',
+  'recap.paidHint': 'Display...',
+  'recap.balance': 'Bilan : {value} par rapport au prix payé',
+  'recap.best': 'Meilleures cartes',
+  'recap.share': 'Partager',
+  'recap.shareText': 'Mon ouverture One Piece : {n} cartes pour {value}. Meilleure carte : {best} ({price}).',
+  'recap.copied': 'Récap copié',
+  'recap.new': 'Nouvelle session',
+  'recap.newConfirm': 'Commencer une nouvelle session ? Les cartes restent dans ta collection, seul le récap repart de zéro.',
+  'recap.note': "Valeur au prix du jour des cartes ajoutées pendant cette session (gardée jusqu'à la fermeture du navigateur).",
 } as const satisfies Record<string, Entry>;
 
 export type MessageKey = keyof typeof fr;
@@ -817,6 +833,22 @@ const en: { [K in MessageKey]: Entry } = {
   'trade.theyWant': ['Wants {n} of your duplicates', 'Wants {n} of your duplicates'],
   'notify.trades': 'Trades available with members',
   'error.invalid_trade': 'Text too long',
+
+  'scan.recap': 'Summary',
+  'recap.title': 'Session summary',
+  'recap.average': 'average {value} per card',
+  'recap.hits': 'Rare cards (SR, SEC, L, SP...)',
+  'recap.special': 'Special printings (parallel, manga...)',
+  'recap.paid': 'Price paid (optional)',
+  'recap.paidHint': 'Booster box...',
+  'recap.balance': 'Balance: {value} compared to the price paid',
+  'recap.best': 'Best pulls',
+  'recap.share': 'Share',
+  'recap.shareText': 'My One Piece opening: {n} cards worth {value}. Best pull: {best} ({price}).',
+  'recap.copied': 'Summary copied',
+  'recap.new': 'New session',
+  'recap.newConfirm': 'Start a new session? The cards stay in your collection, only the summary starts over.',
+  'recap.note': "Value at today's prices of the cards added during this session (kept until the browser is closed).",
 };
 
 const MESSAGES: Record<UiLang, { [K in MessageKey]: Entry }> = { fr, en };
