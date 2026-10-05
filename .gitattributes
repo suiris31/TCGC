@@ -1,3 +1,6 @@
+# Tous les fichiers texte en fins de ligne LF dans le dépôt (le projet est aussi édité sous Windows)
+* text=auto eol=lf
+
 # Fichiers exécutés sur un serveur Linux : toujours en fins de ligne LF
 *.sh text eol=lf
 deploy/* text eol=lf
