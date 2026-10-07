@@ -13,8 +13,16 @@ import { ST36 } from './st36.ts';
 
 const BEHAVIORS: Record<string, CardBehavior> = { ...ST31, ...ST32, ...ST33, ...ST34, ...ST35, ...ST36 };
 
+// Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir
+// view.ts). L'interface peut la lire sans erreur ; elle l'affiche de dos.
+export const HIDDEN = '?';
+const HIDDEN_CARD: CardDef = {
+  number: HIDDEN, imageId: '', rarity: '', category: 'CHARACTER', name: 'Carte cachée', cost: null, life: null, power: null,
+  counter: null, colors: [], types: [], attribute: null, effect: '', trigger: null,
+};
+
 // Rempli par loadCardData (toujours le même objet : les modules qui l'importent voient les cartes chargées)
-export const CARDS: Record<string, CardDef> = {};
+export const CARDS: Record<string, CardDef> = { [HIDDEN]: HIDDEN_CARD };
 let raw: Record<string, CardData> = {};
 
 export function loadCardData(data: Record<string, CardData>) {
