@@ -6,7 +6,8 @@ import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
   addMod, allField, attackTargets, canBeRested, def, describe, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker,
-  hasKeyword, koCharacter, log, name, onField, other, payDon, playCharacter, power, restForAttack, triggerEffect, untapDon,
+  hasKeyword, koCharacter, log, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack, shuffleDeck,
+  triggerEffect, untapDon,
 } from './rules.ts';
 import type {
   Decision, EffectCtx, GameState, HistoryEntry, Option, PendingEffect, PlayerId, PlayerState,
@@ -84,6 +85,7 @@ export function newGame(opts: NewGameOptions, chooser?: Chooser): GameState {
 
 export function advance(s: GameState, chooser?: Chooser): GameState {
   for (let guard = 0; guard < 50000; guard++) {
+    pruneKnown(s);
     checkDefeat(s);
     if (s.winner !== null) {
       s.flow = { stage: 'over' };
@@ -649,7 +651,7 @@ function applyDecision(s: GameState, choice: string) {
       if (choice === 'mulligan') {
         P.deck.push(...P.hand);
         P.hand = [];
-        shuffle(s, P.deck);
+        shuffleDeck(s, p);
         draw(s, p, 5);
         log(s, p, 'repioche sa main de départ');
       } else {

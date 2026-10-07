@@ -1,7 +1,7 @@
 // Le plateau : pour chaque joueur, ses piles (deck, Défausse), sa Vie, son Leader, son Lieu, ses 5 places de
 // Personnage et ses DON!! ; ta main en éventail en bas, la main adverse (cachée) en haut.
 import type { DragEvent } from 'react';
-import { def } from '../engine/rules.ts';
+import { def, knows, other } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { CardView, type CardLook, type Preview } from './CardView.tsx';
 import { cardImage } from './images.ts';
@@ -106,12 +106,15 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
   );
 }
 
-// Main adverse : le dos des cartes et leur nombre
+// Main adverse : le dos des cartes et leur nombre ; face visible, les cartes que tu connais (révélées : renvoyées en
+// main, ajoutées à la main en les révélant...)
 export function OpponentHand({ s, p }: { s: GameState; p: PlayerId }) {
   const n = s.players[p].hand.length;
   return (
     <div className="opp-hand" title={`${s.players[p].name} a ${n} carte${n > 1 ? 's' : ''} en main`}>
-      {s.players[p].hand.map((c) => <div key={c.uid} className="card card-back card-opp-hand" />)}
+      {s.players[p].hand.map((c) => (knows(s, other(p), c.uid)
+        ? <div key={c.uid} className="card card-opp-hand card-known" title={`Carte connue : ${def(c.num).name}`}><img src={cardImage(def(c.num))} alt={def(c.num).name} /></div>
+        : <div key={c.uid} className="card card-back card-opp-hand" />))}
       <span className="opp-hand-count">{n} en main</span>
     </div>
   );

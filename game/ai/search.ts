@@ -3,8 +3,8 @@
 // et on garde le choix qui gagne le plus souvent. Sert aussi au coach pour évaluer les décisions du joueur.
 import { act, type Chooser } from '../engine/engine.ts';
 import { shuffle } from '../engine/rng.ts';
-import { other } from '../engine/rules.ts';
-import type { Decision, GameState, PlayerId } from '../engine/types.ts';
+import { knows, other } from '../engine/rules.ts';
+import type { Card, Decision, GameState, PlayerId } from '../engine/types.ts';
 import { heuristicChooser } from './heuristic.ts';
 import { uselessReason } from './prune.ts';
 
@@ -36,25 +36,30 @@ export interface Analysis {
   pruned: { id: string; label: string; reason: string }[];  // choix sans intérêt, non simulés
 }
 
-// Redistribue au hasard les cartes cachées de l'adversaire (main, deck, Vie face cachée), sauf la carte du dessus de
-// son deck si le joueur l'a regardée
+// Redistribue au hasard les cartes cachées de l'adversaire (main, deck, Vie face cachée), sauf celles que le joueur
+// connaît (carte du dessus de son deck regardée, cartes révélées : voir rules.ts, reveal), qui restent à leur place
 function shuffleOpponent(d: GameState, viewer: PlayerId, keepHand: boolean) {
   const O = d.players[other(viewer)];
-  const knownTop = d.peek[viewer] !== null && O.deck[0]?.uid === d.peek[viewer] ? O.deck[0] : null;
-  const pool = [...(keepHand ? [] : O.hand), ...(knownTop ? O.deck.slice(1) : O.deck), ...O.life.filter((c) => !c.faceUp)];
+  const knownTop = d.peek[viewer] !== null && O.deck[0]?.uid === d.peek[viewer] ? O.deck[0].uid : null;
+  const fixed = (c: Card) => c.uid === knownTop || Boolean(c.faceUp) || knows(d, viewer, c.uid);
+  const pool = [...(keepHand ? [] : O.hand), ...O.deck, ...O.life].filter((c) => !fixed(c));
   shuffle(d, pool);
-  if (!keepHand) O.hand = pool.splice(0, O.hand.length);
-  O.life = O.life.map((c) => (c.faceUp ? c : pool.shift()!));
-  O.deck = knownTop ? [knownTop, ...pool] : pool;
+  const refill = (cards: Card[]) => cards.map((c) => (fixed(c) ? c : pool.shift()!));
+  if (!keepHand) O.hand = refill(O.hand);
+  O.deck = refill(O.deck);
+  O.life = refill(O.life);
 }
 
-// Redistribue son propre deck et sa Vie face cachée (le joueur ne connaît pas leur ordre)
+// Redistribue son propre deck et sa Vie face cachée (le joueur ne connaît pas leur ordre), sauf les cartes qu'il
+// connaît et les `keepTop` cartes du dessus de son deck
 function shuffleOwn(d: GameState, viewer: PlayerId, keepTop: number, keepLife: boolean) {
   const P = d.players[viewer];
-  const own = [...P.deck.slice(keepTop), ...(keepLife ? [] : P.life.filter((c) => !c.faceUp))];
+  const fixedDeck = (c: Card, i: number) => i < keepTop || knows(d, viewer, c.uid);
+  const fixedLife = (c: Card) => keepLife || Boolean(c.faceUp) || knows(d, viewer, c.uid);
+  const own = [...P.deck.filter((c, i) => !fixedDeck(c, i)), ...P.life.filter((c) => !fixedLife(c))];
   shuffle(d, own);
-  if (!keepLife) P.life = P.life.map((c) => (c.faceUp ? c : own.shift()!));
-  P.deck = [...P.deck.slice(0, keepTop), ...own];
+  P.life = P.life.map((c) => (fixedLife(c) ? c : own.shift()!));
+  P.deck = P.deck.map((c, i) => (fixedDeck(c, i) ? c : own.shift()!));
 }
 
 // Ce que voit un joueur : sa main, le terrain, les cartes de Vie face visible et la carte du deck adverse qu'il a

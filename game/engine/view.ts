@@ -12,6 +12,7 @@
 // Ce qui reste visible : les cartes qu'une décision du joueur lui montre (cartes regardées, choisies...) et la carte
 // du dessus du deck adverse s'il l'a regardée.
 import { HIDDEN } from './cards/index.ts';
+import { knows } from './rules.ts';
 import type { Card, Decision, GameState, PlayerId } from './types.ts';
 
 const other = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0);
@@ -42,16 +43,20 @@ export function viewFor(s: GameState, seat: PlayerId): GameState {
   const O = v.players[opp];
   const P = v.players[seat];
   const knownTop = s.peek[seat] !== null && O.deck[0]?.uid === s.peek[seat] ? O.deck[0].uid : null;
-  O.hand = mask(O.hand, 1000, (c) => shown.has(c.uid));
-  O.deck = mask(O.deck, 2000, (c) => c.uid === knownTop || shown.has(c.uid));
-  O.life = mask(O.life, 3000, (c) => Boolean(c.faceUp) || shown.has(c.uid));
-  P.deck = mask(P.deck, 4000, (c) => shown.has(c.uid));
-  P.life = mask(P.life, 5000, (c) => Boolean(c.faceUp) || shown.has(c.uid));
+  // cartes que le joueur connaît : révélées ou regardées (rules.ts, reveal), tant qu'elles restent dans leur zone
+  const known = (c: Card) => shown.has(c.uid) || knows(s, seat, c.uid);
+  O.hand = mask(O.hand, 1000, known);
+  O.deck = mask(O.deck, 2000, (c) => c.uid === knownTop || known(c));
+  O.life = mask(O.life, 3000, (c) => Boolean(c.faceUp) || known(c));
+  P.deck = mask(P.deck, 4000, known);
+  P.life = mask(P.life, 5000, (c) => Boolean(c.faceUp) || known(c));
 
   v.rng = 0;
   v.nextUid = 0;
   v.peek = seat === 0 ? [knownTop, null] : [null, knownTop];
   v.pending = [];
+  // ce que l'adversaire sait (cartes qu'il a regardées) reste secret
+  v.known = s.known?.filter((k) => k.to === seat && !hidden.has(k.uid));
   v.mods = v.mods.filter((m) => !hidden.has(m.uid));
   v.log = v.log.filter((l) => l.only === undefined || l.only === seat);
   v.history = v.history.map((h) => (h.player === seat ? h : { ...h, prompt: '', choice: '', label: '' }));

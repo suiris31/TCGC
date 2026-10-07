@@ -2,8 +2,10 @@
 // puissance, coût, DON!!, épuiser, mise KO et autres façons de quitter le terrain, Vie, pioche, recherche dans le deck.
 import { CARDS } from './cards/index.ts';
 import { genericTrigger } from './keywords.ts';
+import { shuffle } from './rng.ts';
 import type {
-  Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameEvent, GameState, Keyword, Modifier, Option, PendingEffect, PlayerId,
+  Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameEvent, GameState, HiddenZone, Keyword, Modifier, Option, PendingEffect,
+  PlayerId,
 } from './types.ts';
 
 export const RA = 'Revolutionary Army';  // {Armée révolutionnaire}
@@ -70,6 +72,48 @@ export function name(s: GameState, uid: number): string {
     if (c) return def(c.num).name;
   }
   return '?';
+}
+
+// ---------- Ce que chaque joueur sait des cartes cachées (11-2, 11-3) ----------
+
+// Zone cachée où se trouve une carte (main, deck, Vie), et à qui elle appartient
+export function hiddenZoneOf(s: GameState, uid: number): { player: PlayerId; zone: HiddenZone } | null {
+  for (const p of [0, 1] as PlayerId[]) {
+    const P = s.players[p];
+    for (const zone of ['hand', 'deck', 'life'] as const) if (P[zone].some((c) => c.uid === uid)) return { player: p, zone };
+  }
+  return null;
+}
+
+// Cartes révélées à un joueur (ou aux deux) : il les connaît tant qu'elles restent dans leur zone cachée actuelle. Le
+// propriétaire d'une main la connaît toujours : seuls comptent l'adversaire, et les decks et Vies.
+export function reveal(s: GameState, uids: number[], to: PlayerId | 'both') {
+  for (const uid of uids) {
+    const where = hiddenZoneOf(s, uid);
+    if (!where) continue;
+    for (const p of to === 'both' ? [0, 1] as PlayerId[] : [to]) {
+      if ((where.zone === 'hand' && p === where.player) || knows(s, p, uid)) continue;
+      (s.known ??= []).push({ uid, to: p, zone: where.zone });
+    }
+  }
+}
+
+export function knows(s: GameState, p: PlayerId, uid: number): boolean {
+  return s.known?.some((k) => k.uid === uid && k.to === p && hiddenZoneOf(s, uid)?.zone === k.zone) ?? false;
+}
+
+// Oublie ce qui n'est plus vrai : une carte qui a changé de zone n'est plus connue (le moteur appelle ceci à chaque pas)
+export function pruneKnown(s: GameState) {
+  if (s.known?.length) s.known = s.known.filter((k) => hiddenZoneOf(s, k.uid)?.zone === k.zone);
+}
+
+// Mélange un deck : plus personne ne sait où sont ses cartes
+export function shuffleDeck(s: GameState, p: PlayerId) {
+  shuffle(s, s.players[p].deck);
+  if (s.known?.length) {
+    const inDeck = new Set(s.players[p].deck.map((c) => c.uid));
+    s.known = s.known.filter((k) => !(k.zone === 'deck' && inDeck.has(k.uid)));
+  }
 }
 
 // ---------- Modifications temporaires ----------
@@ -265,6 +309,8 @@ export function lookTopPick(ctx: EffectCtx, count: number, max: number, filter: 
   }
   P.hand.push(...picked);
   P.deck.push(...looked);
+  reveal(s, picked.map((c) => c.uid), ctx.opp);
+  reveal(s, looked.map((c) => c.uid), ctx.me);
   log(s, ctx.me, `regarde ${count} cartes du dessus de son deck${picked.length ? ` et ajoute ${picked.map((c) => def(c.num).name).join(', ')} à sa main` : ''}`);
   return picked;
 }
@@ -413,6 +459,7 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
   else if (to === 'deckBottom') P.deck.push(card);
   else if (to === 'lifeTop') P.life.unshift({ ...card, faceUp: true });
   else P.life.push({ ...card, faceUp: true });
+  if (to === 'hand' || to === 'deckBottom') reveal(s, [card.uid], 'both');
   return f;
 }
 

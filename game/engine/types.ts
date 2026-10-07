@@ -218,7 +218,11 @@ export interface GameState {
   log: LogEntry[];
   history: HistoryEntry[];
   events?: number;  // nombre d'événements annoncés (numérote les effets déclenchés ensemble)
+  // cartes de zones cachées connues d'un joueur (révélées, regardées), tant qu'elles restent dans cette zone
+  known?: { uid: number; to: PlayerId; zone: HiddenZone }[];
 }
+
+export type HiddenZone = 'hand' | 'deck' | 'life';
 
 // Contexte d'un effet en cours de résolution
 export interface EffectCtx {

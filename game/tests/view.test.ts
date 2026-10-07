@@ -7,15 +7,17 @@ import { heuristicChooser } from '../ai/heuristic.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { DECKS } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
+import { knows } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
 
 const other = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0);
 
-// Cartes qu'un joueur a le droit de connaître parmi les zones cachées : celles que sa décision lui montre, et la carte
-// du dessus du deck adverse s'il l'a regardée
+// Cartes qu'un joueur a le droit de connaître parmi les zones cachées : celles que sa décision lui montre, celles qui
+// lui ont été révélées (voir knowledge.test.ts) et la carte du dessus du deck adverse s'il l'a regardée
 function allowed(s: GameState, seat: PlayerId): Set<number> {
   const ok = new Set<number>();
+  for (const P of s.players) for (const c of [...P.hand, ...P.deck, ...P.life]) if (knows(s, seat, c.uid)) ok.add(c.uid);
   const d = s.decision;
   if (d && d.player === seat) {
     for (const o of d.options) {
