@@ -23,6 +23,7 @@ import { CardZoom, useCardZoom } from './Zoom.tsx';
 import { setSoundEnabled, sfx } from './sound.ts';
 import { flushQueue, keepForLater, loadSummaries, saveRecord, whenSaved } from './archiveClient.ts';
 import { HistoryScreen } from './History.tsx';
+import { useDevice, useWakeLock } from './device.ts';
 import { cardImage } from './images.ts';
 
 const HUMAN: PlayerId = 0;
@@ -104,6 +105,13 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
   const [epoch, setEpoch] = useState(0);
   const [tab, setTab] = useState<'journal' | 'coach' | 'choix'>('journal');
   const keepMenu = useRef<number | null>(null);
+  // Téléphone : le journal, le coach et tous les choix sont dans un tiroir (panel) ; sur écran tactile, la cible
+  // d'attaque touchée (aimed) montre le résultat prévu et attend la confirmation
+  const { compact, touch } = useDevice();
+  const [panel, setPanel] = useState(false);
+  const [aimed, setAimed] = useState<number | null>(null);
+  useEffect(() => setAimed(null), [targeting]);
+  useWakeLock(game !== null && game.winner === null);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
   useEffect(() => { document.documentElement.style.setProperty('--ui', String(settings.uiScale)); }, [settings.uiScale]);
@@ -169,13 +177,15 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
 
   // Écran de départ : bilan relu sur le serveur, une fois la dernière partie enregistrée
   const inGame = game !== null;
+  // une partie, ou une fenêtre ouverte sur l'écran de départ (guide, Mes parties, aide), occupe tout l'écran
+  const fullScreen = inGame || history || guide !== null || help;
+  useEffect(() => onImmersive?.(fullScreen), [fullScreen, onImmersive]);
   useEffect(() => {
-    onImmersive?.(inGame);
     if (inGame) return;
     let cancelled = false;
     whenSaved().then(loadSummaries).then((list) => { if (!cancelled) setRecords(recordsOf(list)); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [inGame, onImmersive]);
+  }, [inGame]);
 
   useEffect(() => {
     flushQueue();
@@ -338,6 +348,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
     setMenu(null);
     setTargeting(null);
     setHoverUid(null);
+    setPanel(false);
     void pump();
   }, [game, pump, hint]);
 
@@ -372,6 +383,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
         setSettingsOpen(false);
         setGuide(null);
         setHistory(false);
+        setPanel(false);
         cardZoom.close();
       } else if (e.key === 'Enter' && humanTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
         requestEnd();
@@ -419,7 +431,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
           settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => setHistory(true)} />
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { setHistory(false); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
-        {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} />}
+        {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
       </>
     );
   }
@@ -436,7 +448,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
     if (targeting) {
       looks.set(targeting.attacker, { selected: true });
       for (const o of view.attacks.get(targeting.attacker) ?? []) {
-        looks.set(o.target!, { target: true, recommended: recommended === o.id });
+        looks.set(o.target!, { target: true, recommended: recommended === o.id, selected: aimed === o.target });
       }
     } else {
       for (const [uid, actions] of view.byCard) {
@@ -459,11 +471,14 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
     }
   }
 
-  const onCard = (uid: number, el: HTMLElement) => {
-    if (!view || !humanTurn) return;
-    if (targeting) {
+  const onCard = (uid: number, el: HTMLElement, num: string) => {
+    if (view && humanTurn && targeting) {
       const option = (view.attacks.get(targeting.attacker) ?? []).find((o) => o.target === uid);
-      if (option) {
+      if (option && touch && aimed !== uid) {
+        // écran tactile : premier toucher sur une cible = résultat prévu, l'attaque part avec « Attaquer »
+        sfx('click');
+        setAimed(uid);
+      } else if (option) {
         sfx('click');
         choose(option.id);
       } else if (uid === targeting.attacker) {
@@ -471,11 +486,14 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
       }
       return;
     }
-    if (view.byCard.has(uid) || (d && whyNot(game, d, uid))) {
+    if (view && humanTurn && (view.byCard.has(uid) || (d && whyNot(game, d, uid)))) {
       sfx('click');
       cardZoom.close();
       setMenu({ uid, rect: el.getBoundingClientRect() });
+      return;
     }
+    // écran tactile : toute autre carte (adversaire, carte sans action) s'ouvre en grand
+    if (touch) cardZoom.onHover({ num, uid, rect: el.getBoundingClientRect(), pinned: true });
   };
 
   const onAction = (uid: number, a: CardAction) => {
@@ -507,9 +525,11 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
     onDonDrag: setDragging,
   };
 
-  const targetPreview = targeting && hoverUid !== null && (view?.attacks.get(targeting.attacker) ?? []).some((o) => o.target === hoverUid)
-    ? attackPreview(game, targeting.attacker, hoverUid)
+  const aimUid = touch ? aimed : hoverUid;
+  const targetPreview = targeting && aimUid !== null && (view?.attacks.get(targeting.attacker) ?? []).some((o) => o.target === aimUid)
+    ? attackPreview(game, targeting.attacker, aimUid)
     : null;
+  const aimedOption = targeting && aimed !== null ? (view?.attacks.get(targeting.attacker) ?? []).find((o) => o.target === aimed) : undefined;
 
   // Replay depuis le récap
   const replay = (id: number) => {
@@ -546,10 +566,13 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
         <header className="op-topbar">
           <div className="op-brand">☠ OP Coach</div>
           <div className="match op-small op-muted">{DECKS[session.myDeck].name} <span className="vs">contre</span> {DECKS[session.aiDeck].name} · IA {LEVELS[session.level].name}</div>
-          <div className={`phase-pill ${game.active === HUMAN ? 'pill-me' : 'pill-opp'}`}>Tour {game.turn || 1} · {phaseLabel(game, HUMAN)}</div>
+          <div className={`phase-pill ${game.active === HUMAN ? 'pill-me' : 'pill-opp'}`}>
+            Tour {game.turn || 1} · {compact ? `${game.winner !== null ? 'fin' : game.active === HUMAN ? 'à toi' : 'IA'}${game.battle ? ' ⚔' : ''}` : phaseLabel(game, HUMAN)}
+          </div>
           <div className="top-actions">
             <button className="icon-btn" onClick={back} disabled={!undo.length} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
-            <button className="icon-btn" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
+            <button className="icon-btn hide-compact" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
+            <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
             <div className="settings-wrap" onClick={(e) => e.stopPropagation()}>
               <button className="icon-btn" onClick={() => setSettingsOpen((o) => !o)} title="Réglages">⚙</button>
               {settingsOpen && (
@@ -566,19 +589,22 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
                       {UI_SCALES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </label>
-                  <label>Détail d’une carte survolée
-                    <select value={settings.zoomDelay} onChange={(e) => updateSettings({ zoomDelay: Number(e.target.value) })}>
-                      {ZOOM_DELAYS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                  </label>
+                  {!touch && (
+                    <label>Détail d’une carte survolée
+                      <select value={settings.zoomDelay} onChange={(e) => updateSettings({ zoomDelay: Number(e.target.value) })}>
+                        {ZOOM_DELAYS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </label>
+                  )}
                   <label className="op-toggle"><input type="checkbox" checked={settings.autoCoach} onChange={(e) => updateSettings({ autoCoach: e.target.checked })} /> Conseil du coach automatique (★)</label>
                   <label className="op-toggle"><input type="checkbox" checked={settings.confirmEnd} onChange={(e) => updateSettings({ confirmEnd: e.target.checked })} /> Confirmer la fin du tour s’il reste des actions</label>
                   <label className="op-toggle"><input type="checkbox" checked={settings.sound} onChange={(e) => updateSettings({ sound: e.target.checked })} /> Sons</label>
+                  <button className="op-link only-compact" onClick={() => { setSettingsOpen(false); setHelp(true); }}>Comment jouer ? (aide et mots-clés)</button>
                 </div>
               )}
             </div>
             <button className="icon-btn" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
-            <button className="icon-btn" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
+            <button className="icon-btn hide-compact" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
             <button className="op-btn op-btn-ghost btn-small" onClick={leave}>Menu</button>
           </div>
         </header>
@@ -605,13 +631,19 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
           onButton={(id) => { sfx('click'); choose(id); }}
           onCancelTargeting={() => setTargeting(null)}
           onEndTurn={requestEnd}
-          onHint={() => { setTab('coach'); if (!hintNow) askHint(); }}
+          onHint={() => { setTab('coach'); if (compact) setPanel(true); if (!hintNow) askHint(); }}
           hintState={hintNow ? (hintNow.analysis ? 'ready' : 'loading') : 'idle'}
+          touch={touch}
+          onConfirmAttack={aimedOption ? () => { sfx('click'); choose(aimedOption.id); } : undefined}
         />
         <FxLayer game={game} human={HUMAN} epoch={epoch} />
       </main>
 
-      <aside className="side">
+      <aside className={panel ? 'side side-open' : 'side'}>
+        <div className="side-head only-compact">
+          <strong>Journal et coach</strong>
+          <button className="icon-btn" onClick={() => setPanel(false)} title="Fermer">✕</button>
+        </div>
         <CardPreview s={game} preview={preview} />
         <div className="tabs">
           <button className={tab === 'journal' ? 'op-tab on' : 'op-tab'} onClick={() => setTab('journal')}>Journal</button>
@@ -640,7 +672,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
 
       {menu && view && d && (menuActions.length > 0 || whyNot(game, d, menu.uid)) && (
         <ActionMenu s={game} uid={menu.uid} anchor={menu.rect} actions={menuActions} info={menuActions.length ? null : whyNot(game, d, menu.uid)} recommended={recommended}
-          onAction={(a) => onAction(menu.uid, a)} onClose={() => setMenu(null)} />
+          onAction={(a) => onAction(menu.uid, a)} onClose={() => setMenu(null)} sheet={compact} details={touch || compact} />
       )}
       {humanTurn && special === 'mulligan' && <MulliganModal s={game} p={HUMAN} onChoose={choose} onHover={onHover} />}
       {humanTurn && special === 'trigger' && d && <TriggerModal s={game} d={d} onChoose={choose} recommended={recommended} />}
@@ -656,7 +688,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
         <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover}
           alt={guide === session.myDeck ? session.aiDeck : session.myDeck} altLabel={guide === session.myDeck ? 'Voir le deck de l’IA' : 'Voir ton deck'} onSwitch={setGuide} />
       )}
-      {cardZoom.zoom && <CardZoom s={game} preview={cardZoom.zoom} />}
+      {cardZoom.zoom && <CardZoom s={game} preview={cardZoom.zoom} onClose={cardZoom.close} />}
       {intro && <Intro s={game} onDone={() => setIntro(false)} />}
       {over && celebrate && <Celebration won={game.winner === HUMAN} onDone={() => setCelebrate(false)} />}
       {over && !celebrate && showEnd && (

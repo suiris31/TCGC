@@ -2,12 +2,14 @@ import type { DragEvent, MouseEvent } from 'react';
 import { def, fieldCost, findField, handCost, hasBlocker, hasMod, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { justPlayed } from './decision.ts';
+import { isTouch } from './device.ts';
 import { cardImage } from './images.ts';
 
 export interface Preview {
   num: string;
   uid?: number;
   rect?: DOMRect;   // position de la carte survolée (fenêtre de détail)
+  pinned?: boolean; // carte touchée sur un écran tactile : la fenêtre de détail reste ouverte
 }
 
 export interface CardLook {
@@ -29,7 +31,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
   size?: 'field' | 'hand' | 'small' | 'life' | 'pick' | 'big';
   hidden?: boolean;
   look?: CardLook;
-  onClick?: (uid: number, el: HTMLElement) => void;
+  onClick?: (uid: number, el: HTMLElement, num: string) => void;
   onHover?: (p: Preview | null) => void;
   onDropDon?: (uid: number) => void;
 }) {
@@ -60,12 +62,18 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
     look.selected && 'is-selected',
     onClick && 'is-clickable',
   ].filter(Boolean).join(' ');
-  const click = onClick ? (e: MouseEvent<HTMLDivElement>) => { e.stopPropagation(); onClick(card.uid, e.currentTarget); } : undefined;
+  // Sur un écran tactile, une carte sans action s'ouvre en grand quand on la touche (pas de survol possible)
+  const click = onClick
+    ? (e: MouseEvent<HTMLDivElement>) => { e.stopPropagation(); onClick(card.uid, e.currentTarget, card.num); }
+    : onHover && isTouch()
+      ? (e: MouseEvent<HTMLDivElement>) => { e.stopPropagation(); onHover({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect(), pinned: true }); }
+      : undefined;
   const dragOver = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } : undefined;
   const drop = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); onDropDon(card.uid); } : undefined;
   return (
     <div className={classes} data-uid={card.uid} onClick={click} onDragOver={dragOver} onDrop={drop}
-      onMouseEnter={(e) => onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() })} onMouseLeave={() => onHover?.(null)}>
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() }); }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover?.(null); }}>
       <img src={cardImage(d.imageId)} alt={d.name} draggable={false} />
       {p !== null && size !== 'life' && (
         <span className={`badge badge-power ${p > (d.power ?? 0) ? 'up' : p < (d.power ?? 0) ? 'down' : ''}`} title="Puissance actuelle">{p}</span>

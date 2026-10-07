@@ -211,7 +211,10 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
       ))}
       {floats.map((f) => <div key={f.id} className={`fx-float float-${f.kind}`} style={{ left: f.x, top: f.y }}>{f.text}</div>)}
       {ticks.length > 0 && band && (
-        <div className="fx-ticker" style={{ right: window.innerWidth - band.right + 8, top: band.top + 4, maxHeight: band.height - 8, width: Math.min(360, band.width * 0.3) }}>
+        // bande étroite (téléphone) : les annonces prennent toute la largeur, en haut de la bande, au-dessus du combat
+        <div className={band.width < 600 ? 'fx-ticker ticker-narrow' : 'fx-ticker'} style={band.width < 600
+          ? { left: band.left + 6, right: window.innerWidth - band.right + 6, top: band.top + 2, maxHeight: Math.max(48, band.height * 0.42) }
+          : { right: window.innerWidth - band.right + 8, top: band.top + 4, maxHeight: band.height - 8, width: Math.min(360, band.width * 0.3) }}>
           {ticks.map((t) => <div key={t.id} className={`tick ${t.mine ? 'tick-me' : 'tick-opp'}`}><b className="tick-who">{t.who}</b> {t.text}</div>)}
         </div>
       )}

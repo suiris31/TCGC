@@ -3,9 +3,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { def, findField, name, power } from '../engine/rules.ts';
 import type { Decision, GameState, Option, PlayerId } from '../engine/types.ts';
 import type { CardAction } from './decision.ts';
+import { CardDetails } from './Zoom.tsx';
 
-// Menu des actions d'une carte, affiché à côté d'elle. Rien ne se passe tant qu'on n'a pas cliqué une action.
-export function ActionMenu({ s, uid, anchor, actions, info, recommended, onAction, onClose }: {
+// Menu des actions d'une carte, affiché à côté d'elle. Rien ne se passe tant qu'on n'a pas choisi une action.
+// Sur téléphone (sheet), c'est une fiche en bas de l'écran ; sur écran tactile (details), elle montre aussi la carte en
+// grand et son texte, faute de survol.
+export function ActionMenu({ s, uid, anchor, actions, info, recommended, onAction, onClose, sheet = false, details = false }: {
   s: GameState;
   uid: number;
   anchor: DOMRect;
@@ -14,12 +17,14 @@ export function ActionMenu({ s, uid, anchor, actions, info, recommended, onActio
   recommended: string | null;
   onAction: (a: CardAction) => void;
   onClose: () => void;
+  sheet?: boolean;
+  details?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number }>({ left: anchor.right + 10, top: anchor.top });
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || sheet) return;
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     let left = anchor.right + 10;
@@ -28,20 +33,24 @@ export function ActionMenu({ s, uid, anchor, actions, info, recommended, onActio
     let top = anchor.top + anchor.height / 2 - h / 2;
     top = Math.max(8, Math.min(window.innerHeight - h - 8, top));
     setPos({ left, top });
-  }, [anchor]);
+  }, [anchor, sheet]);
   useEffect(() => {
-    const close = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-    const t = setTimeout(() => document.addEventListener('mousedown', close), 0);
-    return () => { clearTimeout(t); document.removeEventListener('mousedown', close); };
+    const close = (e: PointerEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    const t = setTimeout(() => document.addEventListener('pointerdown', close), 0);
+    return () => { clearTimeout(t); document.removeEventListener('pointerdown', close); };
   }, [onClose]);
   const f = findField(s, uid);
   const num = f?.card.num ?? s.players.flatMap((P) => [...P.hand, ...P.trash]).find((c) => c.uid === uid)?.num;
   return (
-    <div ref={ref} className="action-menu" style={{ left: pos.left, top: pos.top }} onClick={(e) => e.stopPropagation()}>
-      <div className="action-menu-head">
-        <strong>{num ? def(num).name : name(s, uid)}</strong>
-        {f && !f.stage && <span className="op-muted"> · {power(s, uid)} de puissance</span>}
-      </div>
+    <div ref={ref} className={`action-menu${sheet ? ' as-sheet' : ''}${details ? ' with-details' : ''}`} style={sheet ? undefined : { left: pos.left, top: pos.top }} onClick={(e) => e.stopPropagation()}>
+      {details && num ? (
+        <div className="sheet-card"><CardDetails s={s} num={num} uid={uid} /></div>
+      ) : (
+        <div className="action-menu-head">
+          <strong>{num ? def(num).name : name(s, uid)}</strong>
+          {f && !f.stage && <span className="op-muted"> · {power(s, uid)} de puissance</span>}
+        </div>
+      )}
       {info && <p className="action-info">{info}</p>}
       {actions.map((a) => (
         <button key={a.option.id + a.kind} className={`action ${a.useless ? 'action-useless' : ''} ${recommended === a.option.id || (a.kind === 'attack' && recommended?.startsWith(`attack:${uid}:`)) ? 'action-reco' : ''}`}
@@ -89,7 +98,7 @@ export function BattlePanel({ s, human }: { s: GameState; human: PlayerId }) {
 const BUTTON_STYLE: Record<string, string> = { end: 'op-btn-primary', pass: 'op-btn-ghost', noblock: 'op-btn-ghost', none: 'op-btn-ghost', no: 'op-btn-ghost' };
 
 // Barre d'action en bas : la question en cours, en mots simples, et ses boutons
-export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, hasCardActions, buttons, recommended, onButton, onCancelTargeting, onEndTurn, onHint, hintState }: {
+export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, hasCardActions, buttons, recommended, onButton, onCancelTargeting, onEndTurn, onHint, hintState, touch = false, onConfirmAttack }: {
   s: GameState;
   d: Decision | null;
   human: PlayerId;
@@ -105,7 +114,11 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
   onEndTurn: () => void;
   onHint?: () => void;
   hintState?: 'idle' | 'loading' | 'ready';
+  touch?: boolean;
+  // écran tactile : la cible touchée est choisie, l'attaque part avec ce bouton
+  onConfirmAttack?: () => void;
 }) {
+  const tap = touch ? 'Touche' : 'Clique sur';
   if (s.winner !== null) return <div className="action-bar"><div className="bar-text"><strong>{s.winner === human ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{s.winReason}</span></div></div>;
   if (!d || d.player !== human) {
     return (
@@ -119,9 +132,12 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
       <div className="action-bar bar-target">
         <div className="bar-text">
           <strong>⚔ Choisis la cible de {name(s, targeting.attacker)} ({power(s, targeting.attacker)})</strong>
-          <span className={preview ? (preview.ok ? 'good' : 'op-warn') : 'op-muted'}>{preview?.text ?? 'Les cibles possibles brillent en rouge : le Leader adverse ou un Personnage adverse épuisé. Survole-les pour voir le résultat.'}</span>
+          <span className={preview ? (preview.ok ? 'good' : 'op-warn') : 'op-muted'}>{preview?.text ?? `Les cibles possibles brillent en rouge : le Leader adverse ou un Personnage adverse épuisé. ${touch ? 'Touche-en une pour voir le résultat.' : 'Survole-les pour voir le résultat.'}`}</span>
         </div>
-        <div className="bar-buttons"><button className="op-btn op-btn-ghost" onClick={onCancelTargeting}>Annuler (Échap)</button></div>
+        <div className="bar-buttons">
+          {onConfirmAttack && <button className="op-btn op-btn-primary btn-end" onClick={onConfirmAttack}>⚔ Attaquer</button>}
+          <button className="op-btn op-btn-ghost" onClick={onCancelTargeting}>{touch ? 'Annuler' : 'Annuler (Échap)'}</button>
+        </div>
       </div>
     );
   }
@@ -129,13 +145,15 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
   let help = '';
   if (d.kind === 'main') {
     title = 'À toi de jouer';
-    help = hasCardActions ? 'Clique sur une carte qui brille pour voir ce qu’elle peut faire. Tu peux aussi glisser une DON!! sur une carte.' : 'Plus rien d’utile à faire : termine ton tour.';
+    help = hasCardActions
+      ? (touch ? 'Touche une carte qui brille pour voir ce qu’elle peut faire.' : 'Clique sur une carte qui brille pour voir ce qu’elle peut faire. Tu peux aussi glisser une DON!! sur une carte.')
+      : 'Plus rien d’utile à faire : termine ton tour.';
   } else if (d.kind === 'blocker') {
-    help = 'Clique sur un de tes [Bloqueur] qui brille pour qu’il prenne l’attaque à la place, ou laisse passer.';
+    help = `${tap} un de tes [Bloqueur] qui brille pour qu’il prenne l’attaque à la place, ou laisse passer.`;
   } else if (d.kind === 'counter') {
-    help = 'Clique sur une carte de ta main qui brille pour contrer (sa valeur de Contre s’ajoute à la carte attaquée), ou arrête là.';
+    help = `${tap} une carte de ta main qui brille pour contrer (sa valeur de Contre s’ajoute à la carte attaquée), ou arrête là.`;
   } else if (hasCardActions) {
-    help = 'Clique sur une carte qui brille.';
+    help = `${tap} une carte qui brille.`;
   }
   const others = buttons.filter((o) => o.id !== 'end');
   const end = buttons.find((o) => o.id === 'end');

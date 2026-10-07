@@ -9,6 +9,7 @@ import type { Preview } from './CardView.tsx';
 import { pct, RecapBody, ReviewItem, StatsTable } from './Coach.tsx';
 import { CardThumb } from './DeckGuide.tsx';
 import { importFiles, loadRecord, loadSummaries } from './archiveClient.ts';
+import { isTouch } from './device.ts';
 
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
 type Tab = 'progress' | 'axes' | 'games';
@@ -330,7 +331,7 @@ function AxesTab({ p, onResume, onOpen, onHover }: { p: Progress; onResume: (id:
 function GamesTab({ p, onOpen }: { p: Progress; onOpen: (id: string) => void }) {
   return (
     <>
-      <p className="op-small op-muted">{plural(p.rows.length, 'partie')} sauvegardée{p.rows.length > 1 ? 's' : ''}. Clique sur une partie pour la revoir.</p>
+      <p className="op-small op-muted">{plural(p.rows.length, 'partie')} sauvegardée{p.rows.length > 1 ? 's' : ''}. {isTouch() ? 'Touche' : 'Clique sur'} une partie pour la revoir.</p>
       <table className="op-stats hist-table hist-games">
         <thead><tr><th>Date</th><th>Ton deck</th><th>IA</th><th>Résultat</th><th>Tours</th><th>Durée</th><th>Précision</th><th>Erreurs</th></tr></thead>
         <tbody>

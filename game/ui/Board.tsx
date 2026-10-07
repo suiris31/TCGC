@@ -8,7 +8,7 @@ import { cardImage } from './images.ts';
 
 export interface BoardUi {
   looks: Map<number, CardLook>;
-  onCard: (uid: number, el: HTMLElement) => void;
+  onCard: (uid: number, el: HTMLElement, num: string) => void;
   onHover: (p: Preview | null) => void;
   onTrash: (p: PlayerId) => void;
   onDropDon: (uid: number) => void;
@@ -95,7 +95,7 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
   const cards = s.players[p].hand;
   const overlap = cards.length > 7 ? Math.min(60, (cards.length - 7) * 9 + 18) : 0;
   return (
-    <div className="hand" style={{ ['--overlap' as string]: `${overlap}px` }}>
+    <div className="hand" style={{ ['--overlap' as string]: `${overlap}px`, ['--n' as string]: cards.length }}>
       {cards.map((c, i) => (
         <div key={c.uid} className="hand-slot" style={{ ['--i' as string]: i - (cards.length - 1) / 2 }}>
           <CardView s={s} card={c} owner={p} size="hand" look={ui.looks.get(c.uid)} onClick={ui.onCard} onHover={ui.onHover} />

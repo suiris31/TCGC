@@ -6,13 +6,17 @@ import { def } from '../engine/rules.ts';
 import type { Preview } from './CardView.tsx';
 import { GUIDES } from './deckGuides.ts';
 import { cardImage } from './images.ts';
+import { isTouch } from './device.ts';
 
 const COLOR: Record<string, string> = { Rouge: '#d9443a', Vert: '#2f9e5b', Bleu: '#2f6fd1', Violet: '#8a4fc9', Jaune: '#e2b623', Noir: '#55556a' };
 
 export function CardThumb({ num, count, size = 'thumb', onHover }: { num: string; count?: number; size?: 'thumb' | 'mini'; onHover: (p: (Preview & { rect?: DOMRect }) | null) => void }) {
   const d = def(num);
   return (
-    <div className={`thumb thumb-${size}`} onMouseEnter={(e) => onHover({ num, rect: e.currentTarget.getBoundingClientRect() })} onMouseLeave={() => onHover(null)}>
+    <div className={`thumb thumb-${size}`}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover({ num, rect: e.currentTarget.getBoundingClientRect() }); }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover(null); }}
+      onClick={(e) => { if (isTouch()) onHover({ num, rect: e.currentTarget.getBoundingClientRect(), pinned: true }); }}>
       <img src={cardImage(d.imageId)} alt={d.name} draggable={false} />
       {count !== undefined && <span className="thumb-count">×{count}</span>}
     </div>
@@ -89,7 +93,7 @@ export function DeckGuideModal({ deckId, onClose, onHover, alt, altLabel, onSwit
             {guide.aiLesson && <Section title="Ce que l’IA a appris en s’entraînant"><p>{guide.aiLesson}</p></Section>}
           </div>
           <div className="guide-col">
-            <Section title={`Les 50 cartes (survole une carte pour la lire)`}>
+            <Section title={`Les 50 cartes (${isTouch() ? 'touche' : 'survole'} une carte pour la lire)`}>
               <div className="guide-group-title">Personnages</div>
               <div className="thumb-grid">{chars.map((c) => <CardThumb key={c.num} num={c.num} count={c.n} onHover={onHover} />)}</div>
               {events.length > 0 && <div className="guide-group-title">Événements</div>}

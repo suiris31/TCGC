@@ -4,6 +4,7 @@ import { def } from '../engine/rules.ts';
 import type { Card, Decision, GameState, Option, PlayerId } from '../engine/types.ts';
 import { CardView, type Preview } from './CardView.tsx';
 import type { PickItem } from './decision.ts';
+import { isTouch } from './device.ts';
 
 function Modal({ children, onClose, wide, className }: { children: ReactNode; onClose?: () => void; wide?: boolean; className?: string }) {
   return (
@@ -48,7 +49,7 @@ export function PickerModal({ s, d, picks, buttons, recommended, onChoose, onHov
           const card: Card = { uid: it.option.uid ?? -1, num: it.num };
           return (
             <div key={it.option.id} className={`pick ${recommended === it.option.id ? 'pick-reco' : ''}`}>
-              <CardView s={s} card={card} size="pick" look={{ choose: true, recommended: recommended === it.option.id }} onClick={() => onChoose(it.option.id)} onHover={onHover} />
+              <CardView s={s} card={card} size="pick" look={{ choose: true, recommended: recommended === it.option.id }} onClick={isTouch() ? undefined : () => onChoose(it.option.id)} onHover={onHover} />
               <button className="op-btn btn-choice" onClick={() => onChoose(it.option.id)}>Choisir</button>
               <span className="op-small op-muted">{it.zone}</span>
             </div>
@@ -146,19 +147,31 @@ const KEYWORDS: [string, string][] = [
 ];
 
 export function HelpModal({ onClose }: { onClose: () => void }) {
+  const touch = isTouch();
   return (
     <Modal onClose={onClose} wide className="modal-help">
       <h2>Comment jouer</h2>
       <div className="help-grid">
         <section>
           <h3>Pendant ton tour</h3>
-          <ul>
-            <li><b>Les cartes qui brillent</b> peuvent faire quelque chose : clique dessus pour voir leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
-            <li><b>Jouer une carte</b> : clique sur une carte de ta main, puis « Jouer ». Son coût est en haut à gauche.</li>
-            <li><b>Donner des DON!!</b> : glisse une DON!! sur une carte, ou clique sur la carte puis « Donner 1 DON!! ».</li>
-            <li><b>Attaquer</b> : clique sur ton Leader ou un Personnage, « Attaquer… », puis sur la cible (elle brille en rouge). Au survol, tu vois le résultat prévu.</li>
-            <li><b>Fin du tour</b> : le bouton en bas à droite (ou Entrée).</li>
-          </ul>
+          {touch ? (
+            <ul>
+              <li><b>Les cartes qui brillent</b> peuvent faire quelque chose : touche-les pour voir leur fiche et leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
+              <li><b>Lire une carte</b> : touche-la, sa fiche s’ouvre en grand (même les cartes de l’adversaire).</li>
+              <li><b>Jouer une carte</b> : touche une carte de ta main, puis « Jouer ». Son coût est en haut à gauche.</li>
+              <li><b>Donner des DON!!</b> : touche la carte, puis « Donner 1 DON!! » (autant de fois que tu veux).</li>
+              <li><b>Attaquer</b> : touche ton Leader ou un Personnage, « Attaquer… », puis la cible (elle brille en rouge) : le résultat prévu s’affiche en bas, et tu confirmes avec « Attaquer ».</li>
+              <li><b>Fin du tour</b> : le bouton en bas. Le journal et le coach s’ouvrent avec le bouton 📜 en haut.</li>
+            </ul>
+          ) : (
+            <ul>
+              <li><b>Les cartes qui brillent</b> peuvent faire quelque chose : clique dessus pour voir leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
+              <li><b>Jouer une carte</b> : clique sur une carte de ta main, puis « Jouer ». Son coût est en haut à gauche.</li>
+              <li><b>Donner des DON!!</b> : glisse une DON!! sur une carte, ou clique sur la carte puis « Donner 1 DON!! ».</li>
+              <li><b>Attaquer</b> : clique sur ton Leader ou un Personnage, « Attaquer… », puis sur la cible (elle brille en rouge). Au survol, tu vois le résultat prévu.</li>
+              <li><b>Fin du tour</b> : le bouton en bas à droite (ou Entrée).</li>
+            </ul>
+          )}
           <h3>Pendant le tour de l’IA</h3>
           <ul>
             <li>Quand l’IA attaque, tu peux <b>bloquer</b> avec un [Bloqueur] et <b>contrer</b> avec les cartes de ta main : la barre en bas te dit ce qu’il te manque pour repousser l’attaque.</li>
@@ -169,10 +182,14 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             <li>La puissance est en bas à droite : verte si elle est augmentée, rouge si elle est baissée.</li>
             <li>★ : la carte ou l’action conseillée par le coach.</li>
           </ul>
-          <h3>Raccourcis</h3>
-          <ul>
-            <li>Échap : fermer un menu ou annuler une attaque · Entrée : fin du tour · Ctrl+Z : revenir en arrière · ? : cette aide</li>
-          </ul>
+          {!touch && (
+            <>
+              <h3>Raccourcis</h3>
+              <ul>
+                <li>Échap : fermer un menu ou annuler une attaque · Entrée : fin du tour · Ctrl+Z : revenir en arrière · ? : cette aide</li>
+              </ul>
+            </>
+          )}
         </section>
         <section>
           <h3>Mots-clés</h3>

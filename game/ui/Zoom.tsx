@@ -24,27 +24,14 @@ function modText(s: GameState, m: Modifier): string {
   }
 }
 
-export function CardZoom({ s, preview }: { s?: GameState | null; preview: Preview & { rect?: DOMRect } }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const d = def(preview.num);
-  const f = s && preview.uid !== undefined ? findField(s, preview.uid) : null;
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const r = preview.rect;
-    if (!el) return;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    let left = r ? r.right + 14 : (window.innerWidth - w) / 2;
-    if (r && left + w > window.innerWidth - 8) left = r.left - w - 14;
-    if (left < 8) left = Math.max(8, (window.innerWidth - w) / 2);
-    let top = r ? r.top + r.height / 2 - h / 2 : (window.innerHeight - h) / 2;
-    top = Math.max(8, Math.min(window.innerHeight - h - 8, top));
-    setPos({ left, top });
-  }, [preview]);
+// Contenu de la fiche d'une carte : grand visuel, texte complet et, pour une carte en jeu, son état actuel. Utilisé par
+// la fenêtre de détail et par la fiche tactile (menu d'actions sur téléphone).
+export function CardDetails({ s, num, uid }: { s?: GameState | null; num: string; uid?: number }) {
+  const d = def(num);
+  const f = s && uid !== undefined ? findField(s, uid) : null;
   const mods = f && s ? s.mods.filter((m) => m.uid === f.card.uid) : [];
   return (
-    <div ref={ref} className="card-zoom" style={pos ? { left: pos.left, top: pos.top } : { visibility: 'hidden' }}>
+    <>
       <img src={cardImage(d.imageId)} alt={d.name} />
       <div className="zoom-text">
         <strong className="zoom-name">{d.name}</strong>
@@ -72,17 +59,51 @@ export function CardZoom({ s, preview }: { s?: GameState | null; preview: Previe
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+// Fenêtre de détail : à côté de la carte survolée (souris), ou épinglée après avoir touché une carte (écran tactile),
+// jusqu'au toucher suivant
+export function CardZoom({ s, preview, onClose }: { s?: GameState | null; preview: Preview & { rect?: DOMRect }; onClose?: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const r = preview.rect;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    let left = r ? r.right + 14 : (window.innerWidth - w) / 2;
+    if (r && left + w > window.innerWidth - 8) left = r.left - w - 14;
+    if (left < 8) left = Math.max(8, (window.innerWidth - w) / 2);
+    let top = r ? r.top + r.height / 2 - h / 2 : (window.innerHeight - h) / 2;
+    top = Math.max(8, Math.min(window.innerHeight - h - 8, top));
+    setPos({ left, top });
+  }, [preview]);
+  const box = (
+    <div ref={ref} className={preview.pinned ? 'card-zoom zoom-pinned' : 'card-zoom'} style={pos ? { left: pos.left, top: pos.top } : { visibility: 'hidden' }}>
+      <CardDetails s={s} num={preview.num} uid={preview.uid} />
+    </div>
+  );
+  if (!preview.pinned) return box;
+  return (
+    <div className="zoom-backdrop" onClick={(e) => { e.stopPropagation(); onClose?.(); }}>
+      {box}
+      <span className="zoom-close">Touche pour fermer</span>
     </div>
   );
 }
 
-// Survol avec délai : la fenêtre de détail s'ouvre si la souris reste sur la même carte
+// Survol avec délai : la fenêtre de détail s'ouvre si la souris reste sur la même carte. Une carte touchée sur un
+// écran tactile (pinned) s'ouvre tout de suite et reste ouverte jusqu'au toucher suivant.
 export function useCardZoom(delay: number) {
   const [zoom, setZoom] = useState<(Preview & { rect?: DOMRect }) | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const onHover = useCallback((p: (Preview & { rect?: DOMRect }) | null) => {
     clearTimeout(timer.current);
-    setZoom(null);
+    if (p?.pinned) return setZoom(p);
+    setZoom((z) => (z?.pinned ? z : null));
     if (p && delay > 0) timer.current = setTimeout(() => setZoom(p), delay);
   }, [delay]);
   useEffect(() => () => clearTimeout(timer.current), []);

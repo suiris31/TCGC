@@ -2,6 +2,7 @@
 import type { Analysis } from '../ai/search.ts';
 import type { MoveReview, Recap, SideStats } from '../coach/review.ts';
 import type { Decision } from '../engine/types.ts';
+import { isTouch } from './device.ts';
 
 export const pct = (rate: number) => `${Math.round(rate * 100)} %`;
 
@@ -45,7 +46,7 @@ export function CoachHint({ decision, analysis, loading, onAsk, onChoose }: {
   return (
     <div className="coach-hint">
       <div className="op-small op-muted">
-        Tes chances de gagner avec les meilleurs choix ({analysis.refinedSamples ?? analysis.samples} simulations chacun). Clique pour jouer :
+        Tes chances de gagner avec les meilleurs choix ({analysis.refinedSamples ?? analysis.samples} simulations chacun). {isTouch() ? 'Touche' : 'Clique'} pour jouer :
       </div>
       {top.map((x) => row(x, true))}
       {top.length > 1 && best.rate - top[1].rate < 0.05 && (
