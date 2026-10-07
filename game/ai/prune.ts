@@ -39,6 +39,11 @@ export function uselessReason(s: GameState, d: Decision, o: Option): string | nu
     if (attachedDon(s, p) < 3 && [...P.chars, ...P.hand].some((c) => COUNTS_ALL_DON.includes(c.num))) return null;
     return 'cette carte ne peut pas attaquer ce tour (une DON!! ne compte que pour attaquer)';
   }
+  if (d.kind === 'main' && kind === 'act') {
+    const f = findField(s, Number(a));
+    const useful = f && def(f.card.num).activateMain?.useful;
+    if (useful && !useful(s, p, f.card)) return 'son effet ne peut rien faire maintenant';
+  }
   if (d.kind === 'main' && kind === 'event') {
     const card = P.hand.find((c) => c.uid === Number(a));
     const useful = card && def(card.num).mainUseful;

@@ -263,6 +263,8 @@ export interface CardBehavior {
     oncePerTurn: boolean;
     label: string;
     canActivate?: (s: GameState, owner: PlayerId, card: FieldCard) => boolean;
+    // l'effet peut-il faire quelque chose maintenant ? (l'IA, le coach et l'interface ne proposent pas un effet inutile)
+    useful?: (s: GameState, owner: PlayerId, card: FieldCard) => boolean;
     run: (ctx: EffectCtx, card: FieldCard) => void;
   };
   onMain?: (ctx: EffectCtx) => void;    // Événement [Principale]
