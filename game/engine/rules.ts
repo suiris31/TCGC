@@ -146,9 +146,13 @@ export function power(s: GameState, uid: number): number {
   let p = bases.length ? Math.max(...bases) : d.power ?? 0;
   if (s.active === f.player) p += f.card.don * 1000;
   p += d.selfPower?.(s, f.player, f.card) ?? 0;
-  for (const src of fieldCards(s, f.player)) {
+  for (const src of allField(s, f.player)) {
     const aura = def(src.num).aura;
     if (aura) p += aura(s, f.player, src, f.card);
+  }
+  for (const src of allField(s, other(f.player))) {
+    const aura = def(src.num).oppAura;
+    if (aura) p += aura(s, other(f.player), src, f.card);
   }
   for (const m of s.mods) if (m.uid === uid && m.stat === 'power') p += m.amount;
   return p;
@@ -296,6 +300,9 @@ export function declareAndReveal(ctx: EffectCtx): boolean {
 
 // ---------- DON!! ----------
 
+// Nombre de cartes DON!! d'un joueur : 10, ou ce que dit son Leader (Enel OP15-058 : 6)
+export const donTotal = (leader: string) => def(leader).rules?.donDeck ?? 10;
+
 export function payDon(s: GameState, p: PlayerId, n: number) {
   const P = s.players[p];
   if (P.donActive < n) throw new Error('DON!! insuffisantes');
@@ -409,17 +416,40 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
   return f;
 }
 
-// Mise KO (combat ou effet du joueur `by`) : la carte va dans la Défausse, son effet [En cas de KO] est mis en attente
-export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId, sourceNum?: string) {
+// « Ne peut pas être mis KO » : par son propre effet (sous condition) ou accordé par un effet
+export function canBeKO(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId): boolean {
+  const f = findField(s, uid);
+  if (!f) return false;
+  if (def(f.card.num).cantBeKO?.(s, f.player, f.card, cause, by)) return false;
+  return !s.mods.some((m) => m.uid === uid && m.stat === 'cantBeKO'
+    && (!m.scope || m.scope === cause || (m.scope === 'oppEffect' && cause === 'effect' && by !== f.player)));
+}
+
+// « Ne peut pas quitter le terrain à cause d'un effet adverse » (les effets de son propriétaire le peuvent)
+export function canLeaveByEffect(s: GameState, uid: number, by: PlayerId): boolean {
+  const f = findField(s, uid);
+  if (!f) return false;
+  if (by === f.player) return true;
+  return !def(f.card.num).cantLeave?.(s, f.player, f.card) && !hasMod(s, uid, 'cantLeave');
+}
+
+// Mise KO (combat ou effet du joueur `by`) : la carte va dans la Défausse, son effet [En cas de KO] est mis en attente.
+// Faux si la carte ne peut pas être mise KO.
+export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId, sourceNum?: string): boolean {
   const f0 = findField(s, uid);
-  if (!f0 || f0.leader || f0.stage) return;
+  if (!f0 || f0.leader || f0.stage) return false;
   const d = def(f0.card.num);
+  if (!canBeKO(s, uid, cause, by)) {
+    log(s, f0.player, `${d.name} ne peut pas être mis KO`);
+    return false;
+  }
   const triggers = d.onKO && (d.onKOCondition?.(s, f0.player) ?? true);
   const f = removeFromField(s, uid, 'trash');
-  if (!f) return;
+  if (!f) return false;
   log(s, f.player, `${d.name} est mis KO${cause === 'effect' ? ' par un effet' : ''}`);
   const onKO: PendingEffect[] = triggers ? [{ kind: 'onKO', source: uid, num: f.card.num, controller: f.player, answers: [] }] : [];
   emit(s, { type: 'ko', player: f.player, uid, num: f.card.num, zone: 'character', cause, by, sourceNum }, onKO);
+  return true;
 }
 
 const DESTINATION_TEXT: Record<Exclude<Destination, 'trash'>, string> = {
@@ -436,6 +466,14 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
   const f = findField(s, uid);
   if (!f || f.leader || f.stage) return false;
   const owner = f.player;
+  if (to === 'ko' && !canBeKO(s, uid, 'effect', ctx.me)) {
+    log(s, owner, `${def(f.card.num).name} ne peut pas être mis KO`);
+    return false;
+  }
+  if (!canLeaveByEffect(s, uid, ctx.me)) {
+    log(s, owner, `${def(f.card.num).name} ne peut pas quitter le terrain à cause d'un effet adverse`);
+    return false;
+  }
   if (owner !== ctx.me) {
     const options: Option[] = fieldCards(s, owner).flatMap((self) => {
       const r = def(self.num).replaceRemoval;
@@ -458,7 +496,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
       }
     }
   }
-  if (to === 'ko') koCharacter(s, uid, 'effect', ctx.me, ctx.num);
+  if (to === 'ko') return koCharacter(s, uid, 'effect', ctx.me, ctx.num);
   else {
     removeFromField(s, uid, to);
     log(s, owner, `${def(f.card.num).name} est ${DESTINATION_TEXT[to]}`);

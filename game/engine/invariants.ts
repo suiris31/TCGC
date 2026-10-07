@@ -1,7 +1,7 @@
 // Contrôles de cohérence d'une partie : aucune carte créée ni perdue, 10 DON!! par joueur, zones respectées...
 // Utilisés par les tests et par le script de validation (scripts/game/validate.ts) entre deux décisions.
 import { DECKS } from './decks.ts';
-import { def, findField, power } from './rules.ts';
+import { def, donTotal, findField, power } from './rules.ts';
 import type { Card, GameState, PlayerId } from './types.ts';
 
 export function invariantErrors(s: GameState): string[] {
@@ -31,11 +31,12 @@ export function invariantErrors(s: GameState): string[] {
         errors.push(`${P.name} : ${def(num).name} ×${counts.get(num) ?? 0} au lieu de ×${expected.get(num) ?? 0}`);
       }
     }
-    // DON!! : 10 en tout, aucune quantité négative, jamais sur un Lieu
+    // DON!! : 10 en tout (ou ce que dit le Leader), aucune quantité négative, jamais sur un Lieu
     const holders = [P.leader, ...P.chars];
     const attached = holders.reduce((sum, c) => sum + c.don, 0);
-    if (P.donDeck + P.donActive + P.donRested + attached !== 10) {
-      errors.push(`${P.name} : ${P.donDeck + P.donActive + P.donRested + attached} DON!! au lieu de 10 (deck ${P.donDeck}, actives ${P.donActive}, épuisées ${P.donRested}, données ${attached})`);
+    const total = donTotal(P.leader.num);
+    if (P.donDeck + P.donActive + P.donRested + attached !== total) {
+      errors.push(`${P.name} : ${P.donDeck + P.donActive + P.donRested + attached} DON!! au lieu de ${total} (deck ${P.donDeck}, actives ${P.donActive}, épuisées ${P.donRested}, données ${attached})`);
     }
     if ([P.donDeck, P.donActive, P.donRested, ...holders.map((c) => c.don)].some((n) => n < 0 || !Number.isInteger(n))) errors.push(`${P.name} : nombre de DON!! invalide`);
     if (P.stage && P.stage.don) errors.push(`${P.name} : DON!! données à un Lieu`);

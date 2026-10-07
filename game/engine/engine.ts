@@ -5,7 +5,7 @@
 import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, canBeRested, def, describe, draw, emit, fieldCards, findField, handCost, hasBlocker,
+  addMod, allField, attackTargets, canBeRested, def, describe, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker,
   hasKeyword, koCharacter, log, name, onField, other, payDon, playCharacter, power, restForAttack, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
@@ -44,7 +44,7 @@ function makePlayer(s: GameState, deckId: string, playerName: string): PlayerSta
     life: [],
     chars: [],
     stage: null,
-    donDeck: 10,
+    donDeck: donTotal(deck.leader),
     donActive: 0,
     donRested: 0,
     turns: 0,
@@ -75,12 +75,8 @@ export function newGame(opts: NewGameOptions, chooser?: Chooser): GameState {
   const first: PlayerId = opts.first === 0 || opts.first === 1 ? opts.first : random(s) < 0.5 ? 0 : 1;
   s.first = first;
   s.active = first;
-  for (const p of [0, 1] as PlayerId[]) {
-    shuffle(s, s.players[p].deck);
-    draw(s, p, 5);
-  }
-  log(s, null, `${s.players[first].name} joue en premier`);
-  s.flow = { stage: 'mulligan', player: first };
+  for (const p of [0, 1] as PlayerId[]) shuffle(s, s.players[p].deck);
+  s.flow = { stage: 'setup' };
   return advance(s, chooser);
 }
 
@@ -148,13 +144,28 @@ function historyEntry(s: GameState, d: Decision, choice: string): HistoryEntry {
   };
 }
 
-// Défaite (9-2) : plus de cartes dans le deck (les dégâts sans Vie sont traités pendant les dégâts)
+// Défaite (9-2) : plus de cartes dans le deck (les dégâts sans Vie sont traités pendant les dégâts). Certains Leaders
+// changent cette règle : victoire à deck vide, ou défaite seulement à la fin du tour (voir endOfTurnDefeat).
 function checkDefeat(s: GameState) {
-  if (s.winner !== null || s.flow.stage === 'mulligan') return;
+  if (s.winner !== null || s.flow.stage === 'setup' || s.flow.stage === 'mulligan') return;
   for (const p of [s.active, other(s.active)]) {
-    if (s.players[p].deck.length === 0) {
+    if (s.players[p].deck.length !== 0) continue;
+    const rule = def(s.players[p].leader.num).rules?.deckOut;
+    if (rule === 'loseAtEndOfTurn') continue;
+    s.winner = rule === 'win' ? p : other(p);
+    s.winReason = rule === 'win'
+      ? `${s.players[p].name} n'a plus de cartes dans son deck et gagne (effet de son Leader)`
+      : `${s.players[p].name} n'a plus de cartes dans son deck`;
+    log(s, null, s.winReason);
+    return;
+  }
+}
+
+function endOfTurnDefeat(s: GameState) {
+  for (const p of [s.active, other(s.active)]) {
+    if (s.players[p].deck.length === 0 && def(s.players[p].leader.num).rules?.deckOut === 'loseAtEndOfTurn') {
       s.winner = other(p);
-      s.winReason = `${s.players[p].name} n'a plus de cartes dans son deck`;
+      s.winReason = `${s.players[p].name} n'a plus de cartes dans son deck à la fin du tour`;
       log(s, null, s.winReason);
       return;
     }
@@ -381,6 +392,18 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
 function stepFlow(s: GameState) {
   const flow = s.flow;
   switch (flow.stage) {
+    case 'setup': {
+      // Effets « au début de la partie » des Leaders (5-2-1-5-1), puis mains de départ (5-2-1-6)
+      if (!flow.effectsDone) {
+        flow.effectsDone = true;
+        emit(s, { type: 'gameStart', player: s.first });
+        return;
+      }
+      for (const p of [0, 1] as PlayerId[]) draw(s, p, 5);
+      log(s, null, `${s.players[s.first].name} joue en premier`);
+      s.flow = { stage: 'mulligan', player: s.first };
+      return;
+    }
     case 'mulligan': {
       const P = s.players[flow.player];
       s.decision = {
@@ -395,11 +418,20 @@ function stepFlow(s: GameState) {
       return;
     }
     case 'refresh': {
-      // Phase de Recharge (6-2) : DON!! données renvoyées épuisées, puis tout est redressé
+      // Phase de Recharge (6-2). Les effets « jusqu'au début de votre prochain tour » sont déjà finis : ils durent
+      // jusqu'à la fin du tour adverse (Modifier.until), rien ne se passe entre les deux.
       const p = s.active;
       const P = s.players[p];
-      P.turns++;
-      log(s, p, `— Tour ${s.turn} : ${P.name} —`);
+      if (!flow.effectsDone) {
+        // effets « au début de votre tour / du tour adverse » (6-2-2)
+        flow.effectsDone = true;
+        P.turns++;
+        log(s, p, `— Tour ${s.turn} : ${P.name} —`);
+        for (const c of [...allField(s, 0), ...allField(s, 1)]) c.usedOpt = [];
+        emit(s, { type: 'turnStart', player: p });
+        return;
+      }
+      // DON!! données renvoyées épuisées, puis tout est redressé (6-2-3, 6-2-4)
       for (const c of fieldCards(s, p)) {
         P.donRested += c.don;
         c.don = 0;
@@ -407,7 +439,6 @@ function stepFlow(s: GameState) {
       for (const c of allField(s, p)) c.rested = false;
       P.donActive += P.donRested;
       P.donRested = 0;
-      for (const c of [...allField(s, 0), ...allField(s, 1)]) c.usedOpt = [];
       s.flow = { stage: 'draw' };
       return;
     }
@@ -425,7 +456,9 @@ function stepFlow(s: GameState) {
       const n = Math.min(P.donDeck, p === s.first && P.turns === 1 ? 1 : 2);
       P.donDeck -= n;
       P.donActive += n;
+      // effets « au début de la phase principale » (6-5-1)
       s.flow = { stage: 'main' };
+      emit(s, { type: 'mainStart', player: p });
       return;
     }
     case 'main':
@@ -447,6 +480,8 @@ function stepFlow(s: GameState) {
         s.delayed = s.delayed.filter((x) => x.turn !== s.turn);
         return;
       }
+      endOfTurnDefeat(s);
+      if (s.winner !== null) return;
       s.mods = s.mods.filter((m) => m.until !== 'turn' && m.until !== s.turn);
       s.active = other(s.active);
       s.turn++;
@@ -671,6 +706,8 @@ function applyDecision(s: GameState, choice: string) {
         b.target = uid;
         b.blocked = true;
         log(s, d.player, `bloque avec ${def(f.card.num).name}`);
+        // [En bloquant] et effets « quand vous bloquez » (7-1-2-2)
+        emit(s, { type: 'block', player: d.player, uid, num: f.card.num, zone: 'character', by: d.player });
       }
       b.step = 'counter';
       return;

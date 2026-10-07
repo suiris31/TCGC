@@ -23,6 +23,8 @@ function modText(s: GameState, m: Modifier): string {
     case 'blocker': return `[Bloqueur] ${until} (${m.source})`;
     case 'keyword': return `[${KEYWORD_LABEL[m.keyword!]}] ${until} (${m.source})`;
     case 'noAttackLowCost': return `ne peut pas attaquer les Personnages de coût de base 7 ou moins ${until}`;
+    case 'cantBeKO': return `ne peut pas être mis KO${m.scope === 'battle' ? ' en combat' : m.scope === 'effect' ? ' par un effet' : m.scope === 'oppEffect' ? ' par un effet adverse' : ''} ${until} (${m.source})`;
+    case 'cantLeave': return `ne peut pas quitter le terrain à cause d’un effet adverse ${until} (${m.source})`;
   }
 }
 

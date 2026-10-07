@@ -177,11 +177,13 @@ export function remainingActions(s: GameState, d: Decision, aids = true): string
 // Phase du tour, en mots
 export function phaseLabel(s: GameState, human: PlayerId): string {
   if (s.winner !== null) return 'Partie terminée';
+  if (s.flow.stage === 'setup') return 'Début de partie';
   if (s.flow.stage === 'mulligan') return 'Main de départ';
   const who = s.active === human ? 'Ton tour' : 'Tour de l’IA';
   const d = s.decision;
   if (d?.kind === 'blocker' || d?.kind === 'counter' || s.battle) return `${who} · Combat`;
   if (s.flow.stage === 'end') return `${who} · Fin du tour`;
+  if (s.flow.stage === 'refresh') return `${who} · Début du tour`;
   return `${who} · Phase principale`;
 }
 

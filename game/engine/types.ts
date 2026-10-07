@@ -74,7 +74,8 @@ export interface PlayerState {
 // du tour à la fin duquel elle expire (« jusqu'à la fin de la prochaine phase de Fin de votre adversaire » = tour + 1)
 export interface Modifier {
   uid: number;
-  stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost';
+  stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost' | 'cantBeKO' | 'cantLeave';
+  scope?: 'battle' | 'effect' | 'oppEffect';  // stat 'cantBeKO' : seulement en combat, par un effet, par un effet adverse
   keyword?: Keyword;  // stat 'keyword' : mot-clé accordé
   amount: number;
   until: 'battle' | 'turn' | number;
@@ -97,8 +98,9 @@ export interface Battle {
 }
 
 export type Flow =
+  | { stage: 'setup'; effectsDone?: boolean }
   | { stage: 'mulligan'; player: PlayerId }
-  | { stage: 'refresh' }
+  | { stage: 'refresh'; effectsDone?: boolean }
   | { stage: 'draw' }
   | { stage: 'don' }
   | { stage: 'main' }
@@ -133,7 +135,8 @@ export type EffectKind = 'onPlay' | 'whenAttacking' | 'onOpponentAttack' | 'acti
 
 // Événement de la partie, annoncé par le moteur (rules.ts, emit) : les effets « quand ... » des cartes y réagissent
 export interface GameEvent {
-  type: 'play' | 'ko' | 'rest' | 'attack' | 'turnEnd' | 'donReturned' | 'event' | 'discard';
+  type: 'gameStart' | 'turnStart' | 'mainStart' | 'turnEnd' | 'play' | 'ko' | 'rest' | 'attack' | 'block' | 'donReturned' | 'event'
+    | 'discard';
   player: PlayerId;          // joueur concerné : propriétaire de la carte, ou joueur qui agit
   uid?: number;              // carte concernée
   num?: string;
@@ -153,6 +156,12 @@ export interface WhenEffect {
   once?: string;             // [Une fois par tour] : clé propre à l'effet (une fois par exemplaire)
   if: (s: GameState, owner: PlayerId, self: FieldCard, e: GameEvent) => boolean;
   run: (ctx: EffectCtx, e: GameEvent) => void;
+}
+
+export interface LeaderRules {
+  donDeck?: number;                                  // taille du deck DON!! (10 sinon)
+  deckOut?: 'win' | 'loseAtEndOfTurn';               // deck vide : victoire, ou défaite seulement à la fin du tour
+  deckRestriction?: (d: CardData) => string | null;  // carte interdite dans le deck : la raison
 }
 
 // Effet en attente de résolution. Pendant une partie jouée par un humain, une décision au milieu d'un effet est
@@ -234,6 +243,14 @@ export interface CardBehavior {
   selfCost?: (s: GameState, owner: PlayerId, card: FieldCard) => number;
   // bonus de puissance donné par cette carte (sur le terrain) à une carte du même joueur, elle comprise
   aura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number;
+  // bonus ou malus de puissance donné en permanence par cette carte aux cartes adverses
+  oppAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number;
+  // « ne peut pas être mis KO » (en combat, par un effet ; `by` : joueur qui attaque ou dont l'effet met KO)
+  cantBeKO?: (s: GameState, owner: PlayerId, self: FieldCard, cause: 'battle' | 'effect', by: PlayerId) => boolean;
+  // « ne peut pas quitter le terrain à cause d'un effet adverse »
+  cantLeave?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
+  // Règles changées par un Leader (effets permanents valables « selon les règles du jeu », 5-1-2-4)
+  rules?: LeaderRules;
   onPlay?: (ctx: EffectCtx) => void;
   whenAttacking?: (ctx: EffectCtx) => void;
   // [Attaque adverse] : quand l'adversaire déclare une attaque (clé [Une fois par tour] partagée possible)
