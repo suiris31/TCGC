@@ -74,14 +74,12 @@ export const ST31: Record<string, CardBehavior> = {
 
   // Roronoa Zoro : [Initiative] ; [En attaquant] −1000 à 1 Personnage adverse
   'OP14-015': {
-    rush: () => true,
     attackUseful: (s, p) => s.players[p === 0 ? 1 : 0].chars.length > 0,
     whenAttacking: (ctx) => { oppPowerDown(ctx, 1000, 'turn', 'Roronoa Zoro'); },
   },
 
   // Tony-Tony Chopper : [Bloqueur] ; [Jouée] 1 DON!! épuisée au Leader
   'P-101': {
-    blocker: () => true,
     onPlay: (ctx) => restedDonTo(ctx, [ctx.s.players[ctx.me].leader]),
   },
 
@@ -111,7 +109,6 @@ export const ST31: Record<string, CardBehavior> = {
 
   // Jinbe : [Bloqueur] ; [Jouée] pioche 1 et joue 1 carte {Équipage de Chapeau de paille} de coût 1
   'ST31-002': {
-    blocker: () => true,
     onPlay: (ctx) => {
       drawLog(ctx, 1);
       playFromHandFree(ctx, (c) => def(c.num).category !== 'EVENT' && hasType(c.num, SH) && def(c.num).cost === 1,

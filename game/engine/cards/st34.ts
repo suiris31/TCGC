@@ -101,7 +101,6 @@ export const ST34: Record<string, CardBehavior> = {
 
   // Pudding : [Bloqueur] ; [Jouée] si vous n'avez pas plus de DON!! que l'adversaire, 1 DON!! épuisée
   'EB03-035': {
-    blocker: () => true,
     onPlay: (ctx) => {
       if (donOnField(ctx.s, ctx.me) <= donOnField(ctx.s, ctx.opp)) addDonFromDeck(ctx.s, ctx.me, 1, false);
     },

@@ -44,6 +44,9 @@ test('mots-clés toujours actifs : seulement ceux qui ouvrent le texte', () => {
   assert.deepEqual(leadingKeywords('[Blocker] (After your opponent declares an attack...)\n[On Play] Draw 1 card.'), ['Blocker']);
   assert.deepEqual(leadingKeywords('[Rush] [Double Attack] (This card deals 2 damage.)'), ['Rush', 'Double Attack']);
   assert.deepEqual(leadingKeywords('[DON!! x1] This Character gains [Blocker].'), []);
+  assert.deepEqual(leadingKeywords("If your Character would be K.O.'d, you may rest this Character instead. [Blocker] (reminder)"), ['Blocker'], 'en tête d’une phrase');
+  assert.deepEqual(leadingKeywords('This Character gains [Blocker] and +1 cost.'), [], 'formulé autrement : codé avec la carte');
+  assert.deepEqual(leadingKeywords('[On Play] Play up to 1 [Monkey.D.Luffy] from your hand.'), []);
   assert.deepEqual(leadingKeywords('[Rush: Character] [On Play] ...'), ['Rush: Character']);
   assert.deepEqual(leadingKeywords(''), []);
 });

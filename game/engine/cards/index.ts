@@ -3,7 +3,7 @@
 // pas dans le dépôt : le serveur les télécharge (game/data/catalog.ts) et chacun les charge au démarrage avec
 // loadCardData (navigateur et fils de calcul : depuis l'API ; tests et scripts : game/data/node.ts).
 import { DECKS } from '../decks.ts';
-import { onlyGenericEffects } from '../keywords.ts';
+import { leadingKeywords, onlyGenericEffects } from '../keywords.ts';
 import type { CardBehavior, CardData, CardDef } from '../types.ts';
 import { ST31 } from './st31.ts';
 import { ST32 } from './st32.ts';
@@ -36,9 +36,12 @@ function deckImage(num: string, d: CardData): string {
   return d.imageId;
 }
 
+// Les mots-clés sont relus dans le texte au chargement : le catalogue a pu être téléchargé par une version précédente
 export function loadCardData(data: Record<string, CardData>) {
   raw = { ...raw, ...data };
-  for (const [num, d] of Object.entries(data)) CARDS[num] = { ...d, imageId: deckImage(num, d), ...BEHAVIORS[num] };
+  for (const [num, d] of Object.entries(data)) {
+    CARDS[num] = { ...d, keywords: leadingKeywords(d.effectEn), imageId: deckImage(num, d), ...BEHAVIORS[num] };
+  }
 }
 
 // Carte jouable ? 'coded' : comportement codé et testé ; 'auto' : seulement des mots-clés et effets gérés par le moteur
@@ -47,8 +50,8 @@ export type CardStatus = 'coded' | 'auto' | 'todo';
 
 export function cardStatus(num: string): CardStatus {
   if (BEHAVIORS[num]) return 'coded';
-  const d = raw[num];
-  return d && onlyGenericEffects(d) ? 'auto' : 'todo';
+  const d = CARDS[num];
+  return d && num !== HIDDEN && onlyGenericEffects(d) ? 'auto' : 'todo';
 }
 
 // Données telles que chargées (à transmettre aux fils de calcul)

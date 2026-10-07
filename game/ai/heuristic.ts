@@ -180,7 +180,7 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
 
 function playScore(s: GameState, p: PlayerId, num: string, st: Style = styleOf(s.players[p].deckId, p)) {
   const d = def(num);
-  const score = (d.cost ?? 0) + st.playPower * ((d.power ?? 0) / 2000) + (d.blocker?.(s, p, fakeField(s, num)) ? 0.5 : 0);
+  const score = (d.cost ?? 0) + st.playPower * ((d.power ?? 0) / 2000) + (hasBlocker(s, p, fakeField(s, num)) ? 0.5 : 0);
   return score + st.playEffect * (PLAY_BONUS[num] ? PLAY_BONUS[num](s, p) : d.onPlay ? 0.5 : 0);
 }
 

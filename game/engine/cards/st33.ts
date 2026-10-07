@@ -80,7 +80,6 @@ export const ST33: Record<string, CardBehavior> = {
   },
 
   // Haguar D. Sauro : [Bloqueur]
-  'OP12-050': { blocker: () => true },
 
   // Ice Block, bec de faisan : [Contre] +4000 pour le combat, puis défaussez 1 carte ; [Déclenchement] défausser 1 : pioche 1
   'OP12-057': {
@@ -95,7 +94,6 @@ export const ST33: Record<string, CardBehavior> = {
 
   // Kobby : [Bloqueur] ; [Jouée] défausser 1 carte : piochez 1 carte
   'ST33-001': {
-    blocker: () => true,
     onPlay: (ctx) => {
       if (mayDiscard(ctx, 'Kobby : défausser 1 carte pour piocher 1 carte ?')) drawLog(ctx, 1);
     },
@@ -127,7 +125,6 @@ export const ST33: Record<string, CardBehavior> = {
   // Borsalino : −3 de coût en main le tour où une carte de votre main a été défaussée par un effet ; [Bloqueur]
   'ST33-004': {
     handCost: (s, p) => (s.players[p].discardedTurn === s.turn ? -3 : 0),
-    blocker: () => true,
   },
 
   // Garp : [Jouée] avec un Leader {Marine}, jouez 1 Personnage bleu {Marine} de 8000 ou moins autre que Garp

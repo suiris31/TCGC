@@ -7,14 +7,17 @@ export const KEYWORDS: Keyword[] = ['Blocker', 'Rush', 'Rush: Character', 'Doubl
 // Texte sans les rappels de règle entre parenthèses ; « - » : la carte n'a pas d'effet
 export const withoutReminders = (t: string) => t.replace(/\((?:[^()]|\([^()]*\))*\)/g, '').replace(/^\s*-\s*$/, '');
 
-// Mots-clés toujours actifs : ceux qui ouvrent le texte de la carte (« [Bloqueur] [Jouée] ... »). Un mot-clé donné
-// sous condition (« [DON!! x1] ce Personnage gagne [Bloqueur] ») est codé avec la carte.
+// Mots-clés toujours actifs : ceux qui ouvrent une phrase du texte (« [Bloqueur] [Jouée] ... », « ... à la place.
+// [Bloqueur] »). Un mot-clé donné sous condition (« [DON!! x1] ce Personnage gagne [Bloqueur] ») ou formulé autrement
+// (« ce Personnage gagne [Bloqueur] ») est codé avec la carte.
 export function leadingKeywords(effectEn: string): Keyword[] {
   const out: Keyword[] = [];
-  let rest = withoutReminders(effectEn).trim();
-  for (let m = rest.match(/^\[([^\]]+)\]\s*/); m && (KEYWORDS as string[]).includes(m[1]); m = rest.match(/^\[([^\]]+)\]\s*/)) {
-    out.push(m[1] as Keyword);
-    rest = rest.slice(m[0].length);
+  for (const sentence of withoutReminders(effectEn).split(/\n|(?<=\.)\s+/)) {
+    let rest = sentence.trim();
+    for (let m = rest.match(/^\[([^\]]+)\]\s*/); m && (KEYWORDS as string[]).includes(m[1]); m = rest.match(/^\[([^\]]+)\]\s*/)) {
+      if (!out.includes(m[1] as Keyword)) out.push(m[1] as Keyword);
+      rest = rest.slice(m[0].length);
+    }
   }
   return out;
 }

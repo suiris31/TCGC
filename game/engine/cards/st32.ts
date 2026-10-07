@@ -66,7 +66,6 @@ export const ST32: Record<string, CardBehavior> = {
 
   // Koshiro : s'épuise à la place d'un Personnage <Tranche> de coût 5 ou moins mis KO par un effet adverse ; [Bloqueur]
   'OP12-027': {
-    blocker: () => true,
     replaceRemoval: {
       oncePerTurn: false,
       onlyKo: true,
@@ -180,7 +179,6 @@ export const ST32: Record<string, CardBehavior> = {
 
   // Zoro : [Initiative : Personnage] ; [Jouée] avec un Leader <Tranche>, épuisez 1 Personnage adverse de coût 2 ou moins
   'ST32-005': {
-    rushChar: () => true,
     onPlay: (ctx) => {
       if (slashLeader(ctx.s, ctx.me)) restOpp(ctx, costAtMost(ctx, 2), 'Roronoa Zoro');
     },

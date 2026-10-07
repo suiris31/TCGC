@@ -153,7 +153,6 @@ export const ST35: Record<string, CardBehavior> = {
 
   // Hack : [Bloqueur] ; [Jouée] KO 1 Personnage adverse de 2000 de puissance de base ou moins
   'ST35-001': {
-    blocker: () => true,
     onPlay: (ctx) => {
       const targets = ctx.s.players[ctx.opp].chars.filter((c) => (def(c.num).power ?? 0) <= 2000).map((c) => c.uid);
       const target = chooseUpTo1(ctx, targets, 'Hack : mettre KO jusqu’à 1 Personnage adverse de 2000 de puissance de base ou moins :', 'oppKo');
