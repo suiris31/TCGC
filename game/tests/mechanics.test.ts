@@ -196,3 +196,13 @@ test('[Double attaque] et [Exil] : la Vie touchée par une attaque ordinaire va 
   assert.equal(s.players[1].hand.length, 1);
   assert.equal(s.players[1].life.length, 2);
 });
+
+test('la liste du deck est notée dans la partie ; en ligne, celle de l’adversaire reste secrète', async () => {
+  const { viewFor } = await import('../engine/view.ts');
+  const s = newGame({ decks: ['ST-35', 'ST-32'], names: ['A', 'B'], seed: 9, first: 0 });
+  assert.deepEqual(s.players[0].list, { leader: DECKS['ST-35'].leader, cards: DECKS['ST-35'].cards });
+  const v = viewFor(s, 0);
+  assert.ok(v.players[0].list);
+  assert.equal(v.players[1].list, undefined);
+  coherent(s);
+});

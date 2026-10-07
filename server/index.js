@@ -434,14 +434,16 @@ function sendJson(req, res, json, gzipped = null) {
   res.send(gzipped ?? zlib.gzipSync(json));
 }
 
-app.get('/api/game/cards', (req, res) => {
+// Cartes des decks jouables et version du programme ; /api/game/cards : ancien format (voir game-cards.js)
+app.get(['/api/game/catalog', '/api/game/cards'], (req, res) => {
   const cards = gameCards();
   if (!cards) {
     ensureGameCards({ log });
     return res.status(503).json({ code: 'cards_loading', error: 'Informations des cartes en cours de téléchargement' });
   }
   res.setHeader('Cache-Control', 'no-cache');
-  sendJson(req, res, cards.json, cards.gzip);
+  const body = req.path.endsWith('/catalog') ? cards : cards.legacy;
+  sendJson(req, res, body.json, body.gzip);
 });
 
 app.get('/api/game/records', (req, res) => {

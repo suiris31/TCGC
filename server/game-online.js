@@ -10,7 +10,6 @@
 //   POST /api/game/matches/:id/act         mon choix { seq, choice }
 //   POST /api/game/matches/:id/resign      abandonner
 //   POST /api/game/matches/:id/cancel      fermer ma salle en attente
-import { execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import {
@@ -21,15 +20,7 @@ import { config } from './config.js';
 import { db } from './db.js';
 import { gameCards } from './game-cards.js';
 import { saveRecord } from './game-records.js';
-
-// Version du programme, notée avec chaque partie (pour la rejouer avec le même moteur)
-const ENGINE = (() => {
-  try {
-    return execSync('git describe --always --dirty', { cwd: config.root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-  } catch {
-    return 'inconnue';
-  }
-})();
+import { ENGINE } from './version.js';
 
 // ---------- Stockage : en mémoire pendant la partie, dans la base après chaque coup ----------
 

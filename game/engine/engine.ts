@@ -38,6 +38,7 @@ function makePlayer(s: GameState, deckId: string, playerName: string): PlayerSta
   return {
     name: playerName,
     deckId,
+    list: { leader: deck.leader, cards: { ...deck.cards } },
     leader: { uid: s.nextUid++, num: deck.leader, rested: false, don: 0, playedTurn: 0, usedOpt: [] },
     deck: cards,
     hand: [],

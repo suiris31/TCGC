@@ -2,25 +2,48 @@
 // coût, puissance, types, textes VF et VO...). Il n'est pas dans le dépôt : téléchargé au démarrage s'il manque, gardé
 // dans data/game-catalog.json, mis à jour une fois par jour (nouvelles extensions, textes corrigés). Le moteur du
 // serveur (arbitre des parties en ligne) charge tout le catalogue ; l'interface reçoit les cartes des decks jouables
-// (/api/game/cards).
+// avec la version du programme (/api/game/catalog).
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import sharp from 'sharp';
 import { fetchCatalog } from '../game/data/catalog.ts';
-import { loadCardData, missingCards, neededCards } from '../game/engine/cards/index.ts';
+import { CARDS, loadCardData, missingCards, neededCards } from '../game/engine/cards/index.ts';
 import { config } from './config.js';
+import { ENGINE } from './version.js';
 
 const FILE = path.join(config.dataDir, 'game-catalog.json');
 const OLD_FILE = path.join(config.dataDir, 'game-cards.json');  // ancien format (cartes des decks, VF seulement)
 const MAX_AGE = 24 * 3600_000;
-let ready = null; // { json, gzip, fetchedAt }
+let ready = null; // { json, gzip, legacy, fetchedAt }
 let running = null;
+
+// Ancien format (VF, avant le 7 octobre 2026), pour une page ouverte avant cette mise à jour : son code attend des
+// couleurs, types et attributs en français. À retirer quand plus aucune page de cette époque ne peut être ouverte.
+const COLOR_FR = { Red: 'Rouge', Green: 'Vert', Blue: 'Bleu', Purple: 'Violet', Black: 'Noir', Yellow: 'Jaune' };
+const ATTRIBUTE_FR = { Slash: 'Tranche', Strike: 'Frappe', Ranged: 'Distance', Special: 'Spécial', Wisdom: 'Sagesse' };
+
+function legacyCard(d) {
+  return {
+    number: d.number, imageId: d.imageId, rarity: d.rarity, category: d.category, name: d.name, cost: d.cost, life: d.life,
+    power: d.power, counter: d.counter, colors: d.colors.map((c) => COLOR_FR[c] ?? c), types: d.typeLabels,
+    attribute: d.attributes.map((a) => ATTRIBUTE_FR[a] ?? a).join('/'), effect: d.effect, trigger: d.trigger,
+  };
+}
+
+const packed = (value) => {
+  const json = JSON.stringify(value);
+  return { json, gzip: zlib.gzipSync(json) };
+};
 
 function use(catalog) {
   loadCardData(catalog.cards);
-  const json = JSON.stringify(Object.fromEntries(neededCards().map((n) => [n, catalog.cards[n]])));
-  ready = { json, gzip: zlib.gzipSync(json), fetchedAt: Date.parse(catalog.fetchedAt) || 0 };
+  const needed = neededCards();
+  ready = {
+    ...packed({ engine: ENGINE, cards: Object.fromEntries(needed.map((n) => [n, catalog.cards[n]])) }),
+    legacy: packed(Object.fromEntries(needed.map((n) => [n, legacyCard(CARDS[n])]))),
+    fetchedAt: Date.parse(catalog.fetchedAt) || 0,
+  };
 }
 
 function readFile() {

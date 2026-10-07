@@ -206,7 +206,7 @@ export function buildCatalog(printings: Printing[]): Record<string, CardData> {
       imageId: image.imageId,
       ...(Object.keys(deckArt).length ? { deckArt } : {}),
       lang: d.lang,
-      rarity: e.rarity,
+      rarity: image.rarity,
       category: e.category,
       name: d.name,
       names: cardNames(e.name, e.effect),

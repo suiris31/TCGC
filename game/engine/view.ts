@@ -51,6 +51,7 @@ export function viewFor(s: GameState, seat: PlayerId): GameState {
   P.deck = mask(P.deck, 4000, known);
   P.life = mask(P.life, 5000, (c) => Boolean(c.faceUp) || known(c));
 
+  delete O.list;  // la liste du deck adverse est secrète
   v.rng = 0;
   v.nextUid = 0;
   v.peek = seat === 0 ? [knownTop, null] : [null, knownTop];

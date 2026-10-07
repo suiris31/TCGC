@@ -56,6 +56,9 @@ export interface FieldCard extends Card {
 export interface PlayerState {
   name: string;
   deckId: string;
+  // liste du deck joué (Leader et cartes) : la partie la garde, même si le deck change ensuite (decks personnalisés) ;
+  // absente des parties enregistrées avant octobre 2026 (voir decks.ts). Secrète pour l'adversaire en ligne.
+  list?: { leader: string; cards: Record<string, number> };
   leader: FieldCard;
   deck: Card[];   // index 0 = dessus du deck
   hand: Card[];

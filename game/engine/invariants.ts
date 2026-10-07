@@ -22,8 +22,8 @@ export function invariantErrors(s: GameState): string[] {
         if (c.faceUp && zone !== 'vie') errors.push(`${def(c.num).name} face visible hors de la Vie (${where})`);
       }
     }
-    // la composition du deck (Leader compris) ne change jamais
-    const deck = DECKS[P.deckId];
+    // la composition du deck (Leader compris) ne change jamais : celle notée dans la partie, sinon celle du registre
+    const deck = P.list ?? DECKS[P.deckId];
     const expected = new Map(Object.entries(deck.cards));
     expected.set(deck.leader, (expected.get(deck.leader) ?? 0) + 1);
     for (const num of new Set([...counts.keys(), ...expected.keys()])) {
