@@ -7,7 +7,10 @@
 //   existent : ce sont des identifiants communs (« Revolutionary Army » = « Armée révolutionnaire ») ;
 // - ce qui s'affiche (nom, types, texte, visuel) est en VF quand la carte existe en français, sinon en VO ;
 // - quand les impressions diffèrent (errata, rééditions reformulées), c'est la plus récente qui compte.
-import type { CardData, Category, Color, Keyword } from '../engine/types.ts';
+import { leadingKeywords } from '../engine/keywords.ts';
+import type { CardData, Category, Color } from '../engine/types.ts';
+
+export { leadingKeywords, withoutReminders } from '../engine/keywords.ts';
 
 export type Lang = 'fr' | 'en';
 
@@ -149,22 +152,6 @@ function newestFirst(list: Printing[]) {
 }
 
 const COLORS: Color[] = ['Red', 'Green', 'Blue', 'Purple', 'Black', 'Yellow'];
-const KEYWORDS: Keyword[] = ['Blocker', 'Rush', 'Rush: Character', 'Double Attack', 'Banish', 'Unblockable'];
-
-// Texte sans les rappels de règle entre parenthèses
-export const withoutReminders = (t: string) => t.replace(/\((?:[^()]|\([^()]*\))*\)/g, '');
-
-// Mots-clés toujours actifs : ceux qui ouvrent le texte de la carte (« [Bloqueur] [Jouée] ... »). Un mot-clé donné
-// sous condition (« [DON!! x1] ce Personnage gagne [Bloqueur] ») est codé avec la carte.
-export function leadingKeywords(effectEn: string): Keyword[] {
-  const out: Keyword[] = [];
-  let rest = withoutReminders(effectEn).trim();
-  for (let m = rest.match(/^\[([^\]]+)\]\s*/); m && (KEYWORDS as string[]).includes(m[1]); m = rest.match(/^\[([^\]]+)\]\s*/)) {
-    out.push(m[1] as Keyword);
-    rest = rest.slice(m[0].length);
-  }
-  return out;
-}
 
 // Noms d'une carte pour les effets : son nom en VO, et ceux qu'elle porte aussi selon les règles
 // (« Also treat this card's name as [Usopp] », Rosinante & Law EB04-038)

@@ -6,7 +6,7 @@ import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
   addMod, allField, attackTargets, canBeRested, def, describe, draw, emit, fieldCards, findField, handCost, hasBlocker,
-  koCharacter, log, name, onField, other, payDon, playCharacter, power, restForAttack, untapDon,
+  hasKeyword, koCharacter, log, name, onField, other, payDon, playCharacter, power, restForAttack, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
   Decision, EffectCtx, GameState, HistoryEntry, Option, PendingEffect, PlayerId, PlayerState,
@@ -344,7 +344,14 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
       const lifeCard = P.life.shift()!;
       const card = { uid: lifeCard.uid, num: lifeCard.num };
       const d = def(card.num);
-      if (d.trigger && d.onTrigger) {
+      // [Exil] : la carte de Vie va dans la Défausse, sans [Déclenchement] (10-1-6)
+      if (p.data?.banish) {
+        P.trash.push(card);
+        log(s, ctx.me, `perd 1 Vie : ${d.name} va dans la Défausse ([Exil], il lui en reste ${P.life.length})`);
+        continue;
+      }
+      const onTrigger = triggerEffect(card.num);
+      if (d.trigger && onTrigger) {
         const answer = ctx.ask({
           prompt: `Carte de Vie : ${d.name}. [Déclenchement] ${d.trigger} L'activer ?`,
           options: [
@@ -358,7 +365,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
           // la carte n'est dans aucune zone pendant son [Déclenchement], puis va dans la Défausse (10-1-5-3), sauf si
           // l'effet l'a jouée ou ajoutée à la main
           const trigger = { card, moved: false };
-          d.onTrigger({ ...ctx, num: card.num, trigger });
+          onTrigger({ ...ctx, num: card.num, trigger });
           if (!trigger.moved) P.trash.push(card);
           continue;
         }
@@ -533,7 +540,9 @@ function stepBattle(s: GameState) {
     case 'block': {
       const defender = other(s.active);
       const blockers = s.players[defender].chars.filter((c) => !c.rested && c.uid !== b.target && canBeRested(s, c.uid) && hasBlocker(s, defender, c));
-      if (b.blocked || !blockers.length) {
+      // [Imblocable] : l'adversaire ne peut pas bloquer (10-1-7)
+      const unblockable = hasKeyword(s, s.active, findField(s, b.attacker)!.card, 'Unblockable');
+      if (b.blocked || !blockers.length || unblockable) {
         b.step = 'counter';
         return;
       }
@@ -564,9 +573,14 @@ function stepBattle(s: GameState) {
       }
       if (atk >= dp) {
         if (target.leader) {
-          log(s, s.active, `l'attaque touche le Leader adverse (${atk} contre ${dp})`);
+          // [Double attaque] : 2 dégâts (10-1-3) ; [Exil] : les cartes de Vie vont dans la Défausse (10-1-6)
+          const attacker = findField(s, b.attacker)!.card;
+          const amount = hasKeyword(s, s.active, attacker, 'Double Attack') ? 2 : 1;
+          const banish = hasKeyword(s, s.active, attacker, 'Banish');
+          log(s, s.active, `l'attaque touche le Leader adverse (${atk} contre ${dp})${amount > 1 ? ' : [Double attaque], 2 dégâts' : ''}`);
           s.pending.push({
-            kind: 'system', action: 'leaderDamage', source: b.target, num: target.card.num, controller: target.player, answers: [], data: { amount: 1 },
+            kind: 'system', action: 'leaderDamage', source: b.target, num: target.card.num, controller: target.player, answers: [],
+            data: { amount, ...(banish ? { banish: 1 } : {}) },
           });
         } else {
           log(s, s.active, `l'attaque gagne le combat (${atk} contre ${dp})`);

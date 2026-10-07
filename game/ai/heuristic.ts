@@ -4,7 +4,7 @@
 import { DECKS } from '../engine/decks.ts';
 import {
   attackAbility, attackTargets, baseCost, def, donOnField, fieldCards, fieldCost, findField, handCost, hasBlocker, hasType,
-  leaderHasType, other, power,
+  leaderHasType, other, power, triggerEffect,
 } from '../engine/rules.ts';
 import type { Decision, FieldCard, GameState, Option, PlayerId } from '../engine/types.ts';
 import { uselessReason } from './prune.ts';
@@ -573,9 +573,9 @@ function chooseEffect(s: GameState, d: Decision): string {
     case 'kiddTarget':
       return (byValue(true)[0] ?? d.options[0]).id;
     case 'begeLife':
-      return P.hand.some((c) => def(c.num).category === 'CHARACTER' && hasType(c.num, 'Supernovas') && def(c.num).onTrigger) ? 'top' : 'no';
+      return P.hand.some((c) => def(c.num).category === 'CHARACTER' && hasType(c.num, 'Supernovas') && triggerEffect(c.num)) ? 'top' : 'no';
     case 'toLife': {
-      const withTrigger = cards.filter((o) => def(cardNum(s, uidOf(o))!).onTrigger);
+      const withTrigger = cards.filter((o) => triggerEffect(cardNum(s, uidOf(o))!));
       return (withTrigger[0] ?? byHand(false)[0] ?? d.options[0]).id;
     }
     default:

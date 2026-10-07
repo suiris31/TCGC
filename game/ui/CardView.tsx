@@ -1,5 +1,5 @@
 import type { DragEvent, MouseEvent } from 'react';
-import { def, fieldCost, findField, handCost, hasBlocker, hasMod, power } from '../engine/rules.ts';
+import { def, fieldCost, findField, handCost, hasBlocker, hasKeyword, hasMod, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { justPlayed } from './decision.ts';
@@ -50,6 +50,11 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
     if (hasBlocker(s, f.player, f.card)) icons.push({ icon: '🛡', title: '[Bloqueur] : peut se mettre en travers d’une attaque adverse' });
     if (hasMod(s, card.uid, 'cantAttack')) icons.push({ icon: '🔒', title: 'Ne peut pas attaquer' });
     if (hasMod(s, card.uid, 'cantRest')) icons.push({ icon: '⛓', title: 'Ne peut pas être épuisé (ni attaquer ni bloquer)' });
+  }
+  if (f && !f.stage) {
+    if (hasKeyword(s, f.player, f.card, 'Double Attack')) icons.push({ icon: '⚔', title: '[Double attaque] : inflige 2 dégâts au Leader adverse' });
+    if (hasKeyword(s, f.player, f.card, 'Banish')) icons.push({ icon: '🗑', title: '[Exil] : les cartes de Vie touchées vont dans la Défausse, sans [Déclenchement]' });
+    if (hasKeyword(s, f.player, f.card, 'Unblockable')) icons.push({ icon: '👻', title: '[Imblocable] : ne peut pas être bloqué' });
   }
   if (f?.leader && hasMod(s, card.uid, 'noAttackLowCost')) icons.push({ icon: '🔒', title: 'Ne peut plus attaquer les Personnages de coût de base 7 ou moins ce tour' });
   const classes = [

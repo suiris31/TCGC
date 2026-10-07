@@ -5,7 +5,7 @@ import { def, fieldCost, findField, power } from '../engine/rules.ts';
 import type { GameState, Modifier } from '../engine/types.ts';
 import type { Preview } from './CardView.tsx';
 import { cardImage } from './images.ts';
-import { COLOR_LABEL, attributeLabel } from './labels.ts';
+import { COLOR_LABEL, KEYWORD_LABEL, attributeLabel } from './labels.ts';
 
 export function EffectText({ text }: { text: string }) {
   const parts = text.split(/(\[[^\]]+\]|<[^>]+>|\{[^}]+\})/g);
@@ -21,6 +21,7 @@ function modText(s: GameState, m: Modifier): string {
     case 'cantAttack': return `ne peut pas attaquer ${until} (${m.source})`;
     case 'cantRest': return `ne peut pas être épuisé ${until} (${m.source})`;
     case 'blocker': return `[Bloqueur] ${until} (${m.source})`;
+    case 'keyword': return `[${KEYWORD_LABEL[m.keyword!]}] ${until} (${m.source})`;
     case 'noAttackLowCost': return `ne peut pas attaquer les Personnages de coût de base 7 ou moins ${until}`;
   }
 }

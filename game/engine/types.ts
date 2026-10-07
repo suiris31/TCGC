@@ -74,7 +74,8 @@ export interface PlayerState {
 // du tour à la fin duquel elle expire (« jusqu'à la fin de la prochaine phase de Fin de votre adversaire » = tour + 1)
 export interface Modifier {
   uid: number;
-  stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'noAttackLowCost';
+  stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost';
+  keyword?: Keyword;  // stat 'keyword' : mot-clé accordé
   amount: number;
   until: 'battle' | 'turn' | number;
   source: string;

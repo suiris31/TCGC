@@ -1,8 +1,9 @@
 // Calculs et actions de jeu selon les règles complètes (version 1.2.1), utilisés par le moteur et par les cartes :
 // puissance, coût, DON!!, épuiser, mise KO et autres façons de quitter le terrain, Vie, pioche, recherche dans le deck.
 import { CARDS } from './cards/index.ts';
+import { genericTrigger } from './keywords.ts';
 import type {
-  Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameEvent, GameState, Modifier, Option, PendingEffect, PlayerId,
+  Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameEvent, GameState, Keyword, Modifier, Option, PendingEffect, PlayerId,
 } from './types.ts';
 
 export const RA = 'Revolutionary Army';  // {Armée révolutionnaire}
@@ -153,9 +154,17 @@ export function power(s: GameState, uid: number): number {
   return p;
 }
 
-export function hasBlocker(s: GameState, p: PlayerId, card: FieldCard) {
-  return (def(card.num).blocker?.(s, p, card) ?? false) || hasMod(s, card.uid, 'blocker');
+// Mot-clé d'une carte du terrain : toujours actif (en tête de son texte), donné sous condition par son propre effet,
+// ou accordé par un effet (modification temporaire)
+export function hasKeyword(s: GameState, p: PlayerId, card: FieldCard, k: Keyword): boolean {
+  const d = def(card.num);
+  if (d.keywords?.includes(k)) return true;
+  const own = k === 'Blocker' ? d.blocker : k === 'Rush' ? d.rush : k === 'Rush: Character' ? d.rushChar : undefined;
+  if (own?.(s, p, card)) return true;
+  return s.mods.some((m) => m.uid === card.uid && (m.stat === 'keyword' ? m.keyword === k : k === 'Blocker' && m.stat === 'blocker'));
 }
+
+export const hasBlocker = (s: GameState, p: PlayerId, card: FieldCard) => hasKeyword(s, p, card, 'Blocker');
 
 export const canBeRested = (s: GameState, uid: number) => !hasMod(s, uid, 'cantRest');
 
@@ -165,9 +174,8 @@ export function attackAbility(s: GameState, p: PlayerId, card: FieldCard): { can
   const no = { can: false, charsOnly: false };
   if (card.rested || P.turns <= 1 || hasMod(s, card.uid, 'cantAttack') || !canBeRested(s, card.uid)) return no;
   if (card.uid === P.leader.uid || card.playedTurn < s.turn) return { can: true, charsOnly: false };
-  const d = def(card.num);
-  if (d.rush?.(s, p, card)) return { can: true, charsOnly: false };
-  if (d.rushChar?.(s, p, card)) return { can: true, charsOnly: true };
+  if (hasKeyword(s, p, card, 'Rush')) return { can: true, charsOnly: false };
+  if (hasKeyword(s, p, card, 'Rush: Character')) return { can: true, charsOnly: true };
   return no;
 }
 
@@ -523,6 +531,23 @@ export function playFromHandFree(ctx: EffectCtx, filter: (c: Card) => boolean, p
   const [card] = P.hand.splice(P.hand.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
   playCharacter(ctx, ctx.me, card, opts);
   return card;
+}
+
+// Effet [Déclenchement] d'une carte : codé avec la carte, ou générique (« jouez cette carte », « activez l'effet
+// [Principale] de cette carte » quand celui-ci est codé)
+export function triggerEffect(num: string): ((ctx: EffectCtx) => void) | undefined {
+  const d = def(num);
+  if (d.onTrigger) return d.onTrigger;
+  const generic = genericTrigger(d);
+  if (generic === 'play' && (d.category === 'CHARACTER' || d.category === 'STAGE')) return playTriggered;
+  if (generic === 'main') return d.onMain;
+  return undefined;
+}
+
+function playTriggered(ctx: EffectCtx) {
+  if (!ctx.trigger) return;
+  ctx.trigger.moved = true;
+  playCharacter(ctx, ctx.me, ctx.trigger.card);
 }
 
 // ---------- Vie ----------
