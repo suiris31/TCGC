@@ -54,7 +54,9 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
     setImported(`${n} partie${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''}${failed.length ? ` ; refusé${failed.length > 1 ? 's' : ''} (ce ne sont pas des parties) : ${failed.join(', ')}` : ''}.`);
     void reload();
   };
-  const prog = useMemo(() => (list ? progress(list) : null), [list]);
+  const prog = useMemo(() => (list ? progress(list.filter((g) => g.mode !== 'online')) : null), [list]);
+  const onlineGames = useMemo(() => (list ?? []).filter((g) => g.mode === 'online').reverse(), [list]);
+  const empty = Boolean(prog && prog.rows.length === 0 && onlineGames.length === 0);
   const resume = (id: string, move: number) => {
     loadRecord(id).then((rec) => onResume(rec, move)).catch((e: Error) => setError(`impossible de rejouer ce moment : ${e.message}`));
   };
@@ -78,14 +80,14 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
           {imported && <p className="op-muted">{imported}</p>}
           {error && <p className="danger">Impossible de lire les parties : {error}</p>}
           {!list && !error && <p className="op-muted">Chargement des parties…</p>}
-          {prog && prog.rows.length === 0 && (
+          {empty && (
             <div className="history-empty">
               <p><b>Aucune partie enregistrée pour l’instant.</b></p>
               <p className="op-muted">Chaque partie que tu joues est sauvegardée sur ton compte avec tous ses détails. Reviens ici après quelques parties : ta progression et tes axes de progrès s’afficheront.</p>
               <p className="op-muted">Tu as des parties de l’ancien OP Coach ? Importe-les avec le bouton ⤒ (fichiers du dossier <code>parties</code>).</p>
             </div>
           )}
-          {prog && prog.rows.length > 0 && (open
+          {prog && !empty && (open
             ? <GameDetail id={open} onBack={() => setOpen(null)} onResume={(rec, move) => {
               try {
                 onResume(rec, move);
@@ -95,7 +97,7 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
             }} />
             : tab === 'progress' ? <ProgressTab p={prog} />
               : tab === 'axes' ? <AxesTab p={prog} onResume={resume} onOpen={setOpen} onHover={onHover} />
-                : <GamesTab p={prog} onOpen={setOpen} />)}
+                : <GamesTab p={prog} online={onlineGames} onOpen={setOpen} />)}
         </div>
       </div>
     </div>
@@ -328,9 +330,29 @@ function AxesTab({ p, onResume, onOpen, onHover }: { p: Progress; onResume: (id:
 
 // ---------- Liste et détail des parties ----------
 
-function GamesTab({ p, onOpen }: { p: Progress; onOpen: (id: string) => void }) {
+function GamesTab({ p, online, onOpen }: { p: Progress; online: GameSummary[]; onOpen: (id: string) => void }) {
   return (
     <>
+      {online.length > 0 && (
+        <section className="hist-section">
+          <h3>🌐 En ligne</h3>
+          <table className="op-stats hist-table hist-games">
+            <thead><tr><th>Date</th><th>Ton deck</th><th>Adversaire</th><th>Résultat</th><th>Tours</th></tr></thead>
+            <tbody>
+              {online.map((g) => (
+                <tr key={g.id} onClick={() => onOpen(g.id)} className="hist-row">
+                  <td>{dateText(g.startedAt)}</td>
+                  <td>{deckName(g.config.myDeck)}</td>
+                  <td>{g.opponent} <span className="op-small op-muted">{deckName(g.config.aiDeck)}</span></td>
+                  <td><span className={STATUS[g.status][1]}>{STATUS[g.status][0]}</span></td>
+                  <td>{g.turns}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+      {p.rows.length > 0 && <h3>Contre l’IA</h3>}
       <p className="op-small op-muted">{plural(p.rows.length, 'partie')} sauvegardée{p.rows.length > 1 ? 's' : ''}. {isTouch() ? 'Touche' : 'Clique sur'} une partie pour la revoir.</p>
       <table className="op-stats hist-table hist-games">
         <thead><tr><th>Date</th><th>Ton deck</th><th>IA</th><th>Résultat</th><th>Tours</th><th>Durée</th><th>Précision</th><th>Erreurs</th></tr></thead>
@@ -374,21 +396,29 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
   const names = rec.initial.players.map((pl) => pl.name);
   const mistakes = rec.reviews.filter((r) => r.delta >= MISTAKE).sort((a, b) => b.delta - a.delta);
   const end = rec.endedAt ?? rec.updatedAt;
+  // partie en ligne contre un autre joueur : pas d'analyse du coach (désactivé pendant la partie)
+  const online = rec.mode === 'online';
+  const oppName = online ? rec.opponent ?? 'ton adversaire' : 'l’IA';
   return (
     <div className="game-detail">
       <button className="op-link" onClick={onBack}>← Toutes les parties</button>
       <div className="detail-head">
-        <h3>{deckName(rec.config.myDeck)} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} <span className="op-small op-muted">· IA {LEVEL[rec.config.level]}</span></h3>
+        <h3>{deckName(rec.config.myDeck)} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} <span className="op-small op-muted">· {online ? `${oppName}, en ligne` : `IA ${LEVEL[rec.config.level]}`}</span></h3>
         <p>
           <span className={cls}>{label}</span>{rec.winReason ? ` · ${rec.winReason}` : ''} · {plural(rec.turns, 'tour')} · {minutesText((Date.parse(end) - Date.parse(rec.startedAt)) / 60000)}
-          {' · '}{rec.wentFirst ? 'tu commençais' : 'l’IA commençait'}
+          {' · '}{rec.wentFirst ? 'tu commençais' : `${oppName} commençait`}
         </p>
         <p className="op-small op-muted">
-          {dateText(rec.startedAt)} · {rec.reviews.length} décisions analysées par le coach{rec.undos.length ? ` · ${plural(rec.undos.length, 'retour')} en arrière` : ''}
+          {dateText(rec.startedAt)} · {online ? 'partie en ligne : le coach était désactivé' : `${rec.reviews.length} décisions analysées par le coach`}{rec.undos.length ? ` · ${plural(rec.undos.length, 'retour')} en arrière` : ''}
           {rec.practice ? ' · partie d’entraînement reprise depuis un moment revu' : ''}
         </p>
       </div>
-      {view.recap ? <RecapBody recap={view.recap} onReplay={(move) => onResume(rec, move)} /> : (
+      {online ? (
+        <section>
+          <h3>Statistiques</h3>
+          <StatsTable me={rec.stats.me} opp={rec.stats.opp} oppLabel={oppName} />
+        </section>
+      ) : view.recap ? <RecapBody recap={view.recap} onReplay={(move) => onResume(rec, move)} /> : (
         <>
           <p className="notice">Cette partie a été jouée avec une ancienne version d’OP Coach ({rec.engine}) : {view.problem}. Le récap ci-dessous vient de ce qui a été enregistré.</p>
           <section>
@@ -412,7 +442,7 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
           ))}
         </ol>
       </details>
-      <p className="op-small op-muted">Fichier : parties/{rec.id}.json · version {rec.engine}</p>
+      <p className="op-small op-muted">Partie {rec.id} · version {rec.engine}</p>
     </div>
   );
 }

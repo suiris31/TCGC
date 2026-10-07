@@ -107,7 +107,7 @@ export function ReviewItem({ r, kind, onReplay }: { r: MoveReview; kind: 'bad' |
   );
 }
 
-export function StatsTable({ me, opp }: { me: SideStats; opp: SideStats }) {
+export function StatsTable({ me, opp, oppLabel = 'IA' }: { me: SideStats; opp: SideStats; oppLabel?: string }) {
   const rows: [string, (s: SideStats) => string][] = [
     ['Attaques', (s) => `${s.attacks} (${s.hits} réussies, ${s.repelled} repoussées)`],
     ['Vies perdues sur une attaque', (s) => String(s.lifeLost)],
@@ -118,7 +118,7 @@ export function StatsTable({ me, opp }: { me: SideStats; opp: SideStats }) {
   ];
   return (
     <table className="op-stats">
-      <thead><tr><th /><th>Toi</th><th>IA</th></tr></thead>
+      <thead><tr><th /><th>Toi</th><th>{oppLabel}</th></tr></thead>
       <tbody>{rows.map(([label, f]) => <tr key={label}><td>{label}</td><td>{f(me)}</td><td>{f(opp)}</td></tr>)}</tbody>
     </table>
   );

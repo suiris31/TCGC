@@ -1,6 +1,7 @@
 import type { DragEvent, MouseEvent } from 'react';
 import { def, fieldCost, findField, handCost, hasBlocker, hasMod, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
+import { HIDDEN } from '../engine/cards/index.ts';
 import { justPlayed } from './decision.ts';
 import { isTouch } from './device.ts';
 import { cardImage } from './images.ts';
@@ -35,7 +36,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
   onHover?: (p: Preview | null) => void;
   onDropDon?: (uid: number) => void;
 }) {
-  if (hidden) return <div className={`card card-${size} card-back`} data-uid={card.uid} />;
+  if (hidden || card.num === HIDDEN) return <div className={`card card-${size} card-back`} data-uid={card.uid} />;
   const d = def(card.num);
   const f = findField(s, card.uid);
   const rested = f?.card.rested ?? false;

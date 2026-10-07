@@ -206,7 +206,11 @@ The **Play** tab is a game simulator to practice against an AI, with a coach tha
 - **coach**: advice on demand (💡) or automatic (★), and an end-of-game recap (mistakes, best moves, turning
   points, win-chance curve, "replay this moment");
 - **My games**: every game is saved to your account with all its details; progress, areas to improve by theme,
-  and habits. Games from the former OP Coach can be imported with the ⤒ button.
+  and habits. Games from the former OP Coach can be imported with the ⤒ button;
+- **Play a friend online**: create a room, send its code (or the link) to your friend, who joins with their account,
+  and the game starts. The server is the referee: each player only receives what they would see at a real table
+  (never the other's hand or deck), the coach and its advice are off, the game resumes after a disconnection, and it
+  is saved in both players' "My games".
 
 Full official rules (version 1.2.1); card effects are coded from their official French text, and interpretation
 choices are listed in `game/docs/interpretations.md`. The game is only available in French for now. The AI and

@@ -19,7 +19,7 @@ export function MulliganModal({ s, p, onChoose, onHover }: { s: GameState; p: Pl
   return (
     <Modal wide className="modal-mulligan">
       <h2>Ta main de départ</h2>
-      <p className="op-muted">{s.first === p ? 'Tu joues en premier : pas de pioche ni d’attaque à ton premier tour.' : 'L’IA joue en premier.'} Tu peux repiocher 5 nouvelles cartes une seule fois.</p>
+      <p className="op-muted">{s.first === p ? 'Tu joues en premier : pas de pioche ni d’attaque à ton premier tour.' : s.players[s.first].name === 'IA' ? 'L’IA joue en premier.' : `${s.players[s.first].name} joue en premier.`} Tu peux repiocher 5 nouvelles cartes une seule fois.</p>
       <div className="pick-row">
         {s.players[p].hand.map((c) => <CardView key={c.uid} s={s} card={c} owner={p} size="pick" onHover={onHover} />)}
       </div>

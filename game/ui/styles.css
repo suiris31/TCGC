@@ -653,8 +653,9 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
   .bar-text { flex: 1 1 100%; }
   .bar-text strong { font-size: 0.95rem; }
   .bar-text span { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 0.78rem; }
-  .bar-buttons { width: 100%; margin-left: 0; flex-wrap: nowrap; }
-  .bar-buttons .op-btn { flex: 1 1 0; min-width: 0; padding: 0 0.6rem; overflow: hidden; text-overflow: ellipsis; }
+  .bar-buttons { width: 100%; margin-left: 0; flex-wrap: wrap; }
+  /* un choix se lit en entier : le texte des boutons passe à la ligne, deux boutons par ligne au plus */
+  .bar-buttons .op-btn { flex: 1 1 calc(50% - 0.3rem); min-width: 0; height: auto; min-height: 2.6rem; padding: 0.3rem 0.6rem; line-height: 1.2; white-space: normal; }
   .btn-end { min-width: 0; height: 2.8rem; font-size: 1rem; }
 
   /* écran de départ */
@@ -716,4 +717,26 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
   .setup { padding: calc(0.8rem + env(safe-area-inset-top, 0px)) 1rem 1.5rem; gap: 1rem; }
   .card-pick { width: calc((100dvh - 11rem) / 1.396 * 0.7); height: calc((100dvh - 11rem) * 0.7); }
   .cel-title { font-size: 3rem; }
+}
+
+/* ---------- Parties en ligne ---------- */
+.online-entry { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-radius: 14px; background: linear-gradient(135deg, rgba(90, 169, 255, 0.14), rgba(240, 192, 79, 0.08)); border: 1px solid rgba(90, 169, 255, 0.45); }
+.setup .online-entry h2 { margin: 0 0 0.2rem; color: var(--text); font-size: 1.15rem; text-transform: none; letter-spacing: 0; }
+.online-entry p { margin: 0; }
+.lobby { max-width: 60rem; }
+.lobby-tabs { width: 100%; max-width: 28rem; margin: 0 auto; grid-template-columns: 1fr 1fr; }
+.room-input { width: 100%; max-width: 16rem; height: 3.4rem; padding: 0 1rem; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--text); font: 800 1.6rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.3em; text-transform: uppercase; }
+.room-input:focus { outline: none; border-color: var(--accent); }
+.room-code { align-self: center; padding: 0.6rem 1.4rem; border-radius: 16px; border: 2px dashed var(--accent); background: var(--surface); color: var(--accent); font: 900 2.6rem/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.25em; user-select: all; }
+.lobby-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem; }
+.lobby-error { margin: 0; }
+.presence { color: var(--muted); font-size: 0.9rem; }
+.presence-on { color: var(--green); }
+.online-alert { position: absolute; left: 50%; top: 3.6rem; z-index: 36; transform: translateX(-50%); max-width: calc(100% - 1rem); padding: 0.4rem 0.9rem; border-radius: 10px; background: rgba(239, 90, 76, 0.94); color: #fff; font-size: 0.9rem; font-weight: 700; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.online-note { margin: 0.2rem 0 0; }
+.online-end { max-width: 30rem; text-align: center; }
+@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+  .online-entry { flex-direction: column; align-items: stretch; text-align: center; }
+  .room-code { font-size: 2rem; }
+  .presence { font-size: 0.75rem; }
 }

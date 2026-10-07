@@ -43,7 +43,8 @@ function zoneOf(s: GameState, uid: number): { player: PlayerId; zone: string; nu
   return null;
 }
 
-export function readDecision(s: GameState, d: Decision): DecisionView {
+// aids : marquer les choix sans intérêt (jugement de l'IA). Désactivé dans les parties en ligne.
+export function readDecision(s: GameState, d: Decision, aids = true): DecisionView {
   const view: DecisionView = { byCard: new Map(), attacks: new Map(), buttons: [], picks: [], special: null };
   const add = (uid: number, a: CardAction) => view.byCard.set(uid, [...(view.byCard.get(uid) ?? []), a]);
   const P = s.players[d.player];
@@ -56,7 +57,7 @@ export function readDecision(s: GameState, d: Decision): DecisionView {
   if (d.tag === 'declareCost') view.special = 'declareCost';
   for (const o of d.options) {
     const [kind] = o.id.split(':');
-    const useless = uselessReason(s, d, o) ?? undefined;
+    const useless = aids ? uselessReason(s, d, o) ?? undefined : undefined;
     if (d.kind === 'main') {
       const uid = uidOf(o);
       if (kind === 'play' || kind === 'event') {
@@ -158,16 +159,18 @@ export function attackPreview(s: GameState, attacker: number, target: number): {
   };
 }
 
-// Ce qu'il reste d'utile à faire avant de finir son tour
-export function remainingActions(s: GameState, d: Decision): string[] {
+// Ce qu'il reste à faire avant de finir son tour. Sans les aides (partie en ligne) : tout ce qui est encore permis,
+// sans juger de son intérêt.
+export function remainingActions(s: GameState, d: Decision, aids = true): string[] {
   if (d.kind !== 'main') return [];
   const out: string[] = [];
-  const attackers = new Set(d.options.filter((o) => o.id.startsWith('attack:') && !uselessReason(s, d, o)).map((o) => o.uid));
+  const useful = (o: Option) => !aids || !uselessReason(s, d, o);
+  const attackers = new Set(d.options.filter((o) => o.id.startsWith('attack:') && useful(o)).map((o) => o.uid));
   if (attackers.size) out.push(`attaquer avec ${attackers.size} carte${attackers.size > 1 ? 's' : ''}`);
-  const plays = d.options.filter((o) => (o.id.startsWith('play:') || o.id.startsWith('event:')) && !uselessReason(s, d, o)).length;
+  const plays = d.options.filter((o) => (o.id.startsWith('play:') || o.id.startsWith('event:')) && useful(o)).length;
   if (plays) out.push(`jouer ${plays} carte${plays > 1 ? 's' : ''} de ta main`);
   const P = s.players[d.player];
-  if (P.donActive > 0 && d.options.some((o) => o.id.startsWith('don:') && !uselessReason(s, d, o))) out.push(`utiliser ${P.donActive} DON!!`);
+  if (P.donActive > 0 && d.options.some((o) => o.id.startsWith('don:') && useful(o))) out.push(`utiliser ${P.donActive} DON!!`);
   return out;
 }
 

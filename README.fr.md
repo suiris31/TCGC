@@ -214,7 +214,11 @@ de tes décisions (ancien projet OP Coach, dans le dossier `game/`) :
 - **coach** : conseil à la demande (💡) ou automatique (★), et récap en fin de partie (erreurs, meilleurs choix,
   tournants, courbe des chances de gagner, « rejouer ce moment ») ;
 - **Mes parties** : chaque partie est enregistrée sur ton compte avec tous ses détails ; progression, axes de
-  progrès par thème et habitudes. Les parties de l'ancien OP Coach s'importent avec le bouton ⤒.
+  progrès par thème et habitudes. Les parties de l'ancien OP Coach s'importent avec le bouton ⤒ ;
+- **Jouer avec un ami en ligne** : crée une salle, envoie son code (ou le lien) à ton ami, il la rejoint avec son
+  compte et la partie commence. Le serveur arbitre : chacun ne reçoit que ce qu'il verrait à une vraie table (ni la
+  main ni le deck de l'autre), le coach et ses conseils sont désactivés, la partie reprend après une coupure, et elle
+  est rangée dans « Mes parties » des deux joueurs.
 
 Règles complètes officielles (version 1.2.1) ; effets des cartes codés d'après leur texte officiel français, et les
 choix d'interprétation sont listés dans `game/docs/interpretations.md`. Le jeu n'existe pour l'instant qu'en

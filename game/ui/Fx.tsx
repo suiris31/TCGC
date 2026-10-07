@@ -259,14 +259,15 @@ export function Intro({ s, onDone }: { s: GameState; onDone: () => void }) {
 }
 
 // Écran de victoire ou de défaite, avant le récap du coach
-export function Celebration({ won, onDone }: { won: boolean; onDone: () => void }) {
+// sub : la phrase sous le résultat (par défaut, celle de la partie contre l'IA, avec le récap du coach)
+export function Celebration({ won, onDone, sub }: { won: boolean; onDone: () => void; sub?: string }) {
   useEffect(() => { sfx(won ? 'win' : 'lose'); }, [won]);
   useTimeout(onDone, 2600);
   return (
     <div className={`celebration ${won ? 'cel-win' : 'cel-lose'}`} onClick={onDone}>
       {won && <div className="confetti">{Array.from({ length: 40 }, (_, i) => <i key={i} style={{ ['--i' as string]: i }} />)}</div>}
       <div className="cel-title">{won ? 'Victoire !' : 'Défaite'}</div>
-      <div className="cel-sub">{won ? 'Bien joué, capitaine.' : 'Le coach a préparé ton récap.'}</div>
+      <div className="cel-sub">{sub ?? (won ? 'Bien joué, capitaine.' : 'Le coach a préparé ton récap.')}</div>
     </div>
   );
 }

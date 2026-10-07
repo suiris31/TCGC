@@ -70,7 +70,7 @@ const matchupName = (c: Pick<Config, 'myDeck' | 'aiDeck' | 'level'>) =>
 function recordsOf(list: GameSummary[]): Records {
   const out: Records = {};
   for (const g of list) {
-    if (g.practice || (g.status !== 'won' && g.status !== 'lost')) continue;
+    if (g.practice || g.mode === 'online' || (g.status !== 'won' && g.status !== 'lost')) continue;
     const key = recordKey({ myDeck: g.config.myDeck, aiDeck: g.config.aiDeck, level: g.config.level as Level });
     const line = out[key] ?? { wins: 0, losses: 0 };
     out[key] = g.status === 'won' ? { ...line, wins: line.wins + 1 } : { ...line, losses: line.losses + 1 };
@@ -78,9 +78,15 @@ function recordsOf(list: GameSummary[]): Records {
   return out;
 }
 
+// Accès aux parties en ligne depuis l'écran de départ : ouvrir le salon, reprendre une partie ou une salle en cours
+export interface OnlineEntry {
+  onOpen: () => void;
+  resume?: { label: string; onResume: () => void };
+}
+
 // notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
 // barre d'onglets)
-export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (on: boolean) => void }) {
+export function App({ notice, onImmersive, online }: { notice?: string; onImmersive?: (on: boolean) => void; online?: OnlineEntry }) {
   const [settings, updateSettings] = useSettings();
   const [config, setConfig] = useState<Config>({ myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
   const [session, setSession] = useState<Config>(config);
@@ -427,7 +433,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
   if (!game) {
     return (
       <>
-        <SetupScreen notice={notice} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
+        <SetupScreen notice={notice} online={online} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
           settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => setHistory(true)} />
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { setHistory(false); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
@@ -718,7 +724,7 @@ export function App({ notice, onImmersive }: { notice?: string; onImmersive?: (o
 
 const COLOR: Record<string, string> = { Rouge: '#d9443a', Vert: '#2f9e5b', Bleu: '#2f6fd1', Violet: '#8a4fc9', Jaune: '#e2b623', Noir: '#3a3a44' };
 
-function DeckTile({ id, selected, onClick, note, onGuide }: { id: string; selected: boolean; onClick: () => void; note?: string; onGuide: (id: string) => void }) {
+export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string; selected: boolean; onClick: () => void; note?: string; onGuide: (id: string) => void }) {
   const deck = DECKS[id];
   const leader = def(deck.leader);
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');
@@ -734,8 +740,9 @@ function DeckTile({ id, selected, onClick, note, onGuide }: { id: string; select
   );
 }
 
-function SetupScreen({ notice, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory }: {
+function SetupScreen({ notice, online, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory }: {
   notice?: string;
+  online?: OnlineEntry;
   config: Config;
   records: Records;
   onChange: (c: Config) => void;
@@ -776,6 +783,19 @@ function SetupScreen({ notice, config, records, onChange, onStart, onHelp, help,
         </div>
         {notice && <p className="setup-notice">{notice}</p>}
       </header>
+      {online && (
+        <section className="online-entry">
+          <div>
+            <h2>🌐 Jouer avec un ami</h2>
+            {online.resume
+              ? <p className="op-muted">{online.resume.label}</p>
+              : <p className="op-muted">Une partie en ligne contre un ami : crée une salle et envoie-lui son code, ou rejoins la sienne.</p>}
+          </div>
+          {online.resume
+            ? <button className="op-btn op-btn-primary" onClick={online.resume.onResume}>Reprendre</button>
+            : <button className="op-btn op-btn-primary" onClick={online.onOpen}>Jouer en ligne</button>}
+        </section>
+      )}
       <section className="setup-section">
         <h2>Ton deck</h2>
         <div className="deck-grid">{ids.map((id) => <DeckTile key={id} id={id} selected={config.myDeck === id} onClick={() => onChange({ ...config, myDeck: id })} onGuide={onGuide} />)}</div>
