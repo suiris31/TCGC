@@ -220,7 +220,7 @@ de tes décisions (ancien projet OP Coach, dans le dossier `game/`) :
   main ni le deck de l'autre), le coach et ses conseils sont désactivés, la partie reprend après une coupure, et elle
   est rangée dans « Mes parties » des deux joueurs.
 
-Règles complètes officielles (version 1.2.1) ; effets des cartes codés d'après leur texte officiel français, et les
+Règles complètes officielles (version 1.2.1) ; effets des cartes codés d'après leur texte officiel (VF et VO), et les
 choix d'interprétation sont listés dans `game/docs/interpretations.md`. Le jeu n'existe pour l'instant qu'en
 français. L'IA et le coach tournent dans le navigateur : ils ne chargent pas le serveur.
 
@@ -234,6 +234,7 @@ et le coach s'ouvrent avec le bouton 📜.
 |---|---|
 | Catalogue (cartes, variantes, visuels) | TCGplayer, via le miroir public quotidien [tcgcsv.com](https://tcgcsv.com) |
 | Cartes VF | Liste officielle française [fr.onepiece-cardgame.com](https://fr.onepiece-cardgame.com/cardlist/) : noms français et visuels VF (actualisés chaque semaine) |
+| Cartes du jeu (onglet Jouer) | Listes officielles française et anglaise ([en.onepiece-cardgame.com](https://en.onepiece-cardgame.com/cardlist/)) : toutes les cartes, en VF quand elle existe, sinon en VO (mises à jour chaque jour) |
 | Prix (par défaut) | **Cardmarket**, tendance des prix en € (fichiers publics quotidiens). C'est le marché de référence en Europe, mais il ne sépare pas les langues : VF et VO sont mélangées. |
 | Prix (secours ou au choix) | « Market price » TCGplayer (moyenne des ventes aux USA, cartes anglaises), converti en € au taux BCE du jour |
 | Reconnaissance | Modèle de vision DINOv2 exécuté en local (aucun service payant) : chaque visuel (VO TCGplayer + VF officiel) est transformé en vecteur, la photo est comparée à tous ces vecteurs. La bande où les visuels officiels portent le filigrane « SAMPLE » est floutée des deux côtés, sinon les vraies cartes (sans filigrane) sont mal reconnues. |

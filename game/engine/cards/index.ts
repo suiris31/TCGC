@@ -1,7 +1,7 @@
 // Toutes les cartes connues : informations officielles + comportement codé.
-// Les informations officielles (nom, coût, texte VF...) viennent de la liste française de Bandai. Elles ne sont pas
-// dans le dépôt : le serveur les télécharge (game/data/fetch.ts) et chacun les charge au démarrage avec loadCardData
-// (navigateur et fils de calcul : depuis l'API ; tests et scripts : game/data/node.ts).
+// Les informations officielles (nom, coût, texte...) viennent des listes française et anglaise de Bandai. Elles ne sont
+// pas dans le dépôt : le serveur les télécharge (game/data/catalog.ts) et chacun les charge au démarrage avec
+// loadCardData (navigateur et fils de calcul : depuis l'API ; tests et scripts : game/data/node.ts).
 import { DECKS } from '../decks.ts';
 import type { CardBehavior, CardData, CardDef } from '../types.ts';
 import { ST31 } from './st31.ts';
@@ -17,17 +17,27 @@ const BEHAVIORS: Record<string, CardBehavior> = { ...ST31, ...ST32, ...ST33, ...
 // view.ts). L'interface peut la lire sans erreur ; elle l'affiche de dos.
 export const HIDDEN = '?';
 const HIDDEN_CARD: CardDef = {
-  number: HIDDEN, imageId: '', rarity: '', category: 'CHARACTER', name: 'Carte cachée', cost: null, life: null, power: null,
-  counter: null, colors: [], types: [], attribute: null, effect: '', trigger: null,
+  number: HIDDEN, imageId: '', lang: 'fr', rarity: '', category: 'CHARACTER', name: 'Carte cachée', names: [], cost: null,
+  life: null, power: null, counter: null, colors: [], types: [], typeLabels: [], attributes: [], effect: '', trigger: null,
+  effectEn: '', triggerEn: null, keywords: [], blocks: [],
 };
 
 // Rempli par loadCardData (toujours le même objet : les modules qui l'importent voient les cartes chargées)
 export const CARDS: Record<string, CardDef> = { [HIDDEN]: HIDDEN_CARD };
 let raw: Record<string, CardData> = {};
 
+// Visuel d'une carte d'un deck préconstruit : celui de ce deck (le premier deck qui la contient)
+function deckImage(num: string, d: CardData): string {
+  for (const deck of Object.values(DECKS)) {
+    const art = d.deckArt?.[deck.series];
+    if (art && (deck.leader === num || deck.cards[num])) return art;
+  }
+  return d.imageId;
+}
+
 export function loadCardData(data: Record<string, CardData>) {
   raw = { ...raw, ...data };
-  for (const [num, d] of Object.entries(data)) CARDS[num] = { ...d, ...BEHAVIORS[num] };
+  for (const [num, d] of Object.entries(data)) CARDS[num] = { ...d, imageId: deckImage(num, d), ...BEHAVIORS[num] };
 }
 
 // Données telles que chargées (à transmettre aux fils de calcul)
@@ -35,19 +45,11 @@ export function cardData(): Record<string, CardData> {
   return raw;
 }
 
-// Cartes dont le moteur a besoin : celles des decks jouables, rangées par extension de la liste officielle où les
-// chercher (une carte rééditée dans un deck est prise dans la liste de ce deck)
-export function neededCards(): Map<string, string[]> {
-  const bySeries = new Map<string, string[]>();
-  const seen = new Set<string>();
-  for (const deck of Object.values(DECKS)) {
-    const nums = [deck.leader, ...Object.keys(deck.cards)].filter((n) => !seen.has(n));
-    nums.forEach((n) => seen.add(n));
-    bySeries.set(deck.series, [...(bySeries.get(deck.series) ?? []), ...nums]);
-  }
-  return bySeries;
+// Cartes dont l'interface et l'IA ont besoin : celles des decks jouables
+export function neededCards(): string[] {
+  return [...new Set(Object.values(DECKS).flatMap((deck) => [deck.leader, ...Object.keys(deck.cards)]))];
 }
 
 export function missingCards(data: Record<string, CardData>): string[] {
-  return [...neededCards().values()].flat().filter((n) => !data[n]);
+  return neededCards().filter((n) => !data[n]);
 }

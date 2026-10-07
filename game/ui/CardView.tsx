@@ -75,7 +75,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
     <div className={classes} data-uid={card.uid} onClick={click} onDragOver={dragOver} onDrop={drop}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover?.(null); }}>
-      <img src={cardImage(d.imageId)} alt={d.name} draggable={false} />
+      <img src={cardImage(d)} alt={d.name} draggable={false} />
       {p !== null && size !== 'life' && (
         <span className={`badge badge-power ${p > (d.power ?? 0) ? 'up' : p < (d.power ?? 0) ? 'down' : ''}`} title="Puissance actuelle">{p}</span>
       )}

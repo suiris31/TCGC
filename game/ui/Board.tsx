@@ -20,7 +20,7 @@ function Pile({ label, count, onClick, top }: { label: string; count: number; on
   return (
     <button className={`pile ${onClick ? 'pile-click' : ''} ${count === 0 ? 'pile-empty' : ''}`} onClick={onClick} disabled={!onClick}
       title={onClick ? `${label} : voir les cartes` : label}>
-      {top ? <img src={cardImage(def(top).imageId)} alt="" /> : <span className="pile-back" />}
+      {top ? <img src={cardImage(def(top))} alt="" /> : <span className="pile-back" />}
       <span className="pile-count">{count}</span>
       <span className="pile-label">{label}</span>
     </button>

@@ -18,7 +18,7 @@ async function fetchCards(): Promise<void> {
     const res = await fetch(`${import.meta.env.BASE_URL}api/game/cards`, { cache: 'no-cache' });
     if (res.ok) return loadCardData((await res.json()) as Record<string, CardData>);
     // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes
-    if (res.status !== 503 || attempt >= 20) throw new Error(`le serveur a répondu ${res.status}`);
+    if (res.status !== 503 || attempt >= 40) throw new Error(`le serveur a répondu ${res.status}`);
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }

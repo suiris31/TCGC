@@ -10,7 +10,7 @@ import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
 import { addDeck, deckContents, starterDecks } from './decks.js';
-import { ensureGameCards, gameCards } from './game-cards.js';
+import { enLargeImage, ensureGameCards, gameCards } from './game-cards.js';
 import { expireRooms, forgetUser, onlineRoutes } from './game-online.js';
 import { readRecordBody, RECORD_ID, recordBlob, recordSummariesJson, saveRecord } from './game-records.js';
 import { mailConfigured } from './mail.js';
@@ -409,6 +409,15 @@ app.get('/img-fr/:id.jpg', (req, res) => {
 app.get('/img-fr-hd/:id.webp', async (req, res) => {
   if (!FR_IMAGE_ID.test(req.params.id)) return res.sendStatus(400);
   const file = await frLargeImage(req.params.id).catch(() => null);
+  if (!file) return res.sendStatus(404);
+  res.setHeader('Cache-Control', 'public, max-age=604800');
+  res.sendFile(file);
+});
+
+// Visuels VO des cartes du jeu qui n'existent pas en VF (liste officielle anglaise)
+app.get('/img-en-hd/:id.webp', async (req, res) => {
+  if (!FR_IMAGE_ID.test(req.params.id)) return res.sendStatus(400);
+  const file = await enLargeImage(req.params.id).catch(() => null);
   if (!file) return res.sendStatus(404);
   res.setHeader('Cache-Control', 'public, max-age=604800');
   res.sendFile(file);

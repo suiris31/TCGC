@@ -8,7 +8,7 @@ import { GUIDES } from './deckGuides.ts';
 import { cardImage } from './images.ts';
 import { isTouch } from './device.ts';
 
-const COLOR: Record<string, string> = { Rouge: '#d9443a', Vert: '#2f9e5b', Bleu: '#2f6fd1', Violet: '#8a4fc9', Jaune: '#e2b623', Noir: '#55556a' };
+const COLOR: Record<string, string> = { Red: '#d9443a', Green: '#2f9e5b', Blue: '#2f6fd1', Purple: '#8a4fc9', Yellow: '#e2b623', Black: '#55556a' };
 
 export function CardThumb({ num, count, size = 'thumb', onHover }: { num: string; count?: number; size?: 'thumb' | 'mini'; onHover: (p: (Preview & { rect?: DOMRect }) | null) => void }) {
   const d = def(num);
@@ -17,7 +17,7 @@ export function CardThumb({ num, count, size = 'thumb', onHover }: { num: string
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover({ num, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover(null); }}
       onClick={(e) => { if (isTouch()) onHover({ num, rect: e.currentTarget.getBoundingClientRect(), pinned: true }); }}>
-      <img src={cardImage(d.imageId)} alt={d.name} draggable={false} />
+      <img src={cardImage(d)} alt={d.name} draggable={false} />
       {count !== undefined && <span className="thumb-count">×{count}</span>}
     </div>
   );
@@ -52,7 +52,7 @@ export function DeckGuideModal({ deckId, onClose, onHover, alt, altLabel, onSwit
     { label: 'Contre +1000', value: sum((c) => c.d.counter === 1000) },
     { label: 'Contre +2000', value: sum((c) => c.d.counter === 2000) },
     { label: 'Événements [Contre]', value: sum((c) => Boolean(c.d.onCounter)) },
-    { label: '[Bloqueur]', value: sum((c) => /\[Bloqueur\]/.test(c.d.effect)) },
+    { label: '[Bloqueur]', value: sum((c) => /\[(Bloqueur|Blocker)\]/.test(c.d.effect)) },
     { label: '[Déclenchement]', value: sum((c) => Boolean(c.d.trigger)) },
   ];
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');

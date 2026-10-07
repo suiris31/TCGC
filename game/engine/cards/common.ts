@@ -6,9 +6,9 @@ import {
 } from '../rules.ts';
 import type { Card, EffectCtx, FieldCard, Modifier } from '../types.ts';
 
-export const isNamed = (num: string, cardName: string) => def(num).name === cardName;
+export const isNamed = (num: string, cardName: string) => def(num).names.includes(cardName);
 export const isCharacter = (num: string) => def(num).category === 'CHARACTER';
-export const hasAttribute = (num: string, attribute: string) => (def(num).attribute ?? '').includes(attribute);
+export const hasAttribute = (num: string, attribute: string) => def(num).attributes.includes(attribute);
 
 // « Jusqu'à 1 Personnage adverse reçoit −X de puissance » (le Leader adverse aussi si includeLeader)
 export function oppPowerDown(ctx: EffectCtx, amount: number, until: Modifier['until'], source: string, includeLeader = false) {

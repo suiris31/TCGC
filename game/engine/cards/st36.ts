@@ -6,8 +6,8 @@ import {
 import type { Card, CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import { costAtMost, drawLog, isCharacter, isNamed, koOpp, mayDiscard, playCharFromHand, playTriggerCard, restOpp } from './common.ts';
 
-const SN = 'Supernovae';
-const KIDD = 'Eustass "Captain" Kidd';
+const SN = 'Supernovas';  // {Supernovae}
+const KIDD = 'Eustass"Captain"Kid';
 const snLeader = (s: GameState, p: PlayerId) => leaderHasType(s, p, SN);
 const lifeLeq = (s: GameState, p: PlayerId) => s.players[p].life.length <= s.players[p === 0 ? 1 : 0].life.length;
 
@@ -62,7 +62,7 @@ export const ST36: Record<string, CardBehavior> = {
   // [Déclenchement] si l'adversaire a 3 Vies ou moins, jouez cette carte
   'ST36-002': {
     onPlay: (ctx) => {
-      if (ctx.s.active === ctx.me && leaderHasType(ctx.s, ctx.me, 'Équipage de Kidd')) addTopDeckToLife(ctx.s, ctx.me);
+      if (ctx.s.active === ctx.me && leaderHasType(ctx.s, ctx.me, 'Kid Pirates')) addTopDeckToLife(ctx.s, ctx.me);
     },
     onTrigger: (ctx) => {
       if (ctx.s.players[ctx.opp].life.length <= 3) playTriggerCard(ctx);
@@ -175,7 +175,7 @@ export const ST36: Record<string, CardBehavior> = {
 
   // Luffy : [Jouée] 5 cartes du dessus, 1 carte {Supernovae} autre que Luffy
   'OP10-111': {
-    onPlay: (ctx) => { lookTopPick(ctx, 5, 1, (n) => hasType(n, SN) && !isNamed(n, 'Monkey D. Luffy'), 'une carte {Supernovae} autre que Luffy'); },
+    onPlay: (ctx) => { lookTopPick(ctx, 5, 1, (n) => hasType(n, SN) && !isNamed(n, 'Monkey.D.Luffy'), 'une carte {Supernovae} autre que Luffy'); },
   },
 
   // X-Drake : [Activation : Principale] s'épuiser : si vous n'avez pas plus de Vie que l'adversaire, épuisez 1 Personnage

@@ -7,7 +7,7 @@ import {
   bottomOpp, bounceAny, costAtMost, counterBoost, drawLog, isNamed, lockOpp, mayDiscard, playCharFromHand, typed,
 } from './common.ts';
 
-const MARINE = 'Marine';
+const MARINE = 'Navy';  // {Marine}
 const marineLeader = (ctx: EffectCtx) => leaderHasType(ctx.s, ctx.me, MARINE);
 
 export const ST33: Record<string, CardBehavior> = {
@@ -135,7 +135,7 @@ export const ST33: Record<string, CardBehavior> = {
   'ST33-005': {
     onPlay: (ctx) => {
       if (!marineLeader(ctx)) return;
-      playCharFromHand(ctx, (c) => typed(MARINE)(c) && def(c.num).colors.includes('Bleu') && (def(c.num).power ?? 0) <= 8000 && !isNamed(c.num, 'Monkey D. Garp'),
+      playCharFromHand(ctx, (c) => typed(MARINE)(c) && def(c.num).colors.includes('Blue') && (def(c.num).power ?? 0) <= 8000 && !isNamed(c.num, 'Monkey.D.Garp'),
         'Garp : jouer jusqu’à 1 Personnage bleu {Marine} de 8000 de puissance ou moins de ta main :');
     },
   },

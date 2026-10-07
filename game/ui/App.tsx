@@ -722,7 +722,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
   );
 }
 
-const COLOR: Record<string, string> = { Rouge: '#d9443a', Vert: '#2f9e5b', Bleu: '#2f6fd1', Violet: '#8a4fc9', Jaune: '#e2b623', Noir: '#3a3a44' };
+const COLOR: Record<string, string> = { Red: '#d9443a', Green: '#2f9e5b', Blue: '#2f6fd1', Purple: '#8a4fc9', Yellow: '#e2b623', Black: '#3a3a44' };
 
 export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string; selected: boolean; onClick: () => void; note?: string; onGuide: (id: string) => void }) {
   const deck = DECKS[id];
@@ -730,7 +730,7 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');
   return (
     <button className={`deck-tile ${selected ? 'on' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
-      <img src={cardImage(leader.imageId)} alt="" />
+      <img src={cardImage(leader)} alt="" />
       <span className="deck-name">{deck.name}</span>
       <span className="deck-id">{deck.id}{note ? ` · ${note}` : ''}</span>
       <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ')}</span>

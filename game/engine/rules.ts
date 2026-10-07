@@ -3,7 +3,7 @@
 import { CARDS } from './cards/index.ts';
 import type { Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameState, Modifier, Option, PlayerId } from './types.ts';
 
-export const RA = 'Armée révolutionnaire';
+export const RA = 'Revolutionary Army';  // {Armée révolutionnaire}
 
 export function def(num: string): CardDef {
   const d = CARDS[num];
@@ -46,6 +46,7 @@ export function findField(s: GameState, uid: number): { player: PlayerId; card: 
 
 export const onField = (s: GameState, uid: number) => findField(s, uid) !== null;
 
+// Types, attributs et noms : libellés de la VO (identiques quelle que soit la langue de la carte, voir types.ts)
 export function hasType(num: string, type: string) {
   return def(num).types.includes(type);
 }
@@ -55,7 +56,7 @@ export function leaderHasType(s: GameState, p: PlayerId, type: string) {
 }
 
 export function leaderHasAttribute(s: GameState, p: PlayerId, attribute: string) {
-  return (def(s.players[p].leader.num).attribute ?? '').includes(attribute);
+  return def(s.players[p].leader.num).attributes.includes(attribute);
 }
 
 export function name(s: GameState, uid: number): string {

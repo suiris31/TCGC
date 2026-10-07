@@ -212,7 +212,7 @@ The **Play** tab is a game simulator to practice against an AI, with a coach tha
   (never the other's hand or deck), the coach and its advice are off, the game resumes after a disconnection, and it
   is saved in both players' "My games".
 
-Full official rules (version 1.2.1); card effects are coded from their official French text, and interpretation
+Full official rules (version 1.2.1); card effects are coded from their official text (French and English), and interpretation
 choices are listed in `game/docs/interpretations.md`. The game is only available in French for now. The AI and
 the coach run in the browser: they put no load on the server.
 
@@ -226,6 +226,7 @@ open with the 📜 button.
 |---|---|
 | Catalog (cards, printings, images) | TCGplayer, through the public daily mirror [tcgcsv.com](https://tcgcsv.com) |
 | French cards | Official French card list [fr.onepiece-cardgame.com](https://fr.onepiece-cardgame.com/cardlist/): French names and artwork (refreshed weekly) |
+| Game cards (Play tab) | Official French and English card lists ([en.onepiece-cardgame.com](https://en.onepiece-cardgame.com/cardlist/)): every card, in French when it exists, otherwise in English (refreshed daily) |
 | Prices (default) | **Cardmarket** price trend in € (daily public files). The reference market in Europe, but it doesn't separate languages. |
 | Prices (fallback or by choice) | TCGplayer "market price" (average of recent US sales, English cards), converted to € at the daily ECB rate |
 | Recognition | DINOv2 vision model running locally: every image (TCGplayer English + official French) becomes a vector and the photo is compared against all of them. The band where official images carry a "SAMPLE" watermark is blurred on both sides, otherwise real (unwatermarked) cards are poorly recognized. |

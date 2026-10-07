@@ -56,14 +56,14 @@ export function CardPreview({ s, preview }: { s: GameState; preview: Preview | n
   const f = preview.uid !== undefined ? findField(s, preview.uid) : null;
   return (
     <div className="preview">
-      <img src={cardImage(d.imageId)} alt={d.name} />
+      <img src={cardImage(d)} alt={d.name} />
       <div className="preview-text">
         <strong>{d.name}</strong>
         <div className="op-muted op-small">
           {d.number} · {d.category === 'LEADER' ? `Leader · Vie ${d.life}` : `Coût ${d.cost}`}
           {d.power !== null && ` · ${d.power}`}{d.counter ? ` · Contre +${d.counter}` : ''}
         </div>
-        <div className="op-muted op-small">{d.types.join(' / ')}</div>
+        <div className="op-muted op-small">{d.typeLabels.join(' / ')}</div>
         {f && (
           <div className="op-small">
             Actuellement : <b>{power(s, f.card.uid)}</b> de puissance{!f.leader && <>, coût <b>{Math.max(0, fieldCost(s, f.card.uid))}</b></>}
@@ -72,6 +72,7 @@ export function CardPreview({ s, preview }: { s: GameState; preview: Preview | n
         )}
         <p className="effect">{d.effect && d.effect !== '-' ? <EffectText text={d.effect} /> : 'Pas d’effet.'}</p>
         {d.trigger && <p className="effect"><span className="kw">[Déclenchement]</span> <EffectText text={d.trigger} /></p>}
+        {d.lang === 'en' && <p className="op-small op-muted">Texte anglais : cette carte n’existe pas en VF.</p>}
         {f?.card.rested && <div className="op-small op-muted">Épuisée</div>}
       </div>
     </div>

@@ -126,7 +126,7 @@ function abilityTiming(s: GameState, p: PlayerId, uid: number): Timing {
 const fakeField = (s: GameState, num: string): FieldCard => ({ uid: -1, num, rested: false, don: 0, playedTurn: s.turn, usedOpt: [] });
 const inHand = (s: GameState, p: PlayerId, pred: (num: string) => boolean) => s.players[p].hand.filter((c) => pred(c.num)).length;
 const hasCost8 = (s: GameState, p: PlayerId) => s.players[p].chars.some((c) => fieldCost(s, c.uid) >= 8);
-const SH = 'Équipage de Chapeau de paille';
+const SH = 'Straw Hat Crew';
 
 // Bonus selon l'effet [Jouée] et la situation
 const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
@@ -154,13 +154,13 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
   'ST32-004': (s, p) => Math.min(2, oppCharsWhere(s, p, (c) => !c.rested && fieldCost(s, c.uid) <= 2).length),
   'ST32-005': (s, p) => (oppCharsWhere(s, p, (c) => !c.rested && fieldCost(s, c.uid) <= 2).length ? 1 : 0),
   'ST32-002': () => 1.5,
-  'ST32-003': (s, p) => (inHand(s, p, (n) => def(n).category === 'CHARACTER' && (def(n).cost ?? 0) <= 5 && ((def(n).attribute ?? '').includes('Tranche') || def(n).name === 'Perona')) ? 3 : 0),
+  'ST32-003': (s, p) => (inHand(s, p, (n) => def(n).category === 'CHARACTER' && (def(n).cost ?? 0) <= 5 && (def(n).attributes.includes('Slash') || def(n).names.includes('Perona'))) ? 3 : 0),
   'ST32-001': () => 1,
   // ST-33
   'EB04-026': (s, p) => (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 1).length ? 2 : 0.5),
   'ST33-003': (s, p) => 1.5 * Math.min(2, oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 2).length),
-  'ST33-005': (s, p) => (inHand(s, p, (n) => n !== 'ST33-005' && def(n).category === 'CHARACTER' && hasType(n, 'Marine') && (def(n).power ?? 0) <= 8000) ? 3 : 0),
-  'OP12-046': (s, p) => (leaderHasType(s, p, 'Marine') ? 0 : -2),
+  'ST33-005': (s, p) => (inHand(s, p, (n) => n !== 'ST33-005' && def(n).category === 'CHARACTER' && hasType(n, 'Navy') && (def(n).power ?? 0) <= 8000) ? 3 : 0),
+  'OP12-046': (s, p) => (leaderHasType(s, p, 'Navy') ? 0 : -2),
   'OP12-047': () => 1,
   'ST33-001': () => 0.5,
   'OP12-043': (s, p) => (s.players[other(p)].chars.length ? 1 : 0),
@@ -174,7 +174,7 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
   'ST36-002': () => 2,
   'P-085': (s, p) => (s.players[p].life.length <= s.players[other(p)].life.length && oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 4 && fieldValue(s, c.uid) >= 5).length ? 2 : 0),
   'OP10-111': () => 1,
-  'ST36-004': (s, p) => (inHand(s, p, (n) => hasType(n, 'Supernovae')) >= 2 ? 1.5 : 0),
+  'ST36-004': (s, p) => (inHand(s, p, (n) => hasType(n, 'Supernovas')) >= 2 ? 1.5 : 0),
   'OP10-103': () => -1,
 };
 
@@ -383,7 +383,7 @@ function chooseBlocker(s: GameState, d: Decision): string {
 function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: number): number {
   switch (num) {
     case 'OP13-019': return findField(s, targetUid)?.leader ? 3000 : 0;
-    case 'OP12-098': return s.players[p].chars.some((c) => hasType(c.num, 'Armée révolutionnaire') && fieldCost(s, c.uid) >= 8) ? 4000 : 2000;
+    case 'OP12-098': return s.players[p].chars.some((c) => hasType(c.num, 'Revolutionary Army') && fieldCost(s, c.uid) >= 8) ? 4000 : 2000;
     case 'OP04-016': return s.players[p].hand.length >= 2 ? 3000 : 0;
     case 'OP12-057': return 4000;
     case 'OP11-079': return knowsTop(s, p) ? 5000 : 0;
@@ -433,7 +433,7 @@ function chooseCounter(s: GameState, d: Decision): string {
 // [Déclenchement] : vaut-il mieux l'activer que prendre la carte en main ? (par défaut oui)
 const TRIGGER_WORTH: Record<string, (s: GameState, p: PlayerId) => boolean> = {
   'ST36-002': (s, p) => s.players[other(p)].life.length <= 3,
-  'P-088': (s, p) => leaderHasType(s, p, 'Supernovae') && s.players[0].life.length + s.players[1].life.length <= 5,
+  'P-088': (s, p) => leaderHasType(s, p, 'Supernovas') && s.players[0].life.length + s.players[1].life.length <= 5,
   'OP12-057': () => false,
   'OP11-079': () => false,
   'OP12-039': (s, p) => s.battle !== null && s.active !== p,
@@ -567,13 +567,13 @@ function chooseEffect(s: GameState, d: Decision): string {
       const b = s.battle;
       if (!b) return 'no';
       const atk = power(s, b.attacker);
-      const kidds = fieldCards(s, p).filter((c) => def(c.num).name === 'Eustass "Captain" Kidd' && c.uid !== b.target && (def(c.num).power ?? 0) >= 5000);
+      const kidds = fieldCards(s, p).filter((c) => def(c.num).names.includes('Eustass"Captain"Kid') && c.uid !== b.target && (def(c.num).power ?? 0) >= 5000);
       return atk >= power(s, b.target) && kidds.some((c) => power(s, c.uid) > atk) ? first() : 'no';
     }
     case 'kiddTarget':
       return (byValue(true)[0] ?? d.options[0]).id;
     case 'begeLife':
-      return P.hand.some((c) => def(c.num).category === 'CHARACTER' && hasType(c.num, 'Supernovae') && def(c.num).onTrigger) ? 'top' : 'no';
+      return P.hand.some((c) => def(c.num).category === 'CHARACTER' && hasType(c.num, 'Supernovas') && def(c.num).onTrigger) ? 'top' : 'no';
     case 'toLife': {
       const withTrigger = cards.filter((o) => def(cardNum(s, uidOf(o))!).onTrigger);
       return (withTrigger[0] ?? byHand(false)[0] ?? d.options[0]).id;

@@ -4,7 +4,7 @@
 export interface DeckList {
   id: string;
   name: string;
-  // extension de la liste officielle française d'où viennent les visuels (ex. "ST-35")
+  // extension du deck (ex. "ST-35") : ses cartes gardent leur illustration de ce deck (voir cards/index.ts)
   series: string;
   leader: string;
   cards: Record<string, number>;

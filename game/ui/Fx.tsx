@@ -205,7 +205,7 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
       )}
       {ghosts.map((g) => (
         <div key={g.id} className={`fx-ghost ${g.label === 'KO' ? 'ghost-ko' : 'ghost-leave'}`} style={{ left: g.rect.left, top: g.rect.top, width: g.rect.width, height: g.rect.height }}>
-          <img src={cardImage(def(g.num).imageId)} alt="" />
+          <img src={cardImage(def(g.num))} alt="" />
           <span className="ghost-label">{g.label}</span>
         </div>
       ))}
@@ -226,7 +226,7 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
       )}
       {spot && (
         <div key={spot.id} className="fx-spot">
-          <img src={cardImage(def(spot.num).imageId)} alt="" />
+          <img src={cardImage(def(spot.num))} alt="" />
           <span>{spot.caption}</span>
         </div>
       )}
@@ -251,9 +251,9 @@ export function Intro({ s, onDone }: { s: GameState; onDone: () => void }) {
   const [a, b] = s.players;
   return (
     <div className="intro" onClick={onDone}>
-      <div className="intro-side intro-left"><img src={cardImage(def(a.leader.num).imageId)} alt="" /><span>{a.name}</span></div>
+      <div className="intro-side intro-left"><img src={cardImage(def(a.leader.num))} alt="" /><span>{a.name}</span></div>
       <div className="intro-vs">VS</div>
-      <div className="intro-side intro-right"><img src={cardImage(def(b.leader.num).imageId)} alt="" /><span>{b.name}</span></div>
+      <div className="intro-side intro-right"><img src={cardImage(def(b.leader.num))} alt="" /><span>{b.name}</span></div>
     </div>
   );
 }

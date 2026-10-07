@@ -5,6 +5,7 @@ import { def, fieldCost, findField, power } from '../engine/rules.ts';
 import type { GameState, Modifier } from '../engine/types.ts';
 import type { Preview } from './CardView.tsx';
 import { cardImage } from './images.ts';
+import { COLOR_LABEL, attributeLabel } from './labels.ts';
 
 export function EffectText({ text }: { text: string }) {
   const parts = text.split(/(\[[^\]]+\]|<[^>]+>|\{[^}]+\})/g);
@@ -32,22 +33,23 @@ export function CardDetails({ s, num, uid }: { s?: GameState | null; num: string
   const mods = f && s ? s.mods.filter((m) => m.uid === f.card.uid) : [];
   return (
     <>
-      <img src={cardImage(d.imageId)} alt={d.name} />
+      <img src={cardImage(d)} alt={d.name} />
       <div className="zoom-text">
         <strong className="zoom-name">{d.name}</strong>
         <div className="zoom-meta">
           {d.number} · {d.category === 'LEADER' ? 'Leader' : d.category === 'CHARACTER' ? 'Personnage' : d.category === 'EVENT' ? 'Événement' : 'Lieu'}
-          {d.colors.length > 0 && ` · ${d.colors.join('/')}`}
+          {d.colors.length > 0 && ` · ${d.colors.map((c) => COLOR_LABEL[c]).join('/')}`}
         </div>
         <div className="zoom-stats">
           {d.category === 'LEADER' ? <span>Vie <b>{d.life}</b></span> : <span>Coût <b>{d.cost}</b></span>}
           {d.power !== null && <span>Puissance <b>{d.power}</b></span>}
           {d.counter ? <span>Contre <b>+{d.counter}</b></span> : null}
-          {d.attribute && <span>&lt;{d.attribute}&gt;</span>}
+          {d.attributes.length > 0 && <span>&lt;{d.attributes.map(attributeLabel).join('/')}&gt;</span>}
         </div>
-        <div className="zoom-types">{d.types.map((t) => `{${t}}`).join(' ')}</div>
+        <div className="zoom-types">{d.typeLabels.map((t) => `{${t}}`).join(' ')}</div>
         <p className="zoom-effect">{d.effect && d.effect !== '-' ? <EffectText text={d.effect} /> : <span className="op-muted">Pas d’effet.</span>}</p>
         {d.trigger && <p className="zoom-effect"><span className="kw">[Déclenchement]</span> <EffectText text={d.trigger} /></p>}
+        {d.lang === 'en' && <p className="op-small op-muted">Texte anglais : cette carte n’existe pas en VF.</p>}
         {f && s && (
           <div className="zoom-state">
             <div className="zoom-state-title">En ce moment</div>

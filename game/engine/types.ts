@@ -4,22 +4,37 @@
 export type PlayerId = 0 | 1;
 export type Category = 'LEADER' | 'CHARACTER' | 'EVENT' | 'STAGE';
 
-// Informations d'une carte, tirées de la liste officielle française (chargées par cards/index.ts)
+// Couleurs, types, attributs et noms tels que les lisent les effets : libellés officiels de la VO, qui servent
+// d'identifiants communs aux deux langues (les libellés affichés sont à part)
+export type Color = 'Red' | 'Green' | 'Blue' | 'Purple' | 'Black' | 'Yellow';
+// Mots-clés gérés par le moteur pour toutes les cartes
+export type Keyword = 'Blocker' | 'Rush' | 'Rush: Character' | 'Double Attack' | 'Banish' | 'Unblockable';
+
+// Informations d'une carte, tirées des listes officielles française et anglaise (game/data/catalog.ts, chargées par
+// cards/index.ts)
 export interface CardData {
   number: string;
-  imageId: string;
+  imageId: string;            // visuel affiché, dans la langue affichée
+  deckArt?: Record<string, string>;  // visuel de la carte dans chaque deck pour débutant qui la contient (« ST-35 »)
+  lang: 'fr' | 'en';          // langue affichée (nom, types, texte, visuel) : VF si la carte existe en français
   rarity: string;
   category: Category;
-  name: string;
+  name: string;               // nom affiché
+  names: string[];            // nom(s) en VO, auxquels les effets font référence ([Monkey.D.Luffy])
   cost: number | null;
   life: number | null;
   power: number | null;
   counter: number | null;
-  colors: string[];
-  types: string[];
-  attribute: string | null;
-  effect: string;
-  trigger: string | null;
+  colors: Color[];
+  types: string[];            // types en VO ({Revolutionary Army})
+  typeLabels: string[];       // types affichés
+  attributes: string[];       // attributs en VO (Slash, Strike, Ranged, Special, Wisdom)
+  effect: string;             // texte affiché, avec les rappels de règle entre parenthèses
+  trigger: string | null;     // [Déclenchement] affiché, sans le mot-clé
+  effectEn: string;           // texte officiel en VO
+  triggerEn: string | null;
+  keywords: Keyword[];        // mots-clés toujours actifs (en tête du texte)
+  blocks: string[];           // numéros de bloc de ses impressions (format Standard)
 }
 
 // Une carte physique : identifiant unique dans la partie + numéro de carte

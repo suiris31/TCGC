@@ -213,7 +213,7 @@ export function tips(final: GameState, moves: Move[], human: PlayerId): string[]
       const s = m.state;
       const [kind, uid] = m.choice.split(':');
       return kind === 'attack' && Number(uid) !== s.players[human].leader.uid && s.players[human].leader.don === 0
-        && s.players[human].chars.some((c) => hasType(c.num, 'Armée révolutionnaire') && fieldCost(s, c.uid) >= 8);
+        && s.players[human].chars.some((c) => hasType(c.num, 'Revolutionary Army') && fieldCost(s, c.uid) >= 8);
     });
     if (missed.length) {
       out.push(`Tu as attaqué avec des Personnages sans DON!! sur Sabo (Leader) alors que tu avais un Personnage de coût 8 (${turnsList(missed.map((m) => m.state.turn))}). Avec 1 DON!! sur Sabo, tous tes Personnages gagnent +1000.`);

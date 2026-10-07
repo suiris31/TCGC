@@ -6,7 +6,7 @@ import {
 import type { CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import { baseCostAtMost, costAtMost, counterBoost, drawLog, isNamed, koOpp, ownPowerUp, playCharFromHand } from './common.ts';
 
-const BIG_MOM = 'Équipage de Big Mom';
+const BIG_MOM = 'Big Mom Pirates';  // {Équipage de Big Mom}
 const KATAKURI = 'Charlotte Katakuri';
 const bigMomLeader = (s: GameState, p: PlayerId) => leaderHasType(s, p, BIG_MOM);
 
@@ -111,8 +111,8 @@ export const ST34: Record<string, CardBehavior> = {
 
   // Ananas : [Bloqueur] avec un autre Personnage violet {Équipage de Big Mom}
   'OP11-065': {
-    blocker: (s, p, card) => s.players[p].chars.some((c) => c.uid !== card.uid && !isNamed(c.num, 'Charlotte Ananas')
-      && hasType(c.num, BIG_MOM) && def(c.num).colors.includes('Violet')),
+    blocker: (s, p, card) => s.players[p].chars.some((c) => c.uid !== card.uid && !isNamed(c.num, 'Charlotte Anana')
+      && hasType(c.num, BIG_MOM) && def(c.num).colors.includes('Purple')),
   },
 
   // Oven : [Activation : Principale] s'épuiser : déclarer un coût ; si c'est le bon, KO 1 Personnage adverse de coût de

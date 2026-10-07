@@ -9,7 +9,7 @@ import {
 } from './common.ts';
 
 const ZORO = 'Roronoa Zoro';
-const SLASH = 'Tranche';
+const SLASH = 'Slash';  // <Tranche>
 const zoroLeader = (s: GameState, p: PlayerId) => isNamed(s.players[p].leader.num, ZORO);
 const slashLeader = (s: GameState, p: PlayerId) => leaderHasAttribute(s, p, SLASH);
 
@@ -92,7 +92,7 @@ export const ST32: Record<string, CardBehavior> = {
         payDon(ctx.s, ctx.me, 1);
         restByEffect(ctx, card.uid);
         if (zoroLeader(ctx.s, ctx.me)) {
-          lookTopPick(ctx, 5, 1, (n) => hasAttribute(n, SLASH) || (def(n).category === 'EVENT' && def(n).colors.includes('Vert')), 'une carte <Tranche> ou un Événement vert');
+          lookTopPick(ctx, 5, 1, (n) => hasAttribute(n, SLASH) || (def(n).category === 'EVENT' && def(n).colors.includes('Green')), 'une carte <Tranche> ou un Événement vert');
         }
       },
     },
@@ -127,7 +127,7 @@ export const ST32: Record<string, CardBehavior> = {
   // 1 DON!! à la fin du tour
   'ST24-005': {
     onPlay: (ctx) => {
-      if (!leaderHasType(ctx.s, ctx.me, 'Supernovae')) return;
+      if (!leaderHasType(ctx.s, ctx.me, 'Supernovas')) return;
       restOpp(ctx, costAtMost(ctx, 5), 'X-Drake');
       addDelayed(ctx.s, { turn: ctx.s.turn, player: ctx.me, action: 'untapDon', amount: 1 });
     },

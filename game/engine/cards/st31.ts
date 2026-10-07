@@ -6,8 +6,8 @@ import {
 import type { CardBehavior, EffectCtx } from '../types.ts';
 import { counterBoost, drawLog, isNamed, oppPowerDown, playCharFromHand, restedDonTo } from './common.ts';
 
-const SH = 'Équipage de Chapeau de paille';
-const LUFFY = 'Monkey D. Luffy';
+const SH = 'Straw Hat Crew';  // {Équipage de Chapeau de paille}
+const LUFFY = 'Monkey.D.Luffy';
 
 const luffies = (ctx: EffectCtx) => [ctx.s.players[ctx.me].leader, ...ctx.s.players[ctx.me].chars].filter((c) => isNamed(c.num, LUFFY));
 
