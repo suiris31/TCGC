@@ -212,6 +212,10 @@ Full official rules (version 1.2.1); card effects are coded from their official 
 choices are listed in `game/docs/interpretations.md`. The game is only available in French for now. The AI and
 the coach run in the browser: they put no load on the server.
 
+The game works on desktop and on phones (portrait or landscape). On a touch screen, tapping a card opens its sheet
+(text, state, possible actions), an attack is confirmed after seeing the expected result, and the log and the coach
+open with the 📜 button.
+
 ## How it works
 
 | Part | Source / technique |

@@ -220,6 +220,10 @@ Règles complètes officielles (version 1.2.1) ; effets des cartes codés d'apr�
 choix d'interprétation sont listés dans `game/docs/interpretations.md`. Le jeu n'existe pour l'instant qu'en
 français. L'IA et le coach tournent dans le navigateur : ils ne chargent pas le serveur.
 
+Le jeu marche sur ordinateur comme sur téléphone (portrait ou paysage). Sur un écran tactile, toucher une carte ouvre
+sa fiche (texte, état, actions possibles), une attaque se confirme après avoir vu le résultat prévu, et le journal
+et le coach s'ouvrent avec le bouton 📜.
+
 ## Comment ça marche
 
 | Partie | Source / technique |
