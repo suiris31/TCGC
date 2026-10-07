@@ -1,6 +1,6 @@
 // DECK POUR DÉBUTANT -BLEU Kuzan- [ST-33] : effets codés d'après le texte officiel français
 import {
-  def, discardFromHand, draw, drawAndDiscard, hasType, leaderHasType, log, lookTopPick, power, queueReaction, removeFromField,
+  def, discardFromHand, draw, drawAndDiscard, hasType, leaderHasType, log, lookTopPick, power, removeFromField,
 } from '../rules.ts';
 import type { CardBehavior, EffectCtx } from '../types.ts';
 import {
@@ -13,18 +13,17 @@ const marineLeader = (ctx: EffectCtx) => leaderHasType(ctx.s, ctx.me, MARINE);
 export const ST33: Record<string, CardBehavior> = {
   // Leader Kuzan : quand des cartes de sa main sont défaussées par l'effet d'une de ses cartes {Marine}, il pioche autant
   'OP12-040': {
-    onOwnDiscard: (s, owner, card, count, sourceNum) => {
-      if (card.uid === s.players[owner].leader.uid && hasType(sourceNum, MARINE)) queueReaction(s, owner, card, 'draw', { count });
-    },
-    reactions: {
-      draw: (ctx, data) => {
+    when: [{
+      on: 'discard',
+      if: (s, owner, self, e) => e.player === owner && e.by === owner && self.uid === s.players[owner].leader.uid && hasType(e.sourceNum!, MARINE),
+      run: (ctx, e) => {
         const P = ctx.s.players[ctx.me];
         const before = P.hand.length;
-        draw(ctx.s, ctx.me, Number(data.count));
+        draw(ctx.s, ctx.me, e.count!);
         const n = P.hand.length - before;
         log(ctx.s, ctx.me, `Kuzan (Leader) : pioche ${n} carte${n > 1 ? 's' : ''}`);
       },
-    },
+    }],
   },
 
   // Bluegrass : [Jouée] 1 Personnage adverse de coût 1 ou moins au-dessous du deck ; [En attaquant] pioche 1, défausse 1

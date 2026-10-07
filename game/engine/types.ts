@@ -128,7 +128,31 @@ export interface Decision {
   inEffect?: boolean;
 }
 
-export type EffectKind = 'onPlay' | 'whenAttacking' | 'onOpponentAttack' | 'activateMain' | 'onKO' | 'endOfTurn' | 'onRested' | 'reaction' | 'system';
+export type EffectKind = 'onPlay' | 'whenAttacking' | 'onOpponentAttack' | 'activateMain' | 'onKO' | 'endOfTurn' | 'when' | 'system';
+
+// Événement de la partie, annoncé par le moteur (rules.ts, emit) : les effets « quand ... » des cartes y réagissent
+export interface GameEvent {
+  type: 'play' | 'ko' | 'rest' | 'attack' | 'turnEnd' | 'donReturned' | 'event' | 'discard';
+  player: PlayerId;          // joueur concerné : propriétaire de la carte, ou joueur qui agit
+  uid?: number;              // carte concernée
+  num?: string;
+  zone?: 'leader' | 'character' | 'stage';  // où était la carte ('rest', 'ko')
+  by?: PlayerId;             // joueur dont l'effet (ou l'attaque) est la cause
+  cause?: 'effect' | 'battle' | 'attack';
+  sourceNum?: string;        // carte dont l'effet est la cause
+  count?: number;            // cartes défaussées, DON!! renvoyées
+  target?: number;           // 'attack' : carte attaquée
+  timing?: 'main' | 'counter';  // 'event' : [Principale] ou [Contre]
+}
+
+// Effet « quand ... » (automatique) : la condition est vérifiée au moment de l'événement ; si elle est vraie, l'effet est
+// mis en attente et résolu après l'effet ou l'action en cours (8-6), même si la condition a changé entre-temps
+export interface WhenEffect {
+  on: GameEvent['type'];
+  once?: string;             // [Une fois par tour] : clé propre à l'effet (une fois par exemplaire)
+  if: (s: GameState, owner: PlayerId, self: FieldCard, e: GameEvent) => boolean;
+  run: (ctx: EffectCtx, e: GameEvent) => void;
+}
 
 // Effet en attente de résolution. Pendant une partie jouée par un humain, une décision au milieu d'un effet est
 // gérée en rejouant l'effet depuis un instantané avec les réponses déjà données.
@@ -141,6 +165,9 @@ export interface PendingEffect {
   snapshot?: string;
   action?: string;
   data?: Record<string, number | string>;
+  event?: GameEvent;   // 'when' : l'événement déclencheur
+  index?: number;      // 'when' : rang de l'effet dans CardBehavior.when
+  batch?: number;      // 'when' : effets déclenchés par le même événement (ordre au choix du joueur, 8-6-1-1)
 }
 
 export interface LogEntry {
@@ -180,6 +207,7 @@ export interface GameState {
   winReason: string | null;
   log: LogEntry[];
   history: HistoryEntry[];
+  events?: number;  // nombre d'événements annoncés (numérote les effets déclenchés ensemble)
 }
 
 // Contexte d'un effet en cours de résolution
@@ -212,14 +240,7 @@ export interface CardBehavior {
   onKO?: (ctx: EffectCtx) => void;                  // [En cas de KO], résolu depuis la Défausse
   onKOCondition?: (s: GameState, owner: PlayerId) => boolean;
   endOfTurn?: (ctx: EffectCtx) => void;             // [Fin de votre tour]
-  onRested?: (ctx: EffectCtx) => void;              // « quand ce Personnage est épuisé » (pendant son tour)
-  // Effets « Quand ... » déclenchés par un évènement : le test (conditions, [Une fois par tour]) se fait aussitôt, mais
-  // l'effet lui-même attend la fin de l'effet en cours (queueReaction, puis reactions[action])
-  onRestedByEffect?: (s: GameState, owner: PlayerId, card: FieldCard) => void;    // un Personnage épuisé par ses effets
-  onDonReturned?: (s: GameState, owner: PlayerId, card: FieldCard) => void;       // DON!! renvoyées au deck DON!!
-  onOpponentEvent?: (s: GameState, owner: PlayerId, card: FieldCard) => void;     // l'adversaire active un Événement
-  onOwnDiscard?: (s: GameState, owner: PlayerId, card: FieldCard, count: number, sourceNum: string) => void;  // défausse par effet
-  reactions?: Record<string, (ctx: EffectCtx, data: Record<string, number | string>) => void>;
+  when?: WhenEffect[];                              // effets « quand ... » (carte sur le terrain)
   activateMain?: {
     oncePerTurn: boolean;
     label: string;

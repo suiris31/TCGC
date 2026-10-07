@@ -5,8 +5,8 @@
 import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, canBeRested, def, describe, draw, fieldCards, findField, handCost, hasBlocker,
-  koCharacter, log, name, notifyRested, onField, other, payDon, playCharacter, power, untapDon,
+  addMod, allField, attackTargets, canBeRested, def, describe, draw, emit, fieldCards, findField, handCost, hasBlocker,
+  koCharacter, log, name, onField, other, payDon, playCharacter, power, restForAttack, untapDon,
 } from './rules.ts';
 import type {
   Decision, EffectCtx, GameState, HistoryEntry, Option, PendingEffect, PlayerId, PlayerState,
@@ -232,11 +232,8 @@ function runEffect(ctx: EffectCtx, p: PendingEffect) {
     case 'endOfTurn':
       def(p.num).endOfTurn?.(ctx);
       return;
-    case 'onRested':
-      def(p.num).onRested?.(ctx);
-      return;
-    case 'reaction':
-      def(p.num).reactions?.[p.action!]?.(ctx, p.data ?? {});
+    case 'when':
+      def(p.num).when?.[p.index!]?.run(ctx, p.event!);
       return;
     case 'activateMain': {
       const f = findField(s, p.source);
@@ -250,6 +247,30 @@ function runEffect(ctx: EffectCtx, p: PendingEffect) {
 
 // Actions de jeu qui peuvent demander des choix : elles passent par la file des effets
 const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
+  // Plusieurs effets différents du même joueur déclenchés ensemble (8-6-1-1) : il choisit lequel résoudre d'abord, et
+  // ainsi de suite (les exemplaires d'une même carte se suivent)
+  order(ctx, p) {
+    const { s } = ctx;
+    const batch = Number(p.data?.batch);
+    const inGroup = (x: PendingEffect) => x !== p && x.batch === batch && x.controller === ctx.me;
+    const positions = s.pending.flatMap((x, i) => (inGroup(x) ? [i] : []));
+    let left = positions.map((i) => s.pending[i]);
+    const ordered: PendingEffect[] = [];
+    while (new Set(left.map((x) => x.num)).size > 1) {
+      const nums = [...new Set(left.map((x) => x.num))];
+      const answer = ctx.ask({
+        prompt: 'Plusieurs de tes effets se déclenchent en même temps : lequel résoudre d’abord ?',
+        options: nums.map((n) => ({ id: `first:${n}`, label: def(n).name, num: n })),
+        tag: 'order',
+      });
+      const chosen = answer.slice('first:'.length);
+      ordered.push(...left.filter((x) => x.num === chosen));
+      left = left.filter((x) => x.num !== chosen);
+    }
+    ordered.push(...left);
+    positions.forEach((pos, k) => { s.pending[pos] = ordered[k]; });
+  },
+
   playFromHand(ctx, p) {
     const P = ctx.s.players[ctx.me];
     const index = P.hand.findIndex((c) => c.uid === p.source);
@@ -270,6 +291,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     payDon(ctx.s, ctx.me, cost);
     P.trash.push(card);
     log(ctx.s, ctx.me, `active ${d.name} [Principale]`);
+    emit(ctx.s, { type: 'event', player: ctx.me, uid: card.uid, num: card.num, timing: 'main' });
     d.onMain?.(ctx);
   },
 
@@ -283,7 +305,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     P.trash.push(card);
     log(ctx.s, ctx.me, `active ${d.name} [Contre]`);
     // l'adversaire (joueur actif) peut réagir à l'activation d'un Événement (Franky)
-    for (const c of allField(ctx.s, ctx.opp)) def(c.num).onOpponentEvent?.(ctx.s, ctx.opp, c);
+    emit(ctx.s, { type: 'event', player: ctx.me, uid: card.uid, num: card.num, timing: 'counter' });
     d.onCounter?.(ctx);
   },
 
@@ -293,18 +315,18 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     const attacker = findField(s, p.source);
     const target = Number(p.data?.target);
     if (!attacker || attacker.player !== ctx.me || !attackTargets(s, ctx.me, attacker.card).includes(target)) return;
-    attacker.card.rested = true;
-    s.battle = { attacker: attacker.card.uid, target, step: 'block', blocked: false };
+    const uid = attacker.card.uid;
+    s.battle = { attacker: uid, target, step: 'block', blocked: false };
     s.flow = { stage: 'battle' };
-    log(s, ctx.me, `${def(attacker.card.num).name} (${power(s, attacker.card.uid)}) attaque ${describe(s, target)}`);
-    notifyRested(s, ctx.me, attacker.card);
-    if (def(attacker.card.num).whenAttacking) {
-      s.pending.push({ kind: 'whenAttacking', source: attacker.card.uid, num: attacker.card.num, controller: ctx.me, answers: [] });
-    }
+    log(s, ctx.me, `${def(attacker.card.num).name} (${power(s, uid)}) attaque ${describe(s, target)}`);
+    restForAttack(s, uid);
+    const effects: PendingEffect[] = [];
+    if (def(attacker.card.num).whenAttacking) effects.push({ kind: 'whenAttacking', source: uid, num: attacker.card.num, controller: ctx.me, answers: [] });
     // [Attaque adverse] : après les effets [En attaquant] (10-2-16)
     for (const c of allField(s, ctx.opp)) {
-      if (def(c.num).onOpponentAttack) s.pending.push({ kind: 'onOpponentAttack', source: c.uid, num: c.num, controller: ctx.opp, answers: [] });
+      if (def(c.num).onOpponentAttack) effects.push({ kind: 'onOpponentAttack', source: c.uid, num: c.num, controller: ctx.opp, answers: [] });
     }
+    emit(s, { type: 'attack', player: ctx.me, uid, num: attacker.card.num, zone: attacker.leader ? 'leader' : 'character', by: ctx.me, cause: 'attack', target }, effects);
   },
 
   // Dégâts au Leader (4-6, 7-1-4-1-1) : cartes de Vie en main, [Déclenchement] au choix
@@ -409,9 +431,9 @@ function stepFlow(s: GameState) {
       // Phase de Fin (6-6) : effets [Fin de votre tour] et effets différés, puis fin des effets du tour
       if (!flow.effectsDone) {
         flow.effectsDone = true;
-        for (const c of allField(s, s.active)) {
-          if (def(c.num).endOfTurn) s.pending.push({ kind: 'endOfTurn', source: c.uid, num: c.num, controller: s.active, answers: [] });
-        }
+        const effects: PendingEffect[] = allField(s, s.active).filter((c) => def(c.num).endOfTurn)
+          .map((c) => ({ kind: 'endOfTurn', source: c.uid, num: c.num, controller: s.active, answers: [] }));
+        emit(s, { type: 'turnEnd', player: s.active }, effects);
         for (const d of s.delayed.filter((x) => x.turn === s.turn)) {
           if (d.action === 'untapDon') untapDon(s, d.player, d.amount);
         }
@@ -548,7 +570,7 @@ function stepBattle(s: GameState) {
           });
         } else {
           log(s, s.active, `l'attaque gagne le combat (${atk} contre ${dp})`);
-          koCharacter(s, b.target, 'battle');
+          koCharacter(s, b.target, 'battle', s.active);
         }
       } else {
         log(s, s.active, `l'attaque est repoussée (${atk} contre ${dp})`);

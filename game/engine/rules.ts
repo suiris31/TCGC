@@ -1,7 +1,9 @@
 // Calculs et actions de jeu selon les règles complètes (version 1.2.1), utilisés par le moteur et par les cartes :
 // puissance, coût, DON!!, épuiser, mise KO et autres façons de quitter le terrain, Vie, pioche, recherche dans le deck.
 import { CARDS } from './cards/index.ts';
-import type { Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameState, Modifier, Option, PlayerId } from './types.ts';
+import type {
+  Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameEvent, GameState, Modifier, Option, PendingEffect, PlayerId,
+} from './types.ts';
 
 export const RA = 'Revolutionary Army';  // {Armée révolutionnaire}
 
@@ -84,10 +86,29 @@ export function untilOpponentsNextEnd(s: GameState, p: PlayerId) {
   return s.active === p ? s.turn + 1 : s.turn;
 }
 
-// Effet « Quand ... » déclenché pendant la résolution d'un autre effet : il est résolu une fois celui-ci terminé (8-6)
-export function queueReaction(s: GameState, owner: PlayerId, card: FieldCard, action: string, data: Record<string, number | string> = {}) {
-  s.pending.push({ kind: 'reaction', action, source: card.uid, num: card.num, controller: owner, answers: [], data });
+// Annonce un événement de la partie. Les effets qui s'y déclenchent sont mis en attente (8-6) : ceux du joueur actif
+// d'abord, chacun résolu après l'effet ou l'action en cours. `also` : effets de mots-clés déclenchés par le même
+// événement ([Jouée], [En cas de KO], [En attaquant]...). Quand plusieurs effets différents d'un même joueur se
+// déclenchent ensemble, il choisit leur ordre (8-6-1-1) : une étape « ordre » les précède dans la file.
+export function emit(s: GameState, e: GameEvent, also: PendingEffect[] = []) {
+  const batch = s.events = (s.events ?? 0) + 1;
+  for (const p of [s.active, other(s.active)]) {
+    const triggered = also.filter((x) => x.controller === p).map((x) => ({ ...x, batch }));
+    for (const self of allField(s, p)) {
+      def(self.num).when?.forEach((w, index) => {
+        if (w.on !== e.type || (w.once && self.usedOpt.includes(w.once)) || !w.if(s, p, self, e)) return;
+        if (w.once) self.usedOpt.push(w.once);
+        triggered.push({ kind: 'when', source: self.uid, num: self.num, controller: p, answers: [], event: e, index, batch });
+      });
+    }
+    if (new Set(triggered.map((x) => x.num)).size > 1) {
+      s.pending.push({ kind: 'system', action: 'order', source: triggered[0].source, num: triggered[0].num, controller: p, answers: [], data: { batch } });
+    }
+    s.pending.push(...triggered);
+  }
 }
+
+const zoneOf = (f: { leader: boolean; stage: boolean }) => (f.leader ? 'leader' : f.stage ? 'stage' : 'character');
 
 // Effet différé, appliqué pendant la phase de Fin du tour indiqué
 export function addDelayed(s: GameState, d: DelayedEffect) {
@@ -200,7 +221,7 @@ export function discardFromHand(ctx: EffectCtx, p: PlayerId, n: number, prompt: 
   }
   if (count) {
     P.discardedTurn = s.turn;
-    if (ctx.me === p) for (const c of allField(s, p)) def(c.num).onOwnDiscard?.(s, p, c, count, ctx.num);
+    emit(s, { type: 'discard', player: p, count, by: ctx.me, sourceNum: ctx.num });
   }
   return count;
 }
@@ -305,7 +326,7 @@ export function returnDon(s: GameState, p: PlayerId, n: number): boolean {
   for (const c of [...P.chars, P.leader]) c.don -= take(c.don);
   P.donDeck += n;
   log(s, p, `renvoie ${n} DON!! dans son deck DON!!`);
-  for (const c of allField(s, p)) def(c.num).onDonReturned?.(s, p, c);
+  emit(s, { type: 'donReturned', player: p, count: n });
   return true;
 }
 
@@ -338,18 +359,16 @@ export function restByEffect(ctx: EffectCtx, uid: number): boolean {
   if (!f || f.card.rested || !canBeRested(s, uid)) return false;
   f.card.rested = true;
   log(s, ctx.me, `épuise ${def(f.card.num).name}`);
-  if (!f.leader && !f.stage && s.active === ctx.me) {
-    for (const c of allField(s, ctx.me)) def(c.num).onRestedByEffect?.(s, ctx.me, c);
-  }
-  notifyRested(s, f.player, f.card);
+  emit(s, { type: 'rest', player: f.player, uid, num: f.card.num, zone: zoneOf(f), by: ctx.me, cause: 'effect', sourceNum: ctx.num });
   return true;
 }
 
-// « Quand ce Personnage est épuisé » ([Votre tour]) : effet mis en attente
-export function notifyRested(s: GameState, owner: PlayerId, card: FieldCard) {
-  if (def(card.num).onRested && s.active === owner) {
-    s.pending.push({ kind: 'onRested', source: card.uid, num: card.num, controller: owner, answers: [] });
-  }
+// Une carte qui attaque est épuisée
+export function restForAttack(s: GameState, uid: number) {
+  const f = findField(s, uid);
+  if (!f) return;
+  f.card.rested = true;
+  emit(s, { type: 'rest', player: f.player, uid, num: f.card.num, zone: zoneOf(f), by: f.player, cause: 'attack' });
 }
 
 export function setActive(s: GameState, p: PlayerId, uid: number) {
@@ -382,8 +401,8 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
   return f;
 }
 
-// Mise KO (combat ou effet) : la carte va dans la Défausse, son effet [En cas de KO] est mis en attente
-export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect') {
+// Mise KO (combat ou effet du joueur `by`) : la carte va dans la Défausse, son effet [En cas de KO] est mis en attente
+export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId, sourceNum?: string) {
   const f0 = findField(s, uid);
   if (!f0 || f0.leader || f0.stage) return;
   const d = def(f0.card.num);
@@ -391,7 +410,8 @@ export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect
   const f = removeFromField(s, uid, 'trash');
   if (!f) return;
   log(s, f.player, `${d.name} est mis KO${cause === 'effect' ? ' par un effet' : ''}`);
-  if (triggers) s.pending.push({ kind: 'onKO', source: uid, num: f.card.num, controller: f.player, answers: [] });
+  const onKO: PendingEffect[] = triggers ? [{ kind: 'onKO', source: uid, num: f.card.num, controller: f.player, answers: [] }] : [];
+  emit(s, { type: 'ko', player: f.player, uid, num: f.card.num, zone: 'character', cause, by, sourceNum }, onKO);
 }
 
 const DESTINATION_TEXT: Record<Exclude<Destination, 'trash'>, string> = {
@@ -430,7 +450,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
       }
     }
   }
-  if (to === 'ko') koCharacter(s, uid, 'effect');
+  if (to === 'ko') koCharacter(s, uid, 'effect', ctx.me, ctx.num);
   else {
     removeFromField(s, uid, to);
     log(s, owner, `${def(f.card.num).name} est ${DESTINATION_TEXT[to]}`);
@@ -463,7 +483,17 @@ export function playCharacter(ctx: EffectCtx, p: PlayerId, card: Card, opts: { r
   }
   P.chars.push({ uid: card.uid, num: card.num, rested: Boolean(opts.rested), don: 0, playedTurn: s.turn, usedOpt: [] });
   log(s, p, `joue ${def(card.num).name}${opts.rested ? ' (épuisé)' : ''}`);
-  if (def(card.num).onPlay) s.pending.push({ kind: 'onPlay', source: card.uid, num: card.num, controller: p, answers: [] });
+  announcePlay(ctx, p, card, 'character');
+}
+
+// Carte jouée : effet [Jouée] et effets « quand ... est joué » (jouée de la main en payant son coût, ou par un effet)
+function announcePlay(ctx: EffectCtx, p: PlayerId, card: Card, zone: 'character' | 'stage') {
+  const onPlay: PendingEffect[] = def(card.num).onPlay ? [{ kind: 'onPlay', source: card.uid, num: card.num, controller: p, answers: [] }] : [];
+  const byEffect = !(ctx.pending.kind === 'system' && ctx.pending.action === 'playFromHand');
+  emit(ctx.s, {
+    type: 'play', player: p, uid: card.uid, num: card.num, zone, by: ctx.me,
+    ...(byEffect ? { cause: 'effect' as const, sourceNum: ctx.num } : {}),
+  }, onPlay);
 }
 
 // Un Lieu au maximum : l'ancien est défaussé (3-8-5-1)
@@ -476,7 +506,7 @@ export function playStage(ctx: EffectCtx, p: PlayerId, card: Card) {
   }
   P.stage = { uid: card.uid, num: card.num, rested: false, don: 0, playedTurn: s.turn, usedOpt: [] };
   log(s, p, `joue le Lieu ${def(card.num).name}`);
-  if (def(card.num).onPlay) s.pending.push({ kind: 'onPlay', source: card.uid, num: card.num, controller: p, answers: [] });
+  announcePlay(ctx, p, card, 'stage');
 }
 
 // « Jouez jusqu'à 1 carte ... de votre main » (sans payer son coût)

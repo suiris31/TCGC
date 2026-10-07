@@ -1,7 +1,7 @@
 // DECK POUR DÉBUTANT -VIOLET Charlotte Katakuri- [ST-34] : effets codés d'après le texte officiel français
 import {
   addDonFromDeck, addMod, addTopDeckToLife, baseCost, canBeRested, chooseUpTo1, declareAndReveal, def, discardFromHand,
-  donOnField, fieldCards, findField, hasType, leaderHasType, log, lookTopPick, may, peekTop, power, queueReaction, restByEffect, returnDon,
+  donOnField, fieldCards, findField, hasType, leaderHasType, log, lookTopPick, may, peekTop, power, restByEffect, returnDon,
 } from '../rules.ts';
 import type { CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import { baseCostAtMost, costAtMost, counterBoost, drawLog, isNamed, koOpp, ownPowerUp, playCharFromHand } from './common.ts';
@@ -34,17 +34,15 @@ export const ST34: Record<string, CardBehavior> = {
   // Katakuri : [Votre tour] [Une fois par tour] quand des DON!! retournent au deck DON!!, avec un Leader
   // {Équipage de Big Mom}, ajoutez 2 DON!! épuisées ; [En cas de KO] jouez 1 Personnage de 8000 ou moins
   'ST34-001': {
-    onDonReturned: (s, owner, card) => {
-      if (s.active !== owner || card.usedOpt.includes('katakuriDon') || !s.players[owner].chars.some((c) => c.uid === card.uid) || !bigMomLeader(s, owner)) return;
-      card.usedOpt.push('katakuriDon');
-      queueReaction(s, owner, card, 'addDon');
-    },
-    reactions: {
-      addDon: (ctx) => {
+    when: [{
+      on: 'donReturned',
+      once: 'katakuriDon',
+      if: (s, owner, self, e) => e.player === owner && s.active === owner && s.players[owner].chars.some((c) => c.uid === self.uid) && bigMomLeader(s, owner),
+      run: (ctx) => {
         log(ctx.s, ctx.me, 'Katakuri :');
         addDonFromDeck(ctx.s, ctx.me, 2, false);
       },
-    },
+    }],
     onKO: (ctx) => {
       playCharFromHand(ctx, (c) => (def(c.num).power ?? 0) <= 8000, 'Katakuri : jouer jusqu’à 1 Personnage de 8000 de puissance ou moins de ta main :');
     },

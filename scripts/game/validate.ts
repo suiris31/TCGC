@@ -38,10 +38,10 @@ function wrap(num: string, what: string, fn: Fn): Fn {
     return result;
   };
 }
-const HOOKS = ['onPlay', 'whenAttacking', 'onKO', 'endOfTurn', 'onRested', 'onMain', 'onCounter', 'onTrigger'] as const;
+const HOOKS = ['onPlay', 'whenAttacking', 'onKO', 'endOfTurn', 'onMain', 'onCounter', 'onTrigger'] as const;
 for (const [num, d] of Object.entries(CARDS) as [string, CardDef & Record<string, unknown>][]) {
   for (const h of HOOKS) if (typeof d[h] === 'function') d[h] = wrap(num, h, d[h] as Fn);
-  if (d.reactions) d.reactions = Object.fromEntries(Object.entries(d.reactions).map(([k, fn]) => [k, wrap(num, 'reaction', fn as Fn) as never]));
+  if (d.when) d.when = d.when.map((w) => ({ ...w, run: wrap(num, 'when', w.run as Fn) as never }));
   if (d.activateMain) d.activateMain = { ...d.activateMain, run: wrap(num, 'activateMain', d.activateMain.run as Fn) as never };
   if (d.onOpponentAttack) d.onOpponentAttack = { ...d.onOpponentAttack, run: wrap(num, 'onOpponentAttack', d.onOpponentAttack.run as Fn) as never };
   if (d.replaceRemoval) d.replaceRemoval = { ...d.replaceRemoval, apply: wrap(num, 'replaceRemoval', d.replaceRemoval.apply as Fn) as never };
@@ -108,10 +108,9 @@ for (const a of ids) {
 // ---------- Rapport ----------
 
 const WHAT: Record<string, string> = {
-  onPlay: '[Jouée]', whenAttacking: '[En attaquant]', onKO: '[En cas de KO]', endOfTurn: '[Fin de votre tour]', onRested: 'quand il est épuisé',
-  onMain: '[Principale]', onCounter: '[Contre] (Événement)', onTrigger: '[Déclenchement]', onRestedByEffect: 'réaction : Personnage épuisé',
-  onDonReturned: 'réaction : DON!! renvoyées', onOpponentEvent: 'réaction : Événement adverse', onOwnDiscard: 'réaction : défausse',
-  activateMain: '[Activation : Principale]', reaction: 'effet « Quand ... »', reactions: 'effet « Quand ... »', onOpponentAttack: '[Attaque adverse]', replaceRemoval: 'remplacement',
+  onPlay: '[Jouée]', whenAttacking: '[En attaquant]', onKO: '[En cas de KO]', endOfTurn: '[Fin de votre tour]',
+  onMain: '[Principale]', onCounter: '[Contre] (Événement)', onTrigger: '[Déclenchement]',
+  activateMain: '[Activation : Principale]', when: 'effet « Quand ... »', onOpponentAttack: '[Attaque adverse]', replaceRemoval: 'remplacement',
   play: 'jouée', event: 'activée', act: 'effet activé', block: 'bloque', counter: 'Contre (carte)', cevent: 'Contre (Événement)',
   trigger: '[Déclenchement] choisi', 'attaque [Initiative]': 'attaque le tour où elle est jouée',
 };
@@ -162,8 +161,8 @@ for (const id of ids) {
       if (u.effective === 0 && what !== 'counter') alert(num, what, `${id} ${d.name} (${num}) : « ${WHAT[what] ?? what} » proposé ${u.calls} fois, jamais choisi`);
     }
     // effets codés jamais déclenchés
-    for (const h of [...HOOKS, 'activateMain', 'onOpponentAttack', 'replaceRemoval', 'reactions']) {
-      if ((d as unknown as Record<string, unknown>)[h] && !uses.has(`${num}|${h === 'reactions' ? 'reaction' : h}`)) {
+    for (const h of [...HOOKS, 'activateMain', 'onOpponentAttack', 'replaceRemoval', 'when']) {
+      if ((d as unknown as Record<string, unknown>)[h] && !uses.has(`${num}|${h}`)) {
         rows.push(`| ${d.name} (${num}) | ${WHAT[h] ?? h} | 0 | 0 | |`);
         alert(num, h, `${id} ${d.name} (${num}) : effet ${WHAT[h] ?? h} jamais déclenché`);
       }

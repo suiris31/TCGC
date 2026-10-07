@@ -1,7 +1,7 @@
 // DECK POUR DÉBUTANT -ROUGE Monkey D. Luffy- [ST-31] : effets codés d'après le texte officiel français
 import {
   addMod, allField, attachedDon, canBeRested, def, discardFromHand, hasType, log, lookTopPick, may, payDon, playFromHandFree,
-  queueReaction, restByEffect,
+  restByEffect,
 } from '../rules.ts';
 import type { CardBehavior, EffectCtx } from '../types.ts';
 import { counterBoost, drawLog, isNamed, oppPowerDown, playCharFromHand, restedDonTo } from './common.ts';
@@ -52,17 +52,15 @@ export const ST31: Record<string, CardBehavior> = {
 
   // Franky : [Votre tour] [Une fois par tour] quand l'adversaire active un Événement, tous vos Personnages +2000
   'OP11-012': {
-    onOpponentEvent: (s, owner, card) => {
-      if (s.active !== owner || card.usedOpt.includes('franky') || !s.players[owner].chars.some((c) => c.uid === card.uid)) return;
-      card.usedOpt.push('franky');
-      queueReaction(s, owner, card, 'boost');
-    },
-    reactions: {
-      boost: (ctx) => {
+    when: [{
+      on: 'event',
+      once: 'franky',
+      if: (s, owner, self, e) => e.player !== owner && s.active === owner && s.players[owner].chars.some((c) => c.uid === self.uid),
+      run: (ctx) => {
         for (const c of ctx.s.players[ctx.me].chars) addMod(ctx.s, { uid: c.uid, stat: 'power', amount: 2000, until: 'turn', source: 'Franky' });
         log(ctx.s, ctx.me, 'Franky : tous ses Personnages gagnent +2000 de puissance pour le tour');
       },
-    },
+    }],
   },
 
   // Gum Gum Rafale : [Principale] 1 DON!! épuisée à un Luffy, puis −2000 ; [Déclenchement] −2000

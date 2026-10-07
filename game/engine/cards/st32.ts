@@ -1,7 +1,7 @@
 // DECK POUR DÉBUTANT -VERT Roronoa Zoro- [ST-32] : effets codés d'après le texte officiel français
 import {
   addDelayed, addMod, canBeRested, def, drawAndDiscard, fieldCost, giveRestedDon, leaderHasAttribute, leaderHasType, log,
-  lookTopPick, payDon, queueReaction, restByEffect, setActive, untapDon,
+  lookTopPick, payDon, restByEffect, setActive, untapDon,
 } from '../rules.ts';
 import type { CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import {
@@ -36,18 +36,17 @@ export const ST32: Record<string, CardBehavior> = {
 
   // Perona : [Votre tour] [Une fois par tour] quand un Personnage est épuisé par vos effets, redressez 1 DON!!
   'OP10-036': {
-    onRestedByEffect: (s, owner, card) => {
-      if (card.usedOpt.includes('perona') || !s.players[owner].chars.some((c) => c.uid === card.uid)) return;
-      card.usedOpt.push('perona');
-      queueReaction(s, owner, card, 'untap');
-    },
-    reactions: {
-      untap: (ctx) => {
+    when: [{
+      on: 'rest',
+      once: 'perona',
+      if: (s, owner, self, e) => e.cause === 'effect' && e.by === owner && e.zone === 'character' && s.active === owner
+        && s.players[owner].chars.some((c) => c.uid === self.uid),
+      run: (ctx) => {
         if (!ctx.s.players[ctx.me].donRested) return;
         log(ctx.s, ctx.me, 'Perona :');
         untapDon(ctx.s, ctx.me, 1);
       },
-    },
+    }],
   },
 
   // Kuina : [Activation : Principale] épuiser ce Personnage : épuisez 1 Personnage adverse de coût de base 4 ou moins,
@@ -165,7 +164,7 @@ export const ST32: Record<string, CardBehavior> = {
   // Mihawk : [Votre tour] quand il est épuisé, piochez 1 et défaussez 1 ; [Jouée] avec un Leader <Tranche>, jouez
   // [Perona] ou un Personnage <Tranche> de coût 5 ou moins
   'ST32-003': {
-    onRested: (ctx) => drawAndDiscard(ctx, 1, 1),
+    when: [{ on: 'rest', if: (s, owner, self, e) => e.uid === self.uid && s.active === owner, run: (ctx) => drawAndDiscard(ctx, 1, 1) }],
     onPlay: (ctx) => {
       if (!slashLeader(ctx.s, ctx.me)) return;
       playCharFromHand(ctx, (c) => (isNamed(c.num, 'Perona') || hasAttribute(c.num, SLASH)) && (def(c.num).cost ?? 0) <= 5,
