@@ -188,6 +188,20 @@ db.exec(`
     first_seen TEXT NOT NULL,              -- date où l'appli a vu ce statut pour la première fois
     notified   INTEGER NOT NULL DEFAULT 0  -- alertes déjà envoyées
   );
+
+  -- Parties du jeu (onglet Jouer), une ligne par compte et par partie : la partie complète compressée (gzip), et un
+  -- résumé léger (sans l'état de départ, les coups ni le journal) pour la liste « Mes parties » et le bilan
+  CREATE TABLE IF NOT EXISTS game_records (
+    user_id    INTEGER NOT NULL,
+    id         TEXT NOT NULL,              -- "2026-10-06_23-07-46_ST-35-contre-ST-36" (date, decks, entraînement)
+    mode       TEXT NOT NULL DEFAULT 'solo', -- 'solo' : contre l'IA
+    status     TEXT NOT NULL,              -- 'playing' | 'won' | 'lost' | 'abandoned'
+    summary    TEXT NOT NULL,              -- JSON
+    record     BLOB NOT NULL,              -- JSON compressé
+    started_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, id)
+  );
 `);
 
 // Migrations des bases créées par une version précédente

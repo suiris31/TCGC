@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { formatEur } from './api';
 import { CardDetailSheet } from './components/CardDetail';
 import { Icon, type IconName } from './components/Icon';
@@ -15,13 +15,17 @@ import { StatsPage } from './pages/Stats';
 import { refreshPushSubscription } from './push';
 import { AppProvider, useApp } from './store';
 
-type Tab = 'collection' | 'scan' | 'catalog' | 'stats' | 'profile';
+// Le jeu (ancien OP Coach, dossier game/) n'est chargé que quand on ouvre l'onglet Jouer
+const GameApp = lazy(() => import('../../game/ui/GameApp.tsx'));
+
+type Tab = 'collection' | 'scan' | 'catalog' | 'stats' | 'play' | 'profile';
 
 const TABS: { id: Tab; icon: IconName }[] = [
   { id: 'collection', icon: 'cards' },
   { id: 'scan', icon: 'camera' },
   { id: 'catalog', icon: 'search' },
   { id: 'stats', icon: 'chart' },
+  { id: 'play', icon: 'swords' },
   { id: 'profile', icon: 'user' },
 ];
 
@@ -33,7 +37,9 @@ function readTab(): Tab {
 
 function Shell() {
   const [tab, setTab] = useState<Tab>(readTab);
-  const { totals, openedCard, status } = useApp();
+  const { user, uiLang, totals, openedCard, status } = useApp();
+  // Partie en cours dans l'onglet Jouer : le jeu prend tout l'écran
+  const [immersive, setImmersive] = useState(false);
   // Cartes recherchées passées sous leur prix cible : pastille sur l'onglet Collection
   const reached = status?.wishlist.reached ?? 0;
 
@@ -51,7 +57,7 @@ function Shell() {
 
   return (
     <div className="app">
-      {tab !== 'scan' && (
+      {tab !== 'scan' && tab !== 'play' && (
         <header className="topbar">
           <div className="brand">
             <span className="brand-mark">☠</span>
@@ -66,15 +72,20 @@ function Shell() {
         </header>
       )}
 
-      <main className={tab === 'scan' ? 'main main-full' : 'main'}>
+      <main className={tab === 'scan' || tab === 'play' ? 'main main-full' : 'main'}>
         {tab === 'collection' && <Collection onScan={() => go('scan')} onBrowse={() => go('catalog')} />}
         {tab === 'scan' && <Scanner active={tab === 'scan' && openedCard === null} />}
         {tab === 'catalog' && <Catalog />}
         {tab === 'stats' && <StatsPage />}
+        {tab === 'play' && user && (
+          <Suspense fallback={<div className="center splash"><div className="spinner" /></div>}>
+            <GameApp userId={user.id} notice={uiLang === 'en' ? t('play.frenchOnly') : undefined} onImmersive={setImmersive} />
+          </Suspense>
+        )}
         {tab === 'profile' && <ProfilePage />}
       </main>
 
-      <nav className="tabbar">
+      {!(tab === 'play' && immersive) && <nav className="tabbar">
         {TABS.map((item) => (
           <button key={item.id} className={item.id === tab ? 'tab tab-active' : 'tab'} onClick={() => go(item.id)}>
             <Icon name={item.icon} />
@@ -82,7 +93,7 @@ function Shell() {
             {item.id === 'collection' && reached > 0 && <span className="tab-badge">{reached}</span>}
           </button>
         ))}
-      </nav>
+      </nav>}
 
       <CardDetailSheet />
     </div>

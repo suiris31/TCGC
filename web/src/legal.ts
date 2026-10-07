@@ -28,6 +28,7 @@ export const LEGAL: Record<UiLang, { title: string; notSet: string; back: string
         bullets: [
           'Compte : pseudo, adresse e-mail, mot de passe (haché avec scrypt, jamais stocké en clair), date d\'inscription.',
           'Ce que tu saisis : collection, recherches et prix cibles, réglages (source des prix, exemplaires à garder, lien de partage, échanges, notifications), et ton contact et ta région si tu participes aux échanges.',
+          "Jeu (onglet Jouer) : tes parties, avec chacune de tes décisions, ton temps de réflexion et l'analyse du coach, pour suivre ta progression. Les réglages d'affichage du jeu restent sur ton appareil.",
           "Notifications : l'adresse technique d'abonnement de ton navigateur, seulement si tu les actives.",
           "Technique : un cookie de session pour rester connecté, et l'adresse IP dans les journaux du serveur, pour sa sécurité.",
         ],
@@ -35,7 +36,7 @@ export const LEGAL: Record<UiLang, { title: string; notSet: string; back: string
       {
         title: 'Pourquoi',
         paragraphs: [
-          "Uniquement pour faire fonctionner le service que tu utilises (compte, collection, estimations, alertes, partage, échanges) et le protéger (limitation des tentatives de connexion). Base légale : exécution du service demandé et intérêt légitime (sécurité).",
+          "Uniquement pour faire fonctionner le service que tu utilises (compte, collection, estimations, alertes, partage, échanges, jeu) et le protéger (limitation des tentatives de connexion). Base légale : exécution du service demandé et intérêt légitime (sécurité).",
           "Pas de publicité, pas de mesure d'audience, pas de traceur, pas de revente. Le seul cookie est celui de session, indispensable à la connexion.",
         ],
       },
@@ -86,6 +87,7 @@ export const LEGAL: Record<UiLang, { title: string; notSet: string; back: string
         bullets: [
           'Account: username, email address, password (hashed with scrypt, never stored in plain text), sign-up date.',
           'What you enter: collection, wishlist and target prices, settings (price source, copies to keep, share link, trades, notifications), and your contact and region if you take part in trades.',
+          "Game (Play tab): your games, with each of your decisions, your thinking time and the coach's analysis, to track your progress. The game's display settings stay on your device.",
           "Notifications: your browser's technical subscription address, only if you enable them.",
           'Technical: a session cookie to keep you logged in, and the IP address in the server logs, for security.',
         ],
@@ -93,7 +95,7 @@ export const LEGAL: Record<UiLang, { title: string; notSet: string; back: string
       {
         title: 'Why',
         paragraphs: [
-          'Only to run the service you use (account, collection, estimates, alerts, sharing, trades) and to protect it (limiting login attempts). Legal basis: providing the requested service and legitimate interest (security).',
+          'Only to run the service you use (account, collection, estimates, alerts, sharing, trades, game) and to protect it (limiting login attempts). Legal basis: providing the requested service and legitimate interest (security).',
           'No ads, no analytics, no trackers, no data selling. The only cookie is the session cookie, required to log in.',
         ],
       },

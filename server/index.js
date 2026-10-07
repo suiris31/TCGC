@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import express from 'express';
 import {
   AuthError, deleteAccount, loadUser, login, logout, publicUser, rateLimit, requestPasswordReset, requireUser, resetPassword, signup,
@@ -9,6 +10,8 @@ import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
 import { addDeck, deckContents, starterDecks } from './decks.js';
+import { ensureGameCards, gameCards } from './game-cards.js';
+import { readRecordBody, RECORD_ID, recordBlob, recordSummariesJson, saveRecord } from './game-records.js';
 import { mailConfigured } from './mail.js';
 import {
   addToCollection, collectionCsv, collectionSets, collectionStats, doubles, getCardDetail, getCards, importCollection, LANGS,
@@ -41,7 +44,9 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'same-origin');
   next();
 });
-app.use(express.json());
+// Les parties du jeu (jusqu'à quelques centaines de Ko, souvent compressées) ont leur propre lecture du corps
+const jsonBody = express.json();
+app.use((req, res, next) => (req.path.startsWith('/api/game/records/') ? next() : jsonBody(req, res, next)));
 app.use(loadUser);
 
 // Protection contre les requêtes envoyées depuis un autre site (CSRF) : toute modification doit venir de l'appli
@@ -407,6 +412,48 @@ app.get('/img-fr-hd/:id.webp', async (req, res) => {
   res.sendFile(file);
 });
 
+// ---------- Jeu (onglet Jouer) ----------
+
+// Réponse JSON compressée quand le navigateur l'accepte (gros volumes : informations des cartes, parties)
+function sendJson(req, res, json, gzipped = null) {
+  res.setHeader('Vary', 'Accept-Encoding');
+  res.type('application/json');
+  if (!req.acceptsEncodings('gzip')) return res.send(gzipped ? zlib.gunzipSync(gzipped) : json);
+  res.setHeader('Content-Encoding', 'gzip');
+  res.send(gzipped ?? zlib.gzipSync(json));
+}
+
+app.get('/api/game/cards', (req, res) => {
+  const cards = gameCards();
+  if (!cards) {
+    ensureGameCards({ log });
+    return res.status(503).json({ code: 'cards_loading', error: 'Informations des cartes en cours de téléchargement' });
+  }
+  res.setHeader('Cache-Control', 'no-cache');
+  sendJson(req, res, cards.json, cards.gzip);
+});
+
+app.get('/api/game/records', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  sendJson(req, res, recordSummariesJson(req.user.id));
+});
+
+app.get('/api/game/records/:id', (req, res) => {
+  const blob = RECORD_ID.test(req.params.id) ? recordBlob(req.user.id, req.params.id) : null;
+  if (!blob) return res.status(404).json({ code: 'unknown_record', error: 'Partie introuvable' });
+  res.setHeader('Cache-Control', 'no-store');
+  sendJson(req, res, null, blob);
+});
+
+// Enregistrement d'une partie (2,5 s après chaque coup, et à la fin) : JSON, compressé par le navigateur s'il le peut
+app.put('/api/game/records/:id', express.raw({ type: ['application/json', 'application/gzip'], limit: '5mb' }), (req, res) => {
+  rateLimit(`game-save:${req.user.id}`, 120, 60_000);
+  if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ code: 'invalid_record', error: 'Partie absente' });
+  const { rec, text } = readRecordBody(req.body, req.is('application/gzip') === 'application/gzip');
+  saveRecord(req.user.id, req.params.id, rec, text);
+  res.json({ ok: true });
+});
+
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
 // Manifeste de l'appli installable dans la langue du téléphone (nom affiché sur l'écran d'accueil)
@@ -454,6 +501,11 @@ app.listen(config.port, config.host, () => {
 
   if (syncIsStale()) refresh();
   else buildIndex({ log }).catch((err) => log("Erreur d'index :", err.message));
-  // Vérifie toutes les heures si les prix du jour sont disponibles
-  setInterval(() => { if (syncIsStale() && !syncInProgress()) refresh(); }, 3600_000);
+  ensureGameCards({ log });
+  // Vérifie toutes les heures si les prix du jour sont disponibles (et les informations des cartes du jeu, si elles
+  // n'ont pas pu être téléchargées)
+  setInterval(() => {
+    if (syncIsStale() && !syncInProgress()) refresh();
+    ensureGameCards({ log });
+  }, 3600_000);
 });

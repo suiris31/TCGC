@@ -68,7 +68,7 @@ h3 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
 
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   height: calc(var(--tabbar-h) + var(--safe-bottom)); padding-bottom: var(--safe-bottom);
   background: rgba(13, 23, 41, 0.96); backdrop-filter: blur(10px);
   border-top: 1px solid var(--line);

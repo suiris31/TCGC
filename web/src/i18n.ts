@@ -12,8 +12,10 @@ const fr = {
   'tab.scan': 'Scanner',
   'tab.catalog': 'Catalogue',
   'tab.stats': 'Stats',
-
+  'tab.play': 'Jouer',
   'tab.profile': 'Profil',
+  'play.loading': 'Chargement du jeu…',
+  'play.frenchOnly': 'Le jeu n’existe pour l’instant qu’en français.',
 
   'auth.tagline': 'Scanne tes cartes One Piece, suis ta collection et sa valeur.',
   'auth.login': 'Connexion',
@@ -480,8 +482,10 @@ const en: { [K in MessageKey]: Entry } = {
   'tab.scan': 'Scan',
   'tab.catalog': 'Catalog',
   'tab.stats': 'Stats',
-
+  'tab.play': 'Play',
   'tab.profile': 'Profile',
+  'play.loading': 'Loading the game…',
+  'play.frenchOnly': 'The card game is only available in French for now (French card texts).',
 
   'auth.tagline': 'Scan your One Piece cards, track your collection and its value.',
   'auth.login': 'Log in',

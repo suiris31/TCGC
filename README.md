@@ -195,6 +195,23 @@ ones. On a card's page you can switch the display language and adjust the quanti
 
 Prices don't depend on the language (Cardmarket's public price data doesn't separate languages).
 
+## Play
+
+The **Play** tab is a game simulator to practice against an AI, with a coach that reviews each of your decisions
+(formerly the OP Coach project, in the `game/` folder):
+
+- the **6 starter decks ST-31 to ST-36**, each with a guide (game plan, combos, opening hand);
+- **AI with three levels**: Beginner (common-sense rules and a learned style for each deck), Advanced and Expert
+  (it simulates the rest of the game before each choice, without ever seeing your hidden cards);
+- **coach**: advice on demand (💡) or automatic (★), and an end-of-game recap (mistakes, best moves, turning
+  points, win-chance curve, "replay this moment");
+- **My games**: every game is saved to your account with all its details; progress, areas to improve by theme,
+  and habits. Games from the former OP Coach can be imported with the ⤒ button.
+
+Full official rules (version 1.2.1); card effects are coded from their official French text, and interpretation
+choices are listed in `game/docs/interpretations.md`. The game is only available in French for now. The AI and
+the coach run in the browser: they put no load on the server.
+
 ## How it works
 
 | Part | Source / technique |
@@ -221,11 +238,18 @@ the rest (mostly promos) keep the TCGplayer one.
 npm run dev            # server (port 3000) + Vite UI with hot reload (port 5173)
 npm run sync           # force a catalog and price update
 npm run index-images   # complete the recognition index (add -- --rebuild to recompute everything)
+npm run typecheck      # type checking (UI and game)
+npm test               # game tests (engine, cards, AI, coach, saved games)
+npm run game:cards     # download the game's card data (needed by the tests)
+npm run game:validate  # mass validation: thousands of AI vs AI games (game/docs/validation.md)
+npm run game:train     # self-learning of each deck's play style (about 20 minutes)
+npm run game:analyse -- <username>   # report on an account's games, in Markdown
 ```
 
 - `server/`: Express API, data sync, image recognition
 - `web/`: React UI (PWA)
-- `data/`: database, images, model and index (not versioned, recreated automatically)
+- `game/`: the game (Play tab): rules engine, card effects, AI, coach, UI, tests
+- `data/`: database, images, model, index and the game's card data (not versioned, recreated automatically)
 
 Your collection lives only in `data/tcgc.db`: back this file up (or use the CSV export in the Stats tab).
 
@@ -237,7 +261,8 @@ Issues and pull requests can be written in English or French.
 ```bash
 npm install
 npm run dev                 # server + UI with hot reload
-npx tsc -p tsconfig.json    # type-check the UI
+npm run typecheck           # type checking (UI and game)
+npm test                    # game tests
 ```
 
 Code comments are in French. Interface texts live in `web/src/i18n.ts` (French and English): adding a language

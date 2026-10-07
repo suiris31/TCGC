@@ -203,6 +203,23 @@ une carte anglaise avec ceux de la VO.
 Mesures sur des photos simulées (inclinaison, reflet, flou, fond) : la bonne carte arrive en premier dans
 ~99 % des cas avec le cadre de visée, ~94 % en mode photo, et figure presque toujours dans les propositions.
 
+## Jouer
+
+L'onglet **Jouer** est un simulateur du jeu pour s'entraîner contre une IA, avec un coach qui analyse chacune
+de tes décisions (ancien projet OP Coach, dans le dossier `game/`) :
+
+- les **6 decks pour débutant ST-31 à ST-36**, avec un guide par deck (plan de jeu, combinaisons, main de départ) ;
+- **IA à trois niveaux** : Débutant (règles de bon sens et style appris pour chaque deck), Confirmé et Expert (elle
+  simule la suite de la partie avant chaque choix, sans jamais voir tes cartes cachées) ;
+- **coach** : conseil à la demande (💡) ou automatique (★), et récap en fin de partie (erreurs, meilleurs choix,
+  tournants, courbe des chances de gagner, « rejouer ce moment ») ;
+- **Mes parties** : chaque partie est enregistrée sur ton compte avec tous ses détails ; progression, axes de
+  progrès par thème et habitudes. Les parties de l'ancien OP Coach s'importent avec le bouton ⤒.
+
+Règles complètes officielles (version 1.2.1) ; effets des cartes codés d'après leur texte officiel français, et les
+choix d'interprétation sont listés dans `game/docs/interpretations.md`. Le jeu n'existe pour l'instant qu'en
+français. L'IA et le coach tournent dans le navigateur : ils ne chargent pas le serveur.
+
 ## Comment ça marche
 
 | Partie | Source / technique |
@@ -229,11 +246,18 @@ des cartes ont un prix Cardmarket ; les autres (surtout des promos) restent sur 
 npm run dev            # serveur (port 3000) + interface Vite avec rechargement (port 5173)
 npm run sync           # forcer la mise à jour du catalogue et des prix
 npm run index-images   # compléter l'index de reconnaissance (ajoute -- --rebuild pour tout recalculer)
+npm run typecheck      # vérification des types (interface et jeu)
+npm test               # tests du jeu (moteur, cartes, IA, coach, parties enregistrées)
+npm run game:cards     # télécharger les informations des cartes du jeu (nécessaire aux tests)
+npm run game:validate  # validation en masse : des milliers de parties IA contre IA (game/docs/validation.md)
+npm run game:train     # auto-apprentissage du style de jeu de chaque deck (environ 20 minutes)
+npm run game:analyse -- <pseudo>   # bilan des parties d'un compte, en Markdown
 ```
 
 - `server/` : API Express, synchro des données, reconnaissance d'image
 - `web/` : interface React (PWA)
-- `data/` : base, visuels, modèle et index (non versionné, recréé automatiquement)
+- `game/` : le jeu (onglet Jouer) : moteur de règles, effets des cartes, IA, coach, interface, tests
+- `data/` : base, visuels, modèle, index et informations des cartes du jeu (non versionné, recréé automatiquement)
 
 Ta collection est uniquement dans `data/tcgc.db` : sauvegarde ce fichier (ou utilise l'export CSV dans
 l'onglet Stats).
@@ -246,7 +270,8 @@ ou propose directement une modification.
 ```bash
 npm install
 npm run dev                 # serveur + interface avec rechargement automatique
-npx tsc -p tsconfig.json    # vérification des types de l'interface
+npm run typecheck           # vérification des types (interface et jeu)
+npm test                    # tests du jeu
 ```
 
 Le code et les commentaires sont en français. Les textes de l'interface sont dans `web/src/i18n.ts` (français et
