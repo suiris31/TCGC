@@ -65,6 +65,8 @@ export interface GameRecord {
   undos: { turn: number; undone: number }[];  // retours en arrière (Ctrl+Z) et nombre de coups annulés
   stats: GameStats;
   log: LogEntry[];
+  mode?: 'solo' | 'online';       // partie en ligne contre un autre joueur (absent : contre l'IA)
+  opponent?: string;              // partie en ligne : pseudo de l'adversaire
 }
 
 // Version légère, sans l'état de départ, les coups ni le journal (liste des parties)

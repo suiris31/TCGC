@@ -42,11 +42,11 @@ export function saveRecord(userId, id, rec, text) {
   const summary = { ...rec };
   for (const key of HEAVY) delete summary[key];
   db.prepare(`INSERT INTO game_records (user_id, id, mode, status, summary, record, started_at, updated_at)
-    VALUES (?, ?, 'solo', ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id, id) DO UPDATE SET status = excluded.status, summary = excluded.summary, record = excluded.record,
       updated_at = excluded.updated_at
     WHERE excluded.updated_at >= game_records.updated_at`)
-    .run(userId, id, rec.status, JSON.stringify(summary), zlib.gzipSync(text), rec.startedAt, rec.updatedAt);
+    .run(userId, id, rec.mode === 'online' ? 'online' : 'solo', rec.status, JSON.stringify(summary), zlib.gzipSync(text), rec.startedAt, rec.updatedAt);
 }
 
 // Résumés de toutes les parties d'un compte, de la plus ancienne à la plus récente (texte JSON prêt à envoyer)

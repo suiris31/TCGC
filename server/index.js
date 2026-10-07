@@ -11,6 +11,7 @@ import { config } from './config.js';
 import { getMeta } from './db.js';
 import { addDeck, deckContents, starterDecks } from './decks.js';
 import { ensureGameCards, gameCards } from './game-cards.js';
+import { expireRooms, forgetUser, onlineRoutes } from './game-online.js';
 import { readRecordBody, RECORD_ID, recordBlob, recordSummariesJson, saveRecord } from './game-records.js';
 import { mailConfigured } from './mail.js';
 import {
@@ -107,8 +108,9 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 app.delete('/api/auth/account', requireUser, async (req, res) => {
-  const { pseudo } = req.user;
+  const { id, pseudo } = req.user;
   await deleteAccount(req, res);
+  forgetUser(id);
   log(`Compte supprimé avec toutes ses données : ${pseudo}`);
   res.json({ ok: true });
 });
@@ -454,6 +456,9 @@ app.put('/api/game/records/:id', express.raw({ type: ['application/json', 'appli
   res.json({ ok: true });
 });
 
+// Parties en ligne entre deux joueurs (salles, arbitrage, temps réel)
+onlineRoutes(app, { log });
+
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
 // Manifeste de l'appli installable dans la langue du téléphone (nom affiché sur l'écran d'accueil)
@@ -485,7 +490,8 @@ app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   // Erreurs prévues (identifiants incorrects, pseudo déjà pris...) : code traduit par l'interface
   if (err instanceof AuthError) return res.status(err.status).json({ code: err.code, error: err.message });
-  log('Erreur :', err);
+  // les refus prévus (choix déjà joué, code inconnu...) ne sont pas des erreurs du serveur
+  if (!(err.expose && (err.status ?? 500) < 500)) log('Erreur :', err);
   res.status(err.status ?? 500).json(err.expose ? { code: err.code, error: err.message } : { code: 'server', error: 'Erreur interne du serveur' });
 });
 
@@ -507,5 +513,6 @@ app.listen(config.port, config.host, () => {
   setInterval(() => {
     if (syncIsStale() && !syncInProgress()) refresh();
     ensureGameCards({ log });
+    expireRooms();
   }, 3600_000);
 });

@@ -202,6 +202,23 @@ db.exec(`
     updated_at TEXT NOT NULL,
     PRIMARY KEY (user_id, id)
   );
+
+  -- Parties en ligne entre deux joueurs (onglet Jouer) : la partie complète (état de départ et état actuel, que seul
+  -- le serveur connaît) est gardée compressée ; les colonnes servent aux recherches (code de salle, parties d'un compte)
+  CREATE TABLE IF NOT EXISTS game_matches (
+    id         TEXT PRIMARY KEY,           -- identifiant aléatoire (non devinable)
+    code       TEXT,                       -- code de la salle tant qu'elle attend un adversaire
+    host_id    INTEGER NOT NULL,           -- qui a créé la salle
+    guest_id   INTEGER,                    -- qui l'a rejointe
+    status     TEXT NOT NULL,              -- 'waiting' | 'playing' | 'over' | 'cancelled' | 'expired'
+    data       BLOB NOT NULL,              -- la partie (JSON compressé)
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    expires_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS game_matches_code ON game_matches(code);
+  CREATE INDEX IF NOT EXISTS game_matches_host ON game_matches(host_id);
+  CREATE INDEX IF NOT EXISTS game_matches_guest ON game_matches(guest_id);
 `);
 
 // Migrations des bases créées par une version précédente

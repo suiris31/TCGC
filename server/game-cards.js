@@ -5,14 +5,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fetchCardData } from '../game/data/fetch.ts';
-import { missingCards } from '../game/engine/cards/index.ts';
+import { loadCardData, missingCards } from '../game/engine/cards/index.ts';
 import { config } from './config.js';
 
 const FILE = path.join(config.dataDir, 'game-cards.json');
 let ready = null; // { json, gzip }
 let running = null;
 
+// Les cartes servent aussi au moteur du serveur (arbitre des parties en ligne)
 function use(data) {
+  loadCardData(data);
   const json = JSON.stringify(data);
   ready = { json, gzip: zlib.gzipSync(json) };
 }
