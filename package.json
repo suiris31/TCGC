@@ -10,7 +10,13 @@
     "start": "node --no-warnings=ExperimentalWarning server/index.js",
     "sync": "node --no-warnings=ExperimentalWarning server/sync.js",
     "index-images": "node --no-warnings=ExperimentalWarning server/scan-index.js",
-    "backup": "node --no-warnings=ExperimentalWarning server/backup.js"
+    "backup": "node --no-warnings=ExperimentalWarning server/backup.js",
+    "typecheck": "tsc -p tsconfig.json && tsc -p game/tsconfig.json",
+    "test": "node --test --no-warnings --import ./game/data/load-local.ts \"game/tests/**/*.test.ts\"",
+    "game:cards": "node --no-warnings scripts/game/cards.ts",
+    "game:validate": "node --no-warnings scripts/game/validate.ts 280",
+    "game:train": "node --no-warnings scripts/game/train.ts 3 30 48 14",
+    "game:analyse": "node --no-warnings scripts/game/analyse.ts"
   },
   "engines": {
     "node": ">=22.13"
@@ -23,6 +29,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
