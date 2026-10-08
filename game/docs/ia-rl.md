@@ -372,3 +372,22 @@ sont pas encore dans les decks.
 
 Écarts d'export ONNX : PyTorch / ONNX Runtime < 4·10⁻⁷ sur les probabilités, même option préférée dans 100 % des
 cas ; PyTorch / code du navigateur < 4·10⁻⁷, aucune option différente.
+
+### 11.4 Revue du code et corrections
+
+Revue en 5 angles (information cachée, règles du moteur, mathématiques de PPO, robustesse, export et navigateur).
+Corrigé : observation finale des parties tronquées (supprimée), cartes en suspens comptées dans le deck, niveau
+« IA entraînée » absent de l'historique, modèle d'un autre encodage accepté par le navigateur, rechargement du modèle
+à chaque coup après un échec ; ligue : la version de départ d'un niveau pouvait être retirée (plantage aux
+évaluations des niveaux 4 et 5 après ~1 200 mises à jour ou après une reprise), cache des anciennes versions trop
+petit (rechargements à chaque coup au niveau 5), le modèle comptait des parties contre sa propre copie dans l'Elo
+(+150 points mesurés), taux de victoire « pool » faux, `pfsp_power` ignoré à la reprise.
+
+### 11.5 Niveau 2 : graduer l'adversaire
+
+Entraînement de contrôle (encodage précédent) : niveau 1 validé en 140 mises à jour (31 min sur 4 cœurs), puis 2 à
+5 % de victoires contre l'heuristique pendant 30 mises à jour : avec la victoire pour seule récompense, presque aucun
+signal. Mesuré sur 200 parties : l'heuristique bat celle qui joue une décision sur 4 au hasard à 82 %, une sur 2 à
+97 % ; cette dernière bat l'aléatoire à 94 %, soit à peu près le niveau d'un modèle sortant du niveau 1. Le niveau 2
+mélange donc heuristique pure (40 %), bruitée à 25 % et 50 % (25 % chacune) et aléatoire (10 %) ; la récompense et
+l'évaluation de passage (heuristique pure) ne changent pas.
