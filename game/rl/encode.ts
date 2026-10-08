@@ -72,7 +72,7 @@ function fnvHex(s: string) {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return (h >>> 0).toString(16).padStart(8, '0');
 }
-export const ENCODING_VERSION = 1;
+export const ENCODING_VERSION = 2;
 export const SPEC_HASH = fnvHex(JSON.stringify([ENCODING_VERSION, STATIC_FEATURES, DYN_FEATURES, GLOBAL_FEATURES, OPTION_FEATURES]));
 
 export interface Observation {

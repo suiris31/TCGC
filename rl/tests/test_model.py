@@ -119,14 +119,28 @@ def test_collator_splits_and_remaps_pointers():
     assert b["p_mask"].tolist() == [[1, 1], [1, 0]]
 
 
-def test_id_dropout_only_in_training():
+def test_network_is_deterministic():
+    """Aucun hasard dans le réseau, ni en évaluation ni en apprentissage (l'oubli des identifiants est dans les données)."""
     torch.manual_seed(1)
     m = make_model()
-    m.cfg.id_dropout = 0.9
     b = batch()
     a, _ = m(**b)
+    m.train()
     c, _ = m(**b)
-    assert torch.equal(a, c), "pas de hasard en évaluation"
+    assert torch.equal(a, c)
+
+
+def test_collator_applies_stored_id_mask():
+    from opcg_rl.obs import Collator, Obs
+    table = np.zeros((10, S), np.float32)
+    col = Collator(table, np.arange(10), torch.device("cpu"))
+    o = Obs(np.array([1, 2, 3, 4], np.int32), np.array([0, 0, 1, 1], np.int32), np.zeros((4, D), np.float32),
+            np.zeros(G, np.float32), np.zeros((1, O), np.float32), np.array([[0, -1]], np.int32),
+            id_keep=np.array([1, 0, 0, 1]))
+    b = col([o])
+    assert b["a_ids"].tolist() == [[1, 0]] and b["p_ids"].tolist() == [[0, 4]]
+    o.id_keep = None
+    assert col([o])["a_ids"].tolist() == [[1, 2]]
 
 
 def _traj(n, reward, truncated=False):

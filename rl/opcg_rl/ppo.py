@@ -151,8 +151,12 @@ class Collector:
                 by_ctrl[self.games[env].controllers[o.seat]].append(o)
             actions = []
             t0 = time.perf_counter()
+            drop = float(self.agent.model.cfg.id_dropout)
             for ctrl, obs_list in by_ctrl.items():
                 agent = self.agent if ctrl == "learner" else self.load_snapshot(ctrl.split(":", 1)[1])
+                if ctrl == "learner" and drop > 0:
+                    for o in obs_list:
+                        o.id_keep = (self.rng.random(o.n) >= drop).astype(np.int64)
                 acts, logps, vals, probs = agent.act(obs_list, self.rng)
                 for o, a, lp, v, p in zip(obs_list, acts, logps, vals, probs):
                     g = self.games[o.env]

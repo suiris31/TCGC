@@ -1,7 +1,8 @@
-# IA par apprentissage par renforcement — étape 1 : analyse et architecture
+# IA par apprentissage par renforcement
 
-Document de référence du chantier « IA entraînée par RL ». Rien n'est encore codé : ce document fixe l'analyse,
-les difficultés, l'architecture et les choix, à valider avant l'étape 2 (environnement).
+Document de référence du chantier « IA entraînée par RL ». Les §§ 1 à 10 sont l'analyse et l'architecture de
+l'étape 1 ; le § 11 décrit ce qui a été réalisé (environnement, entraînement, évaluation, export, intégration), les
+vérifications faites avant l'implémentation, les mesures et ce qui reste à faire. Mode d'emploi : `rl/README.md`.
 
 ## 1. Analyse du projet
 
@@ -96,7 +97,7 @@ dans l'interface), outils de tests (`scenario`, `choose`…), infrastructure Wor
 | Encodage des options | Nouveau : caractéristiques de chaque option légale |
 | Environnement + serveur par lots | Nouveau : interface `reset/step` pour l'entraînement en Python |
 | Coût de `act` | Clone complet de l'état + instantané JSON qui contiennent journal et historique, qui grossissent pendant la partie (coût quadratique). L'environnement les videra (les règles ne les lisent pas). Mesure d'abord ; si nécessaire, variante sur place testée par équivalence. Aucune règle modifiée. |
-| Plafond de sécurité | Nombre maximal de décisions par partie (partie tronquée = 0, signalée et comptée) |
+| Plafond de sécurité | Nombre maximal de décisions par partie (partie tronquée, sans récompense : voir § 11.1) |
 | Catalogue des cartes | Indispensable pour lancer le moteur (voir § 10) |
 
 ## 2. Difficultés techniques
@@ -200,8 +201,9 @@ taille variable, sans ordre, cartes en interaction (attaquant / bloqueurs / aura
 ### 3.5 Récompense
 
 - Victoire +1, défaite −1, γ = 1. **Aucune récompense intermédiaire.**
-- Le moteur n'a pas d'égalité ; une partie tronquée par le plafond de sécurité vaut 0, est signalée et comptée
-  (attendu : ~0 %).
+- Le moteur n'a pas d'égalité. Partie tronquée par le plafond de sécurité : aucune récompense, la valeur estimée de
+  la dernière position complète l'avantage (décision prise après analyse, § 11.1 ; l'étape 1 prévoyait 0, rejeté :
+  un joueur en train de perdre aurait intérêt à faire traîner).
 - Toute récompense auxiliaire éventuelle : justifiée par écrit, mesurée par comparaison A/B, retirée si elle n'apporte
   rien.
 
@@ -292,3 +294,79 @@ l'entraînement, et une variante sur place de `act` testée par équivalence sur
 2. **Machine d'entraînement** (GPU ? nombre de cœurs ?) : détermine la taille des lots et la durée.
 3. Critique oracle : oui / non.
 4. Modèles entraînés dans le dépôt (quelques Mo) ou à part.
+
+## 11. Étape 2 : réalisation
+
+### 11.1 Vérifications avant l'implémentation (et corrections)
+
+**Information cachée.** Audit de `viewFor()` (5 angles d'attaque, chaque constat vérifié par un relecteur
+contradictoire), puis test automatique d'étanchéité : on redistribue au hasard tout ce qu'un joueur ne peut pas
+connaître (main adverse, decks, Vies face cachée, en gardant les cartes révélées) et l'observation doit rester
+identique. Ce test a trouvé une fuite réelle, d'autres ont été trouvées par l'audit :
+
+| Fuite | Correction |
+|---|---|
+| `shownBy()` lisait les nombres des identifiants d'options : à une décision « déclarez un coût » (`cost:0`…`cost:10`), les cartes cachées d'identifiant 0 à 10 (cartes du joueur 1 : main, deck, Vie) devenaient visibles par l'adversaire, y compris en ligne | seuls `uid` et `target` d'une option désignent des cartes ; test de non-régression |
+| Historique : les décisions de Contre et les questions d'effet de l'adversaire n'existent que s'il a une carte qui le permet ; leur présence disait « il n'a aucun Contre en main », « la Vie touchée est un [Déclenchement] »... | l'historique ne garde que les décisions adverses dont l'existence est publique (mulligan, phase principale, Bloqueur) |
+| Décision en cours de l'adversaire : étiquette et carte source (« playFree » après Sanji = il a une carte jouable) | réduite à `{joueur, type}` |
+| Ordre de la main adverse = ordre d'arrivée des cartes : la place d'une carte connue disait quelles cartes avaient été jouées | cartes connues d'abord, puis cartes cachées ; l'encodage n'utilise pas la place |
+| Deux exemplaires d'une carte, l'un révélé : le moteur jouait le premier de la main, l'adversaire voyait l'exemplaire connu rester et savait qu'il y en avait un deuxième | l'exemplaire connu de l'adversaire est proposé d'abord (`knownFirst`) |
+| Encodeur : nombres des identifiants d'options, carte source d'une décision adverse | corrigé dans `game/rl/encode.ts` |
+| Observation finale d'une partie tronquée : l'étape « Contre » du combat sans décision du joueur = l'adversaire a de quoi contrer | étape du combat encodée seulement quand le joueur décide |
+
+Informations publiques que le joueur ne recevait pas (pas des fuites, mais l'IA en savait moins qu'un humain) :
+cartes regardées pendant une recherche (toutes, pas seulement celles qu'on peut prendre), carte jouée quand la zone
+de Personnages est pleine, carte révélée par un [Déclenchement] pendant son effet, carte de Vie face visible prise en
+main, carte révélée par un coût déclaré, carte du dessus du deck adverse regardée puis piochée, cartes de sa main que
+l'adversaire connaît. Toutes sont maintenant dans la vue (`Decision.cards`, `reveal`, `carryKnown`).
+
+Limites connues, sans effet sur l'IA actuelle : les identifiants des cartes visibles ne changent jamais (un modèle
+avec mémoire pourrait reconnaître un exemplaire déjà vu) ; la file des effets en attente n'est pas montrée ; en
+ligne, le temps de réflexion de l'adversaire (une pause au Contre) et la graine du hasard sur 31 bits (une partie en
+ligne pourrait être recalculée par force brute à partir de sa main de départ) sont des problèmes du jeu en ligne,
+hors du périmètre de l'IA.
+
+**Parties trop longues.** Une partie se termine normalement par la Vie ou le deck vide (au plus ~82 tours si l'un
+des deux joueurs n'est pas ST-35). Mesuré au hasard : 305 décisions et 34 tours au maximum ; une partie heuristique
+fait ~120 décisions. Deux sources de parties sans fin ont été trouvées : Koala (OP13-081) pouvait être activé puis
+annulé à l'infini (corrigé : placer la carte est le coût, plus d'annulation) et le miroir ST-35 peut recycler sa
+Défausse plus vite qu'il ne pioche. Choix pour le plafond (`env.max_decisions`, 3000 décisions) : **partie tronquée,
+sans récompense, complétée par la valeur estimée de la dernière position** (troncature par limite de temps). Rejeté :
+0 comme une égalité (un joueur en train de perdre gagnerait à faire traîner : −1 devient 0), défaite des deux (le jeu
+n'est plus à somme nulle), arbitrage par une évaluation écrite à la main (refusé par principe et exploitable). Les
+parties tronquées sont comptées (mesure `truncated_rate`) et enregistrées dans `logs/<run>/anomalies/`.
+
+**Généralisation aux cartes nouvelles.** Une carte est décrite par ce qu'on lit sur elle, calculable pour toute
+carte du catalogue : catégorie, coût, puissance, Contre, Vie, couleurs, attributs, mots-clés, présence et nature du
+[Déclenchement], 18 marqueurs de moment ou de condition lus dans le texte anglais officiel ([On Play], [When
+Attacking], [DON!! x2]...), sac de mots du texte haché (64 colonnes, nombres ramenés à des ordres de grandeur),
+types hachés, et si le moteur sait jouer son effet (`engineStatus` : codé, générique, pas encore codé). L'identifiant
+appris de la carte est « oublié » une fois sur quatre à l'entraînement (`model.id_dropout`) et vaut « inconnue » pour
+une carte hors du vocabulaire du modèle : le modèle doit savoir jouer une carte d'après ses seules caractéristiques.
+Les étiquettes de questions propres à une carte (`mayBetty`, `kiddRedirect`...) sont ramenées à 19 familles
+génériques. Limite : l'option `choice:i` (« choisissez un effet ») n'a que son rang ; les cartes qui l'utilisent ne
+sont pas encore dans les decks.
+
+### 11.2 Ce qui a été construit
+
+| Partie | Fichiers |
+|---|---|
+| Environnement | `game/rl/env.ts` (reset/step/légales/fin/graine/plafond), `opponents.ts`, `encode.ts`, `features.ts`, `record.ts`, `replay.ts`, `server.ts`, `catalog.ts`, `bench.ts`, `check-onnx.ts`, `testing/synthetic-catalog.ts` |
+| Moteur | `actInPlace` (sans copie), corrections ci-dessus ; aucune règle dupliquée |
+| Entraînement | `rl/opcg_rl/` (envpool, obs, model, policy, ppo, league, evaluation, elo, checkpoint, logger, device, config, seeds, runtime), `rl/train.py`, `rl/config/*.yaml` |
+| Évaluation et analyse | `rl/evaluate.py`, `rl/play.py`, `rl/benchmark.py` |
+| Export et intégration | `rl/export_onnx.py`, `game/ai/rl.ts`, `game/ai/worker.ts`, `game/ai/client.ts`, `game/ui/App.tsx` (niveau « IA entraînée ») |
+| Tests | `game/tests/rl-env.test.ts`, `game/tests/view.test.ts` (fuites), `rl/tests/` |
+
+### 11.3 Mesures (ordinateur de développement : 4 cœurs, sans GPU, catalogue synthétique)
+
+| Mesure | Avant | Après |
+|---|---|---|
+| Moteur seul, une décision avec `act` (copie de l'état) | 153 µs | 34 µs avec `actInPlace` (copie = 64 % du temps, mesuré au profileur) |
+| Vue d'un joueur (`viewFor`) | 178 µs | ~120 µs (copie JSON au lieu de `structuredClone`) |
+| Apprentissage, une passe sur 4096 décisions (modèle 96×2) | 6,1 s | 3,1 s (zones résumées hors de l'attention, projection statique par carte de la table) |
+| Inférence dans le navigateur (onnxruntime-web, 1 fil) | | 3,6 à 8,9 ms par décision |
+| Collecte d'entraînement (2 processus Node, réseau sur processeur) | | ~1 900 décisions/s, ~5 parties/s |
+
+Écarts d'export ONNX : PyTorch / ONNX Runtime < 4·10⁻⁷ sur les probabilités, même option préférée dans 100 % des
+cas ; PyTorch / code du navigateur < 4·10⁻⁷, aucune option différente.

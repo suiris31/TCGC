@@ -46,7 +46,7 @@ class ModelConfig:
     heads: int = 4
     ffn_mult: int = 2
     id_dim: int = 16
-    id_dropout: float = 0.25  # probabilité de remplacer l'identifiant par « inconnue » pendant l'entraînement
+    id_dropout: float = 0.25  # probabilité, pour les décisions d'entraînement, de traiter une carte comme inconnue
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -104,9 +104,8 @@ class PolicyValueNet(nn.Module):
         self.value = nn.Sequential(nn.Linear(d, d), nn.GELU(), nn.Linear(d, 1))
 
     def embed(self, static_proj, dyn, ids):
-        if self.training and self.cfg.id_dropout > 0:
-            keep = (torch.rand(ids.shape, device=ids.device) >= self.cfg.id_dropout).long()
-            ids = ids * keep
+        # « oubli » des identifiants (id_dropout) : appliqué aux entrées (ids = 0) au moment où le modèle joue, et
+        # gardé avec l'observation (obs.Obs.id_keep) ; le réseau lui-même n'a pas de hasard
         h = F.gelu(static_proj + self.tok_dyn(dyn) + self.tok_id(self.id_emb(ids)))
         return self.tok_ln(self.tok_out(h))
 

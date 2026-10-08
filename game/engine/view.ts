@@ -79,7 +79,10 @@ export function viewFor(s: GameState, seat: PlayerId): GameState {
   v.history = v.history.filter((h) => h.player === seat || PUBLIC_KINDS.includes(h.kind))
     .map((h) => (h.player === seat ? h : { ...h, tag: undefined, prompt: '', choice: '', label: '' }));
   if (v.decision && v.decision.player !== seat) {
-    v.decision = { player: v.decision.player, kind: v.decision.kind, prompt: '', options: [] };
+    // décision en cours de l'adversaire : seulement son type quand son existence est publique (une décision de
+    // Contre n'existe que s'il a de quoi contrer : elle apparaît comme une question d'effet)
+    const kind = PUBLIC_KINDS.includes(v.decision.kind) ? v.decision.kind : 'effect';
+    v.decision = { player: v.decision.player, kind, prompt: '', options: [] };
   }
   return v;
 }

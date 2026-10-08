@@ -24,6 +24,10 @@ class Obs:
     env: int = -1
     seat: int = -1
     final: bool = False
+    # identifiants appris gardés pour cette décision (False : carte traitée comme inconnue, voir model.id_dropout) ;
+    # tiré au moment où le modèle joue et gardé avec l'observation, pour que l'apprentissage évalue exactement la
+    # politique qui a joué
+    id_keep: np.ndarray | None = None
 
     @property
     def n(self) -> int:
@@ -36,7 +40,8 @@ class Obs:
     def compact(self) -> "Obs":
         """Copie en float16 (garde en mémoire des dizaines de milliers d'observations)."""
         return Obs(self.card_idx.copy(), self.group.copy(), self.dyn.astype(np.float16), self.glob.astype(np.float32),
-                   self.opt.astype(np.float16), self.ptr.copy(), self.env, self.seat, self.final)
+                   self.opt.astype(np.float16), self.ptr.copy(), self.env, self.seat, self.final,
+                   None if self.id_keep is None else self.id_keep.copy())
 
 
 def split_batch(header: dict, buffers: dict[str, np.ndarray], dyn_dim: int, glob_dim: int, opt_dim: int) -> list[Obs]:
@@ -87,6 +92,8 @@ class Collator:
         D = items[0].dyn.shape[1]
         G = items[0].glob.shape[0]
         O = items[0].opt.shape[1] if items[0].opt.ndim == 2 else 0
+        a_keep = np.ones((B, Na), np.int64)
+        p_keep = np.ones((B, Np), np.int64)
         a_idx = np.zeros((B, Na), np.int64)
         a_dyn = np.zeros((B, Na, D), np.float32)
         a_mask = np.zeros((B, Na), np.float32)
@@ -103,6 +110,9 @@ class Collator:
             if na and o.group[:na].any():
                 raise ValueError("observation : cartes individuelles après les zones résumées")
             a_idx[i, :na] = o.card_idx[:na]
+            if o.id_keep is not None:
+                a_keep[i, :na] = o.id_keep[:na]
+                p_keep[i, :n - na] = o.id_keep[na:]
             a_dyn[i, :na] = o.dyn[:na]
             a_mask[i, :na] = 1
             npool = n - na
@@ -120,9 +130,9 @@ class Collator:
         a_t = torch.from_numpy(a_idx).to(dev)
         p_t = torch.from_numpy(p_idx).to(dev)
         return {
-            "a_idx": a_t, "a_dyn": torch.from_numpy(a_dyn).to(dev), "a_ids": self.to_vocab[a_t],
+            "a_idx": a_t, "a_dyn": torch.from_numpy(a_dyn).to(dev), "a_ids": self.to_vocab[a_t] * torch.from_numpy(a_keep).to(dev),
             "a_mask": torch.from_numpy(a_mask).to(dev),
-            "p_idx": p_t, "p_dyn": torch.from_numpy(p_dyn).to(dev), "p_ids": self.to_vocab[p_t],
+            "p_idx": p_t, "p_dyn": torch.from_numpy(p_dyn).to(dev), "p_ids": self.to_vocab[p_t] * torch.from_numpy(p_keep).to(dev),
             "p_group": torch.from_numpy(p_group).to(dev), "p_mask": torch.from_numpy(p_mask).to(dev),
             "glob": torch.from_numpy(glob).to(dev), "opt": torch.from_numpy(opt).to(dev),
             "ptr": torch.from_numpy(ptr).to(dev), "opt_mask": torch.from_numpy(opt_mask).to(dev),
