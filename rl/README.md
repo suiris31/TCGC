@@ -325,7 +325,8 @@ modifié), l'IA simple joue à sa place et la console du navigateur l'explique. 
 ```bash
 # à la racine du dépôt : moteur, vue d'un joueur (aucune information cachée), environnement RL, serveur
 npm test
-# dans rl/ : client Python, réseau (masquage, pointeurs, invariances), GAE, Elo, parties complètes
+# dans rl/ : client Python, réseau (masquage, pointeurs, invariances), GAE, Elo, parties complètes, et la chaîne
+# complète en petit (entraînement, reprise, évaluation, export ONNX vérifié : ~2 minutes)
 python -m pytest -q tests
 ```
 
