@@ -159,6 +159,9 @@ Plusieurs entraînements peuvent coexister : `python train.py --run essai2`. Tou
   Courbes `train/winrate/<adversaire>`, `train/mean_turns`, `train/truncated_rate`, `train/entropy`, `train/value_mean`,
   `train/value_loss`, `train/policy_loss`, `train/approx_kl`, `train/decisions_per_s`, `eval/<adversaire>/winrate`,
   `eval/elo`...
+- `python report.py --run <run>` : résumé texte de tout l'entraînement (réglages, évaluations, tendances par tranches
+  de 25 mises à jour : victoires par adversaire, entropie, kl, passes faites, débit, mémoire GPU), à lire ou à
+  copier-coller pour le partager.
 - `logs/<run>/eval/` : rapport de chaque évaluation (markdown).
 - `logs/<run>/trajectories/` : 1 partie d'entraînement sur 1000, rejouable (§ 9) ; `logs/<run>/anomalies/` : toute
   partie tronquée ou arrêtée par une erreur du moteur.
