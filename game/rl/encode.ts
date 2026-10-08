@@ -98,7 +98,7 @@ interface Token {
 }
 
 // Jetons, par ordre de priorité (si MAX_TOKENS est dépassé, les derniers sont abandonnés et comptés)
-function tokensOf(v: GameState, me: PlayerId, optionCards: Map<number, string>): Token[] {
+function tokensOf(v: GameState, me: PlayerId, optionCards: Map<number, string>, shownOwner: Map<number, PlayerId>): Token[] {
   const opp = other(me);
   const P = v.players[me];
   const O = v.players[opp];
@@ -122,7 +122,7 @@ function tokensOf(v: GameState, me: PlayerId, optionCards: Map<number, string>):
   // cartes montrées par la décision mais dans aucune zone (cartes regardées pendant un effet, carte de Vie révélée)
   const placed = new Set(out.map((t) => t.uid));
   for (const z of [P.trash, O.trash]) for (const c of z) placed.add(c.uid);
-  for (const [uid, num] of optionCards) if (!placed.has(uid)) add({ num, zone: 'limbo', owner: me, uid });
+  for (const [uid, num] of optionCards) if (!placed.has(uid)) add({ num, zone: 'limbo', owner: shownOwner.get(uid) ?? me, uid });
   // zones résumées : un jeton par numéro de carte, avec le nombre d'exemplaires
   const pooled = (cards: Card[], zone: Zone, owner: PlayerId) => {
     const byNum = new Map<string, number>();
@@ -258,7 +258,9 @@ function globalFeatures(v: GameState, me: PlayerId, nOptions: number, dropped: n
   }
   const b = v.battle;
   g[i++] = b ? 1 : 0;
-  for (const step of BATTLE_STEPS) g[i++] = b?.step === step ? 1 : 0;
+  // étape du combat : seulement quand le joueur décide (sinon, une pause à l'étape Contre trahirait que l'adversaire
+  // a de quoi contrer : cas de l'observation finale d'une partie tronquée)
+  for (const step of BATTLE_STEPS) g[i++] = d && b?.step === step ? 1 : 0;
   if (b) {
     const atk = power(v, b.attacker);
     const dp = power(v, b.target);
@@ -294,7 +296,11 @@ export function encodeObservation(v: GameState, me: PlayerId): Observation {
   const optionCards = new Map<number, string>();
   const named = new Map<number, number>();  // option -> identifiant de sa carte
   // cartes que la question montre (toutes les cartes regardées, même celles qu'on ne peut pas choisir)
-  for (const c of d?.cards ?? []) optionCards.set(c.uid, c.num);
+  const shownOwner = new Map<number, PlayerId>();
+  for (const c of d?.cards ?? []) {
+    optionCards.set(c.uid, c.num);
+    if (c.owner !== undefined) shownOwner.set(c.uid, c.owner);
+  }
   options.forEach((o, a) => {
     const { ref } = optionRefs(o);
     if (ref !== undefined) {
@@ -306,7 +312,7 @@ export function encodeObservation(v: GameState, me: PlayerId): Observation {
       optionCards.set(-1_000_000 - a, o.num);
     }
   });
-  let tokens = tokensOf(v, me, optionCards);
+  let tokens = tokensOf(v, me, optionCards, shownOwner);
   const dropped = Math.max(0, tokens.length - MAX_TOKENS);
   if (dropped) tokens = tokens.slice(0, MAX_TOKENS);
   const n = tokens.length;

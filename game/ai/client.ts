@@ -6,6 +6,18 @@ import type { WorkerRequest } from './worker.ts';
 
 type Request = WorkerRequest extends infer R ? (R extends { id: number } ? Omit<R, 'id'> : never) : never;
 
+// Dossier du modèle entraîné, à côté de l'application (chemins relatifs : l'appli peut être dans un sous-dossier)
+export const rlModelUrl = () => new URL(`${import.meta.env.BASE_URL}rl-model/`, location.href).href;
+
+// Un modèle entraîné est-il installé ? (vérifié une fois)
+let rlChecked: Promise<boolean> | null = null;
+export function rlModelAvailable(): Promise<boolean> {
+  rlChecked ??= fetch(`${rlModelUrl()}model.json`, { method: 'GET' })
+    .then((r) => r.ok && (r.headers.get('content-type') ?? '').includes('json'))
+    .catch(() => false);
+  return rlChecked;
+}
+
 export class AiWorker {
   private worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
   private nextId = 1;
@@ -30,6 +42,11 @@ export class AiWorker {
 
   async choose(state: GameState, level: Level): Promise<string> {
     return (await this.send({ type: 'choose', state, level })).choice!;
+  }
+
+  // IA entraînée (niveau 4) : modèle ONNX servi avec l'application (web/public/rl-model/)
+  async chooseRl(state: GameState): Promise<string> {
+    return (await this.send({ type: 'chooseRl', state, modelUrl: rlModelUrl() })).choice!;
   }
 
   // Analyse du coach (deux temps, voir coachAnalyze)

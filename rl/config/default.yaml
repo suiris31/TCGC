@@ -1,0 +1,117 @@
+# Configuration par défaut de l'entraînement. Ne modifie pas ce fichier : crée le tien (ex. config/mon-pc.yaml) avec
+# seulement ce qui change, et lance `python train.py --config mon-pc`. Ou change un réglage en ligne de commande :
+#   python train.py --set ppo.lr=0.0001 --set env.workers=6
+# Fichiers prêts à l'emploi : config/cpu.yaml (ordinateur sans GPU), config/gpu.yaml, config/smoke.yaml (essai rapide).
+
+run: opcg                  # nom de l'entraînement : checkpoints/<run>/, logs/<run>/
+seed: 1                    # graine générale (tirages des parties, initialisation du réseau)
+device: auto               # auto (GPU NVIDIA, sinon GPU Apple, sinon processeur), cpu, cuda, cuda:1, mps
+torch_threads: auto        # fils de calcul de PyTorch sur processeur (auto : cœurs restants après les processus Node)
+allow_synthetic: false     # refuser le catalogue de cartes inventé (tests sans réseau uniquement)
+
+env:
+  node: null               # chemin de Node.js (null : « node » du PATH, ou variable OPCG_NODE)
+  catalog: null            # catalogue des cartes (null : data/game-catalog.json, créé par `npm run game:cards`)
+  workers: auto            # processus Node qui font tourner les parties (auto : cœurs logiques - 1, au moins 1)
+  envs_per_worker: 16      # parties simultanées par processus Node
+  eval_envs_per_worker: 4  # emplacements réservés aux parties d'évaluation
+  max_decisions: 3000      # plafond de sécurité par partie (jamais atteint en jeu normal : ~120-300 décisions)
+  record_train_every: 1000 # enregistrer 1 partie d'entraînement sur N (trajectoire rejouable ; 0 : aucune)
+
+model:
+  d_model: 128             # taille des représentations (64 : petit, 128 : moyen, 256 : grand)
+  layers: 3                # couches d'attention
+  heads: 4
+  ffn_mult: 2
+  id_dim: 16               # taille de l'identifiant appris de chaque carte (en plus de ses caractéristiques)
+  id_dropout: 0.25         # oublier l'identifiant 1 fois sur 4 : le modèle doit aussi comprendre les caractéristiques
+
+ppo:
+  steps_per_update: 8192   # décisions du modèle collectées avant chaque mise à jour
+  minibatch_size: 1024     # taille des lots d'apprentissage (à réduire si la mémoire du GPU manque)
+  epochs: 4                # passes sur les données collectées
+  lr: 0.0003
+  gamma: 1.0               # pas d'actualisation : seule l'issue de la partie compte
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  target_kl: 0.03          # arrêt anticipé d'une mise à jour qui changerait trop la politique
+  normalize_advantages: true
+
+train:
+  max_updates: 100000      # arrêt après ce nombre de mises à jour (toutes phases confondues)
+  max_hours: 0             # arrêt après ce nombre d'heures (0 : pas de limite)
+  checkpoint_every: 10     # point de sauvegarde toutes les N mises à jour (et à chaque changement de niveau, à l'arrêt)
+  keep_checkpoints: 5      # nombre de points de sauvegarde gardés (plus latest.pt et les jalons de niveau)
+  snapshot_every: 25       # ancienne version ajoutée à la ligue toutes les N mises à jour (niveaux 4 et 5)
+  max_snapshots: 50
+  pfsp_power: 2.0
+  start_level: 0           # niveau de départ d'un nouvel entraînement (0 = niveau 1)
+  tensorboard: true
+
+# Programme d'entraînement. Chaque niveau a ses adversaires et une évaluation (gate) sur des parties d'évaluation
+# (graines séparées, jamais apprises). Le niveau suivant ne commence que si l'évaluation est réussie `consecutive`
+# fois de suite. Si max_updates est atteint sans réussite, l'entraînement s'ARRÊTE (rien n'est forcé) : voir le
+# README (§ Niveau non validé) pour prolonger ou passer outre en connaissance de cause.
+curriculum:
+  levels:
+    - name: "1-aleatoire"
+      opponents: [{kind: random, weight: 1.0}]
+      decks: all
+      max_updates: 300
+      eval_every: 10
+      gate:
+        - {opponent: random, min_winrate: 0.95}
+      gate_seeds_per_pair: 1      # parties d'évaluation : decks² × graines × 2 sièges (36 × 1 × 2 = 72)
+      consecutive: 2
+
+    - name: "2-heuristique"
+      opponents: [{kind: heuristic, weight: 0.85}, {kind: random, weight: 0.15}]
+      decks: all
+      max_updates: 3000
+      eval_every: 25
+      gate:
+        - {opponent: heuristic, min_winrate: 0.60}
+        - {opponent: random, min_winrate: 0.95}
+      gate_seeds_per_pair: 2
+      consecutive: 2
+
+    - name: "3-monte-carlo"
+      opponents: [{kind: mc, samples: 2, weight: 0.3}, {kind: heuristic, weight: 0.6}, {kind: random, weight: 0.1}]
+      decks: all
+      max_updates: 3000
+      eval_every: 50
+      gate:
+        - {opponent: "mc:16", min_winrate: 0.55, pairs: 12}
+        - {opponent: heuristic, min_winrate: 0.60}
+      gate_seeds_per_pair: 1
+      consecutive: 1
+
+    - name: "4-self-play"
+      opponents: [{kind: self, weight: 0.7}, {kind: heuristic, weight: 0.2}, {kind: mc, samples: 2, weight: 0.05}, {kind: random, weight: 0.05}]
+      decks: all
+      max_updates: 4000
+      eval_every: 50
+      gate:
+        - {opponent: level_start, min_winrate: 0.58}   # nette progression sur la version qui a commencé ce niveau
+        - {opponent: heuristic, min_winrate: 0.60}     # sans oublier comment battre l'IA heuristique
+      gate_seeds_per_pair: 1
+      consecutive: 2
+
+    - name: "5-ligue"
+      opponents: [{kind: self, weight: 0.35}, {kind: pool, weight: 0.4}, {kind: heuristic, weight: 0.15}, {kind: mc, samples: 2, weight: 0.05}, {kind: random, weight: 0.05}]
+      decks: all
+      max_updates: 0               # 0 : pas de limite (jusqu'à train.max_updates)
+      eval_every: 100
+      gate:                        # dernier niveau : évaluations de suivi (Elo), pas de passage
+        - {opponent: heuristic, min_winrate: 0.0}
+        - {opponent: level_start, min_winrate: 0.0}
+        - {opponent: latest_snapshots, count: 3, min_winrate: 0.0}
+      gate_seeds_per_pair: 1
+      consecutive: 1
+
+evaluation:
+  greedy: false            # false : le modèle choisit selon ses probabilités (sa vraie politique) ; true : le meilleur choix
+  seed_offset: 0           # décalage dans les graines d'évaluation (toujours séparées de celles de l'entraînement)

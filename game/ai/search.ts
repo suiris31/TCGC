@@ -8,12 +8,15 @@ import type { Card, Decision, GameState, PlayerId } from '../engine/types.ts';
 import { heuristicChooser } from './heuristic.ts';
 import { uselessReason } from './prune.ts';
 
-export type Level = 1 | 2 | 3;
+export type Level = 1 | 2 | 3 | 4;
 
+// Niveau 4 : modèle entraîné par apprentissage par renforcement (rl/, game/ai/rl.ts), proposé seulement quand un modèle
+// est installé (web/public/rl-model/) ; ses décisions passent par le fil de calcul (AiWorker.chooseRl)
 export const LEVELS: Record<Level, { name: string; samples: number; budgetMs: number; margin: number }> = {
   1: { name: 'Débutant', samples: 0, budgetMs: 0, margin: 0 },
   2: { name: 'Confirmé', samples: 16, budgetMs: 500, margin: 0.06 },
   3: { name: 'Expert', samples: 48, budgetMs: 1800, margin: 0.03 },
+  4: { name: 'IA entraînée', samples: 0, budgetMs: 0, margin: 0 },
 };
 
 export interface OptionStat {
@@ -173,7 +176,7 @@ export function coachAnalyze(s: GameState, opts: CoachOptions): Analysis {
 // Choix de l'IA selon son niveau. Les petites décisions au milieu d'un effet restent à l'IA simple ; quand la
 // simulation ne départage pas nettement, le choix de bon sens est gardé (moins de coups bizarres dus au hasard).
 export function aiChoose(s: GameState, d: Decision, level: Level): string {
-  if (level === 1) return heuristicChooser(s, d);
+  if (level === 1 || level === 4) return heuristicChooser(s, d);
   return mcChoose(s, d, LEVELS[level]);
 }
 

@@ -1,0 +1,9 @@
+# Ordinateur sans GPU : modèle un peu plus petit, mises à jour plus fréquentes. Les processus Node et PyTorch se
+# partagent les cœurs du processeur (torch_threads auto).
+device: cpu
+model:
+  d_model: 96
+  layers: 2
+ppo:
+  steps_per_update: 4096
+  minibatch_size: 512

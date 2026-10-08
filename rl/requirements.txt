@@ -1,0 +1,12 @@
+# Dépendances Python de l'entraînement (Python 3.10 ou plus récent).
+# PyTorch : sous Windows, pip installe par défaut la version SANS GPU. Pour un GPU NVIDIA, installe d'abord PyTorch
+# avec la commande donnée sur https://pytorch.org/get-started/locally/ (ex. --index-url .../whl/cu126), ou lance
+# scripts/setup_windows.ps1 qui le fait. Voir README.md § Installation.
+torch>=2.4
+numpy>=1.26
+pyyaml>=6.0
+tensorboard>=2.15
+onnx>=1.16
+onnxruntime>=1.18
+onnxscript>=0.1
+pytest>=8.0

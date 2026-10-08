@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AiWorker } from '../ai/client.ts';
+import { AiWorker, rlModelAvailable } from '../ai/client.ts';
 import { heuristicChooser } from '../ai/heuristic.ts';
 import { LEVELS, type Analysis, type Level } from '../ai/search.ts';
 import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary } from '../coach/archive.ts';
@@ -229,9 +229,12 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     setThinking(true);
-    const pick = d.inEffect || session.level === 1 || d.options.length === 1
-      ? Promise.resolve(heuristicChooser(current, d))
-      : worker().choose(current, session.level);
+    // IA entraînée : toutes ses décisions (y compris au milieu d'un effet) viennent du modèle
+    const pick = session.level === 4 && d.options.length > 1
+      ? worker().chooseRl(current)
+      : d.inEffect || session.level === 1 || session.level === 4 || d.options.length === 1
+        ? Promise.resolve(heuristicChooser(current, d))
+        : worker().choose(current, session.level);
     pick.then((choice) => {
       if (cancelled) return;
       timer = setTimeout(() => {
@@ -756,6 +759,9 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
   onHistory: () => void;
 }) {
   const ids = Object.keys(DECKS);
+  // niveau « IA entraînée » : seulement si un modèle est installé (web/public/rl-model/, voir rl/README.md)
+  const [rlReady, setRlReady] = useState(false);
+  useEffect(() => { rlModelAvailable().then(setRlReady); }, []);
   const played = Object.entries(records)
     .map(([key, line]) => {
       const [myDeck, aiDeck, level] = key.split('|');
@@ -808,14 +814,15 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
         <div>
           <h2>Niveau de l’IA</h2>
           <div className="op-segmented">
-            {([1, 2, 3] as Level[]).map((level) => (
+            {([1, 2, 3, ...(rlReady || config.level === 4 ? [4] : [])] as Level[]).map((level) => (
               <button key={level} className={config.level === level ? 'seg on' : 'seg'} onClick={() => onChange({ ...config, level })}>{LEVELS[level].name}</button>
             ))}
           </div>
           <p className="op-muted op-small">
             {config.level === 1 ? 'Joue le plan de son deck, sans calculer à l’avance.'
               : config.level === 2 ? 'Simule la suite de la partie avant chaque choix.'
-                : 'Simule beaucoup plus de parties avant chaque choix (jusqu’à 2 secondes).'}
+                : config.level === 3 ? 'Simule beaucoup plus de parties avant chaque choix (jusqu’à 2 secondes).'
+                  : 'Modèle entraîné par apprentissage par renforcement : ses choix viennent de l’expérience de ses parties, sans règle écrite à la main.'}
           </p>
         </div>
         <div>

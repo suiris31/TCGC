@@ -1,0 +1,11 @@
+# Produits de l'entraînement : gardés sur ton ordinateur, pas dans le dépôt
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+checkpoints/*
+!checkpoints/.gitkeep
+logs/*
+!logs/.gitkeep
+models/*
+!models/.gitkeep

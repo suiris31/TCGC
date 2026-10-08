@@ -1,0 +1,53 @@
+# Essai rapide de toute la chaîne (quelques minutes) : vérifie l'installation et chaque mécanisme (adversaires
+# intégrés dont le Monte-Carlo, self-play, ligue d'anciennes versions, évaluations, Elo, points de sauvegarde),
+# pas la force de l'IA. Les seuils de passage sont à 0 % : chaque niveau passe dès sa première évaluation.
+#   python train.py --config smoke
+run: smoke
+env:
+  workers: 2
+  envs_per_worker: 8
+  eval_envs_per_worker: 4
+  record_train_every: 20
+model:
+  d_model: 32
+  layers: 1
+  heads: 2
+ppo:
+  steps_per_update: 512
+  minibatch_size: 256
+  epochs: 2
+train:
+  max_updates: 9
+  checkpoint_every: 2
+  snapshot_every: 1
+curriculum:
+  levels:
+    - name: "1-aleatoire"
+      opponents: [{kind: random, weight: 1.0}]
+      decks: [ST-31, ST-35]
+      max_updates: 3
+      eval_every: 2
+      gate:
+        - {opponent: random, min_winrate: 0.0}
+      gate_seeds_per_pair: 1
+      consecutive: 1
+    - name: "2-heuristique-mc"
+      opponents: [{kind: heuristic, weight: 0.7}, {kind: mc, samples: 1, weight: 0.3}]
+      decks: [ST-31, ST-35]
+      max_updates: 3
+      eval_every: 2
+      gate:
+        - {opponent: heuristic, min_winrate: 0.0}
+        - {opponent: "mc:2", min_winrate: 0.0, pairs: 2}
+      gate_seeds_per_pair: 1
+      consecutive: 1
+    - name: "3-ligue"
+      opponents: [{kind: self, weight: 0.4}, {kind: pool, weight: 0.4}, {kind: heuristic, weight: 0.2}]
+      decks: [ST-31, ST-35]
+      max_updates: 0
+      eval_every: 2
+      gate:
+        - {opponent: level_start, min_winrate: 0.0}
+        - {opponent: latest_snapshots, count: 2, min_winrate: 0.0}
+      gate_seeds_per_pair: 1
+      consecutive: 1

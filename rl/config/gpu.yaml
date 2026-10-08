@@ -1,0 +1,12 @@
+# Ordinateur avec GPU (NVIDIA CUDA ou Apple MPS) : modèle plus grand, plus de parties simultanées. La génération des
+# parties reste sur le processeur (processus Node) : c'est le nombre de cœurs qui fixe le débit de parties.
+device: auto
+env:
+  envs_per_worker: 32
+model:
+  d_model: 192
+  layers: 4
+  heads: 6
+ppo:
+  steps_per_update: 16384
+  minibatch_size: 2048

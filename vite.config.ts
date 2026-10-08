@@ -16,6 +16,8 @@ export default defineConfig({
   // chemins relatifs : l'appli peut être servie à la racine d'un site ou dans un sous-dossier (ex. /tcgc/)
   base: './',
   plugins: [react()],
+  // fil de calcul de l'IA en module ES : il charge onnxruntime-web à la demande (niveau « IA entraînée »)
+  worker: { format: 'es' },
   define: { __ENGINE__: JSON.stringify(engineVersion()) },
   build: { outDir: '../dist', emptyOutDir: true },
   server: {
