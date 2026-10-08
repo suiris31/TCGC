@@ -210,7 +210,7 @@ chaque graine jouée aux deux sièges, sur toutes les confrontations de decks) :
 | Niveau | Adversaires d'entraînement | Passage au suivant |
 |---|---|---|
 | 1. Aléatoire | IA aléatoire | ≥ 95 % contre l'aléatoire, 2 évaluations de suite |
-| 2. Heuristique | IA actuelle du simulateur (40 %), la même jouant au hasard 1 décision sur 4 (25 %) ou sur 2 (25 %), aléatoire (10 %) | ≥ 60 % contre l'heuristique (pure) et ≥ 95 % contre l'aléatoire, 2 fois de suite |
+| 2. Heuristique | IA actuelle du simulateur (35 %), la même jouant au hasard 1 décision sur 10 (30 %), sur 4 (20 %) ou sur 2 (10 %), aléatoire (5 %) | ≥ 60 % contre l'heuristique (pure) et ≥ 95 % contre l'aléatoire, 2 fois de suite |
 | 3. Monte-Carlo | Monte-Carlo (2 tirages), heuristique, aléatoire | ≥ 55 % contre le Monte-Carlo 16 tirages (niveau « Confirmé ») et ≥ 60 % contre l'heuristique |
 | 4. Self-play | lui-même (70 %), heuristique, Monte-Carlo, aléatoire | ≥ 58 % contre sa version du début du niveau, sans redescendre sous 60 % contre l'heuristique, 2 fois de suite |
 | 5. Ligue | lui-même, **anciennes versions** (choisies parmi celles qu'il bat le moins), IA intégrées | dernier niveau : évaluations de suivi et Elo |
@@ -227,8 +227,8 @@ python train.py --level 3                                    # passer outre en c
 `--level` n'agit qu'une fois : pour reprendre ensuite, relance la commande sans `--level`.
 
 Pourquoi des heuristiques « bruitées » au niveau 2 : la seule récompense est la victoire. Mesuré sur 200 parties,
-l'heuristique bat celle qui joue une décision sur 4 au hasard dans 82 % des cas, celle qui en joue une sur 2 dans
-97 % des cas, et cette dernière bat l'aléatoire dans 94 % des cas : un modèle qui sort du niveau 1 (~95 % contre
+l'heuristique bat celle qui joue une décision sur 10 au hasard dans 60 % des cas, une sur 4 dans 82 %, une sur 2 dans
+97 % ; celle à 1 sur 10 bat celle à 1 sur 4 dans 68 % des cas, et celle à 1 sur 2 bat l'aléatoire dans 94 % des cas : un modèle qui sort du niveau 1 (~95 % contre
 l'aléatoire) ne bat presque jamais l'heuristique pure, donc n'apprend presque rien contre elle seule. Les versions
 bruitées lui donnent des victoires, donc un signal, à chaque marche. La récompense ne change pas (+1 / −1).
 
