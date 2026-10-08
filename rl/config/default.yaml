@@ -28,7 +28,8 @@ model:
 
 ppo:
   steps_per_update: 8192   # décisions du modèle collectées avant chaque mise à jour
-  minibatch_size: 1024     # taille des lots d'apprentissage (à réduire si la mémoire du GPU manque)
+  minibatch_size: 1024     # taille des lots d'apprentissage (un pas de gradient par lot)
+  microbatch_size: 512     # calculé par morceaux de cette taille (même résultat) : à réduire si la mémoire du GPU manque
   epochs: 4                # passes sur les données collectées
   lr: 0.0003
   gamma: 1.0               # pas d'actualisation : seule l'issue de la partie compte

@@ -200,3 +200,15 @@ def test_stats_pool_winrate_aggregates_snapshots():
     st.by_opp["pool:u000050"] += [0.0] * 2
     out = st.summary()
     assert out["games/pool"] == 12 and abs(out["winrate/pool"] - 10 / 12) < 1e-9
+
+
+def test_fused_attention_equals_export_path():
+    m = make_model()
+    b = batch()
+    with torch.no_grad():
+        l1, v1 = m(**b)
+        for blk in m.blocks:
+            blk.fused = False
+        l2, v2 = m(**b)
+    mask = b["opt_mask"] > 0
+    assert torch.allclose(l1[mask], l2[mask], atol=1e-5) and torch.allclose(v1, v2, atol=1e-5)

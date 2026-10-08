@@ -332,6 +332,7 @@ def main() -> int:
         log("Arrêt demandé : fin de la mise à jour en cours, puis point de sauvegarde (Ctrl+C encore pour quitter tout de suite).")
 
     signal.signal(signal.SIGINT, on_signal)
+    warned = {"gpu": False}
     started = time.time() - state["elapsed"]
     exit_code = 0
     try:
@@ -365,7 +366,14 @@ def main() -> int:
                 f"| valeur {learn['value_mean']:+.2f} (var. expl. {learn['explained_variance']:.2f}) | π {learn.get('policy_loss', 0):+.3f} "
                 f"v {learn.get('value_loss', 0):.3f} kl {learn.get('approx_kl', 0):.4f} | {dps:.0f} décisions/s, "
                 f"{perf['games_per_s']:.1f} parties/s (Node {100 * perf['env_share']:.0f} %, réseau {100 * perf['infer_share']:.0f} %, "
-                f"apprentissage {learn['learn_s']:.1f} s)" + (f" | GPU {perf['gpu_mem_peak_gb']:.2f} Gio" if "gpu_mem_peak_gb" in perf else ""))
+                f"apprentissage {learn['learn_s']:.1f} s)"
+                + (f" | GPU {perf['gpu_mem_reserved_peak_gb']:.1f}/{perf['gpu_mem_total_gb']:.1f} Gio" if "gpu_mem_total_gb" in perf else ""))
+            if perf.get("gpu_mem_reserved_peak_gb", 0) > 0.9 * perf.get("gpu_mem_total_gb", float("inf")) and not warned["gpu"]:
+                warned["gpu"] = True
+                log(f"  ATTENTION : mémoire du GPU presque pleine ({perf['gpu_mem_reserved_peak_gb']:.1f} Gio sur "
+                    f"{perf['gpu_mem_total_gb']:.1f}). Sous Windows, le pilote NVIDIA déborde alors sur la mémoire de "
+                    "l'ordinateur et l'apprentissage devient très lent et irrégulier. Réduis ppo.microbatch_size "
+                    "(ex. --set ppo.microbatch_size=256) : même apprentissage, moins de mémoire.")
             if roll.get("error_rate", 0) > 0:
                 log(f"  ATTENTION : {roll['error_rate'] * 100:.2f} % de parties arrêtées par une erreur du moteur (voir {log_dir / 'anomalies'})")
 

@@ -93,7 +93,8 @@ Matériel : GPU CUDA 0 : NVIDIA GeForce RTX 3060, 12.0 Gio (11.2 Gio libres), Py
 Matériel : processeur : x86_64, 8 cœurs logiques, PyTorch 2.x (4 fils de calcul) — aucun GPU compatible détecté
 ```
 
-Sur GPU, la mémoire utilisée est affichée à chaque mise à jour (`GPU 0.31 Gio`) et enregistrée dans les mesures.
+Sur GPU, la mémoire réservée au plus fort de la mise à jour et la capacité de la carte sont affichées à chaque mise
+à jour (`GPU 1.8/8.0 Gio`) et enregistrées dans les mesures ; un avertissement apparaît au-delà de 90 %.
 
 Les parties sont simulées par les processus Node sur le **processeur**, même avec un GPU : le nombre de cœurs fixe
 le nombre de parties par seconde, le GPU accélère l'apprentissage.
@@ -116,7 +117,8 @@ Réglages qui dépendent du matériel (dans un fichier de `config/` ou avec `--s
 | `env.workers` | `auto` (cœurs − 1 ; moitié des cœurs sans GPU) | processus Node qui simulent les parties |
 | `env.envs_per_worker` | 16 | parties simultanées par processus (plus = lots plus gros pour le réseau) |
 | `ppo.steps_per_update` | 8192 | décisions collectées par mise à jour |
-| `ppo.minibatch_size` | 1024 | taille des lots d'apprentissage (réduis-la si la mémoire du GPU manque) |
+| `ppo.minibatch_size` | 1024 | taille des lots d'apprentissage (un pas de gradient par lot) |
+| `ppo.microbatch_size` | 512 | un lot est calculé par morceaux de cette taille, gradients additionnés : même apprentissage, mémoire bornée (réduis-la si la mémoire du GPU manque) |
 | `model.d_model`, `model.layers` | 128, 3 | taille du modèle (64/2 : petit ; 192/4 : grand) |
 | `train.checkpoint_every` | 10 | fréquence des points de sauvegarde |
 | `torch_threads` | `auto` | fils de calcul de PyTorch sur processeur |
@@ -422,7 +424,8 @@ joué. Ligue : anciennes versions tirées en privilégiant celles que le modèle
 | `Catalogue des cartes absent` | à la racine : `npm run game:cards` (Internet nécessaire), ou `--set env.catalog=chemin` |
 | `Node.js introuvable` / `trop ancien` | installe Node.js 22.18+, ou `--set env.node=C:/chemin/node.exe` / variable `OPCG_NODE` |
 | Pas de GPU détecté alors qu'il y en a un | PyTorch sans CUDA : `pip install torch --index-url https://download.pytorch.org/whl/cu126 --force-reinstall` ; vérifier avec `python -c "import torch; print(torch.cuda.is_available())"` |
-| Mémoire GPU insuffisante | réduis `ppo.minibatch_size` (512, 256) ou `model.d_model` |
+| Mémoire GPU insuffisante (erreur « out of memory ») | réduis `ppo.microbatch_size` (256, 128) : l'apprentissage reste le même |
+| Temps « apprentissage » très irrégulier (10 s puis 300 s), collecte normale, GPU presque plein | Windows : le pilote NVIDIA déborde sur la mémoire de l'ordinateur au lieu de signaler le manque. Réduis `ppo.microbatch_size` ; dans le Panneau de configuration NVIDIA, « Politique de repli de la mémoire système CUDA » sur « Préférer l'absence de repli » donne une erreur claire au lieu de la lenteur |
 | Ordinateur qui rame | réduis `env.workers` |
 | `encodage différent` à la reprise | le code de `game/rl/` a changé depuis l'entraînement : nouvel entraînement (`--fresh` ou `--run`) |
 | `CATALOGUE SYNTHÉTIQUE` | catalogue de test (cartes inventées) : utilise le vrai (`npm run game:cards`) |

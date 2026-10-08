@@ -40,6 +40,8 @@ TOL = 1e-4
 
 def export(model: torch.nn.Module, spec, path: Path) -> str:
     model.eval()
+    for blk in model.blocks:       # attention en opérations simples dans le fichier ONNX (voir model.Block)
+        blk.fused = False
     Na, Np, A = 12, 7, 5
     example = (torch.zeros(1, Na, spec.static_dim), torch.zeros(1, Na, spec.dyn_dim), torch.zeros(1, Na, dtype=torch.long),
                torch.ones(1, Na), torch.zeros(1, Np, spec.static_dim), torch.zeros(1, Np, spec.dyn_dim),

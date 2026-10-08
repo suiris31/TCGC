@@ -270,6 +270,11 @@ def ppo_update(agent: Agent, optimizer: torch.optim.Optimizer, trajs: list[Traj]
     ret_t = torch.from_numpy(ret.astype(np.float32))
     n = len(steps)
     mb = int(cfg["minibatch_size"])
+    # micro-lots : un lot d'apprentissage est calculé en plusieurs morceaux dont les gradients s'additionnent (même
+    # résultat qu'en une fois, mémoire du GPU bornée) ; observations de tailles voisines ensemble (moins de remplissage)
+    micro = max(1, int(cfg.get("microbatch_size") or mb))
+    attended = np.array([int((o.group == 0).sum()) for o in obs])
+    clip = cfg["clip"]
     stats = defaultdict(list)
     model.train()
     dev = agent.device
@@ -278,34 +283,42 @@ def ppo_update(agent: Agent, optimizer: torch.optim.Optimizer, trajs: list[Traj]
         perm = rng.permutation(n)
         for start in range(0, n, mb):
             idx = perm[start:start + mb]
-            batch = agent.collate([obs[j] for j in idx])
-            logits, value = agent.forward(batch)
-            logp_all = F.log_softmax(logits, dim=-1)
-            a = actions[idx].to(dev)
-            logp = logp_all.gather(1, a.unsqueeze(1)).squeeze(1)
-            old = old_logp[idx].to(dev)
-            mb_adv = adv_t[idx].to(dev)
+            mb_adv = adv_t[idx]
             if cfg.get("normalize_advantages", True) and len(idx) > 1:
                 mb_adv = (mb_adv - mb_adv.mean()) / (mb_adv.std() + 1e-8)
-            ratio = torch.exp(logp - old)
-            clip = cfg["clip"]
-            pg_loss = -torch.min(ratio * mb_adv, torch.clamp(ratio, 1 - clip, 1 + clip) * mb_adv).mean()
-            v_loss = 0.5 * ((value - ret_t[idx].to(dev)) ** 2).mean()
-            ent = entropy(logits, batch["opt_mask"]).mean()
-            loss = pg_loss + cfg["value_coef"] * v_loss - cfg["entropy_coef"] * ent
+            order = np.argsort(attended[idx], kind="stable")
             optimizer.zero_grad(set_to_none=True)
-            loss.backward()
+            acc: dict[str, float] = defaultdict(float)
+            for c0 in range(0, len(idx), micro):
+                part = order[c0:c0 + micro]
+                sub = idx[part]
+                w = len(sub) / len(idx)
+                batch = agent.collate([obs[j] for j in sub])
+                logits, value = agent.forward(batch)
+                logp_all = F.log_softmax(logits, dim=-1)
+                a = actions[sub].to(dev)
+                logp = logp_all.gather(1, a.unsqueeze(1)).squeeze(1)
+                old = old_logp[sub].to(dev)
+                adv_c = mb_adv[torch.from_numpy(part)].to(dev)
+                ratio = torch.exp(logp - old)
+                pg_loss = -torch.min(ratio * adv_c, torch.clamp(ratio, 1 - clip, 1 + clip) * adv_c).mean()
+                v_loss = 0.5 * ((value - ret_t[sub].to(dev)) ** 2).mean()
+                ent = entropy(logits, batch["opt_mask"]).mean()
+                loss = pg_loss + cfg["value_coef"] * v_loss - cfg["entropy_coef"] * ent
+                (loss * w).backward()
+                with torch.no_grad():
+                    log_ratio = logp - old
+                    acc["policy_loss"] += w * pg_loss.item()
+                    acc["value_loss"] += w * v_loss.item()
+                    acc["entropy"] += w * ent.item()
+                    acc["approx_kl"] += w * ((ratio - 1) - log_ratio).mean().item()
+                    acc["clip_frac"] += w * ((ratio - 1).abs() > clip).float().mean().item()
             grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["max_grad_norm"])
             optimizer.step()
-            with torch.no_grad():
-                log_ratio = logp - old
-                approx_kl = ((ratio - 1) - log_ratio).mean().item()
-                stats["policy_loss"].append(pg_loss.item())
-                stats["value_loss"].append(v_loss.item())
-                stats["entropy"].append(ent.item())
-                stats["approx_kl"].append(approx_kl)
-                stats["clip_frac"].append(((ratio - 1).abs() > clip).float().mean().item())
-                stats["grad_norm"].append(float(grad_norm))
+            for k, v in acc.items():
+                stats[k].append(v)
+            stats["grad_norm"].append(float(grad_norm))
+            approx_kl = acc["approx_kl"]
             target_kl = cfg.get("target_kl")
             if target_kl and approx_kl > 1.5 * target_kl:
                 stop = True

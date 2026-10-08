@@ -18,7 +18,8 @@ Architecture :
   options absentes (remplissage) sont masquées : la distribution ne porte que sur les options légales ;
 - tête valeur : estimation de l'issue de la partie (−1 défaite, +1 victoire) pour le joueur qui observe.
 
-Le calcul n'utilise que des opérations simples (pas de nn.MultiheadAttention) pour un export ONNX fidèle.
+Le calcul n'utilise que des opérations simples (pas de nn.MultiheadAttention) pour un export ONNX fidèle ; à
+l'entraînement, l'attention passe par scaled_dot_product_attention (même résultat, beaucoup moins de mémoire).
 """
 from __future__ import annotations
 
@@ -61,6 +62,9 @@ class Block(nn.Module):
         self.out = nn.Linear(d, d)
         self.ln2 = nn.LayerNorm(d)
         self.ff = nn.Sequential(nn.Linear(d, ffn_mult * d), nn.GELU(), nn.Linear(ffn_mult * d, d))
+        # attention de PyTorch (scaled_dot_product_attention) : même calcul, sans garder en mémoire la matrice
+        # lot × têtes × cartes² ; l'export ONNX met fused à False (opérations simples, fidèles dans le navigateur)
+        self.fused = True
 
     def forward(self, x: torch.Tensor, key_bias: torch.Tensor) -> torch.Tensor:
         B, L, d = x.shape
@@ -69,9 +73,13 @@ class Block(nn.Module):
         q = q.reshape(B, L, h, d // h).transpose(1, 2)
         k = k.reshape(B, L, h, d // h).transpose(1, 2)
         v = v.reshape(B, L, h, d // h).transpose(1, 2)
-        att = torch.matmul(q, k.transpose(-1, -2)) * (1.0 / math.sqrt(d // h)) + key_bias
-        att = torch.softmax(att, dim=-1)
-        y = torch.matmul(att, v).transpose(1, 2).reshape(B, L, d)
+        if self.fused and not torch.onnx.is_in_onnx_export():
+            y = F.scaled_dot_product_attention(q, k, v, attn_mask=key_bias.to(q.dtype))
+        else:
+            att = torch.matmul(q, k.transpose(-1, -2)) * (1.0 / math.sqrt(d // h)) + key_bias
+            att = torch.softmax(att, dim=-1)
+            y = torch.matmul(att, v)
+        y = y.transpose(1, 2).reshape(B, L, d)
         x = x + self.out(y)
         return x + self.ff(self.ln2(x))
 

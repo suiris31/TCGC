@@ -36,9 +36,15 @@ def describe(device: torch.device) -> str:
 
 
 def memory_stats(device: torch.device) -> dict:
+    """Mémoire du GPU pendant la dernière mise à jour (les pics sont remis à zéro à chaque lecture). « réservée » :
+    ce que PyTorch garde vraiment sur la carte, à comparer à sa capacité."""
     if device.type == "cuda":
-        return {
+        out = {
             "gpu_mem_allocated_gb": torch.cuda.memory_allocated(device) / 2**30,
             "gpu_mem_peak_gb": torch.cuda.max_memory_allocated(device) / 2**30,
+            "gpu_mem_reserved_peak_gb": torch.cuda.max_memory_reserved(device) / 2**30,
+            "gpu_mem_total_gb": torch.cuda.get_device_properties(device).total_memory / 2**30,
         }
+        torch.cuda.reset_peak_memory_stats(device)
+        return out
     return {}
