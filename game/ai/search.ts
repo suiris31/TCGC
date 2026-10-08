@@ -173,8 +173,14 @@ export function coachAnalyze(s: GameState, opts: CoachOptions): Analysis {
 // Choix de l'IA selon son niveau. Les petites décisions au milieu d'un effet restent à l'IA simple ; quand la
 // simulation ne départage pas nettement, le choix de bon sens est gardé (moins de coups bizarres dus au hasard).
 export function aiChoose(s: GameState, d: Decision, level: Level): string {
-  if (level === 1 || d.inEffect || d.options.length === 1 || s.decision !== d) return heuristicChooser(s, d);
-  const cfg = LEVELS[level];
+  if (level === 1) return heuristicChooser(s, d);
+  return mcChoose(s, d, LEVELS[level]);
+}
+
+// Choix Monte-Carlo (niveaux 2 et 3). Sans budgetMs, le nombre de tirages est fixe : le choix ne dépend que de l'état,
+// ce qui rend reproductibles les parties d'entraînement et d'évaluation de l'IA par apprentissage (game/rl/).
+export function mcChoose(s: GameState, d: Decision, cfg: { samples: number; budgetMs?: number; margin: number }): string {
+  if (d.inEffect || d.options.length === 1 || s.decision !== d) return heuristicChooser(s, d);
   const analysis = analyze(s, { samples: cfg.samples, budgetMs: cfg.budgetMs });
   const best = analysis.stats[0];
   if (!best) return analysis.heuristic;

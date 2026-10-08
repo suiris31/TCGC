@@ -9,7 +9,7 @@
 // deck, comme à une vraie table.
 import {
   addDonFromDeck, addMod, addTopDeckToLife, canBeKO, canBeRested, canLeaveByEffect, chooseUpTo1, chooseUpToN, def,
-  discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, lifeToHand, log, lookTopPick, may,
+  discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, knownFirst, lifeToHand, log, lookTopPick, may,
   other, playCharacter, power, removeByEffect, restByEffect, returnDon, setActive, trashTopDeck, uniqueByNum,
   untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
@@ -360,7 +360,7 @@ const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, op
     run: (ctx) => {
       const P = ctx.s.players[ctx.me];
       const list = zone === 'hand' ? P.hand : P.trash;
-      const options = uniqueByNum(list.filter(eligible));
+      const options = uniqueByNum(knownFirst(ctx.s, ctx.me, list.filter(eligible)));
       if (!options.length) return;
       const where = zone === 'hand' ? 'de ta main' : 'de ta Défausse';
       const answer = ctx.ask({

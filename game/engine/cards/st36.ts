@@ -1,7 +1,8 @@
 // DECK POUR DÉBUTANT -JAUNE Eustass "Captain" Kidd- [ST-36] : effets codés d'après le texte officiel français
 import {
   addMod, addTopDeckToLife, canBeRested, chooseUpTo1, def, drawAndDiscard, fieldCards, fieldCost, giveRestedDon, hasType,
-  leaderHasType, lifeToHand, log, lookTopPick, may, myChars, restByEffect, removeByEffect, setActive, uniqueByNum,
+  knownFirst, leaderHasType, lifeToHand, log, lookTopPick, may, myChars, restByEffect, removeByEffect, reveal, setActive,
+  uniqueByNum,
 } from '../rules.ts';
 import type { Card, CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import { costAtMost, drawLog, isCharacter, isNamed, koOpp, mayDiscard, playCharFromHand, playTriggerCard, restOpp } from './common.ts';
@@ -31,6 +32,8 @@ function flipLife(ctx: EffectCtx, toFaceUp: boolean, prompt: string, tag: string
   const life = ctx.s.players[ctx.me].life;
   const card = answer === 'top' ? life[0] : life[life.length - 1];
   card.faceUp = toFaceUp;
+  // retournée face cachée, la carte reste connue des deux joueurs, qui l'ont vue
+  if (!toFaceUp) reveal(ctx.s, [card.uid], 'both');
   log(ctx.s, ctx.me, `retourne la carte ${answer === 'top' ? 'du dessus' : 'du dessous'} de sa Vie face ${toFaceUp ? 'visible' : 'cachée'}${toFaceUp ? ` (${def(card.num).name})` : ''}`);
   return true;
 }
@@ -152,7 +155,7 @@ export const ST36: Record<string, CardBehavior> = {
       });
       if (answer === 'no') return;
       lifeToHand(s, ctx.me, answer as 'top' | 'bottom');
-      const candidates = uniqueByNum(P.hand.filter((c) => isCharacter(c.num) && hasType(c.num, SN)));
+      const candidates = uniqueByNum(knownFirst(s, ctx.me, P.hand.filter((c) => isCharacter(c.num) && hasType(c.num, SN))));
       const uid = chooseUpTo1(ctx, candidates.map((c) => c.uid), 'Personnage {Supernovae} à placer face visible au-dessus de ta Vie :', 'toLife');
       if (uid === null) return;
       const [card] = P.hand.splice(P.hand.findIndex((c) => c.uid === uid), 1);
@@ -204,6 +207,7 @@ export const ST36: Record<string, CardBehavior> = {
       if (ctx.trigger) {
         ctx.trigger.moved = true;
         ctx.s.players[ctx.me].hand.push(ctx.trigger.card);
+        reveal(ctx.s, [ctx.trigger.card.uid], 'both');  // carte révélée par son [Déclenchement] : publique
         log(ctx.s, ctx.me, 'ajoute Roronoa Zoro à sa main');
       }
     },

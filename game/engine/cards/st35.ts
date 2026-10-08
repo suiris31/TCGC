@@ -1,7 +1,7 @@
 // DECK POUR DÉBUTANT -ROUGE/NOIR Sabo- [ST-35] : effets codés d'après le texte officiel français
 import {
   RA, addMod, chooseUpTo1, def, draw, fieldCards, fieldCost, findField, giveRestedDon, hasType, koByEffect, leaderHasType,
-  log, may, payDon, playCharacter, power, removeFromField, trashTopDeck,
+  knownFirst, log, may, payDon, playCharacter, power, removeFromField, reveal, trashTopDeck,
 } from '../rules.ts';
 import type { Card, CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 
@@ -37,7 +37,7 @@ function playRevolutionaryFromHandOrTrash(ctx: EffectCtx) {
     return d.category === 'CHARACTER' && d.types.includes(RA) && (d.power ?? 0) <= 4000;
   };
   const options = [
-    ...uniqueByNum(P.hand.filter(eligible)).map((c) => ({ id: `hand:${c.uid}`, label: `${def(c.num).name} (main)`, uid: c.uid })),
+    ...uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(eligible))).map((c) => ({ id: `hand:${c.uid}`, label: `${def(c.num).name} (main)`, uid: c.uid })),
     ...uniqueByNum(P.trash.filter(eligible)).map((c) => ({ id: `trash:${c.uid}`, label: `${def(c.num).name} (Défausse)`, uid: c.uid })),
   ];
   if (!options.length) return;
@@ -106,7 +106,8 @@ export const ST35: Record<string, CardBehavior> = {
         const answer = ctx.ask({
           player: ctx.opp,
           prompt: 'Corbeau : défausse 1 carte de ta main.',
-          options: opp.hand.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
+          // un exemplaire par carte (celui que l'adversaire connaît d'abord : voir knownFirst)
+          options: uniqueByNum(knownFirst(ctx.s, ctx.opp, opp.hand)).map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
           tag: 'discard',
         });
         const [card] = opp.hand.splice(opp.hand.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
@@ -146,6 +147,7 @@ export const ST35: Record<string, CardBehavior> = {
       if (answer === 'no') return;
       const card = answer === 'top' ? P.life.shift()! : P.life.pop()!;
       P.hand.push({ uid: card.uid, num: card.num });
+      if (card.faceUp) reveal(ctx.s, [card.uid], 'both');  // carte de Vie face visible : publique
       log(ctx.s, ctx.me, `ajoute 1 carte de sa Vie à sa main (il lui reste ${P.life.length} Vie)`);
       restedDonToLeaderOrCharacter(ctx);
     },
@@ -183,18 +185,17 @@ export const ST35: Record<string, CardBehavior> = {
       run: (ctx, card) => {
         const P = ctx.s.players[ctx.me];
         if (!P.trash.length) return;
+        // placer la carte est le coût de l'effet : une fois l'effet activé, pas d'annulation (une annulation sans
+        // marquer l'effet comme utilisé permettait de l'activer et de l'annuler à l'infini)
+        card.usedOpt.push('main');
         const answer = ctx.ask({
           prompt: 'Koala : quelle carte de ta Défausse placer au-dessous de ton deck ?',
-          options: [
-            ...uniqueByNum(P.trash).map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
-            { id: 'none', label: 'Annuler' },
-          ],
+          options: uniqueByNum(P.trash).map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
           tag: 'trashToDeck',
         });
-        if (answer === 'none') return;
-        card.usedOpt.push('main');
         const [moved] = P.trash.splice(P.trash.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
         P.deck.push(moved);
+        reveal(ctx.s, [moved.uid], 'both');  // carte publique (Défausse) placée au-dessous du deck : les deux joueurs le savent
         log(ctx.s, ctx.me, `place ${def(moved.num).name} de sa Défausse au-dessous de son deck (Koala)`);
         restedDonToLeaderOrCharacter(ctx);
       },

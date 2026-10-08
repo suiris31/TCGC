@@ -6,8 +6,8 @@ import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
   addMod, allField, attackTargets, canBeRested, def, describe, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker,
-  hasKeyword, koCharacter, log, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack, shuffleDeck,
-  triggerEffect, untapDon,
+  hasKeyword, knownFirst, koCharacter, log, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack,
+  reveal, shuffleDeck, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
   Decision, EffectCtx, GameState, HistoryEntry, Option, PendingEffect, PlayerId, PlayerState,
@@ -86,8 +86,13 @@ export function newGame(opts: NewGameOptions, chooser?: Chooser): GameState {
 
 export function advance(s: GameState, chooser?: Chooser): GameState {
   for (let guard = 0; guard < 50000; guard++) {
-    pruneKnown(s);
-    checkDefeat(s);
+    // Pendant une question au milieu d'un effet, l'état est celui d'un effet à moitié résolu (cartes regardées hors du
+    // deck...) : les conditions de défaite et ce que chacun sait ne sont vérifiés qu'une fois l'effet fini, comme quand
+    // l'effet se résout d'un coup (chooser)
+    if (!s.decision?.inEffect) {
+      pruneKnown(s);
+      checkDefeat(s);
+    }
     if (s.winner !== null) {
       s.flow = { stage: 'over' };
       s.decision = null;
@@ -115,12 +120,20 @@ export function advance(s: GameState, chooser?: Chooser): GameState {
 // est jouée par celui-ci (simulations).
 export function act(state: GameState, choice: string, chooser?: Chooser): GameState {
   const d = state.decision;
+  if (d && !d.inEffect && d.options.some((o) => o.id === choice)) return actInPlace(structuredClone(state), choice, chooser);
+  return actInPlace(state, choice, chooser);
+}
+
+// Comme act, mais l'état reçu peut être modifié au lieu d'être copié : pour un appelant qui en est le seul propriétaire
+// (environnement d'apprentissage, game/rl/). La copie de l'état prend l'essentiel du temps d'une décision. Le résultat
+// est identique à celui de act (vérifié sur des parties complètes, game/tests/rl-env.test.ts).
+export function actInPlace(state: GameState, choice: string, chooser?: Chooser): GameState {
+  const d = state.decision;
   if (!d) throw new Error('Aucune décision attendue');
   if (!d.options.some((o) => o.id === choice)) throw new Error(`Choix invalide : ${choice}`);
   if (d.inEffect) return advance(replayEffect(state, choice), chooser);
-  const s = structuredClone(state);
-  applyDecision(s, choice);
-  return advance(s, chooser);
+  applyDecision(state, choice);
+  return advance(state, chooser);
 }
 
 // Décision au milieu d'un effet : on rejoue l'effet depuis son début avec la nouvelle réponse
@@ -196,6 +209,7 @@ function resolvePending(s: GameState, chooser?: Chooser) {
       tag: spec.tag,
       source: p.source,
       inEffect: true,
+      ...(spec.cards ? { cards: spec.cards } : {}),
     };
     if (decision.options.length === 1) return decision.options[0].id; // choix imposé
     if (next < p.answers.length) {
@@ -385,6 +399,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
         }
       }
       P.hand.push(card);
+      if (lifeCard.faceUp) reveal(s, [card.uid], 'both');  // carte de Vie face visible : publique
       log(s, ctx.me, `perd 1 Vie (il lui en reste ${P.life.length})`);
     }
   },
@@ -506,7 +521,7 @@ function mainDecision(s: GameState): Decision {
   const p = s.active;
   const P = s.players[p];
   const options: Option[] = [];
-  for (const c of firstOfEachNum(P.hand)) {
+  for (const c of firstOfEachNum(knownFirst(s, p, P.hand))) {
     const d = def(c.num);
     const cost = handCost(s, p, c);
     if (cost > P.donActive) continue;
@@ -548,7 +563,7 @@ function counterDecision(s: GameState): Decision | null {
   const defender = other(s.active);
   const P = s.players[defender];
   const options: Option[] = [];
-  for (const c of firstOfEachNum(P.hand)) {
+  for (const c of firstOfEachNum(knownFirst(s, defender, P.hand))) {
     const d = def(c.num);
     if (d.category === 'CHARACTER' && (d.counter ?? 0) > 0) {
       options.push({ id: `counter:${c.uid}`, label: `Contre +${d.counter} : défausser ${d.name}`, uid: c.uid, group: 'counter' });

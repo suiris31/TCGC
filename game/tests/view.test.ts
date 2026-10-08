@@ -7,7 +7,8 @@ import { heuristicChooser } from '../ai/heuristic.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { DECKS } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
-import { knows } from '../engine/rules.ts';
+import { knows, lifeToHand, reveal } from '../engine/rules.ts';
+import { hasOption, play, scenario, setDon, setHand } from './helpers.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
 
@@ -23,8 +24,8 @@ function allowed(s: GameState, seat: PlayerId): Set<number> {
     for (const o of d.options) {
       if (o.uid !== undefined) ok.add(o.uid);
       if (o.target !== undefined) ok.add(o.target);
-      for (const part of o.id.split(':').slice(1)) if (/^\d+$/.test(part)) ok.add(Number(part));
     }
+    for (const c of d.cards ?? []) ok.add(c.uid);
   }
   const top = s.players[other(seat)].deck[0];
   if (top && s.peek[seat] === top.uid) ok.add(top.uid);
@@ -44,7 +45,9 @@ function citedUids(v: GameState): Set<number> {
   const out = new Set<number>();
   const json = JSON.stringify({ ...v, history: v.history.filter((h) => h.label === '') });
   for (const m of json.matchAll(/"(?:uid|target|source|attacker)":(-?\d+)/g)) out.add(Number(m[1]));
-  for (const m of json.matchAll(/"(?:id|choice)":"[a-z]+((?::\d+)+)"/gi)) for (const n of m[1].split(':').slice(1)) out.add(Number(n));
+  // identifiants d'options qui désignent des cartes (« cost:4 », coût déclaré, et « choice:1 », effet choisi, n'en
+  // désignent pas)
+  for (const m of json.matchAll(/"(?:id|choice)":"(?!cost:|choice:)[a-z]+((?::\d+)+)"/gi)) for (const n of m[1].split(':').slice(1)) out.add(Number(n));
   return out;
 }
 
@@ -115,4 +118,82 @@ test('vue d’un joueur : les vrais identifiants, qui suivent l’ordre de la li
   assert.deepEqual(v.players[1].hand.map((c) => c.uid), [-1000, -1001, -1002, -1003, -1004]);
   assert.ok(v.players[0].deck.every((c) => c.num === HIDDEN));
   assert.ok(v.players[0].life.every((c) => c.num === HIDDEN));
+});
+
+test('vue d’un joueur : un coût déclaré (« cost:4 ») ou un effet choisi (« choice:1 ») ne montre aucune carte', () => {
+  // les cartes d'identifiant 0 à 10 sont celles du joueur 0 (deck et main) : elles restaient visibles par le joueur 1
+  // quand une de ses options s'appelait « cost:n » (lecture des nombres de l'identifiant de l'option)
+  const s = newGame({ decks: ['ST-34', 'ST-34'], names: ['A', 'B'], seed: 3, first: 0 });
+  s.decision = {
+    player: 1, kind: 'effect', prompt: 'Déclare un coût', tag: 'declareCost', inEffect: true,
+    options: [...Array.from({ length: 11 }, (_, n) => ({ id: `cost:${n}`, label: `Coût ${n}` })), { id: 'choice:1', label: 'Effet 2' }],
+  };
+  const v = viewFor(s, 1);
+  const P = v.players[0];
+  assert.ok([...P.hand, ...P.deck, ...P.life].every((c) => c.num === HIDDEN && c.uid < 0));
+});
+
+// ---------- fuites indirectes (audit de l'étape RL) ----------
+
+test('vue : ni les Contres ni les questions d’effet de l’adversaire (leur existence trahit sa main), ni l’étiquette de sa décision', () => {
+  const s = newGame({ decks: ['ST-31', 'ST-35'], names: ['A', 'B'], seed: 5, first: 0 });
+  s.history = [
+    { turn: 2, player: 1, kind: 'main', prompt: 'p', choice: 'end', label: 'Fin du tour' },
+    { turn: 3, player: 1, kind: 'counter', prompt: 'p', choice: 'pass', label: 'Ne pas contrer' },
+    { turn: 3, player: 1, kind: 'effect', tag: 'trigger', prompt: 'p', choice: 'hand', label: 'Ajouter à la main' },
+    { turn: 3, player: 0, kind: 'effect', tag: 'pick', prompt: 'p', choice: 'none', label: 'Aucune' },
+  ];
+  s.decision = { player: 1, kind: 'effect', tag: 'playFree', prompt: 'secret', options: [{ id: 'none', label: 'Aucun' }], source: 3, inEffect: true };
+  const v = viewFor(s, 0);
+  assert.deepEqual(v.history.map((h) => [h.player, h.kind]), [[1, 'main'], [0, 'effect']]);
+  assert.equal(v.history[0].tag, undefined);
+  assert.deepEqual(v.decision, { player: 1, kind: 'effect', prompt: '', options: [] });
+});
+
+test('vue : main adverse dans un ordre qui ne dit rien (cartes connues d’abord, puis cachées)', () => {
+  const s = newGame({ decks: ['ST-31', 'ST-35'], names: ['A', 'B'], seed: 5, first: 0 });
+  const O = s.players[1];
+  const last = O.hand[O.hand.length - 1];
+  reveal(s, [last.uid], 0);
+  const v = viewFor(s, 0);
+  assert.equal(v.players[1].hand[0].uid, last.uid);
+  assert.deepEqual(v.players[1].hand.slice(1).map((c) => c.uid), [-1000, -1001, -1002, -1003]);
+});
+
+test('vue : deux exemplaires d’une carte, l’un connu de l’adversaire : c’est le connu qui est joué', () => {
+  const s = scenario(['ST-31', 'ST-35'], (g) => {
+    const [a, b] = setHand(g, 0, ['ST31-002', 'ST31-002']);
+    reveal(g, [b.uid], 1);
+    setDon(g, 0, 10);
+    assert.ok(a.uid !== b.uid);
+  });
+  const [a, b] = s.players[0].hand;
+  assert.ok(hasOption(s, `play:${b.uid}`), 'l’exemplaire connu de l’adversaire est proposé');
+  assert.ok(!hasOption(s, `play:${a.uid}`));
+  // après avoir joué « un Jinbe », l'adversaire ne voit plus aucun Jinbe connu dans la main
+  const after = act(s, `play:${b.uid}`);
+  assert.ok(viewFor(after, 1).players[0].hand.every((c) => c.num === HIDDEN));
+});
+
+test('vue : cartes regardées pendant un effet, toutes montrées au joueur (et à lui seul)', () => {
+  let s = scenario(['ST-31', 'ST-35'], (g) => {
+    setHand(g, 0, ['OP01-016']);
+    setDon(g, 0, 10);
+  });
+  s = play(s, 'OP01-016');
+  if (s.decision?.tag !== 'pick') return;  // aucune carte à prendre parmi les 5 : pas de question
+  assert.equal(s.decision.cards?.length, 5);
+  const mine = viewFor(s, 0);
+  assert.equal(mine.decision?.cards?.length, 5);
+  assert.equal(viewFor(s, 1).decision?.cards, undefined);
+});
+
+test('vue : une carte de Vie face visible ajoutée à la main reste connue de l’adversaire', () => {
+  const s = newGame({ decks: ['ST-31', 'ST-35'], names: ['A', 'B'], seed: 9, first: 0 });
+  const g = act(act(s, 'keep'), 'keep');
+  const P = g.players[1];
+  P.life[0].faceUp = true;
+  const uid = P.life[0].uid;
+  lifeToHand(g, 1, 'top');
+  assert.ok(viewFor(g, 0).players[1].hand.some((c) => c.uid === uid && c.num !== HIDDEN));
 });

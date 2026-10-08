@@ -48,8 +48,8 @@ test('Morley et Koala (OP13-081) : coût 8 avec un Leader {Armée révolutionnai
   const [morley, koala] = s.players[0].chars.map((c) => c.uid);
   assert.equal(fieldCost(s, morley), 8);
   assert.equal(fieldCost(s, koala), 8);
+  // une seule carte dans la Défausse : placée d'office (plus d'option « Annuler » : c'est le coût de l'effet)
   s = choose(s, `act:${koala}`);
-  s = choose(s, (o) => o.id.startsWith('card:'));
   expectTag(s, 'donTarget');
   s = choose(s, `card:${s.players[0].leader.uid}`);
   assert.equal(s.players[0].leader.don, 1);

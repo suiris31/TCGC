@@ -47,7 +47,11 @@ export function inHand(s: GameState, p: PlayerId, num: string): number {
   return c.uid;
 }
 
-export const play = (s: GameState, num: string, p: PlayerId = 0) => act(s, option(s, (o) => (o.id.startsWith('play:') || o.id.startsWith('event:')) && o.uid === inHand(s, p, num)));
+// Joue un exemplaire de la carte (le moteur choisit lequel : celui que l'adversaire connaît d'abord, voir knownFirst)
+export const play = (s: GameState, num: string, p: PlayerId = 0) => {
+  inHand(s, p, num);
+  return act(s, option(s, (o) => (o.id.startsWith('play:') || o.id.startsWith('event:')) && s.players[p].hand.some((c) => c.uid === o.uid && c.num === num)));
+};
 export const attack = (s: GameState, attacker: number, target: number) => act(s, `attack:${attacker}:${target}`);
 export const logHas = (s: GameState, text: string | RegExp) => s.log.some((l) => (typeof text === 'string' ? l.text.includes(text) : text.test(l.text)));
 export const onField = (s: GameState, p: PlayerId, u: number) => s.players[p].chars.some((c) => c.uid === u);

@@ -107,6 +107,16 @@ export function pruneKnown(s: GameState) {
   if (s.known?.length) s.known = s.known.filter((k) => hiddenZoneOf(s, k.uid)?.zone === k.zone);
 }
 
+// Exemplaires d'une main proposés dans un choix : pour chaque numéro, celui que l'adversaire connaît (carte révélée)
+// passe en premier. Deux exemplaires d'une même carte ne se distinguent pas à une vraie table : si l'adversaire sait
+// que la main contient la carte X et que son propriétaire joue « un X », c'est l'exemplaire connu qui part ; sinon
+// l'adversaire verrait l'exemplaire connu rester en main et saurait qu'il y en avait un deuxième.
+export function knownFirst<T extends Card>(s: GameState, owner: PlayerId, cards: T[]): T[] {
+  const opp = other(owner);
+  if (!s.known?.some((k) => k.to === opp)) return cards;
+  return [...cards].sort((a, b) => Number(knows(s, opp, b.uid)) - Number(knows(s, opp, a.uid)));
+}
+
 // Mélange un deck : plus personne ne sait où sont ses cartes
 export function shuffleDeck(s: GameState, p: PlayerId) {
   shuffle(s, s.players[p].deck);
@@ -262,7 +272,7 @@ export function discardFromHand(ctx: EffectCtx, p: PlayerId, n: number, prompt: 
   const P = s.players[p];
   let count = 0;
   for (let i = 0; i < n; i++) {
-    const candidates = uniqueByNum(P.hand.filter(filter));
+    const candidates = uniqueByNum(knownFirst(s, p, P.hand.filter(filter)));
     if (!candidates.length) break;
     const answer = ctx.ask({
       player: p,
@@ -302,6 +312,7 @@ export function lookTopPick(ctx: EffectCtx, count: number, max: number, filter: 
       prompt: `Tu regardes : ${looked.map((c) => def(c.num).name).join(', ')}. Ajouter à ta main ${what} ?`,
       options: [...candidates.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucune' }],
       tag: 'pick',
+      cards: looked.map((c) => ({ uid: c.uid, num: c.num })),
     });
     if (answer === 'none') break;
     const [card] = looked.splice(looked.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
@@ -338,6 +349,7 @@ export function declareAndReveal(ctx: EffectCtx): boolean {
   const top = O.deck[0];
   if (!top) return false;
   s.peek[ctx.me] = top.uid;
+  reveal(s, [top.uid], 'both');  // carte révélée : les deux joueurs la voient (son propriétaire aussi)
   const cost = def(top.num).cost;
   const match = cost === declared;
   log(s, ctx.me, `déclare le coût ${declared} et révèle ${def(top.num).name} (coût ${cost ?? '—'}) : ${match ? 'réussi' : 'raté'}`);
@@ -605,7 +617,7 @@ export function playStage(ctx: EffectCtx, p: PlayerId, card: Card) {
 // « Jouez jusqu'à 1 carte ... de votre main » (sans payer son coût)
 export function playFromHandFree(ctx: EffectCtx, filter: (c: Card) => boolean, prompt: string, opts: { rested?: boolean } = {}): Card | null {
   const P = ctx.s.players[ctx.me];
-  const candidates = uniqueByNum(P.hand.filter(filter));
+  const candidates = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(filter)));
   if (!candidates.length) return null;
   const answer = ctx.ask({
     prompt,
@@ -652,6 +664,7 @@ export function lifeToHand(s: GameState, p: PlayerId, from: 'top' | 'bottom') {
   const card = from === 'top' ? P.life.shift() : P.life.pop();
   if (!card) return null;
   P.hand.push({ uid: card.uid, num: card.num });
+  if (card.faceUp) reveal(s, [card.uid], 'both');  // carte de Vie face visible : tout le monde sait qu'elle est en main
   log(s, p, `ajoute à sa main 1 carte ${from === 'top' ? 'du dessus' : 'du dessous'} de sa Vie (${P.life.length} Vie)`);
   return card;
 }
