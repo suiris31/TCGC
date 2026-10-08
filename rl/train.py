@@ -31,7 +31,7 @@ from opcg_rl.config import dump, load_config  # noqa: E402
 from opcg_rl.device import describe, memory_stats, select_device  # noqa: E402
 from opcg_rl.elo import anchor_label, fit_elo  # noqa: E402
 from opcg_rl.evaluation import plan_games, run_games, summarize, to_markdown  # noqa: E402
-from opcg_rl.league import League  # noqa: E402
+from opcg_rl.league import League, Snapshot  # noqa: E402
 from opcg_rl.logger import Logger  # noqa: E402
 from opcg_rl.model import parameter_count  # noqa: E402
 from opcg_rl.paths import CHECKPOINTS_DIR, LOGS_DIR  # noqa: E402
@@ -143,22 +143,31 @@ def main() -> int:
             ck.restore_rng(ckpt["rng"], rng)
     seeds = TrainSeeds(state["seed_counter"], salt=cfg["seed"])
 
+    # anciennes versions chargées : toute la ligue peut jouer en même temps (tirage PFSP), le cache la contient entière
     loaded: OrderedDict[str, Agent] = OrderedDict()
+    cache_size = league.max_snapshots + len(levels) + 8
 
     def load_snapshot(sid: str) -> Agent:
         if sid in loaded:
             loaded.move_to_end(sid)
             return loaded[sid]
-        snap = next((s for s in league.snapshots if s.id == sid), None)
+        snap = league.find(sid)
         if snap is None:
             raise KeyError(f"ancienne version inconnue : {sid}")
         data = torch.load(snap.path, map_location="cpu", weights_only=False)
         m = build_model(spec, vocab, data["model_config"])
         m.load_state_dict(data["model_state"])
         loaded[sid] = Agent(m, vocab, spec, device, sid)
-        while len(loaded) > 8:
+        while len(loaded) > cache_size:
             loaded.popitem(last=False)
         return loaded[sid]
+
+    def add_snapshot() -> Snapshot:
+        # les versions de départ des niveaux servent aux évaluations : jamais retirées de la ligue
+        snap = league.add(model, state["update"], snapshot_extra(), keep=set(state["level_start"].values()))
+        for sid in league.purge(collector.snapshots_in_play()):
+            loaded.pop(sid, None)
+        return snap
 
     model_config = model.cfg.to_dict()
     collector = Collector(pool, train_envs, agent, league, seeds, rng, cfg["env"], load_snapshot)
@@ -181,8 +190,8 @@ def main() -> int:
     def ensure_level_start():
         key = str(state["level"])
         if key not in state["level_start"]:
-            snap = league.add(model, state["update"], snapshot_extra())
-            state["level_start"][key] = snap.id
+            state["level_start"][key] = f"u{state['update']:06d}"
+            add_snapshot()
 
     def gate_eval(level: dict) -> bool:
         decks = list(spec.decks) if level.get("decks", "all") == "all" else list(level["decks"])
@@ -201,11 +210,15 @@ def main() -> int:
                 agents[sid] = load_snapshot(sid)
                 opponents = [f"model:{sid}"]
             elif opp == "latest_snapshots":
-                for snap in league.snapshots[-int(item.get("count", 3)):]:
+                # sans la copie prise à cette mise à jour même : ce serait le modèle contre lui-même
+                past = [s for s in league.snapshots if s.update < state["update"]]
+                for snap in past[-int(item.get("count", 3)):]:
                     agents[snap.id] = load_snapshot(snap.id)
                     opponents.append(f"model:{snap.id}")
             else:
                 opponents = [opp]
+            if not opponents:
+                continue
             sub = pairs
             if item.get("pairs") and item["pairs"] < len(pairs):
                 order = np.random.default_rng(12345).permutation(len(pairs))[: item["pairs"]]
@@ -286,7 +299,7 @@ def main() -> int:
                 log(f"  ATTENTION : {roll['error_rate'] * 100:.2f} % de parties arrêtées par une erreur du moteur (voir {log_dir / 'anomalies'})")
 
             if state["update"] % int(cfg["train"]["snapshot_every"]) == 0 and any(o["kind"] in ("self", "pool") for o in level["opponents"]):
-                league.add(model, state["update"], snapshot_extra())
+                add_snapshot()
             if state["update"] % int(level.get("eval_every", 25)) == 0:
                 passed = gate_eval(level)
                 is_last = state["level"] == len(levels) - 1

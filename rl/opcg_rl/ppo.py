@@ -80,9 +80,12 @@ class Stats:
         all_scores = [s for v in self.by_opp.values() for s in v]
         out["winrate"] = float(np.mean(all_scores)) if all_scores else 0.0
         out["mean_reward"] = float(np.mean([2 * s - 1 for s in all_scores])) if all_scores else 0.0
-        for k, v in sorted(self.by_opp.items()):
-            out[f"winrate/{k.split(':')[0]}"] = float(np.mean(v))
-            out[f"games/{k.split(':')[0]}"] = out.get(f"games/{k.split(':')[0]}", 0) + len(v)
+        families: dict[str, list[float]] = defaultdict(list)       # « pool:u000025 », « pool:u000050 »... → « pool »
+        for k, v in self.by_opp.items():
+            families[k.split(":")[0]].extend(v)
+        for k, v in sorted(families.items()):
+            out[f"winrate/{k}"] = float(np.mean(v))
+            out[f"games/{k}"] = len(v)
         return out
 
 
@@ -109,6 +112,10 @@ class Collector:
         self.started = False
         self.games_started = 0
         self.timing = {"env_s": 0.0, "infer_s": 0.0, "decisions": 0}
+
+    def snapshots_in_play(self) -> set[str]:
+        """Anciennes versions qui jouent une partie en cours."""
+        return {c.split(":", 1)[1] for g in self.games.values() for c in g.controllers if c and c.startswith("snap:")}
 
     # ---------- nouvelles parties ----------
 

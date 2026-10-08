@@ -171,7 +171,7 @@ def to_markdown(report: dict, title: str) -> str:
             lines.append(f"| {deck} | {v['games']} | {pct(v['winrate'])} |")
         decks = sorted({k.split('|')[0] for k in e["by_matchup"]} | {k.split('|')[1] for k in e["by_matchup"]})
         if len(decks) > 1:
-            lines += ["", f"Confrontations (ligne : deck du modèle, colonne : deck adverse)", "",
+            lines += ["", "Confrontations (ligne : deck du modèle, colonne : deck adverse)", "",
                       "| | " + " | ".join(decks) + " |", "|---" * (len(decks) + 1) + "|"]
             for a in decks:
                 cells = [pct(e["by_matchup"][f"{a}|{b}"]["winrate"]) if f"{a}|{b}" in e["by_matchup"] else "" for b in decks]

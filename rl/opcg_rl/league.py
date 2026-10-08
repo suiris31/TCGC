@@ -45,18 +45,39 @@ class League:
     pfsp_power: float = 2.0
     max_snapshots: int = 50
     snapshots: list[Snapshot] = field(default_factory=list)
+    retired: list[Snapshot] = field(default_factory=list)    # retirées de la ligue, fichier encore sur le disque
 
-    def add(self, model: torch.nn.Module, update: int, extra: dict) -> Snapshot:
+    def add(self, model: torch.nn.Module, update: int, extra: dict, keep: set[str] = frozenset()) -> Snapshot:
+        """Ajoute une copie figée du modèle. Au-delà de max_snapshots, retire la plus ancienne, sauf la toute première
+        (repère), la nouvelle et celles de `keep` (versions de départ des niveaux, adversaires des évaluations)."""
         self.dir.mkdir(parents=True, exist_ok=True)
         sid = f"u{update:06d}"
         path = self.dir / f"{sid}.pt"
         torch.save({"model_state": model.state_dict(), **extra, "update": update}, path)
         snap = Snapshot(sid, str(path), update)
         self.snapshots = [s for s in self.snapshots if s.id != sid] + [snap]
-        # au-delà de la limite, on retire la plus ancienne qui n'est pas la toute première (gardée comme repère)
         while len(self.snapshots) > self.max_snapshots:
-            self.snapshots.pop(1)
+            i = next((i for i in range(1, len(self.snapshots) - 1) if self.snapshots[i].id not in keep), None)
+            if i is None:
+                break
+            self.retired.append(self.snapshots.pop(i))
         return snap
+
+    def find(self, sid: str) -> Snapshot | None:
+        """Version de la ligue, ou retirée mais pas encore effacée, ou seulement présente sur le disque (reprise)."""
+        snap = next((s for s in self.snapshots + self.retired if s.id == sid), None)
+        if snap is None and (self.dir / f"{sid}.pt").exists():
+            snap = Snapshot(sid, str(self.dir / f"{sid}.pt"), int(sid[1:]) if sid[1:].isdigit() else 0)
+        return snap
+
+    def purge(self, in_use: set[str]) -> list[str]:
+        """Efface les fichiers des versions retirées qu'aucune partie en cours n'utilise plus (sinon la ligue
+        grossirait sans fin sur le disque). Renvoie leurs identifiants."""
+        gone = [s for s in self.retired if s.id not in in_use]
+        self.retired = [s for s in self.retired if s.id in in_use]
+        for s in gone:
+            Path(s.path).unlink(missing_ok=True)
+        return [s.id for s in gone]
 
     def sample(self, rng: np.random.Generator) -> Snapshot | None:
         if not self.snapshots:
@@ -72,11 +93,11 @@ class League:
                 return
 
     def state(self) -> dict:
-        return {"snapshots": [vars(s) for s in self.snapshots], "pfsp_power": self.pfsp_power}
+        # pfsp_power n'est pas sauvegardé : il vient toujours de la configuration (modifiable à la reprise)
+        return {"snapshots": [vars(s) for s in self.snapshots]}
 
     def load_state(self, st: dict) -> None:
         self.snapshots = [Snapshot(**s) for s in st.get("snapshots", []) if Path(s["path"]).exists()]
-        self.pfsp_power = st.get("pfsp_power", self.pfsp_power)
 
 
 def choose_opponent(level: dict, league: League, rng: np.random.Generator) -> OpponentChoice:

@@ -17,8 +17,6 @@ import sys
 import time
 from pathlib import Path
 
-import torch
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from opcg_rl.config import load_config  # noqa: E402

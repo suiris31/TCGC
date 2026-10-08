@@ -1,12 +1,14 @@
-"""Réseau : formes, masquage des options absentes, pointeurs, invariance à l'ordre des cartes, avantages GAE, Elo."""
+"""Réseau : formes, masquage des options absentes, pointeurs, invariance à l'ordre des cartes, avantages GAE, Elo,
+ligue, statistiques."""
 from __future__ import annotations
 
 import numpy as np
 import torch
 
 from opcg_rl.elo import fit_elo
+from opcg_rl.league import League
 from opcg_rl.model import ModelConfig, PolicyValueNet, masked_distribution
-from opcg_rl.ppo import Decision, Traj, compute_gae
+from opcg_rl.ppo import Decision, Stats, Traj, compute_gae
 
 S, D, G, O = 12, 9, 7, 5
 
@@ -169,3 +171,32 @@ def test_elo_orders_players():
     elo = fit_elo(res)
     assert elo["heuristic"] == 1000
     assert elo["a"] > elo["heuristic"] > elo["random"]
+
+
+def test_elo_ignores_self_games():
+    res = [("a", "heuristic", 1.0)] * 30 + [("a", "heuristic", 0.0)] * 30
+    assert fit_elo(res + [("a", "a", 1.0)] * 50)["a"] == fit_elo(res)["a"]
+
+
+def test_league_keeps_pinned_and_purges_retired(tmp_path):
+    league = League(tmp_path, max_snapshots=3)
+    model = torch.nn.Linear(2, 2)
+    for u in range(0, 70, 10):
+        league.add(model, u, {}, keep={"u000010"})
+    ids = [s.id for s in league.snapshots]
+    assert len(ids) == 3
+    assert "u000000" in ids and "u000010" in ids and "u000060" in ids, "repère, version épinglée et dernière gardées"
+    retired = {s.id for s in league.retired}
+    assert retired == {"u000020", "u000030", "u000040", "u000050"}
+    # une version retirée encore en jeu reste chargeable ; les autres sont effacées du disque
+    assert league.purge(in_use={"u000050"}) == ["u000020", "u000030", "u000040"]
+    assert not (tmp_path / "u000020.pt").exists() and league.find("u000050") is not None
+    assert league.find("u000020") is None
+
+
+def test_stats_pool_winrate_aggregates_snapshots():
+    st = Stats()
+    st.by_opp["pool:u000025"] += [1.0] * 10
+    st.by_opp["pool:u000050"] += [0.0] * 2
+    out = st.summary()
+    assert out["games/pool"] == 12 and abs(out["winrate/pool"] - 10 / 12) < 1e-9

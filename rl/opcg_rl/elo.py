@@ -11,7 +11,9 @@ from collections import defaultdict
 
 def fit_elo(results: list[tuple[str, str, float]], anchor: str | None = "heuristic", anchor_rating: float = 1000.0,
             iterations: int = 500) -> dict[str, float]:
-    """results : (joueur A, joueur B, score de A entre 0 et 1) pour chaque partie."""
+    """results : (joueur A, joueur B, score de A entre 0 et 1) pour chaque partie. Une partie d'un joueur contre
+    lui-même est ignorée (elle ne dit rien de sa force)."""
+    results = [(a, b, s) for a, b, s in results if a != b]
     players = sorted({p for a, b, _ in results for p in (a, b)})
     wins: dict[str, float] = defaultdict(float)
     games: dict[tuple[str, str], float] = defaultdict(float)
