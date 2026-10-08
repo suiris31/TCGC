@@ -135,7 +135,8 @@ class Collector:
         if opp.kind == "pool":
             controllers[1 - ls] = f"snap:{opp.snapshot.id}"
         elif opp.kind != "self":
-            seats[1 - ls] = {"kind": opp.kind, **({"samples": opp.samples} if opp.samples else {})}
+            seats[1 - ls] = {"kind": opp.kind, **({"samples": opp.samples} if opp.samples else {}),
+                             **({"noise": opp.noise} if opp.noise else {})}
             controllers[1 - ls] = None
         decks = [learner_deck, opp_deck] if ls == 0 else [opp_deck, learner_deck]
         seed = self.seeds.next()

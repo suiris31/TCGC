@@ -34,8 +34,9 @@ class Snapshot:
 @dataclass
 class OpponentChoice:
     kind: str                     # random | heuristic | mc | self | pool
-    label: str                    # pour les statistiques (« heuristic », « mc4 », « self », « pool:u000120 »)
+    label: str                    # pour les statistiques (« heuristic », « heuristic50 », « mc4 », « self », « pool:u000120 »)
     samples: int | None = None
+    noise: float | None = None    # heuristic : probabilité de jouer une décision au hasard
     snapshot: Snapshot | None = None
 
 
@@ -114,6 +115,9 @@ def choose_opponent(level: dict, league: League, rng: np.random.Generator) -> Op
     if kind == "mc":
         samples = int(o.get("samples", 4))
         return OpponentChoice("mc", f"mc{samples}", samples=samples)
+    if kind == "heuristic" and float(o.get("noise", 0) or 0) > 0:
+        noise = float(o["noise"])
+        return OpponentChoice("heuristic", f"heuristic{round(100 * noise)}", noise=noise)
     if kind in ("random", "heuristic", "self"):
         return OpponentChoice(kind, kind)
     raise ValueError(f"type d'adversaire inconnu : {kind}")

@@ -32,7 +32,7 @@ curriculum:
       gate_seeds_per_pair: 1
       consecutive: 1
     - name: "2-heuristique-mc"
-      opponents: [{kind: heuristic, weight: 0.7}, {kind: mc, samples: 1, weight: 0.3}]
+      opponents: [{kind: heuristic, weight: 0.5}, {kind: heuristic, noise: 0.5, weight: 0.2}, {kind: mc, samples: 1, weight: 0.3}]
       decks: [ST-31, ST-35]
       max_updates: 3
       eval_every: 2

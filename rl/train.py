@@ -210,8 +210,9 @@ def main() -> int:
                 agents[sid] = load_snapshot(sid)
                 opponents = [f"model:{sid}"]
             elif opp == "latest_snapshots":
-                # sans la copie prise à cette mise à jour même : ce serait le modèle contre lui-même
-                past = [s for s in league.snapshots if s.update < state["update"]]
+                # sans la copie prise à cette mise à jour même (ce serait le modèle contre lui-même), ni une version déjà
+                # évaluée ci-dessus (version de départ du niveau)
+                past = [s for s in league.snapshots if s.update < state["update"] and s.id not in agents]
                 for snap in past[-int(item.get("count", 3)):]:
                     agents[snap.id] = load_snapshot(snap.id)
                     opponents.append(f"model:{snap.id}")

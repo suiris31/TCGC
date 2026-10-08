@@ -68,7 +68,11 @@ curriculum:
       consecutive: 2
 
     - name: "2-heuristique"
-      opponents: [{kind: heuristic, weight: 0.85}, {kind: random, weight: 0.15}]
+      # heuristique pure et heuristique « bruitée » (une décision sur 2 ou sur 4 jouée au hasard) : un modèle qui sort
+      # du niveau 1 gagne ~50 % contre la première, presque jamais contre la pure ; la graduation donne des victoires,
+      # donc un signal d'apprentissage, à chaque étape. L'évaluation de passage reste contre l'heuristique pure.
+      opponents: [{kind: heuristic, weight: 0.4}, {kind: heuristic, noise: 0.25, weight: 0.25},
+                  {kind: heuristic, noise: 0.5, weight: 0.25}, {kind: random, weight: 0.1}]
       decks: all
       max_updates: 3000
       eval_every: 25

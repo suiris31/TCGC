@@ -40,16 +40,20 @@ def wilson(wins: float, n: int, z: float = 1.96) -> tuple[float, float]:
 
 
 def parse_opponent(text: str) -> tuple[str, dict | None, str | None]:
-    """« random », « heuristic », « mc », « mc:16 », « model:<chemin> » -> (libellé, siège intégré, clé de modèle)."""
+    """« random », « heuristic », « heuristic:0.25 » (une décision sur 4 au hasard), « mc », « mc:16 »,
+    « model:<chemin> » -> (libellé, siège intégré, clé de modèle)."""
     if text in ("random", "heuristic"):
         return text, {"kind": text}, None
+    if text.startswith("heuristic:"):
+        noise = float(text.split(":")[1])
+        return f"heuristic{round(100 * noise)}", {"kind": "heuristic", "noise": noise}, None
     if text.startswith("mc"):
         samples = int(text.split(":")[1]) if ":" in text else 16
         return f"mc{samples}", {"kind": "mc", "samples": samples}, None
     if text.startswith("model:"):
         key = text.split(":", 1)[1]
         return key, None, key
-    raise ValueError(f"adversaire inconnu : {text} (random, heuristic, mc:N, model:chemin)")
+    raise ValueError(f"adversaire inconnu : {text} (random, heuristic, heuristic:bruit, mc:N, model:chemin)")
 
 
 def plan_games(opponents: list[str], deck_pairs: list[tuple[str, str]], seeds_per_pair: int, seed_offset: int = 0

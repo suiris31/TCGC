@@ -179,15 +179,19 @@ test('plafond de sécurité : partie tronquée, sans gagnant', () => {
   assert.equal(env.toAct, null);
 });
 
-test('adversaires intégrés : aléatoire, heuristique et Monte-Carlo reproductibles', () => {
-  for (const kind of ['random', 'heuristic', 'mc'] as const) {
-    const opts: ResetOptions = { seed: 21, decks: ['ST-35', 'ST-33'], first: 1, seats: [{ kind: 'agent' }, { kind, samples: 2 }] };
+test('adversaires intégrés : aléatoire, heuristique (pure et bruitée) et Monte-Carlo reproductibles', () => {
+  const seats: SeatSpec[] = [{ kind: 'random' }, { kind: 'heuristic' }, { kind: 'heuristic', noise: 0.5 }, { kind: 'mc', samples: 2 }];
+  const runs = seats.map((seat) => {
+    const opts: ResetOptions = { seed: 21, decks: ['ST-35', 'ST-33'], first: 1, seats: [{ kind: 'agent' }, seat] };
     const a = playRandom(opts, 9);
     const b = playRandom(opts, 9);
-    assert.deepEqual(b.steps, a.steps, kind);
-    assert.ok(a.steps.some((x) => x.p === 1 && x.by === 'builtin'), kind);
-    assert.ok(a.steps.every((x) => x.p === 0 || x.by !== 'agent'), kind);
-  }
+    const name = JSON.stringify(seat);
+    assert.deepEqual(b.steps, a.steps, name);
+    assert.ok(a.steps.some((x) => x.p === 1 && x.by === 'builtin'), name);
+    assert.ok(a.steps.every((x) => x.p === 0 || x.by !== 'agent'), name);
+    return a.steps.filter((x) => x.p === 1).map((x) => x.c).join();
+  });
+  assert.notEqual(runs[2], runs[1], 'l’heuristique bruitée ne joue pas comme l’heuristique');
 });
 
 test('trajectoire : rejouée à l’identique, racontée, et importable dans « Mes parties »', () => {
