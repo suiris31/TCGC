@@ -134,7 +134,7 @@ export interface Decision {
   inEffect?: boolean;
   // cartes que la question montre au joueur sans qu'elles soient dans une zone (cartes regardées pendant un effet,
   // toutes, même celles qu'il ne peut pas choisir)
-  cards?: { uid: number; num: string }[];
+  cards?: { uid: number; num: string; owner?: PlayerId }[];
 }
 
 export type EffectKind = 'onPlay' | 'whenAttacking' | 'onOpponentAttack' | 'activateMain' | 'onKO' | 'endOfTurn' | 'when' | 'system';
@@ -238,7 +238,7 @@ export interface EffectCtx {
   source: number;
   num: string;
   pending: PendingEffect;
-  ask(spec: { player?: PlayerId; prompt: string; options: Option[]; tag?: string; cards?: { uid: number; num: string }[] }): string;
+  ask(spec: { player?: PlayerId; prompt: string; options: Option[]; tag?: string; cards?: { uid: number; num: string; owner?: PlayerId }[] }): string;
   // [Déclenchement] en cours : la carte révélée, et si l'effet l'a déplacée (jouée, ajoutée à la main)
   trigger?: { card: Card; moved: boolean };
 }

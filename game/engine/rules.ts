@@ -251,7 +251,17 @@ export function attackTargets(s: GameState, p: PlayerId, card: FieldCard): numbe
 
 export function draw(s: GameState, p: PlayerId, n = 1) {
   const P = s.players[p];
-  for (let i = 0; i < n && P.deck.length; i++) P.hand.push(P.deck.shift()!);
+  for (let i = 0; i < n && P.deck.length; i++) {
+    const card = P.deck.shift()!;
+    P.hand.push(card);
+    carryKnown(s, card.uid, 'hand');
+  }
+}
+
+// Une carte connue passe d'une zone cachée à une autre sous les yeux de tous (pioche de la carte du dessus, Vie ajoutée
+// depuis le deck, carte de Vie prise en main) : ceux qui la connaissaient la connaissent toujours
+export function carryKnown(s: GameState, uid: number, zone: HiddenZone) {
+  for (const k of s.known ?? []) if (k.uid === uid) k.zone = zone;
 }
 
 export function trashTopDeck(s: GameState, p: PlayerId, n: number) {
@@ -312,7 +322,8 @@ export function lookTopPick(ctx: EffectCtx, count: number, max: number, filter: 
       prompt: `Tu regardes : ${looked.map((c) => def(c.num).name).join(', ')}. Ajouter à ta main ${what} ?`,
       options: [...candidates.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucune' }],
       tag: 'pick',
-      cards: looked.map((c) => ({ uid: c.uid, num: c.num })),
+      // toutes les cartes regardées : celles déjà prises et les autres, même celles qu'on ne peut pas choisir
+      cards: [...picked, ...looked].map((c) => ({ uid: c.uid, num: c.num, owner: ctx.me })),
     });
     if (answer === 'none') break;
     const [card] = looked.splice(looked.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
@@ -331,6 +342,7 @@ export function peekTop(s: GameState, p: PlayerId) {
   const top = s.players[other(p)].deck[0];
   if (!top) return;
   s.peek[p] = top.uid;
+  reveal(s, [top.uid], p);  // il la connaît, y compris quand elle sera piochée ou placée dans la Vie
   log(s, p, 'regarde la carte du dessus du deck adverse');
   privateLog(s, p, `carte du dessus du deck adverse : ${def(top.num).name} (coût ${def(top.num).cost ?? '—'})`);
 }
@@ -582,6 +594,7 @@ export function playCharacter(ctx: EffectCtx, p: PlayerId, card: Card, opts: { r
       prompt: `Zone de Personnage pleine : quel Personnage défausser pour jouer ${def(card.num).name} ?`,
       options: P.chars.map((c) => ({ id: `trash:${c.uid}`, label: `${def(c.num).name} (coût ${fieldCost(s, c.uid)}, ${power(s, c.uid)})`, uid: c.uid })),
       tag: 'fullZone',
+      cards: [{ uid: card.uid, num: card.num, owner: p }],  // la carte jouée, qui n'est encore dans aucune zone
     });
     const victim = removeFromField(s, Number(answer.split(':')[1]), 'trash');
     if (victim) log(s, p, `défausse ${def(victim.card.num).name} (zone pleine)`);
@@ -653,7 +666,9 @@ function playTriggered(ctx: EffectCtx) {
 export function addTopDeckToLife(s: GameState, p: PlayerId) {
   const P = s.players[p];
   if (!P.deck.length) return false;
-  P.life.unshift(P.deck.shift()!);
+  const card = P.deck.shift()!;
+  P.life.unshift(card);
+  carryKnown(s, card.uid, 'life');
   log(s, p, `ajoute la carte du dessus de son deck au-dessus de sa Vie (${P.life.length} Vie)`);
   return true;
 }
@@ -664,6 +679,7 @@ export function lifeToHand(s: GameState, p: PlayerId, from: 'top' | 'bottom') {
   const card = from === 'top' ? P.life.shift() : P.life.pop();
   if (!card) return null;
   P.hand.push({ uid: card.uid, num: card.num });
+  carryKnown(s, card.uid, 'hand');
   if (card.faceUp) reveal(s, [card.uid], 'both');  // carte de Vie face visible : tout le monde sait qu'elle est en main
   log(s, p, `ajoute à sa main 1 carte ${from === 'top' ? 'du dessus' : 'du dessous'} de sa Vie (${P.life.length} Vie)`);
   return card;

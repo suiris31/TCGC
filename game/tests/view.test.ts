@@ -7,7 +7,7 @@ import { heuristicChooser } from '../ai/heuristic.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { DECKS } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
-import { knows, lifeToHand, reveal } from '../engine/rules.ts';
+import { def, draw, knows, lifeToHand, peekTop, reveal } from '../engine/rules.ts';
 import { hasOption, play, scenario, setDon, setHand } from './helpers.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
@@ -196,4 +196,33 @@ test('vue : une carte de Vie face visible ajoutée à la main reste connue de l�
   const uid = P.life[0].uid;
   lifeToHand(g, 1, 'top');
   assert.ok(viewFor(g, 0).players[1].hand.some((c) => c.uid === uid && c.num !== HIDDEN));
+});
+
+test('vue : la carte du dessus du deck adverse regardée reste connue quand l’adversaire la pioche', () => {
+  const s = newGame({ decks: ['ST-34', 'ST-31'], names: ['A', 'B'], seed: 4, first: 0 });
+  const g = act(act(s, 'keep'), 'keep');
+  const top = g.players[1].deck[0];
+  peekTop(g, 0);
+  assert.ok(viewFor(g, 0).players[1].deck.some((c) => c.uid === top.uid && c.num === top.num));
+  draw(g, 1, 1);
+  assert.ok(viewFor(g, 0).players[1].hand.some((c) => c.uid === top.uid && c.num === top.num), 'la carte piochée reste connue');
+  assert.ok(viewFor(g, 1).players[0].hand.every((c) => c.num !== HIDDEN || c.uid < 0));
+});
+
+test('vue : zone de Personnage pleine, la carte qu’on joue est montrée avec la question', () => {
+  let s = scenario(['ST-31', 'ST-35'], (g) => {
+    setHand(g, 0, ['ST31-002']);
+    const P = g.players[0];
+    while (P.chars.length < 5) {
+      const c = P.deck.find((x) => def(x.num).category === 'CHARACTER' && x.num !== 'ST31-002')!;
+      P.deck.splice(P.deck.indexOf(c), 1);
+      P.chars.push({ uid: c.uid, num: c.num, rested: false, don: 0, playedTurn: 0, usedOpt: [] });
+    }
+    setDon(g, 0, 10);
+  });
+  const jinbe = s.players[0].hand[0];
+  s = play(s, 'ST31-002');
+  assert.equal(s.decision?.tag, 'fullZone');
+  assert.deepEqual(s.decision?.cards, [{ uid: jinbe.uid, num: 'ST31-002', owner: 0 }]);
+  assert.ok(viewFor(s, 0).decision?.cards?.length === 1);
 });

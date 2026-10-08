@@ -5,7 +5,7 @@
 import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, canBeRested, def, describe, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker,
+  addMod, allField, attackTargets, canBeRested, carryKnown, def, describe, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker,
   hasKeyword, knownFirst, koCharacter, log, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack,
   reveal, shuffleDeck, triggerEffect, untapDon,
 } from './rules.ts';
@@ -393,12 +393,15 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
           // la carte n'est dans aucune zone pendant son [Déclenchement], puis va dans la Défausse (10-1-5-3), sauf si
           // l'effet l'a jouée ou ajoutée à la main
           const trigger = { card, moved: false };
-          onTrigger({ ...ctx, num: card.num, trigger });
+          // pendant son effet, la carte révélée (dans aucune zone) est montrée avec chaque question
+          const shown = { uid: card.uid, num: card.num, owner: ctx.me };
+          onTrigger({ ...ctx, num: card.num, trigger, ask: (spec) => ctx.ask({ ...spec, cards: [...(spec.cards ?? []), shown] }) });
           if (!trigger.moved) P.trash.push(card);
           continue;
         }
       }
       P.hand.push(card);
+      carryKnown(s, card.uid, 'hand');
       if (lifeCard.faceUp) reveal(s, [card.uid], 'both');  // carte de Vie face visible : publique
       log(s, ctx.me, `perd 1 Vie (il lui en reste ${P.life.length})`);
     }
