@@ -179,7 +179,11 @@ python train.py --fresh                                     # recommence de zér
 ```
 
 Relancer par erreur une commande avec `--resume` ou `--level` déjà appliqués ne revient pas en arrière (le programme
-le détecte et continue). `--fresh`, en revanche, recommence toujours : l'entraînement précédent (points de sauvegarde
+le détecte et continue ; pour repartir exprès du même fichier, utilise un nouveau nom : `--run essai3 --resume ...`).
+Repartir d'un point plus ancien de l'entraînement déplace les points de sauvegarde postérieurs dans
+`checkpoints/<run>/histoire-abandonnee-<date>/` (rien n'est effacé) ; repartir d'un point d'un autre entraînement
+copie les anciennes versions de sa ligue (l'autre entraînement n'est pas modifié). Si aucun point de sauvegarde
+n'est lisible, `train.py` s'arrête sans rien modifier. `--fresh`, en revanche, recommence toujours : l'entraînement précédent (points de sauvegarde
 et journaux) est renommé `<run>-ancien-<date>` et peut être repris avec `--run <run>-ancien-<date>`.
 
 Les dossiers `checkpoints/<run>/` peuvent être déplacés ou copiés sur un autre ordinateur (la ligue n'y garde pas de

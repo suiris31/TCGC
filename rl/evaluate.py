@@ -58,7 +58,7 @@ def main() -> int:
     print(f"Matériel : {describe(device)} ; {workers} processus Node × {args.envs} parties")
     paths = [resolve_checkpoint(c) for c in (args.compare or [args.checkpoint])]
     run = paths[0].parent.name
-    out_dir = Path(args.out) if args.out else LOGS_DIR / run / "eval"
+    out_dir = (Path(args.out) if args.out else LOGS_DIR / run / "eval").resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     pool = open_pool(cfg, args.envs, workers, record_dir=out_dir / "trajectories", anomaly_dir=out_dir / "anomalies")
     spec = pool.spec

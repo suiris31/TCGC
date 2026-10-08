@@ -14,8 +14,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import shutil
 import signal
+import subprocess
 import sys
 import time
 from collections import OrderedDict
@@ -44,7 +46,8 @@ EXIT_GATE_FAILED = 3
 
 
 def resume_command() -> str:
-    """La commande qui reprend cet entraînement : celle qui l'a lancé, sans les options à effet unique."""
+    """La commande qui reprend cet entraînement : celle qui l'a lancé, sans les options à effet unique (les
+    abréviations d'options sont refusées par parse_args, elles ne peuvent pas passer au travers)."""
     out, skip = [], False
     for a in sys.argv[1:]:
         if skip:
@@ -55,12 +58,13 @@ def resume_command() -> str:
         if a in ("--level", "--resume"):
             skip = True
             continue
-        out.append(f'"{a}"' if " " in a else a)
-    return " ".join(["python train.py", *out])
+        out.append(a)
+    args = ["python", sys.argv[0] or "train.py", *out]
+    return subprocess.list2cmdline(args) if sys.platform == "win32" else shlex.join(args)
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Entraînement PPO de l'IA One Piece TCG")
+    p = argparse.ArgumentParser(description="Entraînement PPO de l'IA One Piece TCG", allow_abbrev=False)
     p.add_argument("--config", action="append", default=[], help="fichier de réglages en plus de default.yaml (ex. cpu, gpu, smoke)")
     p.add_argument("--set", action="append", default=[], metavar="CLÉ=VALEUR", help="change un réglage (ex. ppo.lr=0.0001)")
     p.add_argument("--run", help="nom de l'entraînement (dossiers checkpoints/<run>, logs/<run>)")
@@ -142,8 +146,11 @@ def main() -> int:
         else:
             resume_path, ckpt = Path(args.resume), ck.load(Path(args.resume))
             ckpt.setdefault("state", {})["resumed_from"] = wanted
+            ckpt["state"].pop("forced_level", None)      # marque d'un autre lancement : ne bloque pas un --level
     elif latest:
         resume_path, ckpt = latest
+    # point de sauvegarde de cet entraînement (sinon : d'un autre dossier, dont la ligue sera copiée ici)
+    own = resume_path is not None and run_dir.resolve() in resume_path.resolve().parents
     if ckpt:
         if ckpt.get("spec_hash") != spec.spec_hash:
             raise SystemExit(f"Le point de sauvegarde {resume_path} utilise un autre encodage ({ckpt.get('spec_hash')}) que "
@@ -157,6 +164,11 @@ def main() -> int:
                 "(nouvel entraînement : --fresh ou --run)")
         state.update(ckpt["state"])
         log(f"Reprise depuis {resume_path} (mise à jour {state['update']}, {state['games']} parties, niveau {levels[state['level']]['name']})")
+        if own:
+            aside = ck.set_aside_after(run_dir, state["update"], time.strftime("%Y%m%d-%H%M%S"))
+            if aside:
+                log(f"Points de sauvegarde et versions de la ligue postérieurs à la mise à jour {state['update']} "
+                    f"(histoire abandonnée) déplacés dans {aside}")
     else:
         deck_ids = sorted({d for lv in levels for d in (spec.decks if lv.get("decks", "all") == "all" else lv["decks"])})
         vocab = vocab_from_decks(spec, deck_ids)
@@ -181,7 +193,9 @@ def main() -> int:
             optimizer.load_state_dict(ckpt["optimizer_state"])
             for g in optimizer.param_groups:
                 g["lr"] = cfg["ppo"]["lr"]
-        league.load_state(ckpt.get("league", {}), keep=set(state["level_start"].values()), warn=log)
+        league.load_state(ckpt.get("league", {}), keep=set(state["level_start"].values()), warn=log,
+                          source=None if own else resume_path.parent / "league",
+                          cleanup=own and "league" in ckpt)
         if ckpt.get("rng"):
             ck.restore_rng(ckpt["rng"], rng)
     seeds = TrainSeeds(state["seed_counter"], salt=cfg["seed"])
@@ -367,6 +381,7 @@ def main() -> int:
                     state["level"] += 1
                     state["level_updates"] = 0
                     state["streak"] = 0
+                    state.pop("forced_level", None)
                     log(f"*** Niveau {level['name']} validé : passage au niveau {levels[state['level']]['name']} ***")
                     ensure_level_start()
                     save("niveau validé")

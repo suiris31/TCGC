@@ -66,6 +66,8 @@ def check_node_version(node: str) -> None:
 class NodeWorker:
     def __init__(self, node: str, catalog: Path, log_file: Path | None = None):
         self.log_file = log_file
+        # le journal est partagé par les sessions successives : seule la partie écrite par celle-ci est montrée
+        self.log_start = log_file.stat().st_size if log_file and log_file.exists() else 0
         self.log = open(log_file, "ab") if log_file else None
         # groupe de processus à part : Ctrl+C dans le terminal n'arrête que Python, qui sauvegarde puis ferme les
         # processus Node lui-même (et un processus Node s'arrête seul quand Python disparaît : fin de son entrée)
@@ -88,7 +90,7 @@ class NodeWorker:
             if self.log:
                 self.log.flush()
             try:
-                tail = self.log_file.read_bytes()[-2000:].decode("utf-8", errors="replace").strip()
+                tail = self.log_file.read_bytes()[self.log_start:][-2000:].decode("utf-8", errors="replace").strip()
             except OSError:
                 tail = ""
             where = f"journal : {self.log_file}" + (f"\n--- fin du journal ---\n{tail}" if tail else "")
@@ -208,10 +210,11 @@ class EnvPool:
             log_dir.mkdir(parents=True, exist_ok=True)
         self.workers: list[NodeWorker] = []
         init = {"op": "init"}
+        # chemins absolus : Node tourne depuis la racine du dépôt, pas depuis le dossier de la commande
         if record_dir:
-            init["recordDir"] = str(record_dir)
+            init["recordDir"] = str(Path(record_dir).resolve())
         if anomaly_dir:
-            init["anomalyDir"] = str(anomaly_dir)
+            init["anomalyDir"] = str(Path(anomaly_dir).resolve())
         try:
             for w in range(workers):
                 self.workers.append(NodeWorker(node_path, cat, (log_dir / f"node-{w}.log") if log_dir else None))

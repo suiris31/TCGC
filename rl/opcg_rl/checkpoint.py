@@ -5,12 +5,14 @@ de parties et de décisions, niveau du programme d'entraînement et historique d
 versions), compteur des graines, états des générateurs aléatoires, configuration complète, empreinte de l'encodage,
 statistiques. Écriture atomique (fichier temporaire écrit jusqu'au disque, puis renommage) : une coupure pendant
 l'écriture ne corrompt pas le dernier point de sauvegarde ; si latest.pt est illisible malgré tout, la reprise
-utilise le point de sauvegarde précédent.
+utilise le point de sauvegarde précédent. L'ordre des fichiers vient de leur numéro de mise à jour, jamais de leur
+date (une copie sans les dates ou une horloge décalée ne changent rien).
 """
 from __future__ import annotations
 
 import os
 import random
+import re
 import shutil
 import time
 from pathlib import Path
@@ -59,10 +61,9 @@ def save_with_latest(run_dir: Path, update: int, state: dict, keep: int, warn: C
     except PermissionError as err:
         # la reprise choisit le fichier le plus récent : elle prendra `path`
         warn(f"latest.pt n'a pas pu être remplacé ({err}) ; {path.name} est à jour")
-    # les `keep` derniers écrits (par date, pas par numéro : après une reprise depuis un point plus ancien, les
-    # fichiers de numéro plus élevé sont ceux de l'histoire abandonnée)
-    old = sorted(run_dir.glob("ckpt_*.pt"), key=lambda p: p.stat().st_mtime)
-    for p in old[:-keep] if keep > 0 else []:
+    # les `keep` plus récents (par numéro), jamais celui qui vient d'être écrit
+    old = [p for p in numbered(run_dir) if p != path]
+    for p in old[keep - 1:] if keep > 0 else []:
         try:
             retry(p.unlink, missing_ok=True)
         except PermissionError as err:
@@ -74,10 +75,21 @@ def load(path: Path, map_location: str | torch.device = "cpu") -> dict:
     return torch.load(path, map_location=map_location, weights_only=False)
 
 
+def update_of(path: Path) -> int:
+    m = re.fullmatch(r"ckpt_(\d+)\.pt", path.name)
+    return int(m.group(1)) if m else -1
+
+
+def numbered(run_dir: Path) -> list[Path]:
+    """ckpt_*.pt, du numéro de mise à jour le plus grand au plus petit."""
+    return sorted((p for p in run_dir.glob("ckpt_*.pt") if update_of(p) >= 0), key=update_of, reverse=True)
+
+
 def candidates(run_dir: Path) -> list[Path]:
-    """Points de sauvegarde d'un entraînement, du plus récent au plus ancien (latest.pt et ckpt_*.pt)."""
-    files = [p for p in [run_dir / "latest.pt", *run_dir.glob("ckpt_*.pt")] if p.exists()]
-    return sorted(files, key=lambda p: (p.stat().st_mtime, p.name == "latest.pt"), reverse=True)
+    """Points de sauvegarde d'un entraînement dans l'ordre de reprise : latest.pt, puis ckpt_*.pt du plus grand
+    numéro au plus petit."""
+    latest = run_dir / "latest.pt"
+    return ([latest] if latest.exists() else []) + numbered(run_dir)
 
 
 def find_latest(run_dir: Path) -> Path | None:
@@ -86,13 +98,59 @@ def find_latest(run_dir: Path) -> Path | None:
 
 
 def load_latest(run_dir: Path, warn: Callable[[str], None] = print) -> tuple[Path, dict] | None:
-    """Le plus récent point de sauvegarde lisible (un fichier abîmé par une coupure de courant est sauté)."""
-    for path in candidates(run_dir):
+    """Le plus récent point de sauvegarde lisible (un fichier abîmé par une coupure de courant est sauté). None s'il
+    n'y en a aucun ; s'il y en a mais qu'aucun ne se lit, arrêt (ne jamais repartir de zéro par-dessus)."""
+    found = candidates(run_dir)
+    last_error: Exception | None = None
+    tried: dict[Path, dict] = {}
+    order = list(found)
+    latest = run_dir / "latest.pt"
+    if latest in order:
+        try:
+            tried[latest] = load(latest)
+            u = int(tried[latest].get("state", {}).get("update", -1))
+            newer = [p for p in numbered(run_dir) if update_of(p) > u]
+            if not newer:
+                return latest, tried[latest]
+            # latest.pt n'a pas pu être remplacé (fichier verrouillé) : le ckpt de numéro supérieur est plus récent
+            warn(f"latest.pt (mise à jour {u}) est plus ancien que {newer[0].name} : reprise depuis ce dernier")
+            order = newer + [latest] + [p for p in numbered(run_dir) if update_of(p) <= u]
+        except Exception as err:
+            last_error = err
+            warn(f"Point de sauvegarde illisible, ignoré : {latest} ({err})")
+            order = [p for p in order if p != latest]
+    for path in order:
+        if path in tried:
+            return path, tried[path]
         try:
             return path, load(path)
         except Exception as err:
+            last_error = err
             warn(f"Point de sauvegarde illisible, ignoré : {path} ({err})")
+    if found:
+        raise SystemExit(
+            f"Aucun point de sauvegarde lisible dans {run_dir} ({len(found)} fichiers ; dernière erreur : {last_error}). "
+            "Rien n'a été modifié. Vérifie le dossier (copie incomplète, fichiers OneDrive non téléchargés, versions de "
+            "PyTorch ou numpy différentes), ou lance un autre entraînement (--run autre_nom, ou --fresh pour mettre "
+            "celui-ci de côté).")
     return None
+
+
+def set_aside_after(run_dir: Path, update: int, stamp: str) -> Path | None:
+    """Reprise depuis un point plus ancien que les derniers fichiers de l'entraînement : les points de sauvegarde et
+    anciennes versions de la ligue de l'histoire abandonnée sont déplacés (jamais effacés) dans un sous-dossier."""
+    later = [p for p in numbered(run_dir) if update_of(p) > update]
+    league = run_dir / "league"
+    later_league = [p for p in league.glob("u*.pt") if p.stem[1:].isdigit() and int(p.stem[1:]) > update] if league.exists() else []
+    if not later and not later_league:
+        return None
+    aside = run_dir / f"histoire-abandonnee-{stamp}"
+    (aside / "league").mkdir(parents=True, exist_ok=True)
+    for p in later:
+        retry(os.replace, p, aside / p.name)
+    for p in later_league:
+        retry(os.replace, p, aside / "league" / p.name)
+    return aside
 
 
 def rng_states(np_rng: np.random.Generator) -> dict:

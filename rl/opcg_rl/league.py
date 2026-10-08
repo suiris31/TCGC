@@ -9,6 +9,7 @@ ses anciennes stratégies, ni se spécialiser contre sa seule version actuelle.
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -109,10 +110,20 @@ class League:
         strip = lambda s: {k: v for k, v in vars(s).items() if k != "path"}  # noqa: E731
         return {"snapshots": [strip(s) for s in self.snapshots], "retired": [strip(s) for s in self.retired]}
 
-    def load_state(self, st: dict, keep: set[str] = frozenset(), warn=print) -> None:
-        """Reprise : chaque version est cherchée dans le dossier de la ligue de CET entraînement. Les fichiers de ce
-        dossier que plus rien n'utilise (versions retirées, histoire abandonnée après une reprise depuis un point plus
-        ancien) sont marqués à effacer, sauf ceux de `keep` (versions de départ des niveaux)."""
+    def load_state(self, st: dict, keep: set[str] = frozenset(), warn=print, source: Path | None = None,
+                   cleanup: bool = True) -> None:
+        """Reprise : chaque version est cherchée dans le dossier de la ligue de CET entraînement. Si le point de
+        sauvegarde vient d'un autre entraînement (`source` : son dossier de ligue), les versions qu'il utilise y sont
+        d'abord copiées (l'autre entraînement n'est jamais modifié). Avec `cleanup`, les fichiers de ce dossier que
+        plus rien n'utilise (versions retirées) sont marqués à effacer, sauf ceux de `keep` (versions de départ des
+        niveaux)."""
+        rows_all = st.get("snapshots", []) + st.get("retired", [])
+        if source is not None and source.exists() and source.resolve() != self.dir.resolve():
+            self.dir.mkdir(parents=True, exist_ok=True)
+            for sid in {row["id"] for row in rows_all} | set(keep):
+                if (source / f"{sid}.pt").exists():
+                    shutil.copyfile(source / f"{sid}.pt", self._path(sid))
+
         def build(rows):
             out = []
             for row in rows:
@@ -127,7 +138,7 @@ class League:
             warn(f"Ligue : {len(rows) - len(self.snapshots)} ancienne(s) version(s) introuvable(s) dans {self.dir}, ignorée(s)")
         self.retired = build(st.get("retired", []))
         known = {s.id for s in self.snapshots + self.retired} | set(keep)
-        if self.dir.exists():
+        if cleanup and self.dir.exists():
             for f in sorted(self.dir.glob("u*.pt")):
                 if f.stem not in known:
                     self.retired.append(Snapshot(f.stem, str(f), int(f.stem[1:]) if f.stem[1:].isdigit() else 0))

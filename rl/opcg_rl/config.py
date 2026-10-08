@@ -15,14 +15,17 @@ class _Loader(yaml.SafeLoader):
     """YAML 1.1 lit « 1e-4 » (sans point décimal) comme du texte ; ici, comme un nombre."""
 
 
-_Loader.add_implicit_resolver(
-    "tag:yaml.org,2002:float",
-    re.compile(r"""^(?:[-+]?(?:[0-9][0-9_]*)\.[0-9_]*(?:[eE][-+]?[0-9]+)?
+class _Dumper(yaml.SafeDumper):
+    """Écrit entre guillemets un texte qui ressemblerait à un nombre (« 1e3 »), pour le relire tel quel."""
+
+
+_FLOAT = re.compile(r"""^(?:[-+]?(?:[0-9][0-9_]*)\.[0-9_]*(?:[eE][-+]?[0-9]+)?
     |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
     |\.[0-9_]+(?:[eE][-+]?[0-9]+)?
     |[-+]?\.(?:inf|Inf|INF)
-    |\.(?:nan|NaN|NAN))$""", re.X),
-    list("-+0123456789."))
+    |\.(?:nan|NaN|NAN))$""", re.X)
+for _cls in (_Loader, _Dumper):
+    _cls.add_implicit_resolver("tag:yaml.org,2002:float", _FLOAT, list("-+0123456789."))
 
 
 def _load(text: str) -> Any:
@@ -68,10 +71,12 @@ def load_config(files: list[str] | None = None, overrides: list[str] | None = No
         if "=" not in item:
             raise ValueError(f"réglage invalide (clé=valeur attendu) : {item}")
         key, value = item.split("=", 1)
-        set_dotted(cfg, key.strip(), _parse_value(value))
-    cfg["run"] = str(cfg["run"])             # --set run=2024 : un nom, pas un nombre
+        # le nom d'un entraînement est gardé tel qu'il est écrit (« 1e3 », « 007 » ne sont pas des nombres)
+        set_dotted(cfg, key.strip(), value.strip() if key.strip() == "run" else _parse_value(value))
+    if not isinstance(cfg.get("run"), str):
+        raise ValueError(f"run : le nom de l'entraînement doit être un texte (mets-le entre guillemets) : {cfg.get('run')!r}")
     return cfg
 
 
 def dump(cfg: dict) -> str:
-    return yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True)
+    return yaml.dump(cfg, Dumper=_Dumper, sort_keys=False, allow_unicode=True)

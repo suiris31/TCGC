@@ -43,8 +43,9 @@ $gpu = $false
 if (Get-Command "nvidia-smi" -ErrorAction SilentlyContinue) { $gpu = $true }
 if ($gpu) {
   Write-Host "Carte NVIDIA détectée : installation de PyTorch avec CUDA 12.6"
-  # un PyTorch « processeur seul » déjà installé serait gardé tel quel : on le remplace
-  if (-not (PyOk "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)")) {
+  # un PyTorch « processeur seul » déjà installé serait gardé tel quel : on le remplace (une version CUDA déjà
+  # installée est gardée, même si la carte n'est pas utilisable : voir l'avertissement final)
+  if (-not (PyOk "import torch, sys; sys.exit(0 if torch.version.cuda else 1)")) {
     Run "installation de PyTorch (CUDA)" { & $venvPy -m pip install --force-reinstall torch --index-url https://download.pytorch.org/whl/cu126 }
   }
 } else {
