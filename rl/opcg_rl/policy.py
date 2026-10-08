@@ -39,6 +39,13 @@ class Agent:
         self.collate = Collator(spec.static_table, self.table_to_vocab, device)
         self.device = device
 
+    def forget_card_ids(self) -> None:
+        """Toutes les cartes deviennent « inconnues » du vocabulaire : le modèle joue d'après leurs seules
+        caractéristiques, comme avec des cartes jamais vues (mesure de la généralisation)."""
+        self.table_to_vocab[:] = 0
+        self.collate.to_vocab.zero_()
+        self.name = f"{self.name} (sans identifiants)"
+
     def forward(self, batch: dict):
         """(logits, valeur) d'un lot préparé par self.collate."""
         return self.model.forward_table(self.collate.static, **batch)

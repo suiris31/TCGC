@@ -221,7 +221,12 @@ python evaluate.py --checkpoint opcg --opponents random heuristic mc:16 mc:48
 python evaluate.py --checkpoint checkpoints/opcg/ckpt_0000500.pt --decks ST-31,ST-35 --seeds 10
 python evaluate.py --compare checkpoints/opcg/ckpt_0000200.pt checkpoints/opcg/latest.pt   # versions entre elles + Elo
 python evaluate.py --checkpoint opcg --greedy                          # toujours l'option la plus probable
+python evaluate.py --checkpoint opcg --no-card-ids                     # cartes « inconnues » : généralisation
 ```
+
+`--no-card-ids` fait jouer le modèle sans l'identifiant appris de chaque carte, avec ses seules caractéristiques,
+comme face à des cartes qu'il n'a jamais vues. L'écart avec l'évaluation normale mesure sa dépendance aux
+identifiants : un faible écart indique qu'une carte nouvelle aux caractéristiques proches sera jouée correctement.
 
 Adversaires : `random`, `heuristic` (IA « Débutant »), `mc:N` (Monte-Carlo à N tirages ; 16 ≈ « Confirmé », 48 ≈
 « Expert », sans limite de temps pour être reproductible ; lent : `--mc-pairs` limite les confrontations jouées),
@@ -374,7 +379,7 @@ seulement. Aucune liste de toutes les combinaisons n'est construite.
 **Récompense.** +1 victoire, −1 défaite, rien d'autre (ni dégâts, ni cartes, ni board). **Plafond de sécurité**
 (`env.max_decisions`, 3000 décisions ; une partie normale en compte 120 à 300) : une partie qui l'atteint est
 **tronquée**, sans récompense ; l'apprentissage complète avec sa propre estimation de la valeur de la dernière
-position. Ainsi, faire durer la partie jusqu'au plafond ne rapporte ni ne coûte rien de plus que de continuer à
+position où l'IA a décidé. Ainsi, faire durer la partie jusqu'au plafond ne rapporte ni ne coûte rien de plus que de continuer à
 jouer : aucun comportement « jouer la montre » n'est récompensé (avec une récompense de 0 comme pour une égalité, un
 joueur en train de perdre aurait intérêt à faire traîner). Les parties tronquées sont comptées et enregistrées.
 

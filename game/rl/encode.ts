@@ -72,7 +72,7 @@ function fnvHex(s: string) {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return (h >>> 0).toString(16).padStart(8, '0');
 }
-export const ENCODING_VERSION = 2;
+export const ENCODING_VERSION = 3;
 export const SPEC_HASH = fnvHex(JSON.stringify([ENCODING_VERSION, STATIC_FEATURES, DYN_FEATURES, GLOBAL_FEATURES, OPTION_FEATURES]));
 
 export interface Observation {
@@ -135,7 +135,9 @@ function tokensOf(v: GameState, me: PlayerId, optionCards: Map<number, string>, 
   const list = P.list ?? (DECKS[P.deckId] ? { leader: DECKS[P.deckId].leader, cards: DECKS[P.deckId].cards } : null);
   if (list) {
     const left = new Map(Object.entries(list.cards));
-    const seen = [...P.hand, ...P.chars, ...(P.stage ? [P.stage] : []), ...P.trash, ...P.life, ...P.deck];
+    // ses cartes en suspens (regardées, révélées par un [Déclenchement], en train d'être jouées) ne sont plus dans le deck
+    const limbo = out.filter((t) => t.zone === 'limbo' && t.owner === me);
+    const seen = [...P.hand, ...P.chars, ...(P.stage ? [P.stage] : []), ...P.trash, ...P.life, ...P.deck, ...limbo];
     for (const c of seen) if (c.num !== HIDDEN && left.has(c.num)) left.set(c.num, left.get(c.num)! - 1);
     for (const [num, count] of left) if (count > 0) add({ num, zone: 'myPool', owner: me, count });
   }

@@ -12,7 +12,8 @@ export type WorkerRequest =
 // Premier message : les informations des cartes (le fil de calcul a ses propres modules, à remplir aussi)
 export type CardsMessage = { type: 'cards'; data: Record<string, CardData> };
 
-// IA entraînée : onnxruntime-web et le modèle ne sont chargés qu'au premier besoin
+// IA entraînée : onnxruntime-web et le modèle ne sont chargés qu'au premier besoin (une seule fois : un échec n'est
+// pas retenté à chaque coup)
 let rl: Promise<RlPolicy> | null = null;
 async function loadPolicy(modelUrl: string): Promise<RlPolicy> {
   const [ort, { RlPolicy: Policy }] = await Promise.all([import('onnxruntime-web/wasm'), import('./rl.ts')]);
@@ -38,9 +39,8 @@ self.onmessage = async (e: MessageEvent<WorkerRequest | CardsMessage>) => {
       const d = msg.state.decision!;
       postMessage({ id: msg.id, choice: await policy.choose(msg.state, d.player as PlayerId) });
     } catch (err) {
-      // modèle absent ou incompatible : l'IA simple joue à sa place
-      console.error('IA entraînée indisponible :', err);
-      rl = null;
+      // modèle absent ou incompatible : l'IA simple joue à sa place pour le reste de la session
+      console.error('IA entraînée indisponible, l’IA Débutant joue à sa place :', err);
       postMessage({ id: msg.id, choice: aiChoose(msg.state, msg.state.decision!, 1) });
     }
   } else {

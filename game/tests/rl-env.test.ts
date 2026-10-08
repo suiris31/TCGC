@@ -11,9 +11,10 @@ import { DECKS } from '../engine/decks.ts';
 import { act, actInPlace, newGame } from '../engine/engine.ts';
 import { invariantErrors } from '../engine/invariants.ts';
 import { random } from '../engine/rng.ts';
-import type { GameState, PlayerId } from '../engine/types.ts';
+import { knows as knowsOf, peekTop } from '../engine/rules.ts';
+import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
-import { DYN_DIM, encodeObservation, GLOBAL_DIM, OPTION_DIM, type Observation } from '../rl/encode.ts';
+import { DYN_DIM, DYN_FEATURES, encodeObservation, GLOBAL_DIM, OPTION_DIM, type Observation } from '../rl/encode.ts';
 import { RlEnv, type ResetOptions } from '../rl/env.ts';
 import { STATIC_DIM, staticFeatures } from '../rl/features.ts';
 import type { SeatSpec } from '../rl/opponents.ts';
@@ -321,4 +322,71 @@ test('moteur : pas de défaite pour deck vide pendant qu’un effet regarde les 
   const done = act(after, 'none');
   assert.equal(done.winner, null);
   assert.equal(done.players[0].deck.length, 3);
+});
+
+// Échanges ciblés, sans passer par determinize (qui garde en place ce que viewFor démasque) : deux cartes cachées de
+// numéros différents, que l'observateur ne connaît pas, changent de place (main adverse <-> deck adverse ; deux cartes
+// de son propre deck ; une carte de sa Vie face cachée et une de son deck). Son observation ne doit pas bouger.
+test('observation : échanger deux cartes cachées (main/deck adverses, son deck, sa Vie) ne change rien', () => {
+  let checked = 0;
+  for (const [k, decks] of pairs.entries()) {
+    if (k % 3) continue;
+    playRandom({ seed: 8100 + k, decks, first: 'random', seats: AGENTS }, 61 + k, (e) => {
+      const s = e.state;
+      const me = e.toAct!;
+      const opp: PlayerId = me === 0 ? 1 : 0;
+      const shown = new Set([...(s.decision!.options.flatMap((o) => [o.uid, o.target])), ...(s.decision!.cards ?? []).map((c) => c.uid)]);
+      const unknown = (c: { uid: number; faceUp?: boolean }) => !knowsOf(s, me, c.uid) && !shown.has(c.uid) && !c.faceUp && s.peek[me] !== c.uid;
+      const base = encodeObservation(viewFor(s, me), me);
+      const swaps: [(t: GameState) => Card[], (t: GameState) => Card[]][] = [
+        [(t) => t.players[opp].hand, (t) => t.players[opp].deck],
+        [(t) => t.players[me].deck, (t) => t.players[me].deck],
+        [(t) => t.players[me].life, (t) => t.players[me].deck],
+      ];
+      for (const [za, zb] of swaps) {
+        const a = za(s).findIndex(unknown);
+        const b = zb(s).findIndex((c, i) => unknown(c) && c.num !== za(s)[a]?.num && (za !== zb || i !== a));
+        if (a < 0 || b < 0) continue;
+        const t = structuredClone(s);
+        const ca = za(t)[a];
+        za(t)[a] = zb(t)[b];
+        zb(t)[b] = ca;
+        same(encodeObservation(viewFor(t, me), me), base);
+        checked++;
+      }
+    });
+  }
+  assert.ok(checked > 1000, `trop peu d'échanges vérifiés (${checked})`);
+});
+
+test('connaissances : une carte regardée sur le deck adverse n’est pas connue de son propriétaire', () => {
+  const s = act(act(newGame({ decks: ['ST-34', 'ST-31'], names: ['A', 'B'], seed: 4, first: 0 }), 'keep'), 'keep');
+  peekTop(s, 0);
+  assert.equal(viewFor(s, 1).players[1].deck[0].num, '?');
+  assert.notEqual(viewFor(s, 0).players[1].deck[0].num, '?');
+});
+
+test('observation : le deck restant ne compte pas ses cartes en suspens (cartes regardées)', () => {
+  let s = scenario(['ST-31', 'ST-35'], (st) => {
+    setHand(st, 0, ['OP01-016']);
+    setDon(st, 0, 10);
+  });
+  s = play(s, 'OP01-016');
+  if (s.decision?.tag !== 'pick') return;
+  const o = encodeObservation(viewFor(s, 0), 0);
+  const zone = (i: number) => DYN_FEATURES.slice(0, 16).findIndex((_, z) => o.dyn[i * DYN_DIM + z] === 1);
+  const countOf = (i: number) => Math.round(o.dyn[i * DYN_DIM + DYN_FEATURES.indexOf('count')] * 4);
+  const list = s.players[0].list!.cards;
+  for (const num of Object.keys(list)) {
+    let total = 0;
+    o.nums.forEach((n, i) => {
+      if (n !== num) return;
+      const z = DYN_FEATURES[zone(i)];
+      if (['zone:myPool', 'zone:myTrash'].includes(z)) total += countOf(i);
+      else if (['zone:myHand', 'zone:myChar', 'zone:myStage', 'zone:myLifeUp', 'zone:myDeckKnown', 'zone:limbo'].includes(z) && o.dyn[i * DYN_DIM + DYN_FEATURES.indexOf('mine')] === 1) total += 1;
+    });
+    // chaque exemplaire est compté une fois : visible, en suspens, ou encore caché (deck restant)
+    const hiddenLife = s.players[0].life.filter((c) => !c.faceUp).filter((c) => c.num === num).length;
+    assert.equal(total + 0 * hiddenLife, list[num], `${num} : ${total} au lieu de ${list[num]}`);
+  }
 });

@@ -128,8 +128,9 @@ function save(dir: string, slot: EnvSlot, tag: string): string {
   return file;
 }
 
-// État d'un environnement après reset ou step : observation du siège qui doit décider ; en fin de partie tronquée,
-// observation finale de chaque siège piloté par le modèle (pour compléter la valeur de la dernière position)
+// État d'un environnement après reset ou step : observation du siège qui doit décider (aucune observation en fin de
+// partie, même tronquée : la valeur est complétée avec celle de la dernière décision du joueur, côté Python, plutôt
+// qu'avec une observation prise à un moment quelconque, qui pourrait trahir une décision adverse en cours)
 function report(id: number, batch: Batch) {
   const slot = envs.get(id)!;
   const e = slot.env;
@@ -139,9 +140,6 @@ function report(id: number, batch: Batch) {
   if (!r.done) {
     obs.push(batch.add(id, e.observe(e.toAct!), false));
   } else {
-    if (r.truncated) {
-      for (const p of [0, 1] as PlayerId[]) if (e.options.seats[p].kind === 'agent') obs.push(batch.add(id, e.observe(p), true));
-    }
     if (slot.record && recordDir) record = save(recordDir, slot, '');
     if ((r.truncated || r.error) && anomalyDir) record = save(anomalyDir, slot, r.error ? 'erreur_' : 'tronquee_');
   }

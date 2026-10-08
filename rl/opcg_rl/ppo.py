@@ -1,8 +1,9 @@
 """Collecte des parties d'entraînement et apprentissage PPO (acteur-critique, avantages GAE).
 
 Récompense : +1 victoire, −1 défaite, à la dernière décision du joueur ; aucune récompense intermédiaire ; γ = 1.
-Partie tronquée par le plafond de sécurité : aucune récompense, la valeur de la dernière position (estimée par le
-réseau) complète l'avantage — atteindre le plafond ne rapporte ni ne coûte rien de plus que de continuer à jouer.
+Partie tronquée par le plafond de sécurité : aucune récompense, la valeur de la dernière position où le joueur a
+décidé (estimée par le réseau) complète l'avantage — atteindre le plafond ne rapporte ni ne coûte rien de plus que de
+continuer à jouer.
 Partie arrêtée par une erreur du moteur : écartée (aucune donnée apprise), comptée et enregistrée pour analyse.
 
 Les parties continuent d'une mise à jour à l'autre : une partie commencée avant une mise à jour est finie avec le
@@ -43,7 +44,6 @@ class Traj:
     steps: list[Decision] = field(default_factory=list)
     reward: float = 0.0
     truncated: bool = False
-    final_obs: Obs | None = None
 
 
 @dataclass
@@ -208,7 +208,6 @@ class Collector:
                 continue                       # erreur du moteur : rien n'est appris de cette partie
             if r.truncated:
                 traj.truncated = True
-                traj.final_obs = next((o.compact() for o in r.obs if o.seat == s), None)
                 score = 0.5
             else:
                 traj.reward = 1.0 if r.winner == s else -1.0
@@ -226,15 +225,16 @@ class Collector:
 
 # ---------- apprentissage ----------
 
-def compute_gae(trajs: list[Traj], values: np.ndarray, final_values: dict[int, float], gamma: float, lam: float):
-    """Avantages GAE(λ) et cibles de valeur, partie par partie (récompense seulement à la fin)."""
+def compute_gae(trajs: list[Traj], values: np.ndarray, gamma: float, lam: float):
+    """Avantages GAE(λ) et cibles de valeur, partie par partie (récompense seulement à la fin). Partie tronquée : la
+    valeur de la dernière décision du joueur tient lieu de suite (pas de récompense)."""
     n = sum(len(t.steps) for t in trajs)
     adv = np.zeros(n, np.float32)
     i = 0
     for k, t in enumerate(trajs):
         T = len(t.steps)
         v = values[i:i + T]
-        last = final_values.get(k, 0.0) if t.truncated else 0.0
+        last = float(v[-1]) if t.truncated else 0.0
         next_v = np.append(v[1:], last)
         rewards = np.zeros(T, np.float32)
         if not t.truncated:
@@ -255,9 +255,7 @@ def ppo_update(agent: Agent, optimizer: torch.optim.Optimizer, trajs: list[Traj]
     obs = [d.obs for d in steps]
     t0 = time.perf_counter()
     values = agent.values(obs)
-    finals = {k: t.final_obs for k, t in enumerate(trajs) if t.truncated and t.final_obs is not None}
-    final_values = dict(zip(finals.keys(), agent.values(list(finals.values())).tolist())) if finals else {}
-    adv, ret = compute_gae(trajs, values, final_values, cfg["gamma"], cfg["gae_lambda"])
+    adv, ret = compute_gae(trajs, values, cfg["gamma"], cfg["gae_lambda"])
     actions = torch.tensor([d.action for d in steps], dtype=torch.long)
     old_logp = torch.tensor([d.logp for d in steps], dtype=torch.float32)
     adv_t = torch.from_numpy(adv)

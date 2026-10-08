@@ -17,9 +17,9 @@
 // Plafond de sécurité (maxDecisions) : une partie s'arrête toujours d'elle-même (deck vide au plus tard, voir
 // game/docs/ia-rl.md § Plafond). Le plafond ne sert qu'à rattraper un bogue du moteur. Une partie qui l'atteint est
 // « tronquée » : ni victoire, ni défaite, ni égalité. L'entraînement n'y met AUCUNE récompense : il complète avec sa
-// propre estimation de la valeur de la dernière position (troncature par limite de temps), si bien qu'atteindre le
-// plafond ne rapporte rien de plus que de continuer à jouer ; l'agent n'a aucun intérêt à faire traîner la partie. Ces
-// parties sont comptées et enregistrées pour analyse.
+// propre estimation de la valeur de la dernière position où le joueur a décidé (troncature par limite de temps), si
+// bien qu'atteindre le plafond ne rapporte rien de plus que de continuer à jouer ; l'agent n'a aucun intérêt à faire
+// traîner la partie. Ces parties sont comptées et enregistrées pour analyse.
 import { DECKS } from '../engine/decks.ts';
 import { actInPlace, newGame } from '../engine/engine.ts';
 import type { GameState, Option, PlayerId } from '../engine/types.ts';

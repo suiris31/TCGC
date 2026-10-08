@@ -379,7 +379,7 @@ export function progress(records: GameSummary[]): Progress {
     minutesPerGame: mean(finished.filter((r) => r.minutes !== null).map((r) => r.minutes!)),
   };
 
-  const levelName = ['', 'Débutant', 'Confirmé', 'Expert'];
+  const levelName = ['', 'Débutant', 'Confirmé', 'Expert', 'IA entraînée'];
   return {
     rows: [...rows].reverse(),
     finished,

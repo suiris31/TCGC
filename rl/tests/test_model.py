@@ -151,7 +151,7 @@ def _traj(n, reward, truncated=False):
 def test_gae_terminal_reward_only():
     trajs = [_traj(3, 1.0), _traj(2, -1.0)]
     values = np.array([0.2, 0.4, 0.6, 0.0, -0.5], np.float32)
-    adv, ret = compute_gae(trajs, values, {}, gamma=1.0, lam=1.0)
+    adv, ret = compute_gae(trajs, values, gamma=1.0, lam=1.0)
     # λ = 1, γ = 1 : la cible de chaque décision est le résultat final de sa partie
     assert np.allclose(ret, [1, 1, 1, -1, -1])
     assert np.allclose(adv, ret - values)
@@ -160,8 +160,8 @@ def test_gae_terminal_reward_only():
 def test_gae_truncated_bootstraps_without_reward():
     trajs = [_traj(2, 0.0, truncated=True)]
     values = np.array([0.1, 0.3], np.float32)
-    adv, ret = compute_gae(trajs, values, {0: 0.7}, gamma=1.0, lam=1.0)
-    assert np.allclose(ret, [0.7, 0.7]), "partie tronquée : la valeur de la dernière position, pas 0"
+    adv, ret = compute_gae(trajs, values, gamma=1.0, lam=1.0)
+    assert np.allclose(ret, [0.3, 0.3]), "partie tronquée : la valeur de la dernière décision, pas 0"
 
 
 def test_elo_orders_players():

@@ -14,7 +14,7 @@ import { isTouch } from './device.ts';
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
 type Tab = 'progress' | 'axes' | 'games';
 
-const LEVEL = ['', 'Débutant', 'Confirmé', 'Expert'];
+const LEVEL = ['', 'Débutant', 'Confirmé', 'Expert', 'IA entraînée'];
 const STATUS: Record<GameSummary['status'], [string, string]> = {
   won: ['Victoire', 'res-win'],
   lost: ['Défaite', 'res-loss'],

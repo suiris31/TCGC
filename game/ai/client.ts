@@ -1,5 +1,6 @@
 // Accès aux calculs du fil séparé (worker.ts) depuis l'interface
 import { cardData } from '../engine/cards/index.ts';
+import { SPEC_HASH } from '../rl/encode.ts';
 import type { GameState } from '../engine/types.ts';
 import type { Analysis, CoachOptions, Level } from './search.ts';
 import type { WorkerRequest } from './worker.ts';
@@ -9,11 +10,16 @@ type Request = WorkerRequest extends infer R ? (R extends { id: number } ? Omit<
 // Dossier du modèle entraîné, à côté de l'application (chemins relatifs : l'appli peut être dans un sous-dossier)
 export const rlModelUrl = () => new URL(`${import.meta.env.BASE_URL}rl-model/`, location.href).href;
 
-// Un modèle entraîné est-il installé ? (vérifié une fois)
+// Un modèle entraîné est-il installé, et entraîné avec l'encodage du code actuel ? (vérifié une fois)
 let rlChecked: Promise<boolean> | null = null;
 export function rlModelAvailable(): Promise<boolean> {
-  rlChecked ??= fetch(`${rlModelUrl()}model.json`, { method: 'GET' })
-    .then((r) => r.ok && (r.headers.get('content-type') ?? '').includes('json'))
+  rlChecked ??= fetch(`${rlModelUrl()}model.json`)
+    .then(async (r) => {
+      if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return false;
+      const info = await r.json();
+      if (info.specHash !== SPEC_HASH) console.warn(`IA entraînée : modèle « ${info.name} » d'un autre encodage (${info.specHash}, actuel ${SPEC_HASH}), à réexporter`);
+      return info.specHash === SPEC_HASH;
+    })
     .catch(() => false);
   return rlChecked;
 }

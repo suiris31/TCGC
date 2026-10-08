@@ -39,6 +39,9 @@ def main() -> int:
     p.add_argument("--seeds", type=int, default=2, help="graines par confrontation de decks (×2 sièges)")
     p.add_argument("--mc-pairs", type=int, default=12, help="confrontations jouées contre le Monte-Carlo (lent)")
     p.add_argument("--greedy", action="store_true", help="le modèle prend toujours l'option la plus probable")
+    p.add_argument("--no-card-ids", action="store_true",
+                   help="toutes les cartes traitées comme inconnues (seules leurs caractéristiques) : mesure de la "
+                        "généralisation à des cartes jamais vues")
     p.add_argument("--record", type=int, default=0, help="enregistrer les N premières parties (trajectoires rejouables)")
     p.add_argument("--workers", default="auto")
     p.add_argument("--envs", type=int, default=8, help="parties simultanées par processus Node")
@@ -66,6 +69,9 @@ def main() -> int:
     for path in paths:
         agent, ckpt = agent_from_checkpoint(path, spec, device)
         key = f"{path.parent.name}/{path.stem}"
+        if args.no_card_ids:
+            agent.forget_card_ids()
+            key += "-sans-id"
         agents[key] = agent
         print(f"Modèle {key} : mise à jour {ckpt.get('state', {}).get('update', '?')}, {ckpt.get('state', {}).get('games', '?')} parties d'entraînement")
     decks = list(spec.decks) if args.decks == "all" else args.decks.split(",")

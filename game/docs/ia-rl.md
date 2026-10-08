@@ -312,7 +312,8 @@ identique. Ce test a trouvé une fuite réelle, d'autres ont été trouvées par
 | Ordre de la main adverse = ordre d'arrivée des cartes : la place d'une carte connue disait quelles cartes avaient été jouées | cartes connues d'abord, puis cartes cachées ; l'encodage n'utilise pas la place |
 | Deux exemplaires d'une carte, l'un révélé : le moteur jouait le premier de la main, l'adversaire voyait l'exemplaire connu rester et savait qu'il y en avait un deuxième | l'exemplaire connu de l'adversaire est proposé d'abord (`knownFirst`) |
 | Encodeur : nombres des identifiants d'options, carte source d'une décision adverse | corrigé dans `game/rl/encode.ts` |
-| Observation finale d'une partie tronquée : l'étape « Contre » du combat sans décision du joueur = l'adversaire a de quoi contrer | étape du combat encodée seulement quand le joueur décide |
+| Observation finale d'une partie tronquée : prise pendant une décision adverse (Contre, [Déclenchement]), elle disait que l'adversaire avait de quoi contrer | plus d'observation finale : la valeur de la dernière décision du joueur complète l'avantage ; l'étape du combat n'est encodée que quand le joueur décide |
+| Réserve du deck (`myPool`) : les cartes du joueur en suspens (regardées, révélées par un [Déclenchement]) restaient comptées dans son deck | retirées du compte (test) |
 
 Informations publiques que le joueur ne recevait pas (pas des fuites, mais l'IA en savait moins qu'un humain) :
 cartes regardées pendant une recherche (toutes, pas seulement celles qu'on peut prendre), carte jouée quand la zone
@@ -331,7 +332,8 @@ des deux joueurs n'est pas ST-35). Mesuré au hasard : 305 décisions et 34 tour
 fait ~120 décisions. Deux sources de parties sans fin ont été trouvées : Koala (OP13-081) pouvait être activé puis
 annulé à l'infini (corrigé : placer la carte est le coût, plus d'annulation) et le miroir ST-35 peut recycler sa
 Défausse plus vite qu'il ne pioche. Choix pour le plafond (`env.max_decisions`, 3000 décisions) : **partie tronquée,
-sans récompense, complétée par la valeur estimée de la dernière position** (troncature par limite de temps). Rejeté :
+sans récompense, complétée par la valeur estimée de la dernière position où le joueur a décidé** (troncature par
+limite de temps). Rejeté :
 0 comme une égalité (un joueur en train de perdre gagnerait à faire traîner : −1 devient 0), défaite des deux (le jeu
 n'est plus à somme nulle), arbitrage par une évaluation écrite à la main (refusé par principe et exploitable). Les
 parties tronquées sont comptées (mesure `truncated_rate`) et enregistrées dans `logs/<run>/anomalies/`.
