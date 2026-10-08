@@ -28,6 +28,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from opcg_rl.config import load_config  # noqa: E402
+from opcg_rl.envpool import check_node_version  # noqa: E402
 from opcg_rl.model import masked_distribution  # noqa: E402
 from opcg_rl.obs import onnx_feeds  # noqa: E402
 from opcg_rl.paths import CHECK_ONNX_SCRIPT, MODELS_DIR, REPO_ROOT, WEB_MODEL_DIR, catalog_path, node_executable  # noqa: E402
@@ -112,10 +113,12 @@ def compare_onnxruntime(agent, path: Path, observations: list) -> dict:
             "same_best_option": same / max(1, len(observations))}
 
 
-def compare_browser(agent, pool, model_dir: Path, games: int, catalog: str | None) -> dict:
+def compare_browser(agent, pool, model_dir: Path, games: int, env: dict) -> dict:
     out = model_dir / "check-browser.json"
-    cmd = [node_executable(), "--no-warnings", str(CHECK_ONNX_SCRIPT), str(model_dir), str(out), "--games", str(games),
-           "--catalog", str(catalog_path(catalog))]
+    node = node_executable(env.get("node"))
+    check_node_version(node)
+    cmd = [node, "--no-warnings", str(CHECK_ONNX_SCRIPT), str(model_dir), str(out), "--games", str(games),
+           "--catalog", str(catalog_path(env.get("catalog")))]
     subprocess.run(cmd, cwd=str(REPO_ROOT), check=True)
     data = json.loads(out.read_text(encoding="utf-8"))
     worst = 0.0
@@ -160,7 +163,7 @@ def main() -> int:
     cfg = load_config(args.config, args.set)
     path = resolve_checkpoint(args.checkpoint)
     name = args.name or path.parent.name
-    out_dir = Path(args.out) if args.out else MODELS_DIR / name
+    out_dir = (Path(args.out) if args.out else MODELS_DIR / name).resolve()   # absolu : Node tourne depuis la racine
     out_dir.mkdir(parents=True, exist_ok=True)
     pool = open_pool(cfg, 1, 1)
     try:
@@ -187,9 +190,10 @@ def main() -> int:
         print(f"PyTorch / ONNX Runtime : {json.dumps(check['onnxruntime'])}")
         ok = check["onnxruntime"]["max_prob_diff"] < TOL and check["onnxruntime"]["max_value_diff"] < TOL
         if args.browser_games:
-            check["browser"] = compare_browser(agent, pool, out_dir, args.browser_games, cfg["env"].get("catalog"))
+            check["browser"] = compare_browser(agent, pool, out_dir, args.browser_games, cfg["env"])
             print(f"PyTorch / navigateur (onnxruntime-web) : {json.dumps(check['browser'])}")
-            ok = ok and check["browser"]["max_prob_diff"] < TOL and check["browser"]["option_mismatches"] == 0
+            ok = (ok and check["browser"]["max_prob_diff"] < TOL and check["browser"]["max_value_diff"] < TOL
+                  and check["browser"]["option_mismatches"] == 0)
         info["check"] = check
         (out_dir / "model.json").write_text(json.dumps(info, indent=1, ensure_ascii=False), encoding="utf-8")
     finally:

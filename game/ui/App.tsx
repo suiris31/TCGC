@@ -759,9 +759,14 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
   onHistory: () => void;
 }) {
   const ids = Object.keys(DECKS);
-  // niveau « IA entraînée » : seulement si un modèle est installé (web/public/rl-model/, voir rl/README.md)
-  const [rlReady, setRlReady] = useState(false);
+  // niveau « IA entraînée » : seulement si un modèle compatible est installé (web/public/rl-model/, voir rl/README.md) ;
+  // sinon un réglage resté sur ce niveau (partie reprise, modèle retiré ou d'un ancien encodage) redevient « Débutant »,
+  // pour ne pas compter sous ce nom des parties jouées par l'IA simple
+  const [rlReady, setRlReady] = useState<boolean | null>(null);
   useEffect(() => { rlModelAvailable().then(setRlReady); }, []);
+  useEffect(() => {
+    if (rlReady === false && config.level === 4) onChange({ ...config, level: 1 });
+  }, [rlReady, config, onChange]);
   const played = Object.entries(records)
     .map(([key, line]) => {
       const [myDeck, aiDeck, level] = key.split('|');
@@ -814,7 +819,7 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
         <div>
           <h2>Niveau de l’IA</h2>
           <div className="op-segmented">
-            {([1, 2, 3, ...(rlReady || config.level === 4 ? [4] : [])] as Level[]).map((level) => (
+            {([1, 2, 3, ...(rlReady ? [4] : [])] as Level[]).map((level) => (
               <button key={level} className={config.level === level ? 'seg on' : 'seg'} onClick={() => onChange({ ...config, level })}>{LEVELS[level].name}</button>
             ))}
           </div>

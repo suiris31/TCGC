@@ -166,15 +166,25 @@ Plusieurs entraînements peuvent coexister : `python train.py --run essai2`. Tou
 **Ctrl+C** : la mise à jour en cours se termine, un point de sauvegarde est écrit, puis le programme s'arrête
 (Ctrl+C une seconde fois : arrêt immédiat, avec quand même une tentative de sauvegarde).
 
-**Reprendre** : relance exactement la même commande. `train.py` reprend automatiquement le dernier point de
-sauvegarde de l'entraînement (`checkpoints/<run>/latest.pt`) :
+**Reprendre** : lance la commande affichée à l'arrêt (« Pour reprendre : ... ») : c'est la même que celle du départ,
+sans `--fresh`, `--level` ni `--resume`, qui n'agissent qu'une fois. `train.py` reprend automatiquement le plus
+récent point de sauvegarde lisible de l'entraînement (`checkpoints/<run>/latest.pt`, ou le précédent s'il a été
+abîmé par une coupure de courant) :
 
 ```bash
 python train.py                                             # reprend « opcg »
 python train.py --run essai2                                # reprend « essai2 »
-python train.py --resume checkpoints/opcg/ckpt_0000500.pt   # reprend un point de sauvegarde précis
-python train.py --fresh                                     # recommence de zéro (l'ancien dossier est mis de côté)
+python train.py --resume checkpoints/opcg/ckpt_0000500.pt   # repart d'un point de sauvegarde précis
+python train.py --fresh                                     # recommence de zéro (anciens dossiers mis de côté)
 ```
+
+Relancer par erreur une commande avec `--resume` ou `--level` déjà appliqués ne revient pas en arrière (le programme
+le détecte et continue). `--fresh`, en revanche, recommence toujours : l'entraînement précédent (points de sauvegarde
+et journaux) est renommé `<run>-ancien-<date>` et peut être repris avec `--run <run>-ancien-<date>`.
+
+Les dossiers `checkpoints/<run>/` peuvent être déplacés ou copiés sur un autre ordinateur (la ligue n'y garde pas de
+chemins absolus). Sous Windows, lancer `evaluate.py` ou `export_onnx.py` pendant l'entraînement est possible : si
+un fichier est momentanément verrouillé, l'écriture est réessayée.
 
 Un point de sauvegarde contient : les poids du modèle, l'état de l'optimiseur, le nombre de mises à jour, de parties
 et de décisions, le niveau en cours et l'historique de ses évaluations, la ligue (anciennes versions), le compteur des
@@ -204,6 +214,8 @@ l'entraînement **s'arrête sans passer au niveau suivant** (code de sortie 3) e
 python train.py --set curriculum.levels.1.max_updates=6000   # prolonger le niveau 2 (les niveaux sont numérotés à partir de 0)
 python train.py --level 3                                    # passer outre en connaissance de cause (forcer le niveau 3)
 ```
+
+`--level` n'agit qu'une fois : pour reprendre ensuite, relance la commande sans `--level`.
 
 Pourquoi des heuristiques « bruitées » au niveau 2 : la seule récompense est la victoire. Mesuré sur 200 parties,
 l'heuristique bat celle qui joue une décision sur 4 au hasard dans 82 % des cas, celle qui en joue une sur 2 dans
@@ -236,7 +248,7 @@ identifiants : un faible écart indique qu'une carte nouvelle aux caractéristiq
 
 Adversaires : `random`, `heuristic` (IA « Débutant »), `heuristic:0.25` (la même, une décision sur 4 au hasard), `mc:N` (Monte-Carlo à N tirages ; 16 ≈ « Confirmé », 48 ≈
 « Expert », sans limite de temps pour être reproductible ; lent : `--mc-pairs` limite les confrontations jouées),
-`model:<chemin.pt>`.
+`model:<chemin.pt ou nom d'entraînement>` (un autre modèle, ex. `model:checkpoints/opcg/ckpt_0000200.pt`).
 
 Le rapport (console + `logs/<run>/eval/*.md` et `.json`) donne pour chaque adversaire : taux de victoire avec
 intervalle de confiance à 95 %, résultats premier / second joueur, durée moyenne des parties, parties tronquées ou en
@@ -309,9 +321,11 @@ python export_onnx.py --checkpoint opcg --install     # et installation dans le 
 L'export vérifie l'équivalence avant d'installer :
 
 1. PyTorch contre ONNX Runtime sur 300 observations de vraies parties : écart des probabilités et de la valeur
-   (< 0,0001) et même option préférée ;
+   < 0,0001 exigé (la part de décisions où l'option préférée est la même est aussi mesurée ; elle ne peut différer
+   qu'entre deux options à égalité) ;
 2. le **code du navigateur** (`game/ai/rl.ts` + onnxruntime-web, exécuté dans Node par `game/rl/check-onnx.ts`) joue
-   quelques parties ; les mêmes parties sont rejouées avec PyTorch : mêmes options, mêmes probabilités.
+   quelques parties ; les mêmes parties sont rejouées avec PyTorch : mêmes options proposées, probabilités et valeur
+   à moins de 0,0001.
 
 `model.json` accompagne le modèle : nom, date, empreinte de l'encodage (un modèle n'est jamais utilisé avec un
 encodage différent de celui de son entraînement), vocabulaire des cartes, configuration, point de sauvegarde
@@ -327,9 +341,12 @@ Le simulateur propose alors un 4ᵉ niveau d'IA, **« IA entraînée »**, à c�
   soit déployé avec l'application (`deploy/update.sh`).
 
 Le modèle tourne dans le navigateur, dans le fil de calcul de l'IA (onnxruntime-web, WebAssembly, chargé seulement
-quand ce niveau est choisi : ~3,7 Mo compressés + le modèle). Il reçoit la même vue du joueur que pendant
+quand ce niveau est choisi : ~14 Mo de WebAssembly + le modèle, ou ~3,7 Mo si le serveur compresse ses fichiers ;
+avec nginx : `gzip on; gzip_types application/wasm application/octet-stream;`). Il reçoit la même vue du joueur que pendant
 l'entraînement et choisit selon ses probabilités. Si le modèle manque ou ne correspond plus au code (encodage
-modifié), l'IA simple joue à sa place et la console du navigateur l'explique. Les niveaux existants ne changent pas.
+modifié), le niveau n'est pas proposé (un réglage resté sur ce niveau redevient « Débutant ») ; si le chargement
+échoue en cours de partie, l'IA simple joue à sa place et la console du navigateur l'explique. Les niveaux existants
+ne changent pas.
 
 ## 13. Tests
 

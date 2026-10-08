@@ -2,12 +2,31 @@
 from __future__ import annotations
 
 import copy
+import re
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from .paths import CONFIG_DIR
+
+
+class _Loader(yaml.SafeLoader):
+    """YAML 1.1 lit « 1e-4 » (sans point décimal) comme du texte ; ici, comme un nombre."""
+
+
+_Loader.add_implicit_resolver(
+    "tag:yaml.org,2002:float",
+    re.compile(r"""^(?:[-+]?(?:[0-9][0-9_]*)\.[0-9_]*(?:[eE][-+]?[0-9]+)?
+    |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
+    |\.[0-9_]+(?:[eE][-+]?[0-9]+)?
+    |[-+]?\.(?:inf|Inf|INF)
+    |\.(?:nan|NaN|NAN))$""", re.X),
+    list("-+0123456789."))
+
+
+def _load(text: str) -> Any:
+    return yaml.load(text, Loader=_Loader)
 
 
 def deep_merge(base: dict, over: dict) -> dict:
@@ -21,7 +40,7 @@ def deep_merge(base: dict, over: dict) -> dict:
 
 
 def _parse_value(text: str) -> Any:
-    return yaml.safe_load(text)
+    return _load(text)
 
 
 def set_dotted(cfg: dict, dotted: str, value: Any) -> None:
@@ -39,17 +58,18 @@ def set_dotted(cfg: dict, dotted: str, value: Any) -> None:
 
 def load_config(files: list[str] | None = None, overrides: list[str] | None = None) -> dict:
     """default.yaml, puis chaque fichier donné (chemin, ou nom d'un fichier de rl/config/), puis les --set."""
-    cfg = yaml.safe_load((CONFIG_DIR / "default.yaml").read_text(encoding="utf-8"))
+    cfg = _load((CONFIG_DIR / "default.yaml").read_text(encoding="utf-8"))
     for f in files or []:
         path = Path(f)
         if not path.exists():
             path = CONFIG_DIR / (f if f.endswith(".yaml") else f"{f}.yaml")
-        cfg = deep_merge(cfg, yaml.safe_load(path.read_text(encoding="utf-8")) or {})
+        cfg = deep_merge(cfg, _load(path.read_text(encoding="utf-8")) or {})
     for item in overrides or []:
         if "=" not in item:
             raise ValueError(f"réglage invalide (clé=valeur attendu) : {item}")
         key, value = item.split("=", 1)
         set_dotted(cfg, key.strip(), _parse_value(value))
+    cfg["run"] = str(cfg["run"])             # --set run=2024 : un nom, pas un nombre
     return cfg
 
 

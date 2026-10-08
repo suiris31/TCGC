@@ -6,8 +6,8 @@
     python train.py --run essai2 --fresh # nouvel entraînement, depuis zéro
     python train.py --set ppo.lr=0.0001 --set env.workers=6
 
-Ctrl+C : un point de sauvegarde est écrit avant de quitter ; relancer la même commande reprend l'entraînement.
-Voir README.md pour le détail.
+Ctrl+C : un point de sauvegarde est écrit avant de quitter ; la commande à lancer pour reprendre est affichée
+(la même, sans --fresh, --level ni --resume, qui n'ont d'effet qu'une fois). Voir README.md pour le détail.
 """
 from __future__ import annotations
 
@@ -43,6 +43,22 @@ from opcg_rl.seeds import TrainSeeds  # noqa: E402
 EXIT_GATE_FAILED = 3
 
 
+def resume_command() -> str:
+    """La commande qui reprend cet entraînement : celle qui l'a lancé, sans les options à effet unique."""
+    out, skip = [], False
+    for a in sys.argv[1:]:
+        if skip:
+            skip = False
+            continue
+        if a == "--fresh" or a.startswith(("--level=", "--resume=")):
+            continue
+        if a in ("--level", "--resume"):
+            skip = True
+            continue
+        out.append(f'"{a}"' if " " in a else a)
+    return " ".join(["python train.py", *out])
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Entraînement PPO de l'IA One Piece TCG")
     p.add_argument("--config", action="append", default=[], help="fichier de réglages en plus de default.yaml (ex. cpu, gpu, smoke)")
@@ -68,13 +84,19 @@ def main() -> int:
         cfg["env"]["workers"] = args.workers
     if args.max_updates:
         cfg["train"]["max_updates"] = args.max_updates
+    cfg["run"] = str(cfg["run"])
     run_dir = CHECKPOINTS_DIR / cfg["run"]
     log_dir = LOGS_DIR / cfg["run"]
-    if args.fresh and run_dir.exists():
-        aside = run_dir.with_name(f"{run_dir.name}-ancien-{time.strftime('%Y%m%d-%H%M%S')}")
-        shutil.move(str(run_dir), aside)
-        print(f"Ancien entraînement mis de côté : {aside}")
-    resume_path = Path(args.resume) if args.resume else (None if args.fresh else ck.find_latest(run_dir))
+    if args.fresh and (run_dir.exists() or log_dir.exists()):
+        # points de sauvegarde ET journaux mis de côté (sinon les courbes des deux entraînements se mélangeraient)
+        stamp = time.strftime('%Y%m%d-%H%M%S')
+        aside = run_dir.with_name(f"{run_dir.name}-ancien-{stamp}")
+        for d in (run_dir, log_dir):
+            if d.exists():
+                shutil.move(str(d), d.with_name(aside.name))
+        print(f"Ancien entraînement mis de côté sous le nom {aside.name} (pour le reprendre : python train.py --run {aside.name})")
+    if int(cfg["env"]["eval_envs_per_worker"]) < 1:
+        raise SystemExit("env.eval_envs_per_worker doit valoir au moins 1 : les évaluations de passage de niveau en ont besoin.")
 
     device = select_device(cfg["device"])
     workers = resolve_workers(cfg["env"]["workers"], reserve_for_torch=device.type == "cpu")
@@ -109,14 +131,30 @@ def main() -> int:
     state = {"update": 0, "games": 0, "decisions": 0, "level": int(cfg["train"].get("start_level", 0)), "level_updates": 0,
              "streak": 0, "level_start": {}, "gate_history": [], "elo_results": [], "seed_counter": 0, "elapsed": 0.0}
     ckpt = None
-    if resume_path:
-        ckpt = ck.load(resume_path)
+    resume_path = None
+    latest = None if args.fresh else ck.load_latest(run_dir, warn=log)
+    if args.resume:
+        wanted = str(Path(args.resume).resolve())
+        if latest and latest[1].get("state", {}).get("resumed_from") == wanted:
+            # même commande relancée : on continue cet entraînement au lieu de revenir en arrière
+            log(f"--resume {args.resume} déjà appliqué à cet entraînement : reprise depuis son dernier point de sauvegarde")
+            resume_path, ckpt = latest
+        else:
+            resume_path, ckpt = Path(args.resume), ck.load(Path(args.resume))
+            ckpt.setdefault("state", {})["resumed_from"] = wanted
+    elif latest:
+        resume_path, ckpt = latest
+    if ckpt:
         if ckpt.get("spec_hash") != spec.spec_hash:
             raise SystemExit(f"Le point de sauvegarde {resume_path} utilise un autre encodage ({ckpt.get('spec_hash')}) que "
                              f"le code actuel ({spec.spec_hash}). Lance un nouvel entraînement (--fresh ou --run).")
         vocab = ckpt["vocab"]
         model = build_model(spec, vocab, ckpt["model_config"])
         model.load_state_dict(ckpt["model_state"])
+        asked = {k: v for k, v in cfg["model"].items() if k in ckpt["model_config"] and ckpt["model_config"][k] != v}
+        if asked:
+            log(f"ATTENTION : la taille du modèle ne change pas à la reprise ; réglages ignorés : {json.dumps(asked)} "
+                "(nouvel entraînement : --fresh ou --run)")
         state.update(ckpt["state"])
         log(f"Reprise depuis {resume_path} (mise à jour {state['update']}, {state['games']} parties, niveau {levels[state['level']]['name']})")
     else:
@@ -124,13 +162,18 @@ def main() -> int:
         vocab = vocab_from_decks(spec, deck_ids)
         model = build_model(spec, vocab, cfg["model"])
         log("Nouvel entraînement")
-    if args.level:
+    if args.level and state.get("forced_level") == args.level:
+        log(f"--level {args.level} déjà appliqué à cet entraînement : ignoré (retire-le de la commande)")
+    elif args.level:
         state["level"] = max(0, min(len(levels) - 1, args.level - 1))
         state["level_updates"] = 0
         state["streak"] = 0
+        state["forced_level"] = args.level
         log(f"Niveau forcé : {levels[state['level']]['name']}")
+    derived = ("static_dim", "dyn_dim", "glob_dim", "opt_dim", "vocab_size", "groups", "count_index")
+    cfg["model"] = {k: v for k, v in model.cfg.to_dict().items() if k not in derived}   # celle du modèle réellement chargé
     agent = Agent(model, vocab, spec, device, "learner")
-    log(f"Modèle : {parameter_count(model) / 1e6:.2f} M paramètres, vocabulaire de {len(vocab)} cartes, {json.dumps(cfg['model'])}")
+    log(f"Modèle : {parameter_count(model) / 1e6:.2f} M paramètres, vocabulaire de {len(vocab)} cartes, {json.dumps(model.cfg.to_dict())}")
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg["ppo"]["lr"], eps=1e-5)
     league = League(run_dir / "league", pfsp_power=cfg["train"]["pfsp_power"], max_snapshots=cfg["train"]["max_snapshots"])
     if ckpt:
@@ -138,7 +181,7 @@ def main() -> int:
             optimizer.load_state_dict(ckpt["optimizer_state"])
             for g in optimizer.param_groups:
                 g["lr"] = cfg["ppo"]["lr"]
-        league.load_state(ckpt.get("league", {}))
+        league.load_state(ckpt.get("league", {}), keep=set(state["level_start"].values()), warn=log)
         if ckpt.get("rng"):
             ck.restore_rng(ckpt["rng"], rng)
     seeds = TrainSeeds(state["seed_counter"], salt=cfg["seed"])
@@ -183,15 +226,24 @@ def main() -> int:
             "state": state, "league": league.state(), "rng": ck.rng_states(rng), "config": cfg, "reason": reason,
             "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
-        path = ck.save_with_latest(run_dir, state["update"], payload, cfg["train"]["keep_checkpoints"])
+        path = ck.save_with_latest(run_dir, state["update"], payload, cfg["train"]["keep_checkpoints"], warn=log)
         (run_dir / "config.yaml").write_text(dump(cfg), encoding="utf-8")
         return path
 
     def ensure_level_start():
         key = str(state["level"])
-        if key not in state["level_start"]:
+        sid = state["level_start"].get(key)
+        if sid and league.find(sid) is None:
+            log(f"Version de départ du niveau introuvable ({sid}) : la version actuelle la remplace")
+            sid = None
+        if not sid:
+            # enregistrée seulement une fois le fichier écrit
             state["level_start"][key] = f"u{state['update']:06d}"
-            add_snapshot()
+            try:
+                add_snapshot()
+            except BaseException:
+                state["level_start"].pop(key, None)
+                raise
 
     def gate_eval(level: dict) -> bool:
         decks = list(spec.decks) if level.get("decks", "all") == "all" else list(level["decks"])
@@ -228,6 +280,10 @@ def main() -> int:
             outcomes = run_games(pool, eval_envs, agents, "learner", games, greedy=bool(cfg["evaluation"]["greedy"]),
                                  seed=cfg["seed"] + 1000, max_decisions=int(cfg["env"]["max_decisions"]))
             report = summarize(outcomes)
+            if not report:                # aucune partie jouée : rien ne prouve le niveau
+                passed = False
+                lines.append(f"{', '.join(opponents)} : aucune partie jouée")
+                continue
             for name, e in report.items():
                 ok = e["winrate"] >= item.get("min_winrate", 0.0)
                 passed = passed and ok
@@ -333,12 +389,12 @@ def main() -> int:
                 break
             if stop["flag"]:
                 path = save("arrêt demandé")
-                log(f"Point de sauvegarde : {path}. Relance la même commande pour reprendre.")
+                log(f"Point de sauvegarde : {path}. Pour reprendre : {resume_command()}")
                 break
     except KeyboardInterrupt:
         try:
             path = save("interruption")
-            log(f"Interrompu. Point de sauvegarde : {path}")
+            log(f"Interrompu. Point de sauvegarde : {path}. Pour reprendre : {resume_command()}")
         except Exception as err:
             log(f"Interrompu ; point de sauvegarde impossible : {err}")
         exit_code = 130

@@ -21,16 +21,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from opcg_rl.config import load_config  # noqa: E402
 from opcg_rl.device import select_device  # noqa: E402
+from opcg_rl.envpool import check_node_version  # noqa: E402
 from opcg_rl.paths import LOGS_DIR, REPLAY_SCRIPT, REPO_ROOT, catalog_path, node_executable  # noqa: E402
 from opcg_rl.runtime import agent_from_checkpoint, open_pool, resolve_checkpoint  # noqa: E402
 
 
-def narrate(path: Path, seat: int | None, record: str | None, top: int, catalog: str | None) -> None:
-    cmd = [node_executable(), "--no-warnings", str(REPLAY_SCRIPT), str(path), "--top", str(top), "--catalog", str(catalog_path(catalog))]
+def narrate(path: Path, seat: int | None, record: str | None, top: int, env: dict) -> None:
+    # chemins absolus : Node tourne depuis la racine du dépôt, pas depuis le dossier où la commande a été lancée
+    node = node_executable(env.get("node"))
+    check_node_version(node)
+    cmd = [node, "--no-warnings", str(REPLAY_SCRIPT), str(path.resolve()), "--top", str(top),
+           "--catalog", str(catalog_path(env.get("catalog")))]
     if seat is not None:
         cmd += ["--seat", str(seat)]
     if record:
-        cmd += ["--record", record]
+        cmd += ["--record", str(Path(record).resolve())]
     subprocess.run(cmd, cwd=str(REPO_ROOT), check=True)
 
 
@@ -51,7 +56,7 @@ def main() -> int:
     args = p.parse_args()
     cfg = load_config(args.config, args.set)
     if args.replay:
-        narrate(Path(args.replay), None, args.record, args.top, cfg["env"].get("catalog"))
+        narrate(Path(args.replay), None, args.record, args.top, cfg["env"])
         return 0
     if not args.checkpoint:
         p.error("indique --checkpoint (ou --replay)")
@@ -89,7 +94,7 @@ def main() -> int:
     print(f"Partie graine {seed} terminée : {'erreur ' + r.error if r.error else 'tronquée' if r.truncated else f'le joueur {r.winner + 1} gagne'} "
           f"({r.turns} tours, {r.decisions} décisions). Trajectoire : {r.record}\n")
     if r.record:
-        narrate(Path(r.record), args.seat, args.record, args.top, cfg["env"].get("catalog"))
+        narrate(Path(r.record), args.seat, args.record, args.top, cfg["env"])
     return 0
 
 

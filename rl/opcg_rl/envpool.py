@@ -6,10 +6,12 @@ commentaire en tête de game/rl/server.ts.
 """
 from __future__ import annotations
 
+import errno
 import json
 import struct
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -63,6 +65,7 @@ def check_node_version(node: str) -> None:
 
 class NodeWorker:
     def __init__(self, node: str, catalog: Path, log_file: Path | None = None):
+        self.log_file = log_file
         self.log = open(log_file, "ab") if log_file else None
         # groupe de processus à part : Ctrl+C dans le terminal n'arrête que Python, qui sauvegarde puis ferme les
         # processus Node lui-même (et un processus Node s'arrête seul quand Python disparaît : fin de son entrée)
@@ -74,13 +77,35 @@ class NodeWorker:
             stderr=self.log if self.log else None, bufsize=0, **isolate,
         )
 
+    def _died(self) -> EngineServerError:
+        """Erreur « processus Node arrêté », avec la fin de ses messages d'erreur (fichier journal ou console)."""
+        try:
+            code = self.proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            code = None
+        where = "ses messages sont affichés ci-dessus"
+        if self.log_file:
+            if self.log:
+                self.log.flush()
+            try:
+                tail = self.log_file.read_bytes()[-2000:].decode("utf-8", errors="replace").strip()
+            except OSError:
+                tail = ""
+            where = f"journal : {self.log_file}" + (f"\n--- fin du journal ---\n{tail}" if tail else "")
+        return EngineServerError(f"le processus Node s'est arrêté (code {code}) ; {where}")
+
     def send(self, cmd: dict) -> None:
         assert self.proc.stdin is not None
         try:
             self.proc.stdin.write((json.dumps(cmd, separators=(",", ":")) + "\n").encode("utf-8"))
             self.proc.stdin.flush()
         except BrokenPipeError as err:
-            raise EngineServerError(f"le processus Node s'est arrêté (code {self.proc.poll()})") from err
+            raise self._died() from err
+        except OSError as err:
+            # Windows : écrire vers un processus déjà arrêté donne EINVAL plutôt que BrokenPipeError
+            if err.errno in (errno.EINVAL, errno.EPIPE):
+                raise self._died() from err
+            raise
 
     def _read_exact(self, n: int) -> bytes:
         assert self.proc.stdout is not None
@@ -89,7 +114,7 @@ class NodeWorker:
         while left:
             chunk = self.proc.stdout.read(left)
             if not chunk:
-                raise EngineServerError(f"le processus Node s'est arrêté (code {self.proc.poll()}) ; voir ses messages ci-dessus")
+                raise self._died()
             chunks.append(chunk)
             left -= len(chunk)
         return b"".join(chunks)
@@ -109,14 +134,44 @@ class NodeWorker:
             at += nbytes
         return header, buffers
 
-    def close(self) -> None:
+    def request_close(self) -> None:
+        """Demande l'arrêt sans attendre : fin de son entrée (un processus Node bloqué sur une réponse non lue
+        n'écoute plus, d'où l'arrêt forcé de finish())."""
         try:
             self.send({"op": "close"})
-            self.proc.wait(timeout=5)
+        except Exception:
+            pass
+        try:
+            if self.proc.stdin:
+                self.proc.stdin.close()
+        except Exception:
+            pass
+
+    def finish(self, deadline: float) -> None:
+        try:
+            self.proc.wait(timeout=max(0.0, deadline - time.monotonic()))
         except Exception:
             self.proc.kill()
+            try:
+                self.proc.wait(timeout=2)
+            except Exception:
+                pass
         if self.log:
             self.log.close()
+            self.log = None
+
+    def close(self) -> None:
+        self.request_close()
+        self.finish(time.monotonic() + 5)
+
+
+def close_workers(workers: list[NodeWorker], timeout: float = 5.0) -> None:
+    """Ferme tous les processus Node : demande d'arrêt à tous, puis une seule attente commune (et non 5 s chacun)."""
+    for w in workers:
+        w.request_close()
+    deadline = time.monotonic() + timeout
+    for w in workers:
+        w.finish(deadline)
 
 
 @dataclass
@@ -151,15 +206,21 @@ class EnvPool:
                 "les listes officielles), ou indique un fichier avec env.catalog / OPCG_CATALOG.")
         if log_dir:
             log_dir.mkdir(parents=True, exist_ok=True)
-        self.workers = [NodeWorker(node_path, cat, (log_dir / f"node-{w}.log") if log_dir else None) for w in range(workers)]
+        self.workers: list[NodeWorker] = []
         init = {"op": "init"}
         if record_dir:
             init["recordDir"] = str(record_dir)
         if anomaly_dir:
             init["anomalyDir"] = str(anomaly_dir)
-        for w in self.workers:
-            w.send(init)
-        replies = [w.recv() for w in self.workers]
+        try:
+            for w in range(workers):
+                self.workers.append(NodeWorker(node_path, cat, (log_dir / f"node-{w}.log") if log_dir else None))
+            for w in self.workers:
+                w.send(init)
+            replies = [w.recv() for w in self.workers]
+        except BaseException:
+            close_workers(self.workers)       # pas de processus Node orphelins si le démarrage échoue
+            raise
         header, buffers = replies[0]
         s = header["spec"]
         self.spec = Spec(
@@ -207,8 +268,7 @@ class EnvPool:
         return results
 
     def close(self) -> None:
-        for w in self.workers:
-            w.close()
+        close_workers(self.workers)
 
     def __enter__(self):
         return self

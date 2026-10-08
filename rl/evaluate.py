@@ -32,7 +32,8 @@ def main() -> int:
     p.add_argument("--checkpoint", help="point de sauvegarde (.pt) ou nom d'entraînement")
     p.add_argument("--compare", nargs="+", help="plusieurs points de sauvegarde : chacun contre chacun + IA intégrées, Elo")
     p.add_argument("--opponents", nargs="+", default=["random", "heuristic", "mc:16"],
-                   help="random, heuristic, mc:N (Monte-Carlo, N tirages ; 16 = niveau Confirmé), model:chemin.pt")
+                   help="random, heuristic, heuristic:0.25 (1 décision sur 4 au hasard), mc:N (Monte-Carlo, N tirages ; "
+                        "16 = niveau Confirmé), model:<chemin.pt ou nom d'entraînement>")
     p.add_argument("--decks", default="all", help="all, ou liste séparée par des virgules (ex. ST-31,ST-35)")
     p.add_argument("--seeds", type=int, default=2, help="graines par confrontation de decks (×2 sièges)")
     p.add_argument("--mc-pairs", type=int, default=12, help="confrontations jouées contre le Monte-Carlo (lent)")
@@ -72,6 +73,14 @@ def main() -> int:
             key += "-sans-id"
         agents[key] = agent
         print(f"Modèle {key} : mise à jour {ckpt.get('state', {}).get('update', '?')}, {ckpt.get('state', {}).get('games', '?')} parties d'entraînement")
+    # adversaires « model:<chemin ou entraînement> » : chargés à part (ils jouent, ils ne sont pas évalués)
+    opponent_agents = {}
+    for opp in args.opponents:
+        if opp.startswith("model:"):
+            ref = opp.split(":", 1)[1]
+            path = resolve_checkpoint(ref)
+            opponent_agents[ref], ock = agent_from_checkpoint(path, spec, device, name=ref)
+            print(f"Adversaire {ref} : {path}, mise à jour {ock.get('state', {}).get('update', '?')}")
     decks = list(spec.decks) if args.decks == "all" else args.decks.split(",")
     pairs = [(a, b) for a in decks for b in decks]
     t0 = time.perf_counter()
@@ -91,7 +100,7 @@ def main() -> int:
                     sub = pairs[:: max(1, len(pairs) // args.mc_pairs)][: args.mc_pairs]
                 games = plan_games([opp], sub, args.seeds, args.seed_offset)
                 print(f"{key} contre {opp} : {len(games)} parties...", flush=True)
-                outcomes = run_games(pool, list(range(pool.size)), agents, key, games, greedy=args.greedy, seed=12345,
+                outcomes = run_games(pool, list(range(pool.size)), {**opponent_agents, **agents}, key, games, greedy=args.greedy, seed=12345,
                                      max_decisions=int(cfg["env"]["max_decisions"]), record=args.record)
                 all_outcomes += outcomes
                 elo_rows += [(key, o["opponent"], o["score"]) for o in outcomes]

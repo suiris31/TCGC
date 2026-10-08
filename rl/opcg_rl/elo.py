@@ -22,12 +22,11 @@ def fit_elo(results: list[tuple[str, str, float]], anchor: str | None = "heurist
         wins[b] += 1 - s
         games[(a, b)] += 1
         games[(b, a)] += 1
-    # un peu de partage a priori (une demi-partie nulle contre chacun) : pas de note infinie pour qui gagne tout
-    for a in players:
-        for b in players:
-            if a != b:
-                wins[a] += 0.25
-                games[(a, b)] += 0.5
+    # un peu de partage a priori (une demi-partie nulle contre chaque adversaire RÉELLEMENT rencontré) : pas de note
+    # infinie pour qui gagne tout, et un a priori qui ne grossit pas avec le nombre de joueurs classés
+    for a, b in [k for k in games if games[k] > 0]:
+        wins[a] += 0.25
+        games[(a, b)] += 0.5
     gamma = {p: 1.0 for p in players}
     for _ in range(iterations):
         new = {}
