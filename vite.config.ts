@@ -25,11 +25,9 @@ export default defineConfig({
     port: 5173,
     // le jeu (dossier game/) est en dehors de la racine web/
     fs: { allow: ['..'] },
-    // changeOrigin: false : le serveur reçoit l'adresse de la page (Host), comme en production ; sinon sa protection
-    // contre les requêtes d'un autre site refuse connexion et inscription (Vite 8 réécrit Host par défaut)
     proxy: {
-      '/api': { target: 'http://localhost:3000', changeOrigin: false },
-      '/img': { target: 'http://localhost:3000', changeOrigin: false },
+      '/api': 'http://localhost:3000',
+      '/img': 'http://localhost:3000',
     },
   },
 });
