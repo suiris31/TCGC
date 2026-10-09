@@ -18,7 +18,7 @@
 // textes des questions et des options, graine du hasard, compteur d'événements.
 import { DECKS } from '../engine/decks.ts';
 import {
-  attackAbility, canBeRested, def, fieldCost, findField, handCost, hasKeyword, hasMod, other, power,
+  attackAbility, attackTargets, canBeRested, def, fieldCost, findField, handCost, hasKeyword, hasMod, other, power,
 } from '../engine/rules.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { KEYWORDS } from '../engine/keywords.ts';
@@ -318,12 +318,16 @@ function comparisons(v: GameState, me: PlayerId, o: Option, kind: string, ctx: C
     x('atk:donAffordable', n <= ctx.donActive ? 1 : 0);
   }
   if (kind === 'don:') {
+    // cibles réelles : un Personnage joué ce tour avec [Initiative : Personnage] n'attaque que des Personnages
     const f = onField(o.uid);
-    if (f && attackAbility(v, me, f.card).can) {
+    const targets = f ? attackTargets(v, me, f.card) : [];
+    if (f && targets.length) {
       const pw = power(v, f.card.uid);
       x('don:canAttack', 1);
-      x('don:reachesOppLeader', pw < ctx.oppLeaderPower && pw + 1000 >= ctx.oppLeaderPower ? 1 : 0);
-      x('don:alreadyAboveOppLeader', pw >= ctx.oppLeaderPower ? 1 : 0);
+      if (targets.includes(v.players[other(me)].leader.uid)) {
+        x('don:reachesOppLeader', pw < ctx.oppLeaderPower && pw + 1000 >= ctx.oppLeaderPower ? 1 : 0);
+        x('don:alreadyAboveOppLeader', pw >= ctx.oppLeaderPower ? 1 : 0);
+      }
     }
   }
   const b = ctx.battle;

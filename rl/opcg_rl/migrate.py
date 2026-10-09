@@ -3,7 +3,8 @@
 Seules les dernières colonnes des options diffèrent (encodage 4 : comparaisons par option ajoutées après celles de
 l'encodage 3). La première couche des options reçoit des poids nuls pour les nouvelles colonnes : le modèle joue
 d'abord exactement comme avant, puis l'apprentissage se sert des nouvelles informations. L'état de l'optimiseur
-(Adam) est prolongé de la même façon (moments nuls pour les nouveaux poids).
+(Adam) est prolongé : premier moment nul, second moment à l'échelle de ceux de la même ligne (avec des seconds
+moments nuls et le compteur de pas déjà élevé, les nouveaux poids feraient d'abord des pas 3 à 9 fois trop grands).
 """
 from __future__ import annotations
 
@@ -55,6 +56,10 @@ def adapt_optimizer(optimizer_state: dict, model: torch.nn.Module, old_dim: int)
         for k in ("exp_avg", "exp_avg_sq", "max_exp_avg_sq"):
             t = entry.get(k)
             if t is not None and t.dim() == 2 and t.shape[1] == old_dim:
-                entry[k] = torch.cat([t, t.new_zeros(t.shape[0], new_dim - old_dim)], dim=1)
+                if k == "exp_avg":
+                    extra = t.new_zeros(t.shape[0], new_dim - old_dim)
+                else:   # échelle des gradients de la même ligne (même neurone de sortie)
+                    extra = t.mean(dim=1, keepdim=True).expand(t.shape[0], new_dim - old_dim).clone()
+                entry[k] = torch.cat([t, extra], dim=1)
         state["state"][index] = entry
     return state

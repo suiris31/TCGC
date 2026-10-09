@@ -246,3 +246,36 @@ def test_migration_keeps_the_policy_and_the_optimizer():
         raise AssertionError("encodage inconnu : refusé")
     except RuntimeError:
         pass
+
+
+def test_migrated_adam_moves_new_columns_at_a_normal_pace():
+    from types import SimpleNamespace
+
+    from opcg_rl.migrate import adapt, adapt_optimizer
+    old = make_model().train()
+    lr = 1e-3
+    opt = torch.optim.Adam(old.parameters(), lr=lr, eps=1e-5)
+    batches = [batch(seed=k) for k in range(20)]
+    for k in range(1500):                        # un optimiseur qui a déjà longtemps servi
+        b = batches[k % 20]
+        opt.zero_grad()
+        l, v = old(**b)
+        (l[b["opt_mask"] > 0].sum() + v.sum()).backward()
+        opt.step()
+    st = opt.state_dict()
+    spec = SimpleNamespace(spec_hash="nouveau", opt_dim=O + 3, previous_specs=[{"specHash": "ancien", "optionDim": O}])
+    weights, cfg, _ = adapt(old.state_dict(), old.cfg.to_dict(), "ancien", spec)
+    new = PolicyValueNet(ModelConfig(**cfg)).train()
+    new.load_state_dict(weights)
+    opt2 = torch.optim.Adam(new.parameters(), lr=lr, eps=1e-5)
+    opt2.load_state_dict(adapt_optimizer(st, new, O))
+    for seed in range(10):
+        b = batch(seed=100 + seed)
+        b["opt"] = torch.cat([b["opt"], torch.randn(*b["opt"].shape[:2], 3)], dim=-1)
+        before = new.opt[0].weight[:, O:].detach().clone()
+        opt2.zero_grad()
+        l, v = new(**b)
+        (l[b["opt_mask"] > 0].sum() + v.sum()).backward()
+        opt2.step()
+        step = (new.opt[0].weight[:, O:].detach() - before).abs().max().item()
+        assert step <= 2 * lr, f"pas {seed} : {step / lr:.1f} × lr sur les nouvelles colonnes"

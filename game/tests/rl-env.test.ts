@@ -11,7 +11,7 @@ import { DECKS } from '../engine/decks.ts';
 import { act, actInPlace, newGame } from '../engine/engine.ts';
 import { invariantErrors } from '../engine/invariants.ts';
 import { random } from '../engine/rng.ts';
-import { knows as knowsOf, peekTop, power } from '../engine/rules.ts';
+import { attackTargets, findField, knows as knowsOf, peekTop, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
 import {
@@ -418,7 +418,14 @@ test('comparaisons par option : conformes au moteur (puissances, Contre nécessa
           assert.equal(row(a, 'atk:wins'), margin >= 0 ? 1 : 0);
           assert.ok(Math.abs(row(a, 'atk:margin') - margin / 5000) < 1e-6);
         }
-        if (op.id.startsWith('don:') && row(a, 'don:canAttack')) seen.don++;
+        if (op.id.startsWith('don:')) {
+          const f = findField(s, op.uid!)!;
+          const targets = attackTargets(s, d.player, f.card);
+          assert.equal(row(a, 'don:canAttack'), targets.length ? 1 : 0, op.id);
+          const leaderOk = targets.includes(s.players[d.player === 0 ? 1 : 0].leader.uid);
+          if (!leaderOk) assert.equal(row(a, 'don:reachesOppLeader') + row(a, 'don:alreadyAboveOppLeader'), 0, `${op.id} : le Leader adverse n'est pas une cible`);
+          if (row(a, 'don:canAttack')) seen.don++;
+        }
         if (s.battle && (d.kind === 'counter' || d.kind === 'blocker')) {
           const atk = power(s, s.battle.attacker);
           const dp = power(s, s.battle.target);
