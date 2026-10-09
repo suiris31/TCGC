@@ -256,7 +256,7 @@ comme face à des cartes qu'il n'a jamais vues. L'écart avec l'évaluation norm
 identifiants : un faible écart indique qu'une carte nouvelle aux caractéristiques proches sera jouée correctement.
 
 Adversaires : `random`, `heuristic` (IA « Débutant »), `heuristic:0.25` (la même, une décision sur 4 au hasard), `mc:N` (Monte-Carlo à N tirages ; 16 ≈ « Confirmé », 48 ≈
-« Expert », sans limite de temps pour être reproductible ; lent : `--mc-pairs` limite les confrontations jouées),
+« Expert », sans limite de temps pour être reproductible ; lent : `--mc-pairs` limite les confrontations jouées, réparties pour que chaque deck joue et soit affronté autant de fois),
 `model:<chemin.pt ou nom d'entraînement>` (un autre modèle, ex. `model:checkpoints/opcg/ckpt_0000200.pt`).
 
 Le rapport (console + `logs/<run>/eval/*.md` et `.json`) donne pour chaque adversaire : taux de victoire avec

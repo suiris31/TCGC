@@ -56,6 +56,18 @@ def parse_opponent(text: str) -> tuple[str, dict | None, str | None]:
     raise ValueError(f"adversaire inconnu : {text} (random, heuristic, heuristic:bruit, mc:N, model:chemin)")
 
 
+def spread_pairs(decks: list[str], n: int) -> list[tuple[str, str]]:
+    """n confrontations (deck évalué, deck adverse) réparties sur tous les decks des deux côtés : chaque deck joue et
+    est affronté autant de fois (à une près). Par « décalages » : (deck i, deck i + d) pour quelques décalages d
+    espacés (0 = miroirs). n >= nombre de confrontations possibles : toutes."""
+    D = len(decks)
+    if n >= D * D:
+        return [(a, b) for a in decks for b in decks]
+    shifts = math.ceil(n / D)
+    out = [(decks[i], decks[(i + (j * D) // shifts) % D]) for j in range(shifts) for i in range(D)]
+    return out[:n]
+
+
 def plan_games(opponents: list[str], deck_pairs: list[tuple[str, str]], seeds_per_pair: int, seed_offset: int = 0
                ) -> list[EvalGame]:
     games = []
