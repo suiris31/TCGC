@@ -391,3 +391,23 @@ signal. Mesuré sur 200 parties : l'heuristique bat celle qui joue une décision
 97 % ; cette dernière bat l'aléatoire à 94 %, soit à peu près le niveau d'un modèle sortant du niveau 1. Le niveau 2
 mélange donc heuristique pure (40 %), bruitée à 25 % et 50 % (25 % chacune) et aléatoire (10 %) ; la récompense et
 l'évaluation de passage (heuristique pure) ne changent pas.
+
+### 11.6 Comparaisons par option (encodage 4)
+
+Entraînement sur RTX 2070, vrai catalogue : niveau 2 non validé après 3 000 mises à jour (830 000 parties), 22 %
+contre l'heuristique en évaluation, progression ralentie en seconde moitié. Enquête (4 angles, scripts reproductibles,
+catalogue synthétique) :
+
+- écarté : l'heuristique n'utilise aucune information cachée (0 décision différente sur 49 848 entre état complet,
+  vue du joueur et cartes cachées redistribuées ; un témoin tricheur est détecté) ; aucune option ambiguë ; puissances
+  encodées conformes au moteur ; le hasard du choix n'est pas en cause (meilleur choix 9,7 % contre 7,6 %) ;
+- cause principale : une option ne disait que « attaquant X, cible Y », jamais « X est plus faible que Y ». Le réseau
+  devait reconstruire ces comparaisons et y arrivait mal : ~6,6 coups inutiles par partie (attaque trop faible, Contre
+  sur une attaque déjà repoussée...). Un même petit réseau qui imite l'heuristique passe de 18,8 % à 37,5 % de victoires
+  contre elle avec 15 comparaisons par option calculées à partir de la vue.
+
+Ajouté : ces 15 colonnes (`OPTION_COMPARISONS`, après celles de l'encodage 3). Un modèle de l'encodage 3 se prolonge :
+poids nuls pour les nouvelles colonnes, état d'Adam prolongé (`rl/opcg_rl/migrate.py`) ; mesuré sur 230 observations
+réelles, écart nul avec l'ancien modèle au départ ; export ONNX et navigateur vérifiés (écarts < 2·10⁻⁶). Le gain
+une fois combiné à PPO n'est pas encore mesuré : c'est l'objet de la reprise de l'entraînement sur RTX 2070.
+

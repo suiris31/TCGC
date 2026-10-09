@@ -11,10 +11,12 @@ import { DECKS } from '../engine/decks.ts';
 import { act, actInPlace, newGame } from '../engine/engine.ts';
 import { invariantErrors } from '../engine/invariants.ts';
 import { random } from '../engine/rng.ts';
-import { knows as knowsOf, peekTop } from '../engine/rules.ts';
+import { knows as knowsOf, peekTop, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
-import { DYN_DIM, DYN_FEATURES, encodeObservation, GLOBAL_DIM, OPTION_DIM, type Observation } from '../rl/encode.ts';
+import {
+  DYN_DIM, DYN_FEATURES, encodeObservation, GLOBAL_DIM, OPTION_COMPARISONS, OPTION_DIM, PREVIOUS_SPECS, type Observation,
+} from '../rl/encode.ts';
 import { RlEnv, type ResetOptions } from '../rl/env.ts';
 import { STATIC_DIM, staticFeatures } from '../rl/features.ts';
 import type { SeatSpec } from '../rl/opponents.ts';
@@ -393,4 +395,46 @@ test('observation : le deck restant ne compte pas ses cartes en suspens (cartes 
     const hiddenLife = s.players[0].life.filter((c) => !c.faceUp).filter((c) => c.num === num).length;
     assert.equal(total + 0 * hiddenLife, list[num], `${num} : ${total} au lieu de ${list[num]}`);
   }
+});
+
+test('encodage : empreinte figée de l’encodage 3 (les modèles entraînés avec lui se prolongent vers l’actuel)', () => {
+  assert.equal(PREVIOUS_SPECS[0].specHash, '115b024e', 'colonnes de l’encodage 3 modifiées : les modèles existants ne se prolongent plus');
+  assert.equal(PREVIOUS_SPECS[0].optionDim + OPTION_COMPARISONS.length, OPTION_DIM, 'comparaisons ajoutées APRÈS les colonnes de l’encodage 3');
+});
+
+test('comparaisons par option : conformes au moteur (puissances, Contre nécessaire, attaque déjà repoussée)', () => {
+  const col = (k: string) => OPTION_DIM - OPTION_COMPARISONS.length + OPTION_COMPARISONS.indexOf(k);
+  const seen = { attack: 0, counter: 0, block: 0, don: 0 };
+  for (const [k, decks] of pairs.slice(0, 12).entries()) {
+    playRandom({ seed: 900 + k, decks, first: 'random', seats: [{ kind: 'agent' }, { kind: 'agent' }] }, 77 + k, (env) => {
+      const s = env.state;
+      const d = s.decision!;
+      const o = env.observe(d.player);
+      const row = (a: number, name: string) => o.opt[a * OPTION_DIM + col(name)];
+      d.options.forEach((op, a) => {
+        if (op.id.startsWith('attack:')) {
+          seen.attack++;
+          const margin = power(s, op.uid!) - power(s, op.target!);
+          assert.equal(row(a, 'atk:wins'), margin >= 0 ? 1 : 0);
+          assert.ok(Math.abs(row(a, 'atk:margin') - margin / 5000) < 1e-6);
+        }
+        if (op.id.startsWith('don:') && row(a, 'don:canAttack')) seen.don++;
+        if (s.battle && (d.kind === 'counter' || d.kind === 'blocker')) {
+          const atk = power(s, s.battle.attacker);
+          const dp = power(s, s.battle.target);
+          if (op.id.startsWith('counter:')) {
+            seen.counter++;
+            assert.equal(row(a, 'ctr:repelled'), atk < dp ? 1 : 0);
+            assert.ok(Math.abs(row(a, 'ctr:need') - (atk >= dp ? atk - dp + 1000 : 0) / 5000) < 1e-6);
+          }
+          if (op.id.startsWith('block:')) {
+            seen.block++;
+            assert.equal(row(a, 'blk:survives'), power(s, op.uid!) > atk ? 1 : 0);
+          }
+        }
+        if (!op.id.startsWith('attack:')) assert.equal(row(a, 'atk:wins'), 0, 'colonnes propres à leur type d’option');
+      });
+    });
+  }
+  assert.ok(seen.attack > 50 && seen.counter > 20 && seen.don > 20, JSON.stringify(seen));
 });

@@ -10,13 +10,15 @@
 //   DON!!, mots-clés effectifs, modifications...) ; les caractéristiques statiques sont dans features.ts ;
 // - des caractéristiques globales (tour, phase, décision, Vies, mains, decks, DON!!, combat en cours...) ;
 // - une ligne par option de la décision, avec des pointeurs vers les jetons des cartes qu'elle désigne : le modèle donne
-//   un score à chaque option légale (aucune liste fixe d'actions, aucune combinaison à énumérer).
+//   un score à chaque option légale (aucune liste fixe d'actions, aucune combinaison à énumérer) ; chaque ligne porte
+//   aussi les comparaisons qu'un joueur fait avant de choisir (attaquant contre cible, Contre suffisant ou non...),
+//   calculées à partir de la même vue : des faits visibles, pas des règles de jeu.
 //
 // Ce qui n'est jamais utilisé : identifiants des cartes (uid) comme valeur, deck adverse (deckId), journal, historique,
 // textes des questions et des options, graine du hasard, compteur d'événements.
 import { DECKS } from '../engine/decks.ts';
 import {
-  attackAbility, canBeRested, def, fieldCost, handCost, hasKeyword, hasMod, other, power,
+  attackAbility, canBeRested, def, fieldCost, findField, handCost, hasKeyword, hasMod, other, power,
 } from '../engine/rules.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { KEYWORDS } from '../engine/keywords.ts';
@@ -60,10 +62,20 @@ export const GLOBAL_FEATURES: string[] = [
 ];
 export const GLOBAL_DIM = GLOBAL_FEATURES.length;
 
-export const OPTION_FEATURES: string[] = [
+const BASE_OPTION_FEATURES: string[] = [
   ...OPTION_KINDS.map((k) => `kind:${k}`),
   'arg', 'hasRef', 'hasTarget', 'refMine', 'refOnField', 'refInHand', 'targetIsLeader',
 ];
+// Comparaisons par option (encodage 4), ajoutées APRÈS les colonnes de l'encodage 3 : un modèle de l'encodage 3 se
+// prolonge avec des poids nuls pour elles (il joue d'abord exactement pareil, voir PREVIOUS_SPECS et rl/opcg_rl/migrate.py)
+export const OPTION_COMPARISONS: string[] = [
+  'atk:margin', 'atk:wins', 'atk:donNeeded', 'atk:donAffordable',
+  'don:canAttack', 'don:reachesOppLeader', 'don:alreadyAboveOppLeader',
+  'ctr:value', 'ctr:sufficient', 'ctr:repelled', 'ctr:need', 'ctr:handTotal',
+  'blk:margin', 'blk:survives',
+  'play:donLeft',
+];
+export const OPTION_FEATURES: string[] = [...BASE_OPTION_FEATURES, ...OPTION_COMPARISONS];
 export const OPTION_DIM = OPTION_FEATURES.length;
 
 // Empreinte de l'encodage : tout changement de colonnes la change (un modèle n'est utilisable qu'avec la même)
@@ -72,8 +84,12 @@ function fnvHex(s: string) {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return (h >>> 0).toString(16).padStart(8, '0');
 }
-export const ENCODING_VERSION = 3;
+export const ENCODING_VERSION = 4;
 export const SPEC_HASH = fnvHex(JSON.stringify([ENCODING_VERSION, STATIC_FEATURES, DYN_FEATURES, GLOBAL_FEATURES, OPTION_FEATURES]));
+// Encodages précédents dont un modèle se prolonge : identiques à l'actuel sauf les dernières colonnes des options
+export const PREVIOUS_SPECS: { specHash: string; encodingVersion: number; optionDim: number }[] = [
+  { specHash: fnvHex(JSON.stringify([3, STATIC_FEATURES, DYN_FEATURES, GLOBAL_FEATURES, BASE_OPTION_FEATURES])), encodingVersion: 3, optionDim: BASE_OPTION_FEATURES.length },
+];
 
 export interface Observation {
   seat: PlayerId;
@@ -281,6 +297,58 @@ function globalFeatures(v: GameState, me: PlayerId, nOptions: number, dropped: n
   return g;
 }
 
+// Comparaisons d'une option (OPTION_COMPARISONS), à partir de la vue du joueur : les cartes comparées sont sur le
+// terrain ou dans sa main, donc visibles. Puissances en milliers / 5, DON!! / 5 ou / 10.
+interface Context {
+  donActive: number;
+  oppLeaderPower: number;
+  battle: { atk: number; dp: number; need: number } | null;   // combat où le joueur décide (Contre, Bloqueur)
+  handCounter: number;
+}
+
+function comparisons(v: GameState, me: PlayerId, o: Option, kind: string, ctx: Context, out: Float32Array, at: number) {
+  const x = (k: string, value: number) => { out[at + OPTION_COMPARISONS.indexOf(k)] = value; };
+  const onField = (uid: number | undefined) => (uid !== undefined ? findField(v, uid) : null);
+  if (kind === 'attack:' && onField(o.uid) && onField(o.target)) {
+    const margin = power(v, o.uid!) - power(v, o.target!);
+    const n = margin >= 0 ? 0 : Math.ceil(-margin / 1000);
+    x('atk:margin', margin / 5000);
+    x('atk:wins', margin >= 0 ? 1 : 0);
+    x('atk:donNeeded', n / 5);
+    x('atk:donAffordable', n <= ctx.donActive ? 1 : 0);
+  }
+  if (kind === 'don:') {
+    const f = onField(o.uid);
+    if (f && attackAbility(v, me, f.card).can) {
+      const pw = power(v, f.card.uid);
+      x('don:canAttack', 1);
+      x('don:reachesOppLeader', pw < ctx.oppLeaderPower && pw + 1000 >= ctx.oppLeaderPower ? 1 : 0);
+      x('don:alreadyAboveOppLeader', pw >= ctx.oppLeaderPower ? 1 : 0);
+    }
+  }
+  const b = ctx.battle;
+  if (b && (kind === 'counter:' || kind === 'cevent:' || kind === 'pass')) {
+    if (kind === 'counter:') {
+      const card = v.players[me].hand.find((c) => c.uid === o.uid);
+      const value = card ? def(card.num).counter ?? 0 : 0;
+      x('ctr:value', value / 5000);
+      x('ctr:sufficient', b.need > 0 && value >= b.need ? 1 : 0);
+    }
+    x('ctr:repelled', b.atk < b.dp ? 1 : 0);
+    x('ctr:need', b.need / 5000);
+    x('ctr:handTotal', ctx.handCounter / 5000);
+  }
+  if (b && kind === 'block:' && onField(o.uid)) {
+    const pw = power(v, o.uid!);
+    x('blk:margin', (pw - b.atk) / 5000);
+    x('blk:survives', pw > b.atk ? 1 : 0);
+  }
+  if (kind === 'play:' || kind === 'event:') {
+    const card = v.players[me].hand.find((c) => c.uid === o.uid);
+    if (card) x('play:donLeft', (ctx.donActive - handCost(v, me, card)) / 10);
+  }
+}
+
 // Cartes désignées par une option : uid et target (toute option qui désigne une carte les renseigne). L'identifiant de
 // l'option n'est jamais lu : « cost:4 » ne désigne pas la carte 4.
 function optionRefs(o: Option): { ref?: number; target?: number } {
@@ -341,6 +409,19 @@ export function encodeObservation(v: GameState, me: PlayerId): Observation {
   };
   const opt = new Float32Array(options.length * OPTION_DIM);
   const ptr = new Int32Array(options.length * 2).fill(-1);
+  const P = v.players[me];
+  let battle: Context['battle'] = null;
+  if (d && v.battle && (d.kind === 'counter' || d.kind === 'blocker')) {
+    const atk = power(v, v.battle.attacker);
+    const dp = power(v, v.battle.target);
+    battle = { atk, dp, need: atk >= dp ? atk - dp + 1000 : 0 };
+  }
+  const ctx: Context = {
+    donActive: P.donActive,
+    oppLeaderPower: power(v, v.players[other(me)].leader.uid),
+    battle,
+    handCounter: P.hand.reduce((n, c) => n + (c.num !== HIDDEN && def(c.num).category === 'CHARACTER' ? def(c.num).counter ?? 0 : 0), 0),
+  };
   options.forEach((o, a) => {
     let i = a * OPTION_DIM;
     const kind = optionKind(o.id);
@@ -364,6 +445,7 @@ export function encodeObservation(v: GameState, me: PlayerId): Observation {
     opt[i++] = rt?.field ? 1 : 0;
     opt[i++] = rt?.zone === 'myHand' ? 1 : 0;
     opt[i++] = tg >= 0 && (tokens[tg].zone === 'oppLeader' || tokens[tg].zone === 'myLeader') ? 1 : 0;
+    comparisons(v, me, o, kind, ctx, opt, i);
   });
   return {
     seat: me,

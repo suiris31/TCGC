@@ -406,7 +406,11 @@ telle au modèle (son effet ne s'applique pas).
 
 **Actions.** Le moteur pose déjà chaque décision comme un choix parmi des options (une DON!! à la fois, un Contre à
 la fois, les cibles une par une...) : le réseau donne un score à chaque option légale et choisit parmi elles
-seulement. Aucune liste de toutes les combinaisons n'est construite.
+seulement. Aucune liste de toutes les combinaisons n'est construite. Chaque option porte aussi les comparaisons qu'un
+joueur fait avant de choisir, calculées à partir de ce qu'il voit : marge de puissance entre attaquant et cible et
+DON!! encore nécessaires, DON!! qui permet ou non d'atteindre le Leader adverse, valeur d'un Contre face à la puissance
+qui manque, attaque déjà repoussée, Bloqueur qui survit ou non, DON!! restantes après avoir joué une carte. Ce sont des
+faits, pas des règles : le modèle décide toujours seul quoi en faire.
 
 **Récompense.** +1 victoire, −1 défaite, rien d'autre (ni dégâts, ni cartes, ni board). **Plafond de sécurité**
 (`env.max_decisions`, 3000 décisions ; une partie normale en compte 120 à 300) : une partie qui l'atteint est
@@ -430,7 +434,8 @@ joué. Ligue : anciennes versions tirées en privilégiant celles que le modèle
 | Mémoire GPU insuffisante (erreur « out of memory ») | réduis `ppo.microbatch_size` (256, 128) : l'apprentissage reste le même |
 | Temps « apprentissage » très irrégulier (10 s puis 300 s), collecte normale, GPU presque plein | Windows : le pilote NVIDIA déborde sur la mémoire de l'ordinateur au lieu de signaler le manque. Réduis `ppo.microbatch_size` ; dans le Panneau de configuration NVIDIA, « Politique de repli de la mémoire système CUDA » sur « Préférer l'absence de repli » donne une erreur claire au lieu de la lenteur |
 | Ordinateur qui rame | réduis `env.workers` |
-| `encodage différent` à la reprise | le code de `game/rl/` a changé depuis l'entraînement : nouvel entraînement (`--fresh` ou `--run`) |
+| `encodage différent` à la reprise | le code de `game/rl/` a changé depuis l'entraînement : nouvel entraînement (`--fresh` ou `--run`). Exception : un modèle de l'encodage 3 (avant l'ajout des comparaisons par option) est prolongé automatiquement à la reprise, sans rien perdre |
+| Le niveau « IA entraînée » a disparu du simulateur après une mise à jour du code | le modèle installé date d'un autre encodage : réexporte-le (`python export_onnx.py --checkpoint <run> --install`) |
 | `CATALOGUE SYNTHÉTIQUE` | catalogue de test (cartes inventées) : utilise le vrai (`npm run game:cards`) |
 | Niveau non validé (code 3) | voir § 7 |
 | Parties tronquées ou en erreur | `logs/<run>/anomalies/` : `python play.py --replay <fichier>` pour voir où ça bloque |

@@ -35,6 +35,7 @@ from opcg_rl.elo import anchor_label, fit_elo  # noqa: E402
 from opcg_rl.evaluation import plan_games, run_games, summarize, to_markdown  # noqa: E402
 from opcg_rl.league import League, Snapshot  # noqa: E402
 from opcg_rl.logger import Logger  # noqa: E402
+from opcg_rl import migrate  # noqa: E402
 from opcg_rl.model import parameter_count  # noqa: E402
 from opcg_rl.paths import CHECKPOINTS_DIR, LOGS_DIR  # noqa: E402
 from opcg_rl.policy import Agent, build_model, vocab_from_decks  # noqa: E402
@@ -151,13 +152,19 @@ def main() -> int:
         resume_path, ckpt = latest
     # point de sauvegarde de cet entraînement (sinon : d'un autre dossier, dont la ligue sera copiée ici)
     own = resume_path is not None and run_dir.resolve() in resume_path.resolve().parents
+    migrated_from = None
     if ckpt:
-        if ckpt.get("spec_hash") != spec.spec_hash:
-            raise SystemExit(f"Le point de sauvegarde {resume_path} utilise un autre encodage ({ckpt.get('spec_hash')}) que "
-                             f"le code actuel ({spec.spec_hash}). Lance un nouvel entraînement (--fresh ou --run).")
+        try:
+            weights, model_cfg, migrated_from = migrate.adapt(ckpt["model_state"], ckpt["model_config"], ckpt.get("spec_hash"),
+                                                              spec, f"Le point de sauvegarde {resume_path}")
+        except migrate.EncodingMismatch as err:
+            raise SystemExit(f"{err}")
         vocab = ckpt["vocab"]
-        model = build_model(spec, vocab, ckpt["model_config"])
-        model.load_state_dict(ckpt["model_state"])
+        model = build_model(spec, vocab, model_cfg)
+        model.load_state_dict(weights)
+        if migrated_from:
+            log(f"Modèle prolongé vers l'encodage {spec.spec_hash} : {spec.opt_dim - migrated_from} nouvelles colonnes "
+                "d'options (comparaisons), poids nuls au départ : il joue d'abord exactement comme avant")
         asked = {k: v for k, v in cfg["model"].items() if k in ckpt["model_config"] and ckpt["model_config"][k] != v}
         if asked:
             log(f"ATTENTION : la taille du modèle ne change pas à la reprise ; réglages ignorés : {json.dumps(asked)} "
@@ -190,7 +197,10 @@ def main() -> int:
     league = League(run_dir / "league", pfsp_power=cfg["train"]["pfsp_power"], max_snapshots=cfg["train"]["max_snapshots"])
     if ckpt:
         if ckpt.get("optimizer_state"):
-            optimizer.load_state_dict(ckpt["optimizer_state"])
+            opt_state = ckpt["optimizer_state"]
+            if migrated_from:
+                opt_state = migrate.adapt_optimizer(opt_state, model, migrated_from)
+            optimizer.load_state_dict(opt_state)
             for g in optimizer.param_groups:
                 g["lr"] = cfg["ppo"]["lr"]
         league.load_state(ckpt.get("league", {}), keep=set(state["level_start"].values()), warn=log,
@@ -212,8 +222,10 @@ def main() -> int:
         if snap is None:
             raise KeyError(f"ancienne version inconnue : {sid}")
         data = torch.load(snap.path, map_location="cpu", weights_only=False)
-        m = build_model(spec, vocab, data["model_config"])
-        m.load_state_dict(data["model_state"])
+        weights, model_cfg, _ = migrate.adapt(data["model_state"], data["model_config"], data.get("spec_hash"), spec,
+                                              f"L'ancienne version {sid}")
+        m = build_model(spec, vocab, model_cfg)
+        m.load_state_dict(weights)
         loaded[sid] = Agent(m, vocab, spec, device, sid)
         while len(loaded) > cache_size:
             loaded.popitem(last=False)

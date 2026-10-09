@@ -44,6 +44,8 @@ class Spec:
     static_table: np.ndarray
     decks: dict[str, dict]
     feature_names: dict[str, list[str]] = field(default_factory=dict)
+    # encodages précédents dont un modèle se prolonge (seules les dernières colonnes des options diffèrent)
+    previous_specs: list[dict] = field(default_factory=list)
 
     def feature_index(self, kind: str, name: str) -> int:
         return self.feature_names[kind].index(name)
@@ -234,6 +236,7 @@ class EnvPool:
             decks={d["id"]: d for d in s["decks"]},
             feature_names={"static": s["staticFeatures"], "dyn": s["dynFeatures"], "global": s["globalFeatures"],
                            "option": s["optionFeatures"]},
+            previous_specs=list(s.get("previousSpecs", [])),
         )
 
     @property

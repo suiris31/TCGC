@@ -21,8 +21,8 @@ import { DECKS } from '../engine/decks.ts';
 import type { PlayerId } from '../engine/types.ts';
 import { cardTable, engineVersion, loadRlCatalog, staticMatrix } from './catalog.ts';
 import {
-  DYN_DIM, DYN_FEATURES, ENCODING_VERSION, GLOBAL_DIM, GLOBAL_FEATURES, OPTION_DIM, OPTION_FEATURES, SPEC_HASH,
-  type Observation,
+  DYN_DIM, DYN_FEATURES, ENCODING_VERSION, GLOBAL_DIM, GLOBAL_FEATURES, OPTION_DIM, OPTION_FEATURES, PREVIOUS_SPECS,
+  SPEC_HASH, type Observation,
 } from './encode.ts';
 import { RlEnv, type ResetOptions } from './env.ts';
 import { N_GROUPS, STATIC_DIM, STATIC_FEATURES } from './features.ts';
@@ -110,7 +110,7 @@ function init(cmd: { catalog?: string; recordDir?: string; anomalyDir?: string }
   recordDir = cmd.recordDir ?? null;
   anomalyDir = cmd.anomalyDir ?? null;
   const spec = {
-    specHash: SPEC_HASH, encodingVersion: ENCODING_VERSION, engine, catalog: cat.file, synthetic: cat.synthetic,
+    specHash: SPEC_HASH, encodingVersion: ENCODING_VERSION, previousSpecs: PREVIOUS_SPECS, engine, catalog: cat.file, synthetic: cat.synthetic,
     staticDim: STATIC_DIM, dynDim: DYN_DIM, globalDim: GLOBAL_DIM, optionDim: OPTION_DIM, groups: N_GROUPS,
     staticFeatures: STATIC_FEATURES, dynFeatures: DYN_FEATURES, globalFeatures: GLOBAL_FEATURES, optionFeatures: OPTION_FEATURES,
     cards: table,

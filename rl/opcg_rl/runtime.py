@@ -8,6 +8,7 @@ import torch
 
 from .checkpoint import find_latest, load
 from .envpool import EnvPool, Spec
+from .migrate import adapt
 from .paths import CHECKPOINTS_DIR
 from .policy import Agent, build_model
 
@@ -34,12 +35,11 @@ def resolve_checkpoint(text: str | None) -> Path:
 
 def agent_from_checkpoint(path: Path, spec: Spec, device: torch.device, name: str | None = None) -> tuple[Agent, dict]:
     ckpt = load(path, map_location="cpu")
-    if ckpt.get("spec_hash") and ckpt["spec_hash"] != spec.spec_hash:
-        raise RuntimeError(
-            f"{path} a été entraîné avec un autre encodage des observations ({ckpt['spec_hash']}, actuel {spec.spec_hash}) : "
-            "le code de game/rl/ a changé depuis. Réentraîne, ou reviens à la version du dépôt de ce modèle.")
-    model = build_model(spec, ckpt["vocab"], ckpt["model_config"])
-    model.load_state_dict(ckpt["model_state"])
+    # un modèle d'un encodage précédent compatible est prolongé (même jeu au départ, voir migrate.py)
+    weights, model_cfg, _ = adapt(ckpt["model_state"], ckpt["model_config"], ckpt.get("spec_hash"), spec, str(path))
+    ckpt = {**ckpt, "model_config": model_cfg, "spec_hash": spec.spec_hash}
+    model = build_model(spec, ckpt["vocab"], model_cfg)
+    model.load_state_dict(weights)
     return Agent(model, ckpt["vocab"], spec, device, name or path.stem), ckpt
 
 

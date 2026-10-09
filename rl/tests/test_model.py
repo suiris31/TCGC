@@ -212,3 +212,37 @@ def test_fused_attention_equals_export_path():
         l2, v2 = m(**b)
     mask = b["opt_mask"] > 0
     assert torch.allclose(l1[mask], l2[mask], atol=1e-5) and torch.allclose(v1, v2, atol=1e-5)
+
+
+def test_migration_keeps_the_policy_and_the_optimizer():
+    from types import SimpleNamespace
+
+    from opcg_rl.migrate import adapt, adapt_optimizer
+    old = make_model()
+    opt = torch.optim.Adam(old.parameters(), lr=1e-3)
+    b = batch()
+    l, v = old(**b)
+    (l[b["opt_mask"] > 0].sum() + v.sum()).backward()
+    opt.step()
+    spec = SimpleNamespace(spec_hash="nouveau", opt_dim=O + 3, previous_specs=[{"specHash": "ancien", "optionDim": O}])
+    weights, cfg, was = adapt(old.state_dict(), old.cfg.to_dict(), "ancien", spec)
+    assert was == O and cfg["opt_dim"] == O + 3
+    new = PolicyValueNet(ModelConfig(**cfg)).eval()
+    new.load_state_dict(weights)
+    wide = {**b, "opt": torch.cat([b["opt"], torch.randn(*b["opt"].shape[:2], 3)], dim=-1)}
+    with torch.no_grad():
+        l1, v1 = old.eval()(**b)
+        l2, v2 = new(**wide)
+    mask = b["opt_mask"] > 0
+    assert torch.allclose(l1[mask], l2[mask], atol=1e-6) and torch.allclose(v1, v2, atol=1e-6), "même jeu au départ"
+    opt2 = torch.optim.Adam(new.parameters(), lr=1e-3)
+    opt2.load_state_dict(adapt_optimizer(opt.state_dict(), new, O))
+    l3, v3 = new.train()(**wide)
+    (l3[mask].sum() + v3.sum()).backward()
+    opt2.step()
+    assert new.opt[0].weight[:, O:].abs().sum() > 0, "les nouvelles colonnes apprennent"
+    try:
+        adapt(old.state_dict(), old.cfg.to_dict(), "inconnu", spec)
+        raise AssertionError("encodage inconnu : refusé")
+    except RuntimeError:
+        pass
