@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { cardStatus, HIDDEN } from '../engine/cards/index.ts';
 import { def, fieldCost, findField, power } from '../engine/rules.ts';
 import type { Decision, GameState, Option } from '../engine/types.ts';
 import type { Preview } from './CardView.tsx';
@@ -73,6 +74,7 @@ export function CardPreview({ s, preview }: { s: GameState; preview: Preview | n
         <p className="effect">{d.effect && d.effect !== '-' ? <EffectText text={d.effect} /> : 'Pas d’effet.'}</p>
         {d.trigger && <p className="effect"><span className="kw">[Déclenchement]</span> <EffectText text={d.trigger} /></p>}
         {d.lang === 'en' && <p className="op-small op-muted">Texte anglais : cette carte n’existe pas en VF.</p>}
+        {d.number !== HIDDEN && cardStatus(d.number) === 'todo' && <p className="op-small op-muted">Effet pas encore géré par le simulateur.</p>}
         {f?.card.rested && <div className="op-small op-muted">Épuisée</div>}
       </div>
     </div>

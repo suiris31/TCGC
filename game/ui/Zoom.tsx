@@ -1,6 +1,7 @@
 // Fenêtre de détail d'une carte : apparaît quand la souris reste un moment sur une carte. Grand visuel, texte complet
 // (mots-clés en couleur), et pour une carte en jeu son état : puissance, coût, DON!! données, bonus et malus en cours.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { cardStatus, HIDDEN } from '../engine/cards/index.ts';
 import { def, fieldCost, findField, power } from '../engine/rules.ts';
 import type { GameState, Modifier } from '../engine/types.ts';
 import type { Preview } from './CardView.tsx';
@@ -53,6 +54,7 @@ export function CardDetails({ s, num, uid }: { s?: GameState | null; num: string
         <p className="zoom-effect">{d.effect && d.effect !== '-' ? <EffectText text={d.effect} /> : <span className="op-muted">Pas d’effet.</span>}</p>
         {d.trigger && <p className="zoom-effect"><span className="kw">[Déclenchement]</span> <EffectText text={d.trigger} /></p>}
         {d.lang === 'en' && <p className="op-small op-muted">Texte anglais : cette carte n’existe pas en VF.</p>}
+        {d.number !== HIDDEN && cardStatus(d.number) === 'todo' && <p className="op-small op-muted">Effet pas encore géré par le simulateur.</p>}
         {f && s && (
           <div className="zoom-state">
             <div className="zoom-state-title">En ce moment</div>
