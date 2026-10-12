@@ -1,6 +1,7 @@
 // Style de jeu de l'IA : les réglages qui orientent ses choix. Chaque deck a le sien (son plan de jeu) : un point de
 // départ écrit à la main d'après la couleur et les cartes du deck, puis ajusté par auto-apprentissage
 // (scripts/game/train.ts), dont le résultat est enregistré dans styles.json.
+import { DECKS } from '../engine/decks.ts';
 import tuned from './styles.json' with { type: 'json' };
 import type { PlayerId } from '../engine/types.ts';
 
@@ -107,6 +108,13 @@ resetStyles();
 // Style imposé à un joueur pour une partie d'essai (sinon : celui de son deck)
 export const playerStyle: [Style | null, Style | null] = [null, null];
 
+// Style d'un deck sans style appris : celui d'un deck du même Leader (le Sabo du méta joue comme celui de ST-35), sinon
+// le style par défaut
 export function styleOf(deckId: string, p: PlayerId): Style {
-  return playerStyle[p] ?? STYLES[deckId] ?? DEFAULT_STYLE;
+  return playerStyle[p] ?? STYLES[deckId] ?? STYLES[sameLeaderDeck(deckId) ?? ''] ?? DEFAULT_STYLE;
+}
+
+function sameLeaderDeck(deckId: string): string | undefined {
+  const leader = DECKS[deckId]?.leader;
+  return leader ? Object.values(DECKS).find((d) => d.id !== deckId && d.leader === leader && STYLES[d.id])?.id : undefined;
 }

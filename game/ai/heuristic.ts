@@ -71,7 +71,8 @@ function likelyTopCost(s: GameState, p: PlayerId): number {
   const O = s.players[other(p)];
   if (knowsTop(s, p)) return def(O.deck[0].num).cost ?? 0;
   const counts = new Map<number, number>();
-  for (const [num, n] of Object.entries(DECKS[O.deckId].cards)) {
+  // liste du deck adverse : celle notée dans la partie, sinon celle du registre (inconnue : aucune estimation)
+  for (const [num, n] of Object.entries((O.list ?? DECKS[O.deckId])?.cards ?? {})) {
     const cost = def(num).cost;
     if (cost !== null) counts.set(cost, (counts.get(cost) ?? 0) + n);
   }
