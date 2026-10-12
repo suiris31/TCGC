@@ -42,7 +42,7 @@ test('carte renvoyée dans la main adverse : connue des deux joueurs, et l’IA 
 test('carte ajoutée à la main en la révélant : l’adversaire la connaît ; les cartes remises sous le deck : seul le joueur', () => {
   const s = scenario(['ST-35', 'ST-35'], (g) => setDeckTop(g, 0, [CORBEAU, BETTY, MORLEY]));
   const [corbeau, betty] = s.players[0].deck;
-  lookTopPick(effectOf(s, 0, [`card:${corbeau.uid}`]), 3, 1, () => true, 'une carte');
+  lookTopPick(effectOf(s, 0, [`card:${corbeau.uid}`, 'keep']), 3, 1, () => true, 'une carte');
   assert.ok(knows(s, 1, corbeau.uid), 'révélée à l’adversaire');
   assert.ok(knows(s, 0, betty.uid), 'le joueur sait qu’elle est sous son deck');
   assert.ok(!knows(s, 1, betty.uid), 'l’adversaire ne l’a pas vue');

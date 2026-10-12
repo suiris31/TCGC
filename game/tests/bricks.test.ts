@@ -10,7 +10,7 @@ import {
 import { CARDS } from '../engine/cards/index.ts';
 import { addMod, power } from '../engine/rules.ts';
 import type { CardBehavior, GameState } from '../engine/types.ts';
-import { choose, coherent, expectTag, play, scenario, setChars, setDeckTop, setDon, setHand, setLife } from './helpers.ts';
+import { choose, coherent, expectTag, keepOrder, play, scenario, setChars, setDeckTop, setDon, setHand, setLife } from './helpers.ts';
 
 function withCards(changes: Record<string, CardBehavior>, run: () => void) {
   const saved = Object.fromEntries(Object.keys(changes).map((n) => [n, CARDS[n]]));
@@ -103,7 +103,7 @@ test('regarder le dessus du deck et en prendre une carte d’un type ; jouer dep
     });
     expectTag(s, 'pick');
     assert.deepEqual(s.decision!.options.map((o) => o.num ?? o.id).sort(), [BETTY, CORBEAU, 'none'].sort(), 'l’Événement n’est pas proposé');
-    s = choose(s, (o) => o.num === CORBEAU);
+    s = keepOrder(choose(s, (o) => o.num === CORBEAU));
     assert.ok(s.players[0].hand.some((c) => c.num === CORBEAU));
     expectTag(s, 'playFree');
     s = choose(s, (o) => o.num === IVANKOV);

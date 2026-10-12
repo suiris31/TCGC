@@ -3,9 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { act } from '../engine/engine.ts';
 import { fieldCost, hasBlocker, hasMod } from '../engine/rules.ts';
-import {
-  attack, choose, coherent, expectTag, play, scenario, setChars, setDeckTop, setDon, setHand, setLife,
-} from './helpers.ts';
+import { attack, choose, coherent, expectTag, keepOrder, play, scenario, setChars, setDeckTop, setDon, setHand, setLife } from './helpers.ts';
 
 const D: [string, string] = ['ST-33', 'ST-36'];
 
@@ -131,7 +129,7 @@ test('Sengoku : défausser 1 carte, 2 cartes {Marine} parmi les 5 du dessus ; le
   expectTag(s, 'pick');
   assert.ok(!s.decision!.options.some((o) => o.label === 'Sengoku'));
   s = choose(s, /Garp/);
-  s = choose(s, /Sauro/);
+  s = keepOrder(choose(s, /Sauro/));
   // les 5 cartes regardées sont celles d'avant la pioche du Leader, qui prend ensuite la 6e (Jango)
   assert.deepEqual(s.players[0].hand.map((c) => c.num).sort(), ['OP12-045', 'OP12-050', 'ST33-005']);
   coherent(s);

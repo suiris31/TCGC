@@ -33,6 +33,9 @@ export function option(s: GameState, pick: string | RegExp | ((o: Option) => boo
 }
 
 export const choose = (s: GameState, pick: string | RegExp | ((o: Option) => boolean)) => act(s, option(s, pick));
+
+// « ... au-dessous de votre deck dans l'ordre de votre choix » : garder l'ordre affiché
+export const keepOrder = (s: GameState) => (s.decision?.tag === 'bottomOrder' ? act(s, 'keep') : s);
 export const hasOption = (s: GameState, id: string) => Boolean(s.decision?.options.some((o) => o.id === id || o.id.startsWith(`${id}:`)));
 export const tag = (s: GameState) => s.decision?.tag;
 

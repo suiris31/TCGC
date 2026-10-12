@@ -21,7 +21,7 @@ import { RlEnv, type ResetOptions } from '../rl/env.ts';
 import { STATIC_DIM, staticFeatures } from '../rl/features.ts';
 import type { SeatSpec } from '../rl/opponents.ts';
 import { makeTrajectory, narrate, replayTrajectory, toGameRecord } from '../rl/record.ts';
-import { expectTag, play, scenario, setDeckTop, setDon, setHand } from './helpers.ts';
+import { expectTag, keepOrder, play, scenario, setDeckTop, setDon, setHand } from './helpers.ts';
 
 const ids = Object.keys(DECKS);
 const pairs: [string, string][] = ids.flatMap((a) => ids.map((b) => [a, b] as [string, string]));
@@ -325,7 +325,7 @@ test('moteur : pas de défaite pour deck vide pendant qu’un effet regarde les 
   assert.equal(after.winner, null, after.winReason ?? '');
   expectTag(after, 'pick');
   assert.equal(after.decision!.inEffect, true);
-  const done = act(after, 'none');
+  const done = keepOrder(act(after, 'none'));
   assert.equal(done.winner, null);
   assert.equal(done.players[0].deck.length, 3);
 });

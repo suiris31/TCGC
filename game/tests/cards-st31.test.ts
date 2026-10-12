@@ -3,9 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { act } from '../engine/engine.ts';
 import { hasBlocker, power } from '../engine/rules.ts';
-import {
-  attack, choose, coherent, expectTag, hasOption, logHas, onField, play, scenario, setChars, setDeckTop, setDon, setHand, setLife,
-} from './helpers.ts';
+import { attack, choose, coherent, expectTag, hasOption, keepOrder, logHas, onField, play, scenario, setChars, setDeckTop, setDon, setHand, setLife } from './helpers.ts';
 
 const D: [string, string] = ['ST-31', 'ST-35'];
 
@@ -37,7 +35,7 @@ test('Nami : 5 cartes du dessus, 1 carte {Équipage de Chapeau de paille} autre 
   s = play(s, 'OP01-016');
   expectTag(s, 'pick');
   assert.ok(!s.decision!.options.some((o) => o.label === 'Nami'));
-  s = choose(s, /Usopp/);
+  s = keepOrder(choose(s, /Usopp/));
   assert.ok(s.players[0].hand.some((c) => c.num === 'OP11-003'));
   assert.equal(s.players[0].deck.slice(-4).filter((c) => ['OP01-016', 'OP11-009', 'P-101', 'OP04-016'].includes(c.num)).length, 4);
   coherent(s);
@@ -243,4 +241,25 @@ test('Roronoa Zoro (OP14-015) : [En attaquant] −1000 à un Personnage adverse'
   assert.equal(power(s, target), 4000);
   assert.ok(onField(s, 1, target));
   void act;
+});
+
+test('Nami : les cartes remises sous le deck le sont dans l’ordre choisi ; partie d’avant cette règle : ordre gardé, sans question', () => {
+  const start = (rules?: number) => scenario(D, (g) => {
+    setHand(g, 0, ['OP01-016']);
+    setDon(g, 0, 1);
+    setDeckTop(g, 0, ['OP01-016', 'OP11-003', 'OP11-009', 'P-101', 'OP04-016']);
+    if (rules !== undefined) g.rules = rules;
+  });
+  let s = choose(play(start(), 'OP01-016'), /Usopp/);
+  expectTag(s, 'bottomOrder');
+  assert.ok(s.decision!.options.some((o) => o.id === 'keep'));
+  s = choose(s, (o) => o.num === 'OP04-016');   // la plus haute
+  s = choose(s, (o) => o.num === 'P-101');
+  s = choose(s, 'keep');                         // Nami puis Robin, dans l'ordre affiché
+  assert.deepEqual(s.players[0].deck.slice(-4).map((c) => c.num), ['OP04-016', 'P-101', 'OP01-016', 'OP11-009']);
+  coherent(s);
+
+  s = choose(play(start(1), 'OP01-016'), /Usopp/);
+  assert.notEqual(s.decision?.tag, 'bottomOrder');
+  assert.deepEqual(s.players[0].deck.slice(-4).map((c) => c.num), ['OP01-016', 'OP11-009', 'P-101', 'OP04-016']);
 });

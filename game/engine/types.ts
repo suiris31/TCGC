@@ -224,6 +224,9 @@ export interface GameState {
   log: LogEntry[];
   history: HistoryEntry[];
   events?: number;  // nombre d'événements annoncés (numérote les effets déclenchés ensemble)
+  // version des règles du moteur à la création de la partie (voir engine.ts, RULES_VERSION) ; absente : 1. Une partie
+  // enregistrée se rejoue avec les règles de sa version, même si le moteur a changé depuis.
+  rules?: number;
   // cartes de zones cachées connues d'un joueur (révélées, regardées), tant qu'elles restent dans cette zone
   known?: { uid: number; to: PlayerId; zone: HiddenZone }[];
 }

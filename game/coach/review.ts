@@ -41,10 +41,11 @@ export const REVIEW = { samples: 32, budgetMs: 1500, minSamples: 12, refineSampl
 export const HINT = { samples: 48, budgetMs: 2000, minSamples: 16, refineSamples: 96, refineBudgetMs: 2000, refineMin: 32 };
 
 // Décisions qui valent la peine d'être analysées : un vrai choix entre au moins deux options utiles, ou un choix sans
-// intérêt alors qu'il y avait mieux (déclarer un coût est un pari)
+// intérêt alors qu'il y avait mieux (déclarer un coût est un pari ; l'ordre des cartes remises sous le deck ne compte
+// presque jamais dans une partie)
 export function isReviewable(m: Move, human: PlayerId): boolean {
   const d = m.state.decision;
-  if (!d || d.player !== human || d.options.length < 2 || d.tag === 'declareCost') return false;
+  if (!d || d.player !== human || d.options.length < 2 || d.tag === 'declareCost' || d.tag === 'bottomOrder') return false;
   const useful = d.options.filter((o) => !uselessReason(m.state, d, o)).length;
   return useful >= 2 || (useful >= 1 && uselessReason(m.state, d, d.options.find((o) => o.id === m.choice)!) !== null);
 }

@@ -22,6 +22,11 @@ class NeedDecision {
   }
 }
 
+// Versions des règles du moteur (une partie garde celle de sa création : voir GameState.rules)
+// 1 : jusqu'au 12 octobre 2026
+// 2 : « placez les cartes restantes au-dessous de votre deck dans l'ordre de votre choix » : le joueur choisit l'ordre
+export const RULES_VERSION = 2;
+
 export interface NewGameOptions {
   decks: [string, string];
   names: [string, string];
@@ -72,6 +77,7 @@ export function newGame(opts: NewGameOptions, chooser?: Chooser): GameState {
     winReason: null,
     log: [],
     history: [],
+    rules: RULES_VERSION,
   } as unknown as GameState;
   s.players = [makePlayer(s, opts.decks[0], opts.names[0]), makePlayer(s, opts.decks[1], opts.names[1])];
   const first: PlayerId = opts.first === 0 || opts.first === 1 ? opts.first : random(s) < 0.5 ? 0 : 1;

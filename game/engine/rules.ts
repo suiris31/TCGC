@@ -335,12 +335,37 @@ export function lookTopPick(ctx: EffectCtx, count: number, max: number, filter: 
   reveal(s, picked.map((c) => c.uid), ctx.opp);
   if (rest === 'trash') P.trash.push(...looked);
   else {
-    P.deck.push(...looked);
-    reveal(s, looked.map((c) => c.uid), ctx.me);
+    const ordered = bottomOrder(ctx, looked);
+    P.deck.push(...ordered);
+    reveal(s, ordered.map((c) => c.uid), ctx.me);
   }
   const trashed = rest === 'trash' && looked.length ? `, et place ${looked.map((c) => def(c.num).name).join(', ')} dans sa Défausse` : '';
   log(s, ctx.me, `regarde ${count} cartes du dessus de son deck${picked.length ? ` et ajoute ${picked.map((c) => def(c.num).name).join(', ')} à sa main` : ''}${trashed}`);
   return picked;
+}
+
+// « ... au-dessous de votre deck dans l'ordre de votre choix » : le joueur choisit les cartes une à une, de la plus
+// haute à la plus basse, ou garde l'ordre affiché pour les autres. Parties créées avant la version 2 des règles :
+// l'ordre est gardé, sans question (elles se rejouent à l'identique).
+export function bottomOrder(ctx: EffectCtx, cards: Card[]): Card[] {
+  if ((ctx.s.rules ?? 1) < 2 || cards.length < 2) return cards;
+  const left = [...cards];
+  const ordered: Card[] = [];
+  while (left.length >= 2) {
+    const names = left.map((c) => def(c.num).name).join(', ');
+    const answer = ctx.ask({
+      prompt: `Ordre des cartes placées au-dessous de ton deck : la première choisie sera la plus haute, la dernière tout en bas. Reste : ${names}`,
+      options: [
+        { id: 'keep', label: `Garder cet ordre : ${names}` },
+        ...uniqueByNum(left).map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })),
+      ],
+      tag: 'bottomOrder',
+      cards: left.map((c) => ({ uid: c.uid, num: c.num, owner: ctx.me })),
+    });
+    if (answer === 'keep') break;
+    ordered.push(...left.splice(left.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1));
+  }
+  return [...ordered, ...left];
 }
 
 // « Regardez 1 carte du dessus du deck adverse »

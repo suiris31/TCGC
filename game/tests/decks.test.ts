@@ -8,6 +8,7 @@ import { DECKS } from '../engine/decks.ts';
 import { act, advance, newGame } from '../engine/engine.ts';
 import { canBeRested, def, donOnField, handCost, hasBlocker, power } from '../engine/rules.ts';
 import type { Card, FieldCard, GameState } from '../engine/types.ts';
+import { keepOrder } from './helpers.ts';
 
 let uid = 8000;
 const card = (num: string): Card => ({ uid: uid++, num });
@@ -41,7 +42,7 @@ test('Thousand Sunny : Lieu joué hors de la zone de Personnage, activation, rem
   });
   s = act(s, `play:${sunny.uid}`);
   tagIs(s, 'pick');
-  s = act(s, `card:${jinbe.uid}`);
+  s = keepOrder(act(s, `card:${jinbe.uid}`));
   assert.equal(s.players[0].stage?.uid, sunny.uid);
   assert.equal(s.players[0].chars.length, 0);
   assert.ok(s.players[0].hand.some((c) => c.uid === jinbe.uid));
@@ -49,7 +50,7 @@ test('Thousand Sunny : Lieu joué hors de la zone de Personnage, activation, rem
   assert.equal(s.players[0].stage!.rested, true);
   assert.equal(s.players[0].leader.don, 1);
   s = act(s, `play:${sunny2.uid}`);
-  if (s.decision?.tag === 'pick') s = act(s, 'none');
+  if (s.decision?.tag === 'pick') s = keepOrder(act(s, 'none'));
   assert.equal(s.players[0].stage!.uid, sunny2.uid);
   assert.ok(s.players[0].trash.some((c) => c.uid === sunny.uid));
 });
