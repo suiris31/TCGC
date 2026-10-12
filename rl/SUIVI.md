@@ -12,8 +12,8 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 - **Code** : branche `claude/awesome-hopper-nj0x4y` (commits depuis `553104f`). `main` a été avancé jusqu'à
   `4727d53` (mise en ligne). Seul `b56c2bd` (`evaluate.py`, sans effet sur le serveur) n'est pas encore sur `main`.
 - **En ligne** : modèle exporté au début du niveau 3 (~62 % contre l'heuristique « Débutant »).
-- **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 4 depuis u7200, ~7 400 mises à jour,
-  ~1,8 million de parties, 8 decks depuis u7383, vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
+- **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 5 (ligue) depuis u7650,
+  ~7 700 mises à jour, ~1,85 million de parties, 9 decks depuis u7713, vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
 
 ## 2. Où en est l'IA (mesures)
 
@@ -29,6 +29,9 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 | **Niveau 3 validé (u7200)** | 73,5 % | 62,5 % | 1197 |
 | Niveau 4, juge : la version u7200 (u7250–7350) | 69–80 % | contre u7200 : 51–52 % | 1170–1225 |
 | 8 decks, Mihawk jamais vu (u7383, 12 octobre 2026) | 58,9 % (6 144 parties ; 13,7 % en jouant Mihawk) | — | — |
+| **Niveau 4 validé (u7650)** | 65,6 % | contre u7200 : 61,7 % (59,4 % à u7600) | 1154 |
+| Niveau 5, ligue (u7700) | 63,3 % | contre les 4 dernières versions : 48–57 % | 1123 |
+| 9 decks, Robin jamais vu (u7713, 12 octobre 2026) | 57,5 % (7 776 parties ; 39,6 % en jouant Robin, 39,7 % Mihawk) | — | — |
 
 Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation** (fait à u7200).
 Le niveau 4 se valide à **58 % contre sa version de départ (u7200) et 60 % contre l'heuristique, deux évaluations de
@@ -94,7 +97,29 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    tomber la collecte de ~5 500 à ~800–1 900 décisions/s (12 → 5,6 parties/s ; part du temps dans Node 35 % → 75 %),
    comme au niveau 3 (décision 5). Le niveau 4 n'est pas jugé par le Monte-Carlo : ses 5 % passent au self-play
    (self 0,75, heuristique 0,2, hasard 0,05). Même reprise : `--max-updates` 7500 → 9000.
-9. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
+9. **Troisième deck du méta (Nico Robin) : mesuré, puis inclus** (12 octobre 2026, à la demande de l'utilisateur).
+   Modèle u7713 (Mihawk inclus depuis u7383) contre l'heuristique : 864 parties par deck joué par le modèle, comparées
+   à l'heuristique jouant le même deck (1 800 parties par deck).
+
+   | Deck joué | Modèle | Heuristique | Écart |
+   |---|---|---|---|
+   | META-ROBIN-2026-10 (nouveau) | 39,6 % | 68,6 % | −29 |
+   | META-MIHAWK-2026-10 (inclus depuis u7383) | 39,7 % | 66,8 % | −27 (−57 à u7383) |
+   | META-SABO-2026-10 (inclus depuis u6715) | 86,2 % | 72,2 % | +14 |
+   | ST-31 / 32 / 33 / 34 / 35 / 36 | 61,5 / 62,7 / 57,4 / 29,7 / 68,8 / 71,6 % | 40,2 / 48,2 / 49,4 / 20,2 / 43,9 / 38,8 % | +8 à +33 (moyenne +18) |
+
+   Face à Robin, le modèle garde une avance plus faible qu'avec les autres decks (~+9 points avec les 7 decks qu'il
+   joue bien). En le jouant, parties relues : il garde souvent en main une carte de Vie dont le [Déclenchement] la
+   jouerait gratuitement, joue les Trois généraux sucrés sans les 2 DON!! de leur effet, et n'a pas le plan « Linlin
+   fait passer les Personnages à 4000 à 8000 ». Le moteur n'est pas en cause. Mihawk progresse (13,7 % → 39,7 % en 330
+   mises à jour) sans avoir rattrapé l'heuristique. **Robin inclus dès la reprise** (9 decks, évaluations de passage sur
+   81 confrontations, vocabulaire toujours de 90 cartes). Nouvelles questions (`lookToLife`) rangées dans la famille
+   `life`, « annulez les effets » non encodé ; encodage inchangé `a0664ced`.
+10. **Niveau 5 sans Monte-Carlo à l'entraînement** (12 octobre 2026, même règle que la décision 8, appliquée dans la
+   commande de reprise : à confirmer ou annuler par l'utilisateur). Le niveau 5 remet lui aussi `mc2` (5 %) parmi les
+   adversaires d'entraînement : 7,5 puis 3,3 parties/s (u7600–7713). Il n'est pas jugé par le Monte-Carlo : ses 5 %
+   passent au self-play (self 0,4, ligue 0,4, heuristique 0,15, hasard 0,05).
+11. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
    spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
 
@@ -105,9 +130,10 @@ Dans `rl/`, environnement activé (`.venv\Scripts\Activate.ps1`).
 **Reprendre l'entraînement** : lancer la commande affichée à l'arrêt (« Pour reprendre : ... »). Attention : les
 réglages `--set` ne sont pas gardés d'une reprise à l'autre ; la commande actuelle est
 ```powershell
-python train.py --config gpu --run rtx2070-main --max-updates 9000 --set ppo.lr=0.0001 --set 'curriculum.levels.2.opponents=[{kind: self, weight: 0.5}, {kind: heuristic, weight: 0.45}, {kind: random, weight: 0.05}]' --set curriculum.levels.2.eval_every=100 --set 'curriculum.levels.3.opponents=[{kind: self, weight: 0.75}, {kind: heuristic, weight: 0.2}, {kind: random, weight: 0.05}]'
+python train.py --config gpu --run rtx2070-main --max-updates 9000 --set ppo.lr=0.0001 --set 'curriculum.levels.2.opponents=[{kind: self, weight: 0.5}, {kind: heuristic, weight: 0.45}, {kind: random, weight: 0.05}]' --set curriculum.levels.2.eval_every=100 --set 'curriculum.levels.3.opponents=[{kind: self, weight: 0.75}, {kind: heuristic, weight: 0.2}, {kind: random, weight: 0.05}]' --set 'curriculum.levels.4.opponents=[{kind: self, weight: 0.4}, {kind: pool, weight: 0.4}, {kind: heuristic, weight: 0.15}, {kind: random, weight: 0.05}]'
 ```
-(les réglages du niveau 3, `levels.2`, ne servent plus depuis u7200 : gardés par sécurité ; `levels.3` est le niveau 4)
+(`levels.2`, `levels.3`, `levels.4` sont les niveaux 3, 4 et 5 ; les deux premiers ne servent plus depuis u7650 :
+gardés par sécurité)
 Ne pas ajouter `--level` (remet le compteur du niveau à zéro) ni `--fresh` (recommence de zéro).
 
 **Suivre** : `python report.py --run rtx2070-main --window 100 --evals 6` (texte à partager) ;
@@ -126,16 +152,14 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- **Reprise avec 8 decks, niveau 4 sans Monte-Carlo** (12 octobre 2026, depuis u7383, `main` à jour dans le dossier de
-  l'entraînement : Mihawk ajouté) : commande du § 4. Les évaluations de passage portent sur 64 confrontations (49 de
-  u6715 à u7383). Attendu : retour vers ~12 parties/s.
-- À remesurer vers **u8000** comme au § 3.7 : Mihawk joué par le modèle (13,7 % au départ).
-- Niveau 4 : il faut 58 % contre u7200 (51–52 % au départ) et 60 % contre l'heuristique, deux fois de suite ; puis
-  niveau 5 (ligue d'anciennes versions, Elo).
-- Decks suivants de la phase 4 (Nico Robin, puis Xebec, Enel, Kaido) : à chaque deck, entraînement en pause, mesure
-  de généralisation (§ 3.6 et 3.7), puis inclusion.
+- **Reprise avec 9 decks, niveau 5 (ligue) sans Monte-Carlo** (12 octobre 2026, depuis u7713, `main` à jour dans le
+  dossier de l'entraînement : Robin ajouté) : commande du § 4. Les évaluations portent sur 81 confrontations. Attendu :
+  retour vers ~12 parties/s. Le niveau 5 n'a pas de passage : c'est le dernier (Elo contre les anciennes versions).
+- À remesurer vers **u8300** comme au § 3.9 : Robin (39,6 % au départ) et Mihawk (39,7 % à u7713) joués par le modèle.
+- Decks suivants de la phase 4 (Xebec, puis Enel et Kaido) : à chaque deck, entraînement en pause, mesure
+  de généralisation (§ 3.6, 3.7 et 3.9), puis inclusion.
 - Si l'IA ne progresse plus : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
-  autres pistes du § 3.9).
+  autres pistes du § 3.11).
 
 ## 6. Points ouverts et pièges connus
 
