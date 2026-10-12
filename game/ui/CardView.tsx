@@ -50,6 +50,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
     if (hasBlocker(s, f.player, f.card)) icons.push({ icon: '🛡', title: '[Bloqueur] : peut se mettre en travers d’une attaque adverse' });
     if (hasMod(s, card.uid, 'cantAttack')) icons.push({ icon: '🔒', title: 'Ne peut pas attaquer' });
     if (hasMod(s, card.uid, 'cantRest')) icons.push({ icon: '⛓', title: 'Ne peut pas être épuisé (ni attaquer ni bloquer)' });
+    if (hasMod(s, card.uid, 'negated')) icons.push({ icon: '🚫', title: 'Effets annulés pour le tour' });
     if (rested && hasMod(s, card.uid, 'noRefresh')) icons.push({ icon: '🧊', title: 'Ne sera pas redressé lors de la prochaine phase de Recharge de son propriétaire' });
   }
   if (f && !f.stage) {

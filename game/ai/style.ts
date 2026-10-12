@@ -96,6 +96,9 @@ export const BASE_STYLES: Record<string, Partial<Style>> = {
   'ST-36': { counterLife: 1, counterMid: 2, counterSmall: 1, leaderAggro: 3.5 },
   // Mihawk du méta (vert) : épuiser les Personnages adverses et les empêcher de se redresser, puis les abattre
   'META-MIHAWK-2026-10': { charKill: 1.3, restBlocker: 6 },
+  // Nico Robin du méta (violet/jaune) : la Vie se reconstruit (Teach, Linlin, Smoothie) et ses cartes ont des
+  // [Déclenchement] : contrer un peu moins
+  'META-ROBIN-2026-10': { counterLife: 1, counterMid: 2, counterSmall: 1.5 },
 };
 
 const TUNED = tuned as Record<string, Partial<Style>>;

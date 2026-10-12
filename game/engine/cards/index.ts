@@ -6,6 +6,7 @@ import { DECKS } from '../decks.ts';
 import { leadingKeywords, onlyGenericEffects } from '../keywords.ts';
 import type { CardBehavior, CardData, CardDef } from '../types.ts';
 import { META_MIHAWK } from './meta-mihawk.ts';
+import { META_ROBIN } from './meta-robin.ts';
 import { META_SABO } from './meta-sabo.ts';
 import { ST31 } from './st31.ts';
 import { ST32 } from './st32.ts';
@@ -15,7 +16,9 @@ import { ST35 } from './st35.ts';
 import { ST36 } from './st36.ts';
 
 // Un fichier par deck : celui où ses cartes ont été codées (une carte reprise dans un autre deck n'est codée qu'une fois)
-const BEHAVIORS: Record<string, CardBehavior> = { ...ST31, ...ST32, ...ST33, ...ST34, ...ST35, ...ST36, ...META_SABO, ...META_MIHAWK };
+const BEHAVIORS: Record<string, CardBehavior> = {
+  ...ST31, ...ST32, ...ST33, ...ST34, ...ST35, ...ST36, ...META_SABO, ...META_MIHAWK, ...META_ROBIN,
+};
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir
 // view.ts). L'interface peut la lire sans erreur ; elle l'affiche de dos.
@@ -39,11 +42,24 @@ function deckImage(num: string, d: CardData): string {
   return d.imageId;
 }
 
+// [Déclenchement] mal rangé par la liste officielle française (5 cartes en octobre 2026) : la VO dit si la carte en a
+// un. OP09-062 : le mot « [Déclenchement] » au milieu du texte a été pris pour le début d'un [Déclenchement] ;
+// OP07-114, OP06-059... : le [Déclenchement] est resté dans le texte.
+function frTrigger(d: CardData): Pick<CardData, 'effect' | 'trigger'> {
+  if (d.lang !== 'fr' || Boolean(d.trigger) === Boolean(d.triggerEn)) return { effect: d.effect, trigger: d.trigger };
+  if (d.trigger) return { effect: `${d.effect} [Déclenchement] ${d.trigger}`, trigger: null };
+  const at = d.effect.lastIndexOf('[Déclenchement]');
+  if (at <= 0) return { effect: d.effect, trigger: d.trigger };
+  return { effect: d.effect.slice(0, at).trim(), trigger: d.effect.slice(at + '[Déclenchement]'.length).trim() };
+}
+
 // Les mots-clés sont relus dans le texte au chargement : le catalogue a pu être téléchargé par une version précédente
 export function loadCardData(data: Record<string, CardData>) {
   raw = { ...raw, ...data };
   for (const [num, d] of Object.entries(data)) {
-    CARDS[num] = { ...d, keywords: leadingKeywords(d.effectEn), imageId: deckImage(num, d), ...BEHAVIORS[num] };
+    CARDS[num] = {
+      ...d, ...frTrigger(d), keywords: leadingKeywords(d.effectEn), imageId: deckImage(num, d), ...BEHAVIORS[num],
+    };
   }
 }
 

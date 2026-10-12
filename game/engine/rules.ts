@@ -136,6 +136,11 @@ export function hasMod(s: GameState, uid: number, stat: Modifier['stat']) {
   return s.mods.some((m) => m.uid === uid && m.stat === stat);
 }
 
+// « Annulez les effets de ... pour tout le tour » : la carte perd les effets de son propre texte (effets permanents,
+// mots-clés, [Jouée]... et réactions) ; ce que lui donnent d'autres cartes reste. Vérifié seulement quand la carte a
+// l'effet concerné (le calcul ne ralentit pas les autres cartes).
+export const isNegated = (s: GameState, uid: number) => hasMod(s, uid, 'negated');
+
 // « jusqu'à la fin de la prochaine phase de Fin de votre adversaire »
 export function untilOpponentsNextEnd(s: GameState, p: PlayerId) {
   return s.active === p ? s.turn + 1 : s.turn;
@@ -151,7 +156,7 @@ export function emit(s: GameState, e: GameEvent, also: PendingEffect[] = []) {
     const triggered = also.filter((x) => x.controller === p).map((x) => ({ ...x, batch }));
     for (const self of allField(s, p)) {
       def(self.num).when?.forEach((w, index) => {
-        if (w.on !== e.type || (w.once && self.usedOpt.includes(w.once)) || !w.if(s, p, self, e)) return;
+        if (w.on !== e.type || (w.once && self.usedOpt.includes(w.once)) || isNegated(s, self.uid) || !w.if(s, p, self, e)) return;
         if (w.once) self.usedOpt.push(w.once);
         triggered.push({ kind: 'when', source: self.uid, num: self.num, controller: p, answers: [], event: e, index, batch });
       });
@@ -177,7 +182,7 @@ export function fieldCost(s: GameState, uid: number): number {
   const f = findField(s, uid);
   if (!f || f.leader) return 0;
   const d = def(f.card.num);
-  let c = (d.cost ?? 0) + (d.selfCost?.(s, f.player, f.card) ?? 0);
+  let c = (d.cost ?? 0) + (d.selfCost && !isNegated(s, uid) ? d.selfCost(s, f.player, f.card) : 0);
   for (const m of s.mods) if (m.uid === uid && m.stat === 'cost') c += m.amount;
   return c;
 }
@@ -199,14 +204,14 @@ export function power(s: GameState, uid: number): number {
   const bases = s.mods.filter((m) => m.uid === uid && m.stat === 'basePower').map((m) => m.amount);
   let p = bases.length ? Math.max(...bases) : d.power ?? 0;
   if (s.active === f.player) p += f.card.don * 1000;
-  p += d.selfPower?.(s, f.player, f.card) ?? 0;
+  if (d.selfPower && !isNegated(s, uid)) p += d.selfPower(s, f.player, f.card);
   for (const src of allField(s, f.player)) {
     const aura = def(src.num).aura;
-    if (aura) p += aura(s, f.player, src, f.card);
+    if (aura && !isNegated(s, src.uid)) p += aura(s, f.player, src, f.card);
   }
   for (const src of allField(s, other(f.player))) {
     const aura = def(src.num).oppAura;
-    if (aura) p += aura(s, other(f.player), src, f.card);
+    if (aura && !isNegated(s, src.uid)) p += aura(s, other(f.player), src, f.card);
   }
   for (const m of s.mods) if (m.uid === uid && m.stat === 'power') p += m.amount;
   return p;
@@ -216,9 +221,8 @@ export function power(s: GameState, uid: number): number {
 // ou accordé par un effet (modification temporaire)
 export function hasKeyword(s: GameState, p: PlayerId, card: FieldCard, k: Keyword): boolean {
   const d = def(card.num);
-  if (d.keywords?.includes(k)) return true;
   const own = k === 'Blocker' ? d.blocker : k === 'Rush' ? d.rush : k === 'Rush: Character' ? d.rushChar : undefined;
-  if (own?.(s, p, card)) return true;
+  if ((d.keywords?.includes(k) || own?.(s, p, card)) && !isNegated(s, card.uid)) return true;
   return s.mods.some((m) => m.uid === card.uid && (m.stat === 'keyword' ? m.keyword === k : k === 'Blocker' && m.stat === 'blocker'));
 }
 
@@ -530,7 +534,8 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
 export function canBeKO(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId): boolean {
   const f = findField(s, uid);
   if (!f) return false;
-  if (def(f.card.num).cantBeKO?.(s, f.player, f.card, cause, by)) return false;
+  const own = def(f.card.num).cantBeKO;
+  if (own && !isNegated(s, uid) && own(s, f.player, f.card, cause, by)) return false;
   return !s.mods.some((m) => m.uid === uid && m.stat === 'cantBeKO'
     && (!m.scope || m.scope === cause || (m.scope === 'oppEffect' && cause === 'effect' && by !== f.player)));
 }
@@ -540,7 +545,8 @@ export function canLeaveByEffect(s: GameState, uid: number, by: PlayerId): boole
   const f = findField(s, uid);
   if (!f) return false;
   if (by === f.player) return true;
-  return !def(f.card.num).cantLeave?.(s, f.player, f.card) && !hasMod(s, uid, 'cantLeave');
+  const own = def(f.card.num).cantLeave;
+  return !(own && !isNegated(s, uid) && own(s, f.player, f.card)) && !hasMod(s, uid, 'cantLeave');
 }
 
 // Mise KO (combat ou effet du joueur `by`) : la carte va dans la Défausse, son effet [En cas de KO] est mis en attente.
@@ -553,7 +559,7 @@ export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect
     log(s, f0.player, `${d.name} ne peut pas être mis KO`);
     return false;
   }
-  const triggers = d.onKO && (d.onKOCondition?.(s, f0.player) ?? true);
+  const triggers = d.onKO && !isNegated(s, uid) && (d.onKOCondition?.(s, f0.player) ?? true);
   const f = removeFromField(s, uid, 'trash');
   if (!f) return false;
   log(s, f.player, `${d.name} est mis KO${cause === 'effect' ? ' par un effet' : ''}`);
@@ -587,7 +593,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
   if (owner !== ctx.me) {
     const options: Option[] = fieldCards(s, owner).flatMap((self) => {
       const r = def(self.num).replaceRemoval;
-      if (!r || (r.onlyKo && to !== 'ko') || (r.oncePerTurn && self.usedOpt.includes('replace')) || !r.condition(s, owner, self, f.card)) return [];
+      if (!r || isNegated(s, self.uid) || (r.onlyKo && to !== 'ko') || (r.oncePerTurn && self.usedOpt.includes('replace')) || !r.condition(s, owner, self, f.card)) return [];
       return [{ id: `replace:${self.uid}`, label: r.label(s, self, f.card), uid: self.uid }];
     });
     if (options.length) {

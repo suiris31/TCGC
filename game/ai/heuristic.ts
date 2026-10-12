@@ -187,6 +187,17 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
   'OP17-022': (s, p) => 1 + oppCharsWhere(s, p, (c) => !c.rested && canBeRested(s, c.uid)).length,
   'OP17-031': () => 1.5,
   'OP14-039': (s, p) => (s.players[p].stage ? -3 : 2),
+  // Nico Robin du méta : les coûts « épuiser 2 DON!! » se paient en plus du coût de la carte
+  'OP17-074': () => 1.5,
+  'EB04-058': (s, p) => (s.players[p].life.length <= 2 ? 2 : 0.5),
+  'OP17-113': () => 1,
+  'OP17-114': (s, p) => (s.players[p].donActive - 6 >= 2 ? 3 : 0),
+  'OP17-106': (s, p) => (s.players[p].donActive - 5 >= 2 ? 2 : 0),
+  'OP17-109': (s, p) => (inHand(s, p, (n) => Boolean(def(n).triggerEn)) >= 2 ? 2 : 0),
+  'OP17-110': (s, p) => (inHand(s, p, (n) => n !== 'OP17-110' && def(n).category === 'CHARACTER' && hasType(n, 'Big Mom Pirates') && (def(n).cost ?? 0) <= 6) ? 3 : 0),
+  'OP16-119': () => 2,
+  'OP17-112': () => 3,
+  'OP05-073': (s, p) => (s.players[p].hand.length >= 3 ? 1 : 0),
 };
 
 function playScore(s: GameState, p: PlayerId, num: string, st: Style = styleOf(s.players[p].deckId, p)) {
@@ -408,6 +419,7 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP11-079': return knowsTop(s, p) ? 5000 : 0;
     case 'OP14-038': return findField(s, targetUid)?.leader ? 3000 : 0;
     case 'OP06-038': return restedCards(s, p) + (def(num).cost ?? 0) >= 8 ? 4000 : 2000;
+    case 'OP09-078': return leaderHasType(s, p, 'Straw Hat Crew') && donOnField(s, p) >= 2 && s.players[p].hand.length >= 2 ? 4000 : 0;
     default: return 2000;
   }
 }
@@ -458,6 +470,8 @@ const TRIGGER_WORTH: Record<string, (s: GameState, p: PlayerId) => boolean> = {
   'OP12-057': () => false,
   'OP11-079': () => false,
   'OP12-039': (s, p) => s.battle !== null && s.active !== p,
+  // « DON!! −1 : jouez cette carte » : sans DON!! sur le terrain, le [Déclenchement] ne ferait rien
+  'OP05-073': (s, p) => donOnField(s, p) >= 1,
 };
 
 const amountIn = (prompt: string) => Number(prompt.match(/[−-](\d+)/)?.[1] ?? 0);
@@ -502,6 +516,11 @@ function chooseEffect(s: GameState, d: Decision): string {
   const sourceNum = d.source !== undefined ? findField(s, d.source)?.card.num : undefined;
   if (d.tag === 'may' && sourceNum === 'OP13-031') return yesNo(P.chars.some((c) => c.uid !== d.source && (def(c.num).cost ?? 0) <= 5));
   if (d.tag === 'may' && sourceNum === 'OP06-033') return yesNo(O.chars.some((c) => c.rested));
+  // Charlotte Linlin : prendre une Vie adverse quand on mène la course, sinon en ajouter une à la sienne
+  if (d.tag === 'chooseOne' && sourceNum === 'OP17-112') {
+    const take = O.life.length > 0 && P.life.length >= O.life.length;
+    return (d.options.find((o) => o.id === (take ? 'choice:1' : 'choice:0')) ?? d.options[0]).id;
+  }
   switch (d.tag) {
     case 'mayBetty':
       return yesNo(O.chars.some((c) => fieldCost(s, c.uid) >= 8) && P.deck.length >= 12);
@@ -611,6 +630,12 @@ function chooseEffect(s: GameState, d: Decision): string {
         return (can ? 6 : 1.5) + fieldValue(s, f.card.uid) / 10 + (hasBlocker(s, p, f.card) ? 3 : 0);
       };
       return [...d.options].sort((a, b) => keep(a) - keep(b))[0].id;
+    }
+    case 'lookToLife': {
+      // Marshall D. Teach : une carte à [Déclenchement] au-dessus de la Vie, la plus utile
+      const withTrigger = cards.filter((o) => o.num && def(o.num).triggerEn);
+      const pool = withTrigger.length ? withTrigger : cards;
+      return ([...pool].sort((a, b) => handValue(s, p, b.num!) - handValue(s, p, a.num!))[0] ?? d.options[0]).id;
     }
     case 'returnOwn': {
       // Trafalgar Law : un Personnage de coût 5 ou moins dont l'effet [Jouée] resservira, de préférence déjà épuisé

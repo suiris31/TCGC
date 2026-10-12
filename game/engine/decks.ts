@@ -89,6 +89,20 @@ export const DECKS: Record<string, DeckList> = {
       'OP14-038': 3, 'OP14-039': 3, 'OP17-022': 4, 'OP17-031': 4, 'ST32-001': 4, 'ST32-002': 4,
     },
   },
+  // Méta d'octobre 2026, variante « Équipage de Big Mom » : 1re place (5-0) d'un tournoi Flagship (Japon, format
+  // Standard), liste publiée le 6 octobre 2026 ; choisie sans validation, à la demande de l'utilisateur (la plus récente
+  // des listes OP-17 trouvées, même ossature que les autres).
+  // https://gumgum.gg/one-piece/decklist/OP09-062/nico-robin/OP17
+  'META-ROBIN-2026-10': {
+    id: 'META-ROBIN-2026-10',
+    name: 'Nico Robin (méta, octobre 2026)',
+    series: 'META',
+    leader: 'OP09-062',
+    cards: {
+      'EB04-058': 3, 'OP05-073': 2, 'OP09-078': 4, 'OP16-119': 4, 'OP17-074': 4, 'OP17-102': 4, 'OP17-106': 3, 'OP17-107': 4,
+      'OP17-109': 4, 'OP17-110': 2, 'OP17-112': 4, 'OP17-113': 4, 'OP17-114': 4, 'ST34-003': 4,
+    },
+  },
 };
 
 export function deckSize(deck: DeckList) {

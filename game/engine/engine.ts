@@ -6,7 +6,7 @@ import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
   addMod, allField, attackTargets, canBeRested, canPlayCharacters, carryKnown, def, describe, donTotal, draw, emit, fieldCards,
-  findField, handCost, hasBlocker, hasKeyword, knownFirst, koCharacter, log, name, onField, other, payDon, playCharacter,
+  findField, handCost, hasBlocker, hasKeyword, isNegated, knownFirst, koCharacter, log, name, onField, other, payDon, playCharacter,
   power, pruneKnown, restForAttack, reveal, shuffleDeck, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
@@ -355,10 +355,10 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     log(s, ctx.me, `${def(attacker.card.num).name} (${power(s, uid)}) attaque ${describe(s, target)}`);
     restForAttack(s, uid);
     const effects: PendingEffect[] = [];
-    if (def(attacker.card.num).whenAttacking) effects.push({ kind: 'whenAttacking', source: uid, num: attacker.card.num, controller: ctx.me, answers: [] });
+    if (def(attacker.card.num).whenAttacking && !isNegated(s, uid)) effects.push({ kind: 'whenAttacking', source: uid, num: attacker.card.num, controller: ctx.me, answers: [] });
     // [Attaque adverse] : après les effets [En attaquant] (10-2-16)
     for (const c of allField(s, ctx.opp)) {
-      if (def(c.num).onOpponentAttack) effects.push({ kind: 'onOpponentAttack', source: c.uid, num: c.num, controller: ctx.opp, answers: [] });
+      if (def(c.num).onOpponentAttack && !isNegated(s, c.uid)) effects.push({ kind: 'onOpponentAttack', source: c.uid, num: c.num, controller: ctx.opp, answers: [] });
     }
     emit(s, { type: 'attack', player: ctx.me, uid, num: attacker.card.num, zone: attacker.leader ? 'leader' : 'character', by: ctx.me, cause: 'attack', target }, effects);
   },
@@ -505,7 +505,7 @@ function stepFlow(s: GameState) {
       // Phase de Fin (6-6) : effets [Fin de votre tour] et effets différés, puis fin des effets du tour
       if (!flow.effectsDone) {
         flow.effectsDone = true;
-        const effects: PendingEffect[] = allField(s, s.active).filter((c) => def(c.num).endOfTurn)
+        const effects: PendingEffect[] = allField(s, s.active).filter((c) => def(c.num).endOfTurn && !isNegated(s, c.uid))
           .map((c) => ({ kind: 'endOfTurn', source: c.uid, num: c.num, controller: s.active, answers: [] }));
         emit(s, { type: 'turnEnd', player: s.active }, effects);
         for (const d of s.delayed.filter((x) => x.turn === s.turn)) {
@@ -548,7 +548,7 @@ function mainDecision(s: GameState): Decision {
   }
   for (const f of allField(s, p)) {
     const a = def(f.num).activateMain;
-    if (a && !(a.oncePerTurn && f.usedOpt.includes('main')) && (a.canActivate?.(s, p, f) ?? true)) {
+    if (a && !(a.oncePerTurn && f.usedOpt.includes('main')) && !isNegated(s, f.uid) && (a.canActivate?.(s, p, f) ?? true)) {
       options.push({ id: `act:${f.uid}`, label: a.label, uid: f.uid, group: 'ability' });
     }
   }

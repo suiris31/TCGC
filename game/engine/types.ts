@@ -77,10 +77,11 @@ export interface PlayerState {
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro
 // du tour à la fin duquel elle expire (« jusqu'à la fin de la prochaine phase de Fin de votre adversaire » = tour + 1)
 // stat 'noRefresh' : la carte ne sera pas redressée lors de la phase de Recharge du tour `until` (retirée à ce moment)
+// stat 'negated' : « annulez les effets de ce Personnage » (voir isNegated)
 export interface Modifier {
   uid: number;
   stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost' | 'cantBeKO' | 'cantLeave'
-    | 'noRefresh';
+    | 'noRefresh' | 'negated';
   scope?: 'battle' | 'effect' | 'oppEffect';  // stat 'cantBeKO' : seulement en combat, par un effet, par un effet adverse
   keyword?: Keyword;  // stat 'keyword' : mot-clé accordé
   amount: number;

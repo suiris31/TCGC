@@ -192,4 +192,25 @@ export const GUIDES: Record<string, DeckGuide> = {
     strengths: ['Épuise tout le terrain adverse et l’empêche de se redresser', 'Beaucoup de recherche et de pioche', 'Le Leader redresse 3 DON!! à chaque tour'],
     weaknesses: ['Un seul [Bloqueur] (Law, et seulement à 1 Vie ou moins)', 'Après l’effet du Leader, plus de Personnage joué ce tour-ci', 'Tes cartes épuisées pour payer des coûts restent épuisées, donc attaquables, pendant le tour adverse'],
   },
+  'META-ROBIN-2026-10': {
+    styles: ['Déclenchements', 'Vie', 'Violet/Jaune'],
+    summary: 'Un Leader Nico Robin entouré de l’Équipage de Big Mom : presque tout le deck a un [Déclenchement] (souvent « jouez cette carte »), la Vie se reconstruit sans cesse (Teach, Linlin, Smoothie, Trois généraux sucrés), et Charlotte Linlin fait passer à 8000 tous les Personnages à 4000 qui ont un [Déclenchement].',
+    plan: [
+      'Tours 1 et 2 : Charlotte Brûlée et Streusen cherchent une carte {Équipage de Big Mom} ; Yamato ([Bloqueur]) ajoute 1 DON!! épuisée. Le Leader, en attaquant, défausse une carte à [Déclenchement] pour 1 DON!! de plus.',
+      'Milieu de partie : Charlotte Pudding défausse une carte à [Déclenchement] pour piocher 3 cartes ; Charlotte Smoothie et les Trois généraux sucrés (en épuisant 2 DON!! de plus) ajoutent une Vie, font défausser l’adversaire ou donnent −3000 à deux Personnages.',
+      'Dès 8 DON!! : Marshall D. Teach (10000) regarde 3 cartes et place la meilleure au-dessus de ta Vie, de préférence une carte à [Déclenchement].',
+      'Dès 10 DON!! : Charlotte Linlin (12000) pioche, puis ajoute une Vie ou prend la carte du dessus de la Vie adverse ; pendant ton tour, Daifuku, Oven, Pudding, Smoothie, Slurp, Miss Doublefinger et les Trois généraux passent à 8000.',
+      'En défense : quand l’adversaire touche ton Leader, beaucoup de cartes de Vie se jouent gratuitement grâce à leur [Déclenchement] ; Gum Gum Gigant donne +4000 et pioche 2 cartes.',
+    ],
+    combos: [
+      { title: 'L’armée de Big Mom', cards: ['OP17-112', 'OP17-107', 'OP17-102', 'OP17-109', 'OP17-114'], text: 'Pendant ton tour, Charlotte Linlin fait passer à 8000 tous tes Personnages à 4000 qui ont un [Déclenchement] (Daifuku, Oven, Pudding, Smoothie, Slurp, Miss Doublefinger, Trois généraux sucrés). Deux Linlin ne cumulent pas.' },
+      { title: 'La Vie comme réserve', cards: ['OP16-119', 'OP17-106', 'OP17-114', 'EB04-058'], text: 'Teach place au-dessus de ta Vie la carte de ton choix parmi 3 ; Smoothie, les Trois généraux sucrés et Borsalino (à 2 Vies ou moins) ajoutent une carte du dessus de ton deck à ta Vie. Chaque Vie perdue peut devenir un Personnage gratuit.' },
+      { title: 'Le [Déclenchement] de Teach', cards: ['OP16-119'], text: 'Annule pour le tour les effets d’un Personnage adverse (bonus, [Bloqueur], coût augmenté...), puis met KO un Personnage adverse de coût 5 ou moins : un Haguar D. Sauro dont l’effet est annulé ne coûte plus que 4.' },
+      { title: 'Défausser pour gagner', cards: ['OP09-062', 'OP17-109', 'OP05-073'], text: 'Le Leader et Pudding défaussent une carte à [Déclenchement] (pour une DON!! ou 3 cartes) ; Miss Doublefinger défausse n’importe quelle carte pour une DON!!, et se joue depuis la Vie contre DON!! −1.' },
+      { title: 'Rejouer', cards: ['OP17-102', 'OP17-110'], text: 'Charlotte Oven mise KO rejoue de ta Défausse un Personnage de 4000 ou moins ; Charlotte Slurp joue un {Équipage de Big Mom} de coût 6 ou moins de ta main et attaque dès son arrivée.' },
+    ],
+    mulligan: 'Garde Charlotte Brûlée ou Streusen (recherche) avec Yamato ou un autre petit Personnage ; une main avec des cartes à [Déclenchement] nourrit le Leader et Pudding. Repioche une main sans Personnage de coût 3 ou moins.',
+    strengths: ['Chaque Vie perdue peut se jouer gratuitement ([Déclenchement])', 'La Vie se reconstruit souvent', 'Gros Personnages à 8000 grâce à Charlotte Linlin'],
+    weaknesses: ['Beaucoup de Personnages à 4000 sans Linlin en jeu', 'Les coûts « épuiser 2 DON!! » ralentissent le jeu', 'Gum Gum Gigant coûte cher (DON!! −2 et une carte)'],
+  },
 };

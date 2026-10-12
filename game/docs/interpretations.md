@@ -81,6 +81,30 @@ questions-réponses Bandai, tournois).
     « défaussez » ailleurs).
 24. **Yasopp, [Fin de votre tour]** : il peut se redresser lui-même (son type est {Équipage du Roux}).
 
+## Nico Robin du méta (octobre 2026), choix faits sans validation (à revoir si besoin)
+
+25. **« Carte ayant [Déclenchement] »** (Leader Robin, Charlotte Pudding, Charlotte Linlin) : d'après le texte VO.
+    La liste officielle VF range mal le [Déclenchement] de 5 cartes (dont le Leader Robin, dont le texte était coupé) :
+    corrigé au chargement des cartes, la VO faisant foi.
+26. **Charlotte Linlin, « la puissance de base passe à 8000 »** : +4000 pendant son tour pour ses Personnages de 4000
+    de puissance imprimée ayant un [Déclenchement] ; deux Linlin ne cumulent pas. Les effets qui lisent la « puissance
+    de base » continuent d'y voir 4000.
+27. **Marshall D. Teach, « annulez les effets »** : pour le tour, le Personnage perd les effets de son propre texte :
+    effets permanents (puissance, coût, « ne peut pas être mis KO »...), mots-clés ([Bloqueur], [Initiative]...),
+    [En attaquant], [En cas de KO], effets « quand ... », [Activation : Principale], remplacements. Ce que lui donnent
+    d'autres cartes reste. Le KO qui suit lit le coût sans ses propres bonus (Haguar D. Sauro : 4).
+28. **Gum Gum Gigant** : coût DON!! −2 **et** défausser 1 carte ; +4000 à la carte attaquée seulement avec un Leader
+    {Équipage de Chapeau de paille}, mais la pioche de 2 cartes a lieu dans tous les cas (« Puis »). Les DON!! renvoyées
+    sont d'abord les épuisées (règle déjà appliquée pour DON!! −X).
+29. **Charlotte Slurp (Perospero)** : « ce Personnage gagne [Initiative] » désigne Slurp lui-même, pas le Personnage
+    qu'il joue.
+30. **[Votre tour] [Jouée]** (Trois généraux sucrés, Smoothie, Slurp) : joués par leur [Déclenchement] pendant le tour
+    adverse, leur [Jouée] ne fait rien.
+31. **Miss Doublefinger, [Déclenchement] « DON!! −1 : jouez cette carte »** : sans DON!! sur le terrain, l'activer ne
+    fait rien et la carte va dans la Défausse (l'IA ne le fait pas).
+32. **Charlotte Oven, [En cas de KO]** : la puissance de 4000 ou moins est celle imprimée (la carte est dans la
+    Défausse) ; le Personnage est joué redressé.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

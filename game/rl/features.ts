@@ -64,7 +64,7 @@ const TAG_FAMILY: Record<string, typeof TAG_FAMILIES[number]> = {
   discard: 'discard', restCost: 'discard', returnOwn: 'discard',
   pick: 'pick', playFree: 'playFree', trigger: 'trigger', replace: 'replace', order: 'order',
   declareCost: 'declareCost', chooseOne: 'chooseOne', fullZone: 'fullZone',
-  lifeToHand: 'life', lifeSide: 'life', lifeSideOpp: 'life', toLife: 'life', begeLife: 'life',
+  lifeToHand: 'life', lookToLife: 'life', lifeSide: 'life', lifeSideOpp: 'life', toLife: 'life', begeLife: 'life',
   trashToDeck: 'trashToDeck', bottomOrder: 'trashToDeck', kiddRedirect: 'redirect', kiddTarget: 'redirect',
 };
 export function tagFamily(tag: string | undefined): typeof TAG_FAMILIES[number] {

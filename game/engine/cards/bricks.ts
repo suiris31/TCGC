@@ -9,11 +9,11 @@
 // deck, comme à une vraie table.
 import {
   addDonFromDeck, addMod, addTopDeckToLife, allField, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
-  chooseUpToN, def, describe, discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, knownFirst, lifeToHand, log, lookTopPick, may,
-  other, playCharacter, power, removeByEffect, removeFromField, restByEffect, returnDon, setActive, trashTopDeck, uniqueByNum,
-  untilOpponentsNextEnd, untapDon,
+  bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, knownFirst,
+  lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect, removeFromField, restByEffect,
+  returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
-import type { Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Modifier, PlayerId } from '../types.ts';
+import type { Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Keyword, Modifier, PlayerId } from '../types.ts';
 import { CARDS } from './index.ts';
 
 // ---------- Effets, conditions, coûts ----------
@@ -117,6 +117,7 @@ export interface CharSpec {
   color?: Color;
   attribute?: string;      // en VO (Slash...)
   rested?: boolean;        // true : épuisé ; false : redressé
+  trigger?: boolean;       // « ayant [Déclenchement] » (d'après le texte VO)
 }
 
 // La carte correspond-elle au texte ? Sur le terrain : coût et puissance actuels ; ailleurs : ceux imprimés
@@ -133,7 +134,8 @@ function fits(d: CardData, cost: number, pw: number, rested: boolean | undefined
     && (spec.notName === undefined || !d.names.includes(spec.notName))
     && (spec.color === undefined || d.colors.includes(spec.color))
     && (spec.attribute === undefined || d.attributes.includes(spec.attribute))
-    && (spec.rested === undefined || rested === spec.rested);
+    && (spec.rested === undefined || rested === spec.rested)
+    && (spec.trigger === undefined || Boolean(d.triggerEn) === spec.trigger);
 }
 
 export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
@@ -164,6 +166,10 @@ export function typeLabel(type: string): string {
   return type;
 }
 
+const KEYWORD_FR: Record<Keyword, string> = {
+  Blocker: 'Bloqueur', Rush: 'Initiative', 'Rush: Character': 'Initiative : Personnage', 'Double Attack': 'Double attaque',
+  Banish: 'Exil', Unblockable: 'Imblocable',
+};
 const ATTRIBUTE_FR: Record<string, string> = { Slash: 'Tranche', Strike: 'Frappe', Ranged: 'Distance', Special: 'Spécial', Wisdom: 'Sagesse' };
 const COLOR_FR: Record<Color, string> = { Red: 'rouge', Green: 'vert', Blue: 'bleu', Purple: 'violet', Black: 'noir', Yellow: 'jaune' };
 
@@ -184,6 +190,7 @@ export function describeSpec(what: string, spec: CharSpec): string {
   if (spec.powerMax !== undefined) parts.push(`de ${spec.powerMax} de puissance ou moins`);
   if (spec.powerMin !== undefined) parts.push(`de ${spec.powerMin} de puissance ou plus`);
   if (spec.basePowerMax !== undefined) parts.push(`de ${spec.basePowerMax} de puissance de base ou moins`);
+  if (spec.trigger) parts.push('ayant [Déclenchement]');
   return parts.join(' ');
 }
 
@@ -453,6 +460,43 @@ export const lifeFromDeck = (): Effect => effect((ctx) => { addTopDeckToLife(ctx
 // « Ajoutez à votre main 1 carte du dessus de votre Vie »
 export const lifeIntoHand = (from: 'top' | 'bottom'): Effect => effect((ctx) => { lifeToHand(ctx.s, ctx.me, from); }, (s, p) => s.players[p].life.length > 0);
 
+// « Ajoutez à la main de son propriétaire jusqu'à 1 carte du dessus de la Vie adverse » (pas des dégâts : pas de
+// [Déclenchement])
+export const oppLifeToHand = (): Effect => effect((ctx) => { lifeToHand(ctx.s, ctx.opp, 'top'); }, (s, p) => s.players[other(p)].life.length > 0);
+
+// « Regardez N cartes du dessus de votre deck et ajoutez au-dessus de votre Vie jusqu'à 1 carte. Puis, placez les
+// cartes restantes au-dessous de votre deck dans l'ordre de votre choix » (le joueur sait quelle carte il a placée)
+export const lookTopToLife = (count: number, source: string): Effect => effect((ctx) => {
+  const P = ctx.s.players[ctx.me];
+  const looked = P.deck.splice(0, count);
+  const answer = ctx.ask({
+    prompt: `${source} : tu regardes ${looked.map((c) => def(c.num).name).join(', ')}. Carte à placer au-dessus de ta Vie :`,
+    options: [...uniqueByNum(looked).map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucune' }],
+    tag: 'lookToLife',
+    cards: looked.map((c) => ({ uid: c.uid, num: c.num, owner: ctx.me })),
+  });
+  if (answer !== 'none') {
+    const [card] = looked.splice(looked.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
+    P.life.unshift(card);
+    reveal(ctx.s, [card.uid], ctx.me);
+    log(ctx.s, ctx.me, `regarde ${count} cartes du dessus de son deck et en place 1 au-dessus de sa Vie (${P.life.length} Vie)`);
+    privateLog(ctx.s, ctx.me, `carte placée au-dessus de ta Vie : ${def(card.num).name}`);
+  } else {
+    log(ctx.s, ctx.me, `regarde ${count} cartes du dessus de son deck`);
+  }
+  const ordered = bottomOrder(ctx, looked);
+  P.deck.push(...ordered);
+  reveal(ctx.s, ordered.map((c) => c.uid), ctx.me);
+}, (s, p) => s.players[p].deck.length > 0);
+
+// « Ce Personnage gagne [Initiative] pour tout le tour » (la carte qui porte l'effet)
+export const selfKeyword = (keyword: Keyword, source: string): Effect => effect((ctx) => {
+  const f = findField(ctx.s, ctx.source);
+  if (!f) return;
+  addMod(ctx.s, { uid: ctx.source, stat: 'keyword', keyword, amount: 0, until: 'turn', source });
+  log(ctx.s, ctx.me, `${def(f.card.num).name} gagne [${KEYWORD_FR[keyword]}] pour le tour (${source})`);
+}, (s, _p, self) => Boolean(findField(s, self)));
+
 // « Ajoutez jusqu'à N cartes DON!! de votre deck DON!! et redressez-les / épuisez-les »
 export const addDon = (n: number, state: 'active' | 'rested'): Effect =>
   effect((ctx) => { addDonFromDeck(ctx.s, ctx.me, n, state === 'active'); }, (s, p) => s.players[p].donDeck > 0);
@@ -469,9 +513,9 @@ export const donMinus = (n: number): Cost => ({
   pay: (ctx) => returnDon(ctx.s, ctx.me, n),
 });
 
-// « Défausser N cartes de votre main »
+// « Défausser N cartes de votre main » (libellé écrit à la lecture : types en VF, voir targets)
 export const discardCost = (n: number, spec?: CharSpec & { category?: CardData['category'] }): Cost => ({
-  label: `défausser ${n} carte${n > 1 ? 's' : ''} de ta main`,
+  get label() { return `défausser ${n} ${spec ? describeSpec(n > 1 ? 'cartes' : 'carte', spec) : `carte${n > 1 ? 's' : ''}`} de ta main`; },
   can: (s, p) => s.players[p].hand.filter((c) => !spec || cardMatches(c.num, spec)).length >= n,
   pay: (ctx) => discardFromHand(ctx, ctx.me, n, 'Carte à défausser :', spec ? (c) => cardMatches(c.num, spec) : undefined) === n,
 });
