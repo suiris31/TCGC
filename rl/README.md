@@ -10,6 +10,8 @@ aucune règle stratégique écrite à la main, seulement +1 quand elle gagne et 
 - L'entraînement (PyTorch) tourne sur ton ordinateur, sur GPU s'il y en a un, sinon sur le processeur.
 - Le modèle entraîné s'exporte en ONNX et devient un niveau « IA entraînée » dans le simulateur.
 
+État du chantier, décisions prises et commande de reprise de l'entraînement en cours : [`SUIVI.md`](SUIVI.md).
+
 Sommaire : [Prérequis](#1-prérequis) · [Installation](#2-installation) · [Matériel](#3-matériel-gpu-ou-processeur) ·
 [Entraîner](#4-lancer-un-entraînement) · [Suivre](#5-suivre-lentraînement) · [Reprendre](#6-interrompre-et-reprendre) ·
 [Niveaux](#7-les-5-niveaux-et-leurs-critères) · [Évaluer](#8-évaluer) · [Analyser une partie](#9-analyser-une-partie) ·
@@ -256,7 +258,7 @@ comme face à des cartes qu'il n'a jamais vues. L'écart avec l'évaluation norm
 identifiants : un faible écart indique qu'une carte nouvelle aux caractéristiques proches sera jouée correctement.
 
 Adversaires : `random`, `heuristic` (IA « Débutant »), `heuristic:0.25` (la même, une décision sur 4 au hasard), `mc:N` (Monte-Carlo à N tirages ; 16 ≈ « Confirmé », 48 ≈
-« Expert », sans limite de temps pour être reproductible ; lent : `--mc-pairs` limite les confrontations jouées),
+« Expert », sans limite de temps pour être reproductible ; lent : `--mc-pairs` limite les confrontations jouées, réparties pour que chaque deck joue et soit affronté autant de fois),
 `model:<chemin.pt ou nom d'entraînement>` (un autre modèle, ex. `model:checkpoints/opcg/ckpt_0000200.pt`).
 
 Le rapport (console + `logs/<run>/eval/*.md` et `.json`) donne pour chaque adversaire : taux de victoire avec

@@ -279,3 +279,18 @@ def test_migrated_adam_moves_new_columns_at_a_normal_pace():
         opt2.step()
         step = (new.opt[0].weight[:, O:].detach() - before).abs().max().item()
         assert step <= 2 * lr, f"pas {seed} : {step / lr:.1f} × lr sur les nouvelles colonnes"
+
+
+def test_mc_pairs_cover_every_deck_on_both_sides():
+    from collections import Counter
+
+    from opcg_rl.evaluation import spread_pairs
+    decks = [f"D{i}" for i in range(6)]
+    for n in (6, 12, 18):
+        sub = spread_pairs(decks, n)
+        assert len(sub) == len(set(sub)) == n
+        assert set(Counter(a for a, _ in sub).values()) == {n // 6}, "chaque deck évalué autant de fois"
+        assert set(Counter(b for _, b in sub).values()) == {n // 6}, "chaque deck adverse autant de fois"
+    assert len(spread_pairs(decks, 36)) == 36 and len(set(spread_pairs(decks, 50))) == 36
+    sub = spread_pairs(decks, 8)
+    assert len(set(b for _, b in sub)) == 6 and len(set(a for a, _ in sub)) == 6

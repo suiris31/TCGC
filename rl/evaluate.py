@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from opcg_rl.config import load_config  # noqa: E402
 from opcg_rl.device import describe, select_device  # noqa: E402
 from opcg_rl.elo import anchor_label, fit_elo  # noqa: E402
-from opcg_rl.evaluation import plan_games, run_games, summarize, to_markdown  # noqa: E402
+from opcg_rl.evaluation import plan_games, run_games, spread_pairs, summarize, to_markdown  # noqa: E402
 from opcg_rl.paths import LOGS_DIR  # noqa: E402
 from opcg_rl.runtime import agent_from_checkpoint, open_pool, resolve_checkpoint, resolve_workers  # noqa: E402
 
@@ -36,7 +36,8 @@ def main() -> int:
                         "16 = niveau Confirmé), model:<chemin.pt ou nom d'entraînement>")
     p.add_argument("--decks", default="all", help="all, ou liste séparée par des virgules (ex. ST-31,ST-35)")
     p.add_argument("--seeds", type=int, default=2, help="graines par confrontation de decks (×2 sièges)")
-    p.add_argument("--mc-pairs", type=int, default=12, help="confrontations jouées contre le Monte-Carlo (lent)")
+    p.add_argument("--mc-pairs", type=int, default=12,
+                   help="confrontations jouées contre le Monte-Carlo (lent), réparties sur tous les decks des deux côtés")
     p.add_argument("--greedy", action="store_true", help="le modèle prend toujours l'option la plus probable")
     p.add_argument("--no-card-ids", action="store_true",
                    help="toutes les cartes traitées comme inconnues (seules leurs caractéristiques) : mesure de la "
@@ -97,7 +98,8 @@ def main() -> int:
             for opp in opponents:
                 sub = pairs
                 if opp.startswith("mc") and args.mc_pairs and args.mc_pairs < len(pairs):
-                    sub = pairs[:: max(1, len(pairs) // args.mc_pairs)][: args.mc_pairs]
+                    # sous-ensemble équilibré : chaque deck joue et est affronté autant de fois
+                    sub = spread_pairs(decks, args.mc_pairs)
                 games = plan_games([opp], sub, args.seeds, args.seed_offset)
                 print(f"{key} contre {opp} : {len(games)} parties...", flush=True)
                 outcomes = run_games(pool, list(range(pool.size)), {**opponent_agents, **agents}, key, games, greedy=args.greedy, seed=12345,
