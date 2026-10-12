@@ -24,6 +24,8 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 | Évaluation complète (u5530, `evaluate.py`) | 51 % | 21 % ; `mc:48` 12,5 % | 1010 (mc16 1238, mc48 1342) |
 | Niveau 2 validé (u5875) | 62–66 % | — | ~1110 |
 | Niveau 3 (u5900–6300) | 56–76 % | 12,5–50 %, moyenne ~33 % | 1030–1160 |
+| Niveau 3 avec self-play (u6400–6700) | 62–69 % | 42–54 %, moyenne ~48 % | 1098–1165 |
+| Évaluation complète, 7 decks (u6715, 12 octobre 2026) | 64,8 % (4 704 parties) | 54,5 % (112 parties) | 1098 (mc16 1067) |
 
 Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation**. Dans le
 simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 tirages) : bien plus faibles que
@@ -45,7 +47,26 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
 5. **Niveau 3 lent (2,8 parties/s)** : le coût vient du calcul du Monte-Carlo (`mc2`) lui-même, pas de l'attente entre
    processus (une collecte asynchrone ne gagnerait que ~1,3×). Décision : **Monte-Carlo retiré de l'entraînement du
    niveau 3, remplacé par du self-play ; il reste le juge du passage** (option 1, relancée vers u6304).
-6. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
+6. **Nouveau deck : généralisation mesurée, puis deck inclus dans l'entraînement** (12 octobre 2026). Le premier
+   deck du méta (`META-SABO-2026-10`, phase 4 des cartes) a été évalué avec le modèle u6715, qui ne l'avait jamais vu :
+   contre l'heuristique, 672 parties par deck joué par le modèle, comparées à l'heuristique jouant le même deck
+   (1 400 parties par deck).
+
+   | Deck joué | Modèle | Heuristique | Gain |
+   |---|---|---|---|
+   | META-SABO-2026-10 (nouveau) | 73,7 % | 74,0 % | −0,3 |
+   | ST-31 / 32 / 33 / 34 / 35 / 36 | 67,0 / 74,1 / 63,4 / 33,5 / 73,2 / 72,0 % | 48,1 / 57,4 / 54,1 / 23,6 / 51,9 / 42,5 % | +9 à +30 (moyenne +18) |
+
+   Face au nouveau deck, le modèle garde son avance habituelle (~+15 points) ; en le jouant, aucun gain (moins bien que
+   l'heuristique dans 3 confrontations). Sans identifiants de cartes (`--no-card-ids`), il garde l'essentiel de son
+   avance sur les decks connus (+14) : ce n'est pas l'identité des cartes qui manque, mais la pratique du plan de jeu
+   du deck. **Décision de l'utilisateur : inclure le deck dès la reprise** (configuration `decks: all` ; le vocabulaire
+   reste de 90 cartes, les 13 nouvelles sont « inconnues »). Les évaluations de passage portent désormais sur 49
+   confrontations au lieu de 36. Les nouveaux decks de la phase 4 (Mihawk ensuite) suivront le même chemin : mesurer
+   la généralisation, puis décider de l'inclusion.
+   Même mise à jour : règles du moteur version 2 (ordre au choix des cartes remises sous le deck, question `bottomOrder`,
+   rangée dans la famille `trashToDeck` ; encodage inchangé `a0664ced`).
+7. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
    spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
 
@@ -76,7 +97,10 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- Point de contrôle vers **u6600–6700** (2–3 évaluations du niveau 3 avec self-play) : `report.py` ci-dessus.
+- **Reprise avec 7 decks** (12 octobre 2026, `main` à jour dans le dossier de l'entraînement) : même commande. Les
+  évaluations de passage ne sont plus tout à fait comparables à celles d'avant (49 confrontations).
+- Point de contrôle vers **u6600–6700** (2–3 évaluations du niveau 3 avec self-play) : fait (§ 2) ; progression contre
+  `mc:16` (~33 % → ~48 %), passage au niveau 4 pas encore atteint.
   Attendu : ~15–20 parties/s, `kl` 0,01–0,02 ; la mesure qui compte est **contre `mc:16`** (moyenne ~33 % au départ,
   évaluations de 24 parties, ±20 points chacune : lire la moyenne).
 - Si l'IA progresse contre `mc:16` : continuer jusqu'au passage au niveau 4 (self-play + heuristique, juge : sa version
