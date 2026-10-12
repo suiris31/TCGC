@@ -5,12 +5,12 @@
 import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, canBeRested, carryKnown, def, describe, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker,
-  hasKeyword, knownFirst, koCharacter, log, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack,
-  reveal, shuffleDeck, triggerEffect, untapDon,
+  addMod, allField, attackTargets, canBeRested, canPlayCharacters, carryKnown, def, describe, donTotal, draw, emit, fieldCards,
+  findField, handCost, hasBlocker, hasKeyword, knownFirst, koCharacter, log, name, onField, other, payDon, playCharacter,
+  power, pruneKnown, restForAttack, reveal, shuffleDeck, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
-  Decision, EffectCtx, GameState, HistoryEntry, Option, PendingEffect, PlayerId, PlayerState,
+  Decision, EffectCtx, GameState, HistoryEntry, Modifier, Option, PendingEffect, PlayerId, PlayerState,
 } from './types.ts';
 
 export type Chooser = (s: GameState, d: Decision) => string;
@@ -458,12 +458,19 @@ function stepFlow(s: GameState) {
         emit(s, { type: 'turnStart', player: p });
         return;
       }
-      // DON!! données renvoyées épuisées, puis tout est redressé (6-2-3, 6-2-4)
+      // DON!! données renvoyées épuisées, puis tout est redressé (6-2-3, 6-2-4), sauf les cartes qu'un effet adverse
+      // empêche d'être redressées lors de cette phase de Recharge (Electrical Luna)
       for (const c of fieldCards(s, p)) {
         P.donRested += c.don;
         c.don = 0;
       }
-      for (const c of allField(s, p)) c.rested = false;
+      for (const c of allField(s, p)) {
+        const lock = c.rested ? s.mods.find((m) => m.uid === c.uid && m.stat === 'noRefresh' && m.until === s.turn) : undefined;
+        if (lock) log(s, p, `${def(c.num).name} reste épuisé (${lock.source})`);
+        else c.rested = false;
+      }
+      const consumed = (m: Modifier) => m.stat === 'noRefresh' && m.until === s.turn;
+      if (s.mods.some(consumed)) s.mods = s.mods.filter((m) => !consumed(m));
       P.donActive += P.donRested;
       P.donRested = 0;
       s.flow = { stage: 'draw' };
@@ -534,7 +541,7 @@ function mainDecision(s: GameState): Decision {
     const d = def(c.num);
     const cost = handCost(s, p, c);
     if (cost > P.donActive) continue;
-    if (d.category === 'CHARACTER' || d.category === 'STAGE') {
+    if ((d.category === 'CHARACTER' && canPlayCharacters(s, p)) || d.category === 'STAGE') {
       options.push({ id: `play:${c.uid}`, label: `Jouer ${d.name} (coût ${cost})`, uid: c.uid, group: 'play' });
     }
     if (d.category === 'EVENT' && d.onMain) options.push({ id: `event:${c.uid}`, label: `Activer ${d.name} (coût ${cost})`, uid: c.uid, group: 'play' });

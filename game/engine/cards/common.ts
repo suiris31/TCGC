@@ -1,8 +1,8 @@
 // Briques d'effets fréquentes, partagées par les fichiers de cartes
 import {
-  addMod, baseCost, canBeRested, chooseUpTo1, chooseUpToN, def, discardFromHand, draw, fieldCards, fieldCost, findField,
-  giveRestedDon, hasType, log, may, oppChars, playCharacter, playFromHandFree, removeByEffect, restByEffect,
-  untilOpponentsNextEnd,
+  addMod, baseCost, canBeRested, canPlayCharacters, chooseUpTo1, chooseUpToN, def, discardFromHand, draw, fieldCards,
+  fieldCost, findField, giveRestedDon, hasType, log, may, oppChars, playCharacter, playFromHandFree, removeByEffect,
+  restByEffect, untilOpponentsNextEnd,
 } from '../rules.ts';
 import type { Card, EffectCtx, FieldCard, Modifier } from '../types.ts';
 
@@ -63,7 +63,7 @@ export function drawLog(ctx: EffectCtx, n: number) {
 
 // [Déclenchement] « jouez cette carte »
 export function playTriggerCard(ctx: EffectCtx, opts: { rested?: boolean } = {}) {
-  if (!ctx.trigger) return;
+  if (!ctx.trigger || (isCharacter(ctx.trigger.card.num) && !canPlayCharacters(ctx.s, ctx.me))) return;
   ctx.trigger.moved = true;
   playCharacter(ctx, ctx.me, ctx.trigger.card, opts);
 }

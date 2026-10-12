@@ -8,8 +8,8 @@
 // Les conditions sont lues dans la partie au moment de l'effet, jamais supposées : une carte marche ou non selon son
 // deck, comme à une vraie table.
 import {
-  addDonFromDeck, addMod, addTopDeckToLife, canBeKO, canBeRested, canLeaveByEffect, chooseUpTo1, chooseUpToN, def, describe,
-  discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, knownFirst, lifeToHand, log, lookTopPick, may,
+  addDonFromDeck, addMod, addTopDeckToLife, allField, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
+  chooseUpToN, def, describe, discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, knownFirst, lifeToHand, log, lookTopPick, may,
   other, playCharacter, power, removeByEffect, removeFromField, restByEffect, returnDon, setActive, trashTopDeck, uniqueByNum,
   untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
@@ -174,7 +174,7 @@ export function describeSpec(what: string, spec: CharSpec): string {
   if (spec.rested === false) parts.push('redressé');
   if (spec.color) parts.push(COLOR_FR[spec.color]);
   if (spec.type) parts.push(`de type {${typeLabel(spec.type)}}`);
-  if (spec.typeIncludes) parts.push(`dont le type contient « ${spec.typeIncludes} »`);
+  if (spec.typeIncludes) parts.push(`dont le type contient « ${typeLabel(spec.typeIncludes)} »`);
   if (spec.attribute) parts.push(`<${ATTRIBUTE_FR[spec.attribute] ?? spec.attribute}>`);
   if (spec.name) parts.push(`[${spec.name}]`);
   if (spec.notName) parts.push(`autre que [${spec.notName}]`);
@@ -196,11 +196,17 @@ export interface Targets {
   label: string;
 }
 
-export const oppChar = (spec: CharSpec = {}): Targets => ({ side: 'opp', leader: false, characters: true, spec, label: describeSpec('Personnage adverse', spec) });
-export const ownChar = (spec: CharSpec = {}): Targets => ({ side: 'own', leader: false, characters: true, spec, label: describeSpec('Personnage', spec) });
-export const anyChar = (spec: CharSpec = {}): Targets => ({ side: 'any', leader: false, characters: true, spec, label: describeSpec('Personnage', spec) });
-export const oppLeaderOrChar = (spec: CharSpec = {}): Targets => ({ side: 'opp', leader: true, characters: true, spec, label: describeSpec('Leader ou Personnage adverse', spec) });
-export const ownLeaderOrChar = (spec: CharSpec = {}): Targets => ({ side: 'own', leader: true, characters: true, spec, label: describeSpec('Leader ou Personnage', spec) });
+// Libellé écrit à la première lecture : les cartes sont décrites au chargement du module, avant les données des cartes
+// (libellés VF des types)
+const targets = (side: Targets['side'], leader: boolean, what: string, spec: CharSpec): Targets => {
+  let label: string | undefined;
+  return { side, leader, characters: true, spec, get label() { return (label ??= describeSpec(what, spec)); } };
+};
+export const oppChar = (spec: CharSpec = {}): Targets => targets('opp', false, 'Personnage adverse', spec);
+export const ownChar = (spec: CharSpec = {}): Targets => targets('own', false, 'Personnage', spec);
+export const anyChar = (spec: CharSpec = {}): Targets => targets('any', false, 'Personnage', spec);
+export const oppLeaderOrChar = (spec: CharSpec = {}): Targets => targets('opp', true, 'Leader ou Personnage adverse', spec);
+export const ownLeaderOrChar = (spec: CharSpec = {}): Targets => targets('own', true, 'Leader ou Personnage', spec);
 export const ownLeader = (): Targets => ({ side: 'own', leader: true, characters: false, spec: {}, label: 'ton Leader' });
 export const oppLeader = (): Targets => ({ side: 'opp', leader: true, characters: false, spec: {}, label: 'Leader adverse' });
 
@@ -258,6 +264,32 @@ export const rest = (t: Targets, source: string, n = 1): Effect => {
   return {
     run: (ctx) => {
       for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me), n, `${source} : ${t.label} à épuiser :`, t.side === 'opp' ? 'oppRest' : 'rest')) restByEffect(ctx, uid);
+    },
+    useful: (s, p) => list(s, p).length > 0,
+  };
+};
+
+// « Épuisez tous les ... »
+export const restAll = (t: Targets): Effect => {
+  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => !c.rested && canBeRested(s, c.uid));
+  return {
+    run: (ctx) => { for (const uid of list(ctx.s, ctx.me)) restByEffect(ctx, uid); },
+    useful: (s, p) => list(s, p).length > 0,
+  };
+};
+
+// « Tous les ... épuisés ne pourront pas être redressés lors de la prochaine phase de Recharge de votre adversaire »
+// (les cartes visées sont celles du moment : un Personnage épuisé ensuite sera redressé normalement)
+export const keepRested = (t: Targets, source: string): Effect => {
+  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => c.rested);
+  return {
+    run: (ctx) => {
+      // tour de la prochaine phase de Recharge adverse : le prochain tour si c'est le sien, sinon celui d'après
+      const turn = ctx.s.turn + (ctx.s.active === ctx.me ? 1 : 2);
+      for (const uid of list(ctx.s, ctx.me)) {
+        addMod(ctx.s, { uid, stat: 'noRefresh', amount: 0, until: turn, source });
+        log(ctx.s, ctx.me, `${nameOf(ctx.s, uid)} ne pourra pas être redressé lors de la prochaine phase de Recharge adverse (${source})`);
+      }
     },
     useful: (s, p) => list(s, p).length > 0,
   };
@@ -383,18 +415,19 @@ export const trashTop = (n: number): Effect => effect((ctx) => {
 export const searchTop = (count: number, n: number, spec: CharSpec & { category?: CardData['category'] }, what: string, rest: 'bottom' | 'trash' = 'bottom'): Effect =>
   effect((ctx) => { lookTopPick(ctx, count, n, (num) => cardMatches(num, spec), what, rest); }, (s, p) => s.players[p].deck.length > 0);
 
-// « Jouez jusqu'à 1 carte Personnage ... de votre main / Défausse » (sans payer son coût)
+// « Jouez jusqu'à 1 carte Personnage ... de votre main / Défausse » (sans payer son coût ; rested : « épuisée »)
 const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, opts: { rested?: boolean } = {}): Effect => {
   const eligible = (c: Card) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec);
   return {
     run: (ctx) => {
       const P = ctx.s.players[ctx.me];
       const list = zone === 'hand' ? P.hand : P.trash;
+      if (!canPlayCharacters(ctx.s, ctx.me)) return;
       const options = uniqueByNum(knownFirst(ctx.s, ctx.me, list.filter(eligible)));
       if (!options.length) return;
       const where = zone === 'hand' ? 'de ta main' : 'de ta Défausse';
       const answer = ctx.ask({
-        prompt: `${source} : jouer jusqu’à 1 ${describeSpec('Personnage', spec)} ${where} :`,
+        prompt: `${source} : jouer${opts.rested ? ' épuisé' : ''} jusqu’à 1 ${describeSpec('Personnage', spec)} ${where} :`,
         options: [...options.map((c) => ({ id: `card:${c.uid}`, label: `${def(c.num).name} (coût ${def(c.num).cost})`, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucun' }],
         tag: 'playFree',
       });
@@ -402,9 +435,15 @@ const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, op
       const [card] = list.splice(list.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
       playCharacter(ctx, ctx.me, card, opts);
     },
-    useful: (s, p) => (zone === 'hand' ? s.players[p].hand : s.players[p].trash).some(eligible),
+    useful: (s, p) => canPlayCharacters(s, p) && (zone === 'hand' ? s.players[p].hand : s.players[p].trash).some(eligible),
   };
 };
+
+// « Puis, vous ne pouvez pas jouer de carte Personnage pour tout le tour »
+export const noCharactersThisTurn = (source: string): Effect => effect((ctx) => {
+  ctx.s.players[ctx.me].noCharsTurn = ctx.s.turn;
+  log(ctx.s, ctx.me, `ne peut plus jouer de carte Personnage ce tour-ci (${source})`);
+}, () => false);
 export const playFromHand = playFrom('hand');
 export const playFromTrash = playFrom('trash');
 
@@ -509,6 +548,51 @@ export const giveActiveDon = (t: Targets): Cost => ({
   },
 });
 
+// « Épuiser N de vos cartes » (Leader, Personnages, Lieu ou DON!! redressées de la zone de Coût) ; « Épuiser N de vos
+// Personnages » : le joueur les choisit une à une
+export const restCost = (n: number, what: 'cards' | 'characters'): Cost => {
+  const field = (s: GameState, p: PlayerId) => (what === 'cards' ? allField(s, p) : s.players[p].chars).filter((c) => !c.rested && canBeRested(s, c.uid));
+  const dons = (s: GameState, p: PlayerId) => (what === 'cards' ? s.players[p].donActive : 0);
+  return {
+    label: `épuiser ${n} de tes ${what === 'cards' ? 'cartes' : 'Personnages'}`,
+    can: (s, p) => field(s, p).length + dons(s, p) >= n,
+    pay: (ctx) => {
+      const P = ctx.s.players[ctx.me];
+      for (let i = 0; i < n; i++) {
+        const options = [
+          ...field(ctx.s, ctx.me).map((c) => ({ id: `card:${c.uid}`, label: describe(ctx.s, c.uid), uid: c.uid })),
+          ...(dons(ctx.s, ctx.me) > 0 ? [{ id: 'don', label: '1 DON!! redressée' }] : []),
+        ];
+        if (!options.length) return false;
+        const answer = ctx.ask({ prompt: `Carte à épuiser pour payer le coût${n > 1 ? ` (${i + 1}/${n})` : ''} :`, options, tag: 'restCost' });
+        if (answer !== 'don') restByEffect(ctx, Number(answer.split(':')[1]));
+        else {
+          P.donActive--;
+          P.donRested++;
+          log(ctx.s, ctx.me, 'épuise 1 DON!!');
+        }
+      }
+      return true;
+    },
+  };
+};
+
+// « Renvoyer 1 de vos Personnages à la main de son propriétaire » (la carte qui porte l'effet comprise)
+export const returnOwnChar = (): Cost => ({
+  label: 'renvoyer 1 de tes Personnages dans ta main',
+  can: (s, p) => s.players[p].chars.length > 0,
+  pay: (ctx) => {
+    const list = ctx.s.players[ctx.me].chars.map((c) => c.uid);
+    if (!list.length) return false;
+    const answer = ctx.ask({
+      prompt: 'Personnage à renvoyer dans ta main :',
+      options: list.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })),
+      tag: 'returnOwn',
+    });
+    return removeByEffect(ctx, Number(answer.split(':')[1]), 'hand');
+  },
+});
+
 // Plusieurs coûts à payer ensemble (« ... et ... »)
 export const bothCosts = (...costs: Cost[]): Cost => ({
   label: costs.map((c) => c.label).join(' et '),
@@ -554,7 +638,10 @@ export function card(spec: CardSpec, extra: CardBehavior = {}): CardBehavior {
       label,
       canActivate: (s, p, self) => cost?.can(s, p, self.uid) ?? true,
       useful: (s, p, self) => e.useful(s, p, self.uid),
-      run: (ctx) => { if (!cost || cost.pay(ctx)) e.run(ctx); },
+      run: (ctx, self) => {
+        if (once) self.usedOpt.push('main');
+        if (!cost || cost.pay(ctx)) e.run(ctx);
+      },
     };
   }
   return b;

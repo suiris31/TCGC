@@ -58,6 +58,29 @@ questions-réponses Bandai, tournois).
 17. **Ace, Sabo et Luffy (OP13-007)** : la DON!! redressée peut aussi être donnée à la carte elle-même (elle revient
     alors épuisée dans la zone de coût quand la carte part dans la Défausse) ; le coût n'est payé qu'en entier.
 
+## Mihawk du méta (octobre 2026), choix à valider
+
+18. **« Épuiser 1 de vos cartes »** (Leader Mihawk, « Si vous croyez que je me souviens... » pour 2 cartes) : le Leader,
+    un Personnage, le Lieu ou une DON!! redressée de la zone de Coût. Une carte épuisée pour payer un coût l'est « par
+    un effet » : les cartes qui réagissent à ce moment (Mihawk ST32-003, Perona OP10-036) se déclenchent.
+    « Épuiser 2 de vos Personnages » (« Acceptez de devenir mes samouraïs !! ») : seulement des Personnages.
+19. **Leader Mihawk, « S'il y a un Personnage ayant un coût de 5 ou plus »** : en jeu, des deux côtés, coût actuel
+    (comme le choix 12). **« Puis, vous ne pouvez pas jouer de carte Personnage pour tout le tour »** s'applique dès que
+    l'effet est utilisé, même sans Personnage de coût 5 : plus de Personnage joué de la main, ni par un effet (Law,
+    [Déclenchement] « jouez cette carte ») ; les Lieux et les Événements restent permis.
+20. **Ichidai San Zen Dai Sen Sekai, [Contre]** : « jusqu'à 1 de vos Leaders ou Personnages » est la carte attaquée
+    (comme Ice Block, ST-33). **« 8 cartes ou plus épuisées »** : le Leader, les Personnages, le Lieu et les DON!!
+    épuisées de la zone de Coût, y compris celle payée pour cet Événement ; les DON!! données à une carte ne comptent
+    pas.
+21. **Electrical Luna** : seuls les Personnages adverses épuisés **au moment de l'effet** (coût actuel de 7 ou moins) ne
+    se redressent pas à la phase de Recharge suivante de l'adversaire ; un Personnage épuisé plus tard dans le tour se
+    redresse normalement.
+22. **Trafalgar Law, [Jouée]** : Law peut se renvoyer lui-même dans la main ; le Personnage renvoyé peut être rejoué tout
+    de suite par le même effet s'il coûte 5 ou moins (son effet [Jouée] se déclenche à nouveau).
+23. **Vander Decken IX** : « placer dans votre Défausse 1 carte de votre main » compte comme une défausse (comme
+    « défaussez » ailleurs).
+24. **Yasopp, [Fin de votre tour]** : il peut se redresser lui-même (son type est {Équipage du Roux}).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

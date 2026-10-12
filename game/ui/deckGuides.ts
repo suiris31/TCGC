@@ -171,4 +171,25 @@ export const GUIDES: Record<string, DeckGuide> = {
     strengths: ['Les petits Personnages deviennent très forts dès qu’un géant est en jeu', 'Recherche et pioche nombreuses', 'Rejoue ses Personnages depuis la Défausse'],
     weaknesses: ['Sans Personnage de coût 12 ou plus, les petits Personnages restent à 2000', 'Le deck se vide vite (cartes défaussées)', 'Leader faible tant qu’il a 4 Vies ou plus'],
   },
+  'META-MIHAWK-2026-10': {
+    styles: ['Contrôle', 'Épuiser', 'Vert'],
+    summary: 'Épuiser les Personnages adverses (Shanks, Yasopp) et les empêcher de se redresser (Electrical Luna), puis les abattre ; une fois tes Personnages joués, le Leader Mihawk redresse 3 DON!! pour tes attaques et tes Événements.',
+    plan: [
+      'Tours 1 et 2 : Otama (une carte {Pays de Wano} verte) et Perona (une carte <Tranche> ou un Événement vert) cherchent tes cartes ; Kinémon pioche 2 cartes contre 1 DON!! ou ton Leader épuisé. Pose la Barque mortuaire : elle pioche 1 carte, puis redresse 1 DON!! à chaque fin de ton tour.',
+      'Dès 5 DON!! : Oden (pioche 1, et un Personnage adverse ne pourra pas être épuisé, donc ni attaquer ni bloquer), Yasopp (pioche 1 et épuise un Personnage adverse de coût 8 ou moins) ou Kawamatsu (6000).',
+      'Dès 6 DON!! : Trafalgar Law renvoie Otama ou Perona dans ta main et joue gratuitement, épuisé, un Personnage de coût 5 ou moins de ta main : son effet [Jouée] se déclenche.',
+      'Dès 10 DON!! : Shanks redresse 2 DON!!, épuise tous les Personnages adverses et attaque tout de suite. Electrical Luna les empêche ensuite de se redresser.',
+      'À chaque tour, après avoir joué tes Personnages : active le Leader (épuise la Barque mortuaire ou une DON!!) pour redresser 3 DON!!. Tu ne pourras plus jouer de Personnage ce tour-ci.',
+    ],
+    combos: [
+      { title: 'Épuiser puis abattre', cards: ['OP17-022', 'OP17-031', 'OP06-033'], text: 'Shanks et Yasopp épuisent les Personnages adverses : tes attaquants peuvent alors les viser. Vander Decken IX met KO un Personnage adverse épuisé contre une carte {Hommes-poissons} de ta main (Kawamatsu ou un autre Vander Decken).' },
+      { title: 'Les garder épuisés', cards: ['OP08-036', 'OP17-022', 'OP17-031'], text: 'Electrical Luna : tous les Personnages adverses épuisés de coût 7 ou moins ne se redressent pas au tour suivant. L’adversaire ne peut ni attaquer ni bloquer avec eux, et tu peux encore les attaquer.' },
+      { title: 'Le Leader', cards: ['OP14-020', 'OP14-039'], text: 'Mihawk : +1000 contre un Leader <Tranche>. Une fois par tour, épuise 1 de tes cartes (la Barque mortuaire, une DON!!...) : avec un Personnage de coût 5 ou plus en jeu, redresse 3 DON!!. Ensuite, plus de Personnage joué ce tour-ci : joue-les avant.' },
+      { title: 'Rejouer les effets', cards: ['OP13-031', 'OP07-022', 'OP12-034', 'ST32-002', 'OP17-031'], text: 'Trafalgar Law renvoie un de tes Personnages en main et joue gratuitement, épuisé, un Personnage de coût 5 ou moins de ta main (Oden, Yasopp, ou celui que tu viens de renvoyer) : son effet [Jouée] se déclenche à nouveau.' },
+      { title: 'Défense', cards: ['OP06-038', 'OP14-038'], text: 'Ichidai San Zen Dai Sen Sekai : +2000, et encore +2000 si tu as 8 cartes épuisées (DON!! comprises). « Si vous croyez que je me souviens... » : +3000 à ton Leader ; en Principale, épuise 2 de tes cartes pour piocher 1 et épuiser un Personnage adverse.' },
+    ],
+    mulligan: 'Garde Otama ou Perona (recherche) avec un ou deux autres Personnages de coût 1 ou 2 ; Kinémon pioche aussi. Repioche une main sans petit Personnage ni recherche.',
+    strengths: ['Épuise tout le terrain adverse et l’empêche de se redresser', 'Beaucoup de recherche et de pioche', 'Le Leader redresse 3 DON!! à chaque tour'],
+    weaknesses: ['Un seul [Bloqueur] (Law, et seulement à 1 Vie ou moins)', 'Après l’effet du Leader, plus de Personnage joué ce tour-ci', 'Tes cartes épuisées pour payer des coûts restent épuisées, donc attaquables, pendant le tour adverse'],
+  },
 };

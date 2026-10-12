@@ -3,8 +3,8 @@
 // (jamais sa main ni ses cartes cachées). Elle joue aussi la suite des parties simulées par l'IA Monte-Carlo.
 import { DECKS } from '../engine/decks.ts';
 import {
-  attackAbility, attackTargets, baseCost, def, donOnField, fieldCards, fieldCost, findField, handCost, hasBlocker, hasType,
-  leaderHasType, other, power, triggerEffect,
+  attackAbility, attackTargets, baseCost, canBeRested, def, donOnField, fieldCards, fieldCost, findField, handCost, hasBlocker,
+  hasType, leaderHasType, other, power, restedCards, triggerEffect,
 } from '../engine/rules.ts';
 import type { Decision, FieldCard, GameState, Option, PlayerId } from '../engine/types.ts';
 import { uselessReason } from './prune.ts';
@@ -110,6 +110,8 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
   'OP11-066': (s, p, card) => (canAttack(s, p, card) ? 'end' : 'late'),
   'OP11-071': (s, p) => (knowsTop(s, p) && s.players[p].hand.length >= 3 ? 'late' : null),
   'ST36-005': (s, p) => (s.players[p].donRested > 0 && canAttack(s, p, s.players[p].leader) ? 'early' : null),
+  // Leader Mihawk : redresser 3 DON!! une fois ses Personnages joués (il ne pourra plus en jouer ce tour-ci)
+  'OP14-020': (s, p) => (s.players[p].donRested > 0 && s.players.some((P) => P.chars.some((c) => fieldCost(s, c.uid) >= 5)) ? 'late' : null),
   'OP10-114': (s, p, card) => {
     const others = attackers(s, p).filter((a) => a.uid !== card.uid);
     const opens = oppCharsWhere(s, p, (c) => !c.rested && fieldCost(s, c.uid) <= 4
@@ -177,6 +179,14 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
   'OP10-111': () => 1,
   'ST36-004': (s, p) => (inHand(s, p, (n) => hasType(n, 'Supernovas')) >= 2 ? 1.5 : 0),
   'OP10-103': () => -1,
+  // Mihawk du méta
+  'OP07-022': () => 1,
+  'OP12-034': () => 1,
+  'OP06-033': (s, p) => (oppCharsWhere(s, p, (c) => c.rested).length && inHand(s, p, (n) => hasType(n, 'Fish-Man')) >= 2 ? 2.5 : 0),
+  'OP13-031': (s, p) => (s.players[p].chars.length && inHand(s, p, (n) => n !== 'OP13-031' && def(n).category === 'CHARACTER' && (def(n).cost ?? 0) <= 5) ? 2.5 : 0),
+  'OP17-022': (s, p) => 1 + oppCharsWhere(s, p, (c) => !c.rested && canBeRested(s, c.uid)).length,
+  'OP17-031': () => 1.5,
+  'OP14-039': (s, p) => (s.players[p].stage ? -3 : 2),
 };
 
 function playScore(s: GameState, p: PlayerId, num: string, st: Style = styleOf(s.players[p].deckId, p)) {
@@ -199,6 +209,14 @@ const EVENT_SCORE: Record<string, (s: GameState, p: PlayerId) => number | null> 
   },
   'OP11-081': (s, p) => (knowsTop(s, p) && oppCharsWhere(s, p, (c) => baseCost(c.num) <= 8 && fieldValue(s, c.uid) >= 5).length ? 5 : null),
   'OP13-116': (s, p) => (s.players[p].hand.length <= 6 ? 1 : null),
+  // Mihawk du méta : épuiser 2 Personnages qui ne peuvent plus attaquer ce tour-ci pour piocher 2 cartes
+  'OP01-055': (s, p) => (s.players[p].chars.filter((c) => !c.rested && canBeRested(s, c.uid) && !canAttack(s, p, c)).length >= 2 ? 2 : null),
+  'OP08-036': (s, p) => {
+    const locked = oppCharsWhere(s, p, (c) => c.rested && fieldCost(s, c.uid) <= 7).length;
+    return locked ? 1 + locked : null;
+  },
+  // [Principale] seulement pour épuiser un [Bloqueur] adverse ; sinon gardé pour son [Contre]
+  'OP14-038': (s, p) => (oppCharsWhere(s, p, (c) => !c.rested && canBeRested(s, c.uid) && (def(c.num).power ?? 0) <= 7000 && hasBlocker(s, other(p), c)).length ? 2 : null),
 };
 
 // ---------- Plan d'attaque ----------
@@ -388,6 +406,8 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP04-016': return s.players[p].hand.length >= 2 ? 3000 : 0;
     case 'OP12-057': return 4000;
     case 'OP11-079': return knowsTop(s, p) ? 5000 : 0;
+    case 'OP14-038': return findField(s, targetUid)?.leader ? 3000 : 0;
+    case 'OP06-038': return restedCards(s, p) + (def(num).cost ?? 0) >= 8 ? 4000 : 2000;
     default: return 2000;
   }
 }
@@ -478,6 +498,10 @@ function chooseEffect(s: GameState, d: Decision): string {
   const byHand = (desc: boolean) => [...cards].sort((a, b) => (handValue(s, p, numOf(b)) - handValue(s, p, numOf(a))) * (desc ? 1 : -1));
   const yesNo = (yes: boolean) => (yes ? 'yes' : 'no');
   const first = () => (d.options.find((o) => o.id !== 'none' && o.id !== 'no') ?? d.options[0]).id;
+  // Coûts facultatifs de cartes du Mihawk du méta : seulement si l'effet servira
+  const sourceNum = d.source !== undefined ? findField(s, d.source)?.card.num : undefined;
+  if (d.tag === 'may' && sourceNum === 'OP13-031') return yesNo(P.chars.some((c) => c.uid !== d.source && (def(c.num).cost ?? 0) <= 5));
+  if (d.tag === 'may' && sourceNum === 'OP06-033') return yesNo(O.chars.some((c) => c.rested));
   switch (d.tag) {
     case 'mayBetty':
       return yesNo(O.chars.some((c) => fieldCost(s, c.uid) >= 8) && P.deck.length >= 12);
@@ -575,6 +599,29 @@ function chooseEffect(s: GameState, d: Decision): string {
       return (byValue(true)[0] ?? d.options[0]).id;
     case 'begeLife':
       return P.hand.some((c) => def(c.num).category === 'CHARACTER' && hasType(c.num, 'Supernovas') && triggerEffect(c.num)) ? 'top' : 'no';
+    case 'restCost': {
+      // d'abord ce qui ne sert plus ce tour-ci : le Lieu, une DON!!, un Personnage qui ne peut plus attaquer
+      const keep = (o: Option) => {
+        if (o.id === 'don') return 1;
+        const f = findField(s, uidOf(o));
+        if (!f) return 9;
+        if (f.stage) return 0;
+        const can = canAttack(s, p, f.card);
+        if (f.leader) return can ? 8 : 2;
+        return (can ? 6 : 1.5) + fieldValue(s, f.card.uid) / 10 + (hasBlocker(s, p, f.card) ? 3 : 0);
+      };
+      return [...d.options].sort((a, b) => keep(a) - keep(b))[0].id;
+    }
+    case 'returnOwn': {
+      // Trafalgar Law : un Personnage de coût 5 ou moins dont l'effet [Jouée] resservira, de préférence déjà épuisé
+      const score = (o: Option) => {
+        const f = findField(s, uidOf(o))!;
+        const num = f.card.num;
+        const replay = (def(num).cost ?? 0) <= 5 && def(num).onPlay ? 3 + (PLAY_BONUS[num]?.(s, p) ?? 0.5) : 0;
+        return replay + (f.card.rested ? 1 : 0) - fieldValue(s, f.card.uid) / 5;
+      };
+      return ([...cards].sort((a, b) => score(b) - score(a))[0] ?? d.options[0]).id;
+    }
     case 'toLife': {
       const withTrigger = cards.filter((o) => triggerEffect(cardNum(s, uidOf(o))!));
       return (withTrigger[0] ?? byHand(false)[0] ?? d.options[0]).id;

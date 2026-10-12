@@ -71,13 +71,16 @@ export interface PlayerState {
   donRested: number;  // DON!! épuisées dans la zone de Coût
   turns: number;      // nombre de tours commencés
   discardedTurn: number;  // dernier tour où une carte de sa main a été défaussée par un effet
+  noCharsTurn?: number;   // tour pendant lequel il ne peut plus jouer de carte Personnage (Leader Mihawk OP14-020)
 }
 
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro
 // du tour à la fin duquel elle expire (« jusqu'à la fin de la prochaine phase de Fin de votre adversaire » = tour + 1)
+// stat 'noRefresh' : la carte ne sera pas redressée lors de la phase de Recharge du tour `until` (retirée à ce moment)
 export interface Modifier {
   uid: number;
-  stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost' | 'cantBeKO' | 'cantLeave';
+  stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost' | 'cantBeKO' | 'cantLeave'
+    | 'noRefresh';
   scope?: 'battle' | 'effect' | 'oppEffect';  // stat 'cantBeKO' : seulement en combat, par un effet, par un effet adverse
   keyword?: Keyword;  // stat 'keyword' : mot-clé accordé
   amount: number;

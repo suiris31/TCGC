@@ -76,6 +76,19 @@ export const DECKS: Record<string, DeckList> = {
       'OP17-086': 3, 'OP17-087': 4, 'OP17-089': 4, 'OP17-093': 3, 'OP17-095': 4, 'OP17-119': 4, 'ST01-011': 3,
     },
   },
+  // Méta d'octobre 2026, variante « Pays de Wano / Équipage du Roux » : 1re place d'un tournoi Flagship (Asie, format
+  // Standard), 4 octobre 2026 ; liste validée par l'utilisateur le 12 octobre 2026.
+  // https://opmetagame.com/tournaments/oo-gumgum-flagship-2026-10-04/
+  'META-MIHAWK-2026-10': {
+    id: 'META-MIHAWK-2026-10',
+    name: 'Mihawk (méta, octobre 2026)',
+    series: 'META',
+    leader: 'OP14-020',
+    cards: {
+      'OP01-055': 3, 'OP06-033': 3, 'OP06-038': 3, 'OP07-022': 4, 'OP08-036': 3, 'OP12-023': 4, 'OP12-034': 4, 'OP13-031': 4,
+      'OP14-038': 3, 'OP14-039': 3, 'OP17-022': 4, 'OP17-031': 4, 'ST32-001': 4, 'ST32-002': 4,
+    },
+  },
 };
 
 export function deckSize(deck: DeckList) {

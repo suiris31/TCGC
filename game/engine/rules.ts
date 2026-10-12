@@ -226,6 +226,14 @@ export const hasBlocker = (s: GameState, p: PlayerId, card: FieldCard) => hasKey
 
 export const canBeRested = (s: GameState, uid: number) => !hasMod(s, uid, 'cantRest');
 
+// « Vous ne pouvez pas jouer de carte Personnage pour tout le tour » (Leader Mihawk) : ni de sa main en payant son
+// coût, ni par un effet
+export const canPlayCharacters = (s: GameState, p: PlayerId) => s.players[p].noCharsTurn !== s.turn;
+
+// « Vous avez N cartes ou plus épuisées » : Leader, Personnages, Lieu et DON!! de la zone de Coût (les DON!! données à
+// une carte n'en font pas partie)
+export const restedCards = (s: GameState, p: PlayerId) => allField(s, p).filter((c) => c.rested).length + s.players[p].donRested;
+
 // Peut attaquer ce tour-ci ? charsOnly : [Initiative : Personnage] le tour où il est joué
 export function attackAbility(s: GameState, p: PlayerId, card: FieldCard): { can: boolean; charsOnly: boolean } {
   const P = s.players[p];
@@ -661,7 +669,8 @@ export function playStage(ctx: EffectCtx, p: PlayerId, card: Card) {
 // « Jouez jusqu'à 1 carte ... de votre main » (sans payer son coût)
 export function playFromHandFree(ctx: EffectCtx, filter: (c: Card) => boolean, prompt: string, opts: { rested?: boolean } = {}): Card | null {
   const P = ctx.s.players[ctx.me];
-  const candidates = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(filter)));
+  const allowed = (c: Card) => filter(c) && (def(c.num).category !== 'CHARACTER' || canPlayCharacters(ctx.s, ctx.me));
+  const candidates = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(allowed)));
   if (!candidates.length) return null;
   const answer = ctx.ask({
     prompt,
@@ -686,7 +695,7 @@ export function triggerEffect(num: string): ((ctx: EffectCtx) => void) | undefin
 }
 
 function playTriggered(ctx: EffectCtx) {
-  if (!ctx.trigger) return;
+  if (!ctx.trigger || (def(ctx.trigger.card.num).category === 'CHARACTER' && !canPlayCharacters(ctx.s, ctx.me))) return;
   ctx.trigger.moved = true;
   playCharacter(ctx, ctx.me, ctx.trigger.card);
 }

@@ -26,6 +26,7 @@ function modText(s: GameState, m: Modifier): string {
     case 'noAttackLowCost': return `ne peut pas attaquer les Personnages de coût de base 7 ou moins ${until}`;
     case 'cantBeKO': return `ne peut pas être mis KO${m.scope === 'battle' ? ' en combat' : m.scope === 'effect' ? ' par un effet' : m.scope === 'oppEffect' ? ' par un effet adverse' : ''} ${until} (${m.source})`;
     case 'cantLeave': return `ne peut pas quitter le terrain à cause d’un effet adverse ${until} (${m.source})`;
+    case 'noRefresh': return `ne sera pas redressé lors de la prochaine phase de Recharge de son propriétaire (${m.source})`;
   }
 }
 
