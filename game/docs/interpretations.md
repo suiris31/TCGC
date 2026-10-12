@@ -105,6 +105,34 @@ questions-réponses Bandai, tournois).
 32. **Charlotte Oven, [En cas de KO]** : la puissance de 4000 ou moins est celle imprimée (la carte est dans la
     Défausse) ; le Personnage est joué redressé.
 
+## Rocks D. Xebec du méta (octobre 2026), choix faits sans validation (à revoir si besoin)
+
+33. **« Dont le type inclut « Équipage de Rocks » »** (Leader Xebec, Kaido, Shiki, Événements) : Buckin ({Former Rocks
+    Pirates}) en fait partie ; **« de type {Équipage de Rocks} »** (Rocks D. Xebec Personnage) : le type exact, sans
+    Buckin. Le Leader Xebec révèle la carte du dessus du deck : elle y reste, connue des deux joueurs, si elle n'est pas
+    piochée.
+34. **« Quand les rêves de ses camarades ont été bafoués !! »** : pour tout le tour, chaque fois qu'un de ses
+    Personnages va être mis KO **en combat**, son propriétaire peut défausser 1 carte à la place (question à chaque
+    fois) ; les KO par effet ne sont pas concernés.
+35. **Captain John épuisé** : l'adversaire ne peut attaquer que les Personnages [Captain John] (ni le Leader ni les
+    autres Personnages épuisés) ; les [Bloqueur] du propriétaire de John peuvent toujours s'interposer.
+36. **Kyo** : le remplacement marche pour chacun de ses Personnages, Kyo compris, pour toute sortie du terrain due à un
+    effet adverse, sans limite par tour ; il faut 2 cartes en main, choisies par leur propriétaire.
+37. **Gloriosa** : « jusqu'à 1 Personnage de coût 5 ou moins » vise aussi ses propres Personnages, elle comprise.
+38. **[Une fois par tour] avec un coût** (Newgate, Shiki, Linlin bleue) : l'effet compte comme utilisé quand le coût est
+    payé ; si le joueur refuse, il pourra s'en servir à une attaque suivante du même tour. Shiki : [En attaquant] et
+    [Attaque adverse] partagent la même limite.
+39. **Charlotte Linlin (bleue)** : c'est l'adversaire qui choisit ; il peut choisir « défausser 2 cartes » même avec
+    moins de 2 cartes en main (il défausse ce qu'il a).
+40. **Ochoku (Wang Zhi)** : « coût de base 1 » = coût imprimé ; l'adversaire choisit l'ordre une carte à la fois (la
+    première choisie sera la plus haute).
+41. **Rocks D. Xebec (Personnage)** : Contre +2000 en main si aucun de ses Personnages en jeu n'a de valeur de Contre
+    (vrai aussi sans aucun Personnage) ; les 2 cartes jouées sont des Personnages ou des Lieux, de noms différents entre
+    elles, joués redressés.
+42. **« Aucun pouvoir n'est éternel !! » et « Équipage de Rocks »** : coût 0 (la liste officielle affiche « - », comme
+    pour 21 autres Événements) ; leur [Contre] donne +2000 à la carte attaquée seulement si son type inclut « Équipage de
+    Rocks ».
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

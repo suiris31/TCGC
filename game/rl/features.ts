@@ -61,9 +61,9 @@ const TAG_FAMILY: Record<string, typeof TAG_FAMILIES[number]> = {
   oppPower: 'oppWeaken', oppCost: 'oppWeaken', oppBase0: 'oppWeaken', oppLock: 'oppWeaken', oppRest: 'oppWeaken', rest: 'oppWeaken',
   ownPower: 'ownBuff', ownCost: 'ownBuff', ownGrant: 'ownBuff', ownReady: 'ownBuff',
   donTarget: 'giveDon',
-  discard: 'discard', restCost: 'discard', returnOwn: 'discard',
+  discard: 'discard', restCost: 'discard', returnOwn: 'discard', revealCost: 'discard', koGuard: 'replace',
   pick: 'pick', playFree: 'playFree', trigger: 'trigger', replace: 'replace', order: 'order',
-  declareCost: 'declareCost', chooseOne: 'chooseOne', fullZone: 'fullZone',
+  declareCost: 'declareCost', chooseOne: 'chooseOne', oppChoice: 'chooseOne', fullZone: 'fullZone',
   lifeToHand: 'life', lookToLife: 'life', lifeSide: 'life', lifeSideOpp: 'life', toLife: 'life', begeLife: 'life',
   trashToDeck: 'trashToDeck', bottomOrder: 'trashToDeck', kiddRedirect: 'redirect', kiddTarget: 'redirect',
 };

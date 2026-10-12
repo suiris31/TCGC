@@ -5,9 +5,10 @@
 import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, canBeRested, canPlayCharacters, carryKnown, def, describe, donTotal, draw, emit, fieldCards,
-  findField, handCost, hasBlocker, hasKeyword, isNegated, knownFirst, koCharacter, log, name, onField, other, payDon, playCharacter,
-  power, pruneKnown, restForAttack, reveal, shuffleDeck, triggerEffect, untapDon,
+  addMod, allField, attackTargets, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def, describe,
+  discardFromHand, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated, knownFirst,
+  koCharacter, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack, reveal, shuffleDeck,
+  triggerEffect, untapDon,
 } from './rules.ts';
 import type {
   Decision, EffectCtx, GameState, HistoryEntry, Modifier, Option, PendingEffect, PlayerId, PlayerState,
@@ -363,6 +364,19 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     emit(s, { type: 'attack', player: ctx.me, uid, num: attacker.card.num, zone: attacker.leader ? 'leader' : 'character', by: ctx.me, cause: 'attack', target }, effects);
   },
 
+  // Personnage battu en combat, son propriétaire protégé pour le tour (EB02-030) : défausser 1 carte à la place du KO
+  koGuard(ctx, p) {
+    const { s } = ctx;
+    if (!findField(s, p.source)) return;
+    const who = def(p.num).name;
+    if (s.players[ctx.me].hand.length && may(ctx, `${who} va être mis KO en combat : défausser 1 carte de ta main à la place ?`, 'koGuard')) {
+      discardFromHand(ctx, ctx.me, 1, `Carte à défausser à la place du KO de ${who} :`);
+      log(s, ctx.me, `${who} n'est pas mis KO (carte défaussée à la place)`);
+      return;
+    }
+    koCharacter(s, p.source, 'battle', ctx.opp);
+  },
+
   // Dégâts au Leader (4-6, 7-1-4-1-1) : cartes de Vie en main, [Déclenchement] au choix
   leaderDamage(ctx, p) {
     const { s } = ctx;
@@ -581,8 +595,9 @@ function counterDecision(s: GameState): Decision | null {
   const options: Option[] = [];
   for (const c of firstOfEachNum(knownFirst(s, defender, P.hand))) {
     const d = def(c.num);
-    if (d.category === 'CHARACTER' && (d.counter ?? 0) > 0) {
-      options.push({ id: `counter:${c.uid}`, label: `Contre +${d.counter} : défausser ${d.name}`, uid: c.uid, group: 'counter' });
+    const value = d.category === 'CHARACTER' ? counterValue(s, defender, c.num) : 0;
+    if (value > 0) {
+      options.push({ id: `counter:${c.uid}`, label: `Contre +${value} : défausser ${d.name}`, uid: c.uid, group: 'counter' });
     }
     if (d.category === 'EVENT' && d.onCounter && (d.cost ?? 0) <= P.donActive) {
       options.push({ id: `cevent:${c.uid}`, label: `Activer ${d.name} [Contre] (coût ${d.cost})`, uid: c.uid, group: 'counter' });
@@ -653,7 +668,13 @@ function stepBattle(s: GameState) {
           });
         } else {
           log(s, s.active, `l'attaque gagne le combat (${atk} contre ${dp})`);
-          koCharacter(s, b.target, 'battle', s.active);
+          const D = s.players[target.player];
+          // « si un de vos Personnages devait être mis KO en combat, vous pouvez défausser 1 carte à la place » (EB02-030)
+          if (D.koGuardTurn === s.turn && D.hand.length && canBeKO(s, b.target, 'battle', s.active)) {
+            s.pending.push({ kind: 'system', action: 'koGuard', source: b.target, num: target.card.num, controller: target.player, answers: [] });
+          } else {
+            koCharacter(s, b.target, 'battle', s.active);
+          }
         }
       } else {
         log(s, s.active, `l'attaque est repoussée (${atk} contre ${dp})`);
@@ -750,9 +771,9 @@ function applyDecision(s: GameState, choice: string) {
       const b = s.battle!;
       const P = s.players[d.player];
       if (kind === 'counter') {
+        const value = counterValue(s, d.player, P.hand.find((c) => c.uid === uid)!.num);
         const [card] = P.hand.splice(P.hand.findIndex((c) => c.uid === uid), 1);
         P.trash.push(card);
-        const value = def(card.num).counter ?? 0;
         addMod(s, { uid: b.target, stat: 'power', amount: value, until: 'battle', source: def(card.num).name });
         log(s, d.player, `contre avec ${def(card.num).name} : +${value} à ${name(s, b.target)}`);
       } else if (kind === 'cevent') {

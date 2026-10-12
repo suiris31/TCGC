@@ -60,6 +60,19 @@ export const withCost = (cost: Cost, then: Effect, source: string): Effect => ({
   useful: (s, p, self) => cost.can(s, p, self) && then.useful(s, p, self),
 });
 
+// [Une fois par tour] « Vous pouvez [coût] : [effet] » : l'effet compte comme utilisé quand le joueur paie (s'il refuse,
+// il pourra s'en servir plus tard dans le tour). Plusieurs déclencheurs d'une carte partagent la même clé.
+export const onceWithCost = (key: string, cost: Cost, then: Effect, source: string): Effect => ({
+  run: (ctx) => {
+    const f = findField(ctx.s, ctx.source);
+    if (!f || f.card.usedOpt.includes(key) || !cost.can(ctx.s, ctx.me, ctx.source)) return;
+    if (!may(ctx, `${source} : ${cost.label} ?`)) return;
+    f.card.usedOpt.push(key);
+    if (cost.pay(ctx)) then.run(ctx);
+  },
+  useful: (s, p, self) => !findField(s, self)?.card.usedOpt.includes(key) && cost.can(s, p, self) && then.useful(s, p, self),
+});
+
 // « Choisissez un effet parmi les suivants » (seuls ceux qui peuvent servir sont proposés)
 export const chooseOne = (source: string, choices: { label: string; effect: Effect }[]): Effect => ({
   run: (ctx) => {
@@ -520,6 +533,30 @@ export const discardCost = (n: number, spec?: CharSpec & { category?: CardData['
   pay: (ctx) => discardFromHand(ctx, ctx.me, n, 'Carte à défausser :', spec ? (c) => cardMatches(c.num, spec) : undefined) === n,
 });
 
+// « Révéler N cartes de votre main ... » : l'adversaire les connaît ensuite (tant qu'elles restent en main)
+export const revealCost = (n: number, spec: CharSpec & { category?: CardData['category'] }): Cost => ({
+  get label() { return `révéler ${n} ${describeSpec(n > 1 ? 'cartes' : 'carte', spec)} de ta main`; },
+  can: (s, p) => s.players[p].hand.filter((c) => cardMatches(c.num, spec)).length >= n,
+  pay: (ctx) => {
+    const P = ctx.s.players[ctx.me];
+    const shown: Card[] = [];
+    for (let i = 0; i < n; i++) {
+      const left = P.hand.filter((c) => cardMatches(c.num, spec) && !shown.includes(c));
+      if (!left.length) return false;
+      const options = uniqueByNum(knownFirst(ctx.s, ctx.me, left));
+      const answer = ctx.ask({
+        prompt: `Carte à révéler (${i + 1}/${n}) :`,
+        options: options.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
+        tag: 'revealCost',
+      });
+      shown.push(left.find((c) => c.uid === Number(answer.split(':')[1]))!);
+    }
+    reveal(ctx.s, shown.map((c) => c.uid), ctx.opp);
+    log(ctx.s, ctx.me, `révèle ${shown.map((c) => def(c.num).name).join(', ')} de sa main`);
+    return true;
+  },
+});
+
 // « Épuiser cette carte »
 export const restSelf = (): Cost => ({
   label: 'épuiser cette carte',
@@ -654,6 +691,7 @@ export interface CardSpec {
   onMain?: Effect;      // Événement [Principale]
   onCounter?: Effect;   // Événement [Contre]
   onTrigger?: Effect;   // [Déclenchement]
+  onOpponentAttack?: Effect;  // [Attaque adverse]
   activateMain?: { label: string; once?: boolean; cost?: Cost; effect: Effect };
 }
 
@@ -675,6 +713,7 @@ export function card(spec: CardSpec, extra: CardBehavior = {}): CardBehavior {
   }
   if (spec.onCounter) b.onCounter = spec.onCounter.run;
   if (spec.onTrigger) b.onTrigger = spec.onTrigger.run;
+  if (spec.onOpponentAttack) b.onOpponentAttack = { run: spec.onOpponentAttack.run };
   if (spec.activateMain) {
     const { label, once = false, cost, effect: e } = spec.activateMain;
     b.activateMain = {

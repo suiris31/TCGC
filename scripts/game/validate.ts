@@ -135,6 +135,7 @@ const EXPECTED: Record<string, string> = {
   'OP11-079|trigger': 'prendre la carte en main (Contre +5000) vaut mieux que piocher 1 carte',
   'OP11-079|onTrigger': 'idem',
   'OP10-103|play': 'Capone Bege (0 de puissance) sert de Contre +2000',
+  'OP08-051|onPlay': 'Buckin ne renforce que [Edward Weevil], absent du Xebec du méta (il y sert de Personnage de coût 1 « Équipage de Rocks »)',
 };
 const expected: string[] = [];
 const alert = (num: string, what: string, text: string) => {

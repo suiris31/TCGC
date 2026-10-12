@@ -61,7 +61,7 @@ export function CardPreview({ s, preview }: { s: GameState; preview: Preview | n
       <div className="preview-text">
         <strong>{d.name}</strong>
         <div className="op-muted op-small">
-          {d.number} · {d.category === 'LEADER' ? `Leader · Vie ${d.life}` : `Coût ${d.cost}`}
+          {d.number} · {d.category === 'LEADER' ? `Leader · Vie ${d.life}` : `Coût ${d.cost ?? 0}`}
           {d.power !== null && ` · ${d.power}`}{d.counter ? ` · Contre +${d.counter}` : ''}
         </div>
         <div className="op-muted op-small">{d.typeLabels.join(' / ')}</div>

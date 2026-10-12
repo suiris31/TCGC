@@ -213,4 +213,24 @@ export const GUIDES: Record<string, DeckGuide> = {
     strengths: ['Chaque Vie perdue peut se jouer gratuitement ([Déclenchement])', 'La Vie se reconstruit souvent', 'Gros Personnages à 8000 grâce à Charlotte Linlin'],
     weaknesses: ['Beaucoup de Personnages à 4000 sans Linlin en jeu', 'Les coûts « épuiser 2 DON!! » ralentissent le jeu', 'Gum Gum Gigant coûte cher (DON!! −2 et une carte)'],
   },
+  'META-XEBEC-2026-10': {
+    styles: ['Contrôle', 'Défense', 'Bleu'],
+    summary: 'Un équipage de géants sans Contre : le Leader pioche en attaquant, Captain John épuisé oblige l’adversaire à n’attaquer que lui, et Rocks D. Xebec (Personnage) arrive avec deux autres membres de l’équipage, gratuitement.',
+    plan: [
+      'Tours 1 à 3 : Kyo (pioche 1) ; Miss Buckingham Stussy (5000) empêche un Personnage adverse d’attaquer. En attaquant, le Leader défausse 1 carte pour révéler la carte du dessus de ton deck : presque tout le deck est « Équipage de Rocks », il pioche alors 2 cartes.',
+      'Dès 4 DON!! : Captain John (épuise-le en fin de tour : l’adversaire ne pourra attaquer que lui), Ochoku et Kaido ([Bloqueur]), Gloriosa (place sous le deck un Personnage de coût 5 ou moins).',
+      'Dès 5 et 6 DON!! : Charlotte Linlin (l’adversaire choisit : tu pioches 2 cartes ou il en défausse 2) et Edward Newgate (8000, pioche 1 ; +3000 à ton Leader quand il attaque ou est attaqué).',
+      'Dès 7 DON!! : Shiki attaque les Personnages dès son arrivée et donne −3000. Dès 10 : Rocks D. Xebec (12000) pioche et joue gratuitement 2 cartes de noms différents (coût total 9).',
+    ],
+    combos: [
+      { title: 'La provocation', cards: ['OP17-044'], text: 'Captain John épuisé : l’adversaire ne peut attaquer aucune autre carte que lui. Ton Leader et tes autres Personnages sont à l’abri ; son [Activation : Principale] (s’épuiser pour piocher 1 carte et en défausser 1) le prépare en fin de tour.' },
+      { title: 'Défendre sans Contre', cards: ['OP17-040', 'OP17-049', 'OP17-048', 'OP17-055', 'OP17-056'], text: 'Tes Personnages n’ont pas de Contre : la défense vient de Newgate (+3000 au Leader), Linlin (+1000), Shiki (−3000 à l’attaquant) et des deux Événements à coût 0 (+2000 à une carte « Équipage de Rocks »).' },
+      { title: 'Le grand capitaine', cards: ['OP17-118', 'OP17-040', 'OP17-045'], text: 'Rocks D. Xebec pioche 1 carte et joue gratuitement 2 cartes {Équipage de Rocks} de noms différents pour un coût total de 9 (Newgate et Kyo, Linlin et Ochoku...). En main, il a Contre +2000 tant qu’aucun de tes Personnages n’a de Contre.' },
+      { title: 'Protéger le terrain', cards: ['OP17-045', 'EB02-030'], text: 'Kyo : quand un de tes Personnages va quitter le terrain par un effet adverse, défausse 2 cartes pour le garder. « Quand les rêves de ses camarades ont été bafoués !! » : pour le tour, défausse 1 carte au lieu d’un KO en combat.' },
+      { title: 'Contrôle', cards: ['OP17-046', 'OP17-041', 'OP17-056', 'OP17-054'], text: 'Gloriosa place sous le deck un Personnage de coût 5 ou moins ; Ochoku y envoie tous les Personnages adverses de coût de base 1 ; « Équipage de Rocks » renvoie en main un Personnage de coût 6 ou moins ; Stussy empêche d’attaquer.' },
+    ],
+    mulligan: 'Garde Kyo, Miss Buckingham Stussy ou Captain John, avec une carte de coût 4. Repioche une main sans Personnage de coût 4 ou moins.',
+    strengths: ['Le Leader pioche presque à chaque attaque', 'Captain John protège tout le reste', 'Rocks D. Xebec arrive avec deux autres Personnages'],
+    weaknesses: ['Presque aucun Personnage n’a de Contre', 'Beaucoup d’effets demandent de défausser', 'Plan subtil, plus difficile à jouer'],
+  },
 };

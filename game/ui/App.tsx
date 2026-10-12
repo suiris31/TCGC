@@ -6,7 +6,7 @@ import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary 
 import { buildRecap, HINT, isReviewable, REVIEW, toReview, type Move, type MoveReview } from '../coach/review.ts';
 import { DECKS } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
-import { def } from '../engine/rules.ts';
+import { counterValue, def } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { Hand, OpponentHand, PlayerZone, type BoardUi } from './Board.tsx';
 import { type CardLook, type Preview } from './CardView.tsx';
@@ -471,7 +471,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
           recommended: recommendedUid === uid,
           selected: menu?.uid === uid,
           drop: dragging && actions.some((a) => a.kind === 'don'),
-          badge: counter && num ? (counter.kind === 'counter' ? `+${def(num).counter}` : 'Contre') : undefined,
+          badge: counter && num ? (counter.kind === 'counter' ? `+${counterValue(game, HUMAN, num)}` : 'Contre') : undefined,
         });
       }
       if (d?.kind === 'main') {

@@ -99,6 +99,8 @@ export const BASE_STYLES: Record<string, Partial<Style>> = {
   // Nico Robin du méta (violet/jaune) : la Vie se reconstruit (Teach, Linlin, Smoothie) et ses cartes ont des
   // [Déclenchement] : contrer un peu moins
   'META-ROBIN-2026-10': { counterLife: 1, counterMid: 2, counterSmall: 1.5 },
+  // Rocks D. Xebec du méta (bleu) : [Bloqueur] nombreux (Wang Zhi, Kaido, Gloriosa), gardés pour défendre
+  'META-XEBEC-2026-10': { keepBlockers: 1 },
 };
 
 const TUNED = tuned as Record<string, Partial<Style>>;

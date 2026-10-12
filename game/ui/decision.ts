@@ -1,7 +1,7 @@
 // Lecture de la décision en cours pour l'interface : quelles actions proposer sur quelle carte, quelles cibles
 // allumer, quels boutons afficher, et des textes simples (aperçu d'un combat, phase du tour...).
 import { uselessReason } from '../ai/prune.ts';
-import { attackAbility, def, findField, handCost, hasBlocker, other, power } from '../engine/rules.ts';
+import { attackAbility, counterValue, def, findField, handCost, hasBlocker, other, power } from '../engine/rules.ts';
 import type { Decision, GameState, Option, PlayerId } from '../engine/types.ts';
 
 export type ActionKind = 'play' | 'event' | 'act' | 'don' | 'attack' | 'block' | 'counter' | 'cevent' | 'choose';
@@ -81,7 +81,7 @@ export function readDecision(s: GameState, d: Decision, aids = true): DecisionVi
     } else if (d.kind === 'counter') {
       const uid = uidOf(o);
       const card = P.hand.find((c) => c.uid === uid);
-      if (kind === 'counter' && card) add(uid, { option: o, kind: 'counter', icon: '🛡', label: `Contrer : +${def(card.num).counter}`, detail: 'la carte est défaussée' });
+      if (kind === 'counter' && card) add(uid, { option: o, kind: 'counter', icon: '🛡', label: `Contrer : +${counterValue(s, d.player, card.num)}`, detail: 'la carte est défaussée' });
       else if (kind === 'cevent' && card) add(uid, { option: o, kind: 'cevent', icon: '✦', label: 'Activer son [Contre]', detail: `coût ${def(card.num).cost ?? 0}`, useless });
       else view.buttons.push(o);
     } else {
@@ -203,7 +203,7 @@ export function whyNot(s: GameState, d: Decision, uid: number): string | null {
   const inHand = P.hand.find((c) => c.uid === uid);
   if (inHand) {
     const card = def(inHand.num);
-    if (d.kind === 'counter') return card.counter ? null : card.onCounter ? `Il te faut ${card.cost ?? 0} DON!! redressée${(card.cost ?? 0) > 1 ? 's' : ''} pour l'activer.` : 'Cette carte n’a pas de valeur de Contre.';
+    if (d.kind === 'counter') return counterValue(s, p, inHand.num) ? null : card.onCounter ? `Il te faut ${card.cost ?? 0} DON!! redressée${(card.cost ?? 0) > 1 ? 's' : ''} pour l'activer.` : 'Cette carte n’a pas de valeur de Contre.';
     if (d.kind !== 'main') return 'Ce n’est pas le moment de jouer une carte.';
     if (card.category === 'EVENT' && !card.onMain) return 'Cet Événement ne se joue que pendant une attaque adverse ([Contre]).';
     const cost = handCost(s, p, inHand);

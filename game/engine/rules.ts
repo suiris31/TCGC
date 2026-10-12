@@ -249,14 +249,26 @@ export function attackAbility(s: GameState, p: PlayerId, card: FieldCard): { can
   return no;
 }
 
-// Cibles possibles : le Leader adverse ou un Personnage adverse épuisé (7-1)
+// Cibles possibles : le Leader adverse ou un Personnage adverse épuisé (7-1). Un Personnage adverse qui l'impose
+// (Captain John épuisé) : seulement les Personnages de son nom.
 export function attackTargets(s: GameState, p: PlayerId, card: FieldCard): number[] {
   const ability = attackAbility(s, p, card);
   if (!ability.can) return [];
   const O = s.players[other(p)];
   const lowCostBan = hasMod(s, card.uid, 'noAttackLowCost');
   const chars = O.chars.filter((c) => c.rested && !(lowCostBan && baseCost(c.num) <= 7)).map((c) => c.uid);
+  const taunts = O.chars.filter((c) => def(c.num).taunt && !isNegated(s, c.uid) && def(c.num).taunt!(s, other(p), c));
+  if (taunts.length) {
+    const names = taunts.flatMap((c) => def(c.num).names);
+    return chars.filter((uid) => def(findField(s, uid)!.card.num).names.some((n) => names.includes(n)));
+  }
   return ability.charsOnly ? chars : [O.leader.uid, ...chars];
+}
+
+// Valeur de Contre d'une carte de la main de p
+export function counterValue(s: GameState, p: PlayerId, num: string): number {
+  const d = def(num);
+  return d.handCounter ? d.handCounter(s, p) : d.counter ?? 0;
 }
 
 // ---------- Pioche, deck, défausse ----------

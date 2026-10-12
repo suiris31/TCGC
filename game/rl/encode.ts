@@ -18,7 +18,7 @@
 // textes des questions et des options, graine du hasard, compteur d'événements.
 import { DECKS } from '../engine/decks.ts';
 import {
-  attackAbility, attackTargets, canBeRested, def, fieldCost, findField, handCost, hasKeyword, hasMod, other, power,
+  attackAbility, attackTargets, canBeRested, counterValue, def, fieldCost, findField, handCost, hasKeyword, hasMod, other, power,
 } from '../engine/rules.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { KEYWORDS } from '../engine/keywords.ts';
@@ -334,7 +334,7 @@ function comparisons(v: GameState, me: PlayerId, o: Option, kind: string, ctx: C
   if (b && (kind === 'counter:' || kind === 'cevent:' || kind === 'pass')) {
     if (kind === 'counter:') {
       const card = v.players[me].hand.find((c) => c.uid === o.uid);
-      const value = card ? def(card.num).counter ?? 0 : 0;
+      const value = card ? counterValue(v, me, card.num) : 0;
       x('ctr:value', value / 5000);
       x('ctr:sufficient', b.need > 0 && value >= b.need ? 1 : 0);
     }
@@ -424,7 +424,7 @@ export function encodeObservation(v: GameState, me: PlayerId): Observation {
     donActive: P.donActive,
     oppLeaderPower: power(v, v.players[other(me)].leader.uid),
     battle,
-    handCounter: P.hand.reduce((n, c) => n + (c.num !== HIDDEN && def(c.num).category === 'CHARACTER' ? def(c.num).counter ?? 0 : 0), 0),
+    handCounter: P.hand.reduce((n, c) => n + (c.num !== HIDDEN && def(c.num).category === 'CHARACTER' ? counterValue(v, me, c.num) : 0), 0),
   };
   options.forEach((o, a) => {
     let i = a * OPTION_DIM;

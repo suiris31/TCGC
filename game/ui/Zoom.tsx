@@ -47,7 +47,7 @@ export function CardDetails({ s, num, uid }: { s?: GameState | null; num: string
           {d.colors.length > 0 && ` · ${d.colors.map((c) => COLOR_LABEL[c]).join('/')}`}
         </div>
         <div className="zoom-stats">
-          {d.category === 'LEADER' ? <span>Vie <b>{d.life}</b></span> : <span>Coût <b>{d.cost}</b></span>}
+          {d.category === 'LEADER' ? <span>Vie <b>{d.life}</b></span> : <span>Coût <b>{d.cost ?? 0}</b></span>}
           {d.power !== null && <span>Puissance <b>{d.power}</b></span>}
           {d.counter ? <span>Contre <b>+{d.counter}</b></span> : null}
           {d.attributes.length > 0 && <span>&lt;{d.attributes.map(attributeLabel).join('/')}&gt;</span>}

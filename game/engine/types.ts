@@ -72,6 +72,7 @@ export interface PlayerState {
   turns: number;      // nombre de tours commencés
   discardedTurn: number;  // dernier tour où une carte de sa main a été défaussée par un effet
   noCharsTurn?: number;   // tour pendant lequel il ne peut plus jouer de carte Personnage (Leader Mihawk OP14-020)
+  koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
 }
 
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro
@@ -258,6 +259,10 @@ export interface CardBehavior {
   handCost?: (s: GameState, owner: PlayerId) => number;                     // modification du coût en main
   selfPower?: (s: GameState, owner: PlayerId, card: FieldCard) => number;
   selfCost?: (s: GameState, owner: PlayerId, card: FieldCard) => number;
+  // valeur de Contre de la carte en main quand elle dépend de la partie (Rocks D. Xebec OP17-118) ; sinon CardData.counter
+  handCounter?: (s: GameState, owner: PlayerId) => number;
+  // « l'adversaire ne peut attaquer aucune autre carte que [ce Personnage] » tant que la condition est vraie (Captain John)
+  taunt?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
   // bonus de puissance donné par cette carte (sur le terrain) à une carte du même joueur, elle comprise
   aura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number;
   // bonus ou malus de puissance donné en permanence par cette carte aux cartes adverses

@@ -3,7 +3,7 @@
 // (aides désactivées), et chaque choix part au serveur, qui arbitre.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DECKS } from '../../engine/decks.ts';
-import { def } from '../../engine/rules.ts';
+import { counterValue, def } from '../../engine/rules.ts';
 import type { GameState, PlayerId } from '../../engine/types.ts';
 import { Hand, OpponentHand, PlayerZone, type BoardUi } from '../Board.tsx';
 import type { CardLook, Preview } from '../CardView.tsx';
@@ -210,7 +210,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
           choose: choosing,
           selected: menu?.uid === uid,
           drop: dragging && actions.some((a) => a.kind === 'don'),
-          badge: counter && num ? (counter.kind === 'counter' ? `+${def(num).counter}` : 'Contre') : undefined,
+          badge: counter && num ? (counter.kind === 'counter' ? `+${counterValue(game, seat, num)}` : 'Contre') : undefined,
         });
       }
       if (d?.kind === 'main') for (const c of game.players[seat].hand) if (!dv.byCard.has(c.uid)) looks.set(c.uid, { dim: true });

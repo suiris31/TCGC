@@ -103,6 +103,19 @@ export const DECKS: Record<string, DeckList> = {
       'OP17-109': 4, 'OP17-110': 2, 'OP17-112': 4, 'OP17-113': 4, 'OP17-114': 4, 'ST34-003': 4,
     },
   },
+  // Méta d'octobre 2026 : 1re place d'un tournoi Flagship (Asie, format Standard), 4 octobre 2026 ; choisie sans
+  // validation, à la demande de l'utilisateur (la plus récente des listes OP-17 trouvées, même base que les autres).
+  // https://opmetagame.com/tournaments/oo-gumgum-flagship-2026-10-04/
+  'META-XEBEC-2026-10': {
+    id: 'META-XEBEC-2026-10',
+    name: 'Rocks D. Xebec (méta, octobre 2026)',
+    series: 'META',
+    leader: 'OP17-039',
+    cards: {
+      'EB02-030': 1, 'OP08-051': 4, 'OP17-040': 4, 'OP17-041': 3, 'OP17-042': 2, 'OP17-044': 4, 'OP17-045': 4, 'OP17-046': 4,
+      'OP17-048': 4, 'OP17-049': 4, 'OP17-054': 4, 'OP17-055': 4, 'OP17-056': 4, 'OP17-118': 4,
+    },
+  },
 };
 
 export function deckSize(deck: DeckList) {
