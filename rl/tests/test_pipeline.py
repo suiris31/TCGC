@@ -15,8 +15,9 @@ RUN = "pytest-pipeline"
 
 
 def run(*args: str) -> str:
-    out = subprocess.run([sys.executable, *args], cwd=RL_DIR, capture_output=True, text=True, timeout=900,
-                         env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    # encoding : sous Windows, la sortie serait sinon lue dans le jeu de caractères de la console (accents perdus)
+    out = subprocess.run([sys.executable, *args], cwd=RL_DIR, capture_output=True, text=True, encoding="utf-8",
+                         timeout=900, env={**os.environ, "PYTHONIOENCODING": "utf-8"})
     assert out.returncode == 0, f"{args[0]} a échoué :\n{out.stdout[-3000:]}\n{out.stderr[-3000:]}"
     return out.stdout
 
