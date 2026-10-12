@@ -12,7 +12,7 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 - **Code** : branche `claude/awesome-hopper-nj0x4y` (commits depuis `553104f`). `main` a été avancé jusqu'à
   `4727d53` (mise en ligne). Seul `b56c2bd` (`evaluate.py`, sans effet sur le serveur) n'est pas encore sur `main`.
 - **En ligne** : modèle exporté au début du niveau 3 (~62 % contre l'heuristique « Débutant »).
-- **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 3, ~7 400 mises à jour,
+- **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 4 depuis u7200, ~7 400 mises à jour,
   ~1,8 million de parties, 8 decks depuis u7383, vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
 
 ## 2. Où en est l'IA (mesures)
@@ -26,9 +26,13 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 | Niveau 3 (u5900–6300) | 56–76 % | 12,5–50 %, moyenne ~33 % | 1030–1160 |
 | Niveau 3 avec self-play (u6400–6700) | 62–69 % | 42–54 %, moyenne ~48 % | 1098–1165 |
 | Évaluation complète, 7 decks (u6715, 12 octobre 2026) | 64,8 % (4 704 parties) | 54,5 % (112 parties) | 1098 (mc16 1067) |
+| **Niveau 3 validé (u7200)** | 73,5 % | 62,5 % | 1197 |
+| Niveau 4, juge : la version u7200 (u7250–7350) | 69–80 % | contre u7200 : 51–52 % | 1170–1225 |
 | 8 decks, Mihawk jamais vu (u7383, 12 octobre 2026) | 58,9 % (6 144 parties ; 13,7 % en jouant Mihawk) | — | — |
 
-Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation**. Dans le
+Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation** (fait à u7200).
+Le niveau 4 se valide à **58 % contre sa version de départ (u7200) et 60 % contre l'heuristique, deux évaluations de
+suite** (une toutes les 50 mises à jour). Dans le
 simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 tirages) : bien plus faibles que
 `mc:16`/`mc:48`. L'IA entraînée bat déjà l'Expert du simulateur (impression de jeu confirmée par les mesures).
 
@@ -85,7 +89,12 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    mises à jour. **Décision de l'utilisateur : Mihawk inclus dès la reprise** (8 decks, évaluations de passage sur 64
    confrontations, vocabulaire toujours de 90 cartes). Nouvelles questions (`restCost`, `returnOwn`) rangées dans la
    famille `discard` ; encodage inchangé `a0664ced`.
-8. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
+8. **Niveau 4 sans Monte-Carlo à l'entraînement** (12 octobre 2026, validé par l'utilisateur). Le niveau 4 remettait
+   `mc2` parmi les adversaires d'entraînement (5 % des parties) : 2 à 8 parties par mise à jour suffisaient à faire
+   tomber la collecte de ~5 500 à ~800–1 900 décisions/s (12 → 5,6 parties/s ; part du temps dans Node 35 % → 75 %),
+   comme au niveau 3 (décision 5). Le niveau 4 n'est pas jugé par le Monte-Carlo : ses 5 % passent au self-play
+   (self 0,75, heuristique 0,2, hasard 0,05). Même reprise : `--max-updates` 7500 → 9000.
+9. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
    spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
 
@@ -96,8 +105,9 @@ Dans `rl/`, environnement activé (`.venv\Scripts\Activate.ps1`).
 **Reprendre l'entraînement** : lancer la commande affichée à l'arrêt (« Pour reprendre : ... »). Attention : les
 réglages `--set` ne sont pas gardés d'une reprise à l'autre ; la commande actuelle est
 ```powershell
-python train.py --config gpu --run rtx2070-main --max-updates 7500 --set ppo.lr=0.0001 --set 'curriculum.levels.2.opponents=[{kind: self, weight: 0.5}, {kind: heuristic, weight: 0.45}, {kind: random, weight: 0.05}]' --set curriculum.levels.2.eval_every=100
+python train.py --config gpu --run rtx2070-main --max-updates 9000 --set ppo.lr=0.0001 --set 'curriculum.levels.2.opponents=[{kind: self, weight: 0.5}, {kind: heuristic, weight: 0.45}, {kind: random, weight: 0.05}]' --set curriculum.levels.2.eval_every=100 --set 'curriculum.levels.3.opponents=[{kind: self, weight: 0.75}, {kind: heuristic, weight: 0.2}, {kind: random, weight: 0.05}]'
 ```
+(les réglages du niveau 3, `levels.2`, ne servent plus depuis u7200 : gardés par sécurité ; `levels.3` est le niveau 4)
 Ne pas ajouter `--level` (remet le compteur du niveau à zéro) ni `--fresh` (recommence de zéro).
 
 **Suivre** : `python report.py --run rtx2070-main --window 100 --evals 6` (texte à partager) ;
@@ -116,17 +126,16 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- **Reprise avec 8 decks** (12 octobre 2026, depuis u7383, `main` à jour dans le dossier de l'entraînement : Mihawk
-  ajouté) : même commande. Les évaluations de passage portent sur 64 confrontations (49 de u6715 à u7383). À
-  remesurer vers u8000 comme au § 3.7 : Mihawk joué par le modèle (13,7 % au départ).
-- Point de contrôle vers **u6600–6700** (2–3 évaluations du niveau 3 avec self-play) : fait (§ 2) ; progression contre
-  `mc:16` (~33 % → ~48 %), passage au niveau 4 pas encore atteint.
-  Attendu : ~15–20 parties/s, `kl` 0,01–0,02 ; la mesure qui compte est **contre `mc:16`** (moyenne ~33 % au départ,
-  évaluations de 24 parties, ±20 points chacune : lire la moyenne).
-- Si l'IA progresse contre `mc:16` : continuer jusqu'au passage au niveau 4 (self-play + heuristique, juge : sa version
-  de départ et l'heuristique), puis 5 (ligue d'anciennes versions, Elo).
-- Si elle ne progresse pas : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
-  autres pistes du § 3.8).
+- **Reprise avec 8 decks, niveau 4 sans Monte-Carlo** (12 octobre 2026, depuis u7383, `main` à jour dans le dossier de
+  l'entraînement : Mihawk ajouté) : commande du § 4. Les évaluations de passage portent sur 64 confrontations (49 de
+  u6715 à u7383). Attendu : retour vers ~12 parties/s.
+- À remesurer vers **u8000** comme au § 3.7 : Mihawk joué par le modèle (13,7 % au départ).
+- Niveau 4 : il faut 58 % contre u7200 (51–52 % au départ) et 60 % contre l'heuristique, deux fois de suite ; puis
+  niveau 5 (ligue d'anciennes versions, Elo).
+- Decks suivants de la phase 4 (Nico Robin, puis Xebec, Enel, Kaido) : à chaque deck, entraînement en pause, mesure
+  de généralisation (§ 3.6 et 3.7), puis inclusion.
+- Si l'IA ne progresse plus : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
+  autres pistes du § 3.9).
 
 ## 6. Points ouverts et pièges connus
 
