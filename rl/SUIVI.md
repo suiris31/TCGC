@@ -12,8 +12,8 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 - **Code** : branche `claude/awesome-hopper-nj0x4y` (commits depuis `553104f`). `main` a été avancé jusqu'à
   `4727d53` (mise en ligne). Seul `b56c2bd` (`evaluate.py`, sans effet sur le serveur) n'est pas encore sur `main`.
 - **En ligne** : modèle exporté au début du niveau 3 (~62 % contre l'heuristique « Débutant »).
-- **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 3, ~6 300 mises à jour,
-  ~1,64 million de parties, vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
+- **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 3, ~7 400 mises à jour,
+  ~1,8 million de parties, 8 decks depuis u7383, vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
 
 ## 2. Où en est l'IA (mesures)
 
@@ -26,6 +26,7 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 | Niveau 3 (u5900–6300) | 56–76 % | 12,5–50 %, moyenne ~33 % | 1030–1160 |
 | Niveau 3 avec self-play (u6400–6700) | 62–69 % | 42–54 %, moyenne ~48 % | 1098–1165 |
 | Évaluation complète, 7 decks (u6715, 12 octobre 2026) | 64,8 % (4 704 parties) | 54,5 % (112 parties) | 1098 (mc16 1067) |
+| 8 decks, Mihawk jamais vu (u7383, 12 octobre 2026) | 58,9 % (6 144 parties ; 13,7 % en jouant Mihawk) | — | — |
 
 Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation**. Dans le
 simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 tirages) : bien plus faibles que
@@ -66,7 +67,25 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    la généralisation, puis décider de l'inclusion.
    Même mise à jour : règles du moteur version 2 (ordre au choix des cartes remises sous le deck, question `bottomOrder`,
    rangée dans la famille `trashToDeck` ; encodage inchangé `a0664ced`).
-7. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
+7. **Deuxième deck du méta (Mihawk) : mesuré, puis inclus** (12 octobre 2026). Modèle u7383 (Sabo inclus depuis
+   u6715) contre l'heuristique : 768 parties par deck joué par le modèle, comparées à l'heuristique jouant le même deck
+   (1 600 parties par deck, toutes les confrontations).
+
+   | Deck joué | Modèle | Heuristique | Écart |
+   |---|---|---|---|
+   | META-MIHAWK-2026-10 (nouveau) | 13,7 % | 70,7 % | −57 |
+   | META-SABO-2026-10 (inclus depuis u6715) | 89,5 % | 74,1 % | +15 (−0,3 avant l'inclusion) |
+   | ST-31 / 32 / 33 / 34 / 35 / 36 | 67,1 / 66,4 / 58,5 / 30,7 / 70,8 / 74,2 % | 43,3 / 50,3 / 52,0 / 21,5 / 46,9 / 40,0 % | +6 à +34 (moyenne +19) |
+
+   Face à Mihawk, le modèle garde son avance (+21 points en moyenne avec les 7 autres decks). En le jouant, il
+   s'effondre : il active l'effet du Leader dès le tour 1 (99,9 %), qui redresse 3 DON!! mais interdit ensuite de
+   jouer des Personnages pour le tour ; il ne développe plus son terrain. Aucun deck connu ne lui a appris ce revers
+   (l'interdiction n'est pas encodée : il ne la voit qu'à la disparition des options « jouer »). Le moteur n'est pas en
+   cause (parties enregistrées relues coup par coup). Inclure le Sabo a suffi pour passer de −0,3 à +15 points en ~670
+   mises à jour. **Décision de l'utilisateur : Mihawk inclus dès la reprise** (8 decks, évaluations de passage sur 64
+   confrontations, vocabulaire toujours de 90 cartes). Nouvelles questions (`restCost`, `returnOwn`) rangées dans la
+   famille `discard` ; encodage inchangé `a0664ced`.
+8. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
    spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
 
@@ -97,8 +116,9 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- **Reprise avec 7 decks** (12 octobre 2026, `main` à jour dans le dossier de l'entraînement) : même commande. Les
-  évaluations de passage ne sont plus tout à fait comparables à celles d'avant (49 confrontations).
+- **Reprise avec 8 decks** (12 octobre 2026, depuis u7383, `main` à jour dans le dossier de l'entraînement : Mihawk
+  ajouté) : même commande. Les évaluations de passage portent sur 64 confrontations (49 de u6715 à u7383). À
+  remesurer vers u8000 comme au § 3.7 : Mihawk joué par le modèle (13,7 % au départ).
 - Point de contrôle vers **u6600–6700** (2–3 évaluations du niveau 3 avec self-play) : fait (§ 2) ; progression contre
   `mc:16` (~33 % → ~48 %), passage au niveau 4 pas encore atteint.
   Attendu : ~15–20 parties/s, `kl` 0,01–0,02 ; la mesure qui compte est **contre `mc:16`** (moyenne ~33 % au départ,
@@ -106,7 +126,7 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 - Si l'IA progresse contre `mc:16` : continuer jusqu'au passage au niveau 4 (self-play + heuristique, juge : sa version
   de départ et l'heuristique), puis 5 (ligue d'anciennes versions, Elo).
 - Si elle ne progresse pas : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
-  autres pistes du § 3.6).
+  autres pistes du § 3.8).
 
 ## 6. Points ouverts et pièges connus
 
