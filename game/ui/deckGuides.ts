@@ -151,4 +151,24 @@ export const GUIDES: Record<string, DeckGuide> = {
     weaknesses: ['Joue avec le feu : la Vie descend vite', 'Les Vies face visible renseignent l’adversaire', 'Beaucoup d’effets dépendent du nombre de Vies'],
     aiLesson: 'L’IA ne contre presque jamais pour protéger sa Vie (elle compte sur les [Déclenchement]) mais contre volontiers quand l’écart de puissance est petit, et garde ses [Bloqueur] en défense.',
   },
+  'META-SABO-2026-10': {
+    styles: ['Coût 12 ou plus', 'Défausse utile', 'Rouge/Noir'],
+    summary: 'Poser un géant d’Erbaf (Haguar D. Sauro ou Loki, qui valent 16 et 18) : tant qu’un Personnage de coût 12 ou plus est en jeu, tous les petits Chapeaux de paille gagnent +3000 et des pouvoirs, et le Leader Sabo donne +1000 à toute l’équipe.',
+    plan: [
+      'Tours 1 et 2 : cherche tes pièces avec Nami (OP01-016), Usopp et Sanji ; Nami (OP17-086) pioche 2 cartes contre une carte {Erbaf} de ta main.',
+      'Dès 4 DON!! : Haguar D. Sauro (coût 4, mais 16 en jeu) cherche une carte {Erbaf} et allume tous les bonus « coût 12 ou plus ». Donne 1 DON!! à Sabo : +1000 à tout le monde.',
+      'Dès 6 DON!! : Loki (18 en jeu, 11000 pendant le tour adverse) met KO des Personnages adverses pour un coût total de 4.',
+      'Ensuite : Luffy (OP17-093) pioche, rejoue un petit Personnage de ta Défausse et attaque dès son arrivée ; Arrimage pirates 6 rejoue aussi un Chapeau de paille de coût 2.',
+    ],
+    combos: [
+      { title: 'Le réveil d’Erbaf', cards: ['OP17-089', 'OP17-119', 'OP17-080', 'OP17-087', 'OP17-095', 'OP17-083'], text: 'Avec un Personnage de coût 12 ou plus en jeu, Usopp, Sanji, Robin et Zoro passent de 2000 à 5000, Jinbe devient [Bloqueur] à 5000, Luffy attaque dès son arrivée, Chopper rend un attaquant [Imblocable] et Robin donne −3000 en arrivant.' },
+      { title: 'Le Leader', cards: ['OP13-004', 'OP17-089', 'OP17-093'], text: 'Sabo (Leader) : avec 1 DON!! et un Personnage de coût 8 ou plus (Sauro, Loki, Luffy, Arrimage pirates 6), ton Leader et tous tes Personnages gagnent +1000. Avec 4 Vies ou plus, il a −1000.' },
+      { title: 'La Défausse comme réserve', cards: ['OP17-080', 'OP17-082', 'OP15-088', 'OP17-093'], text: 'Usopp et Sauro placent dans ta Défausse les cartes qu’ils ne prennent pas, Sanji en défausse 2 ; Arrimage pirates 6 et Luffy rejouent ensuite gratuitement un Personnage de coût 2 ou moins de ta Défausse.' },
+      { title: 'Protéger le terrain', cards: ['OP17-095', 'OP04-016'], text: 'Zoro : quand un de tes Personnages va quitter le terrain à cause d’un effet adverse, place 3 cartes de ta Défausse sous ton deck pour le garder. Menu « Bonnes manières » : +3000 contre une carte de ta main.' },
+      { title: 'Abattre une cible', cards: ['OP13-007', 'OP17-087', 'OP17-119'], text: 'Ace, Sabo et Luffy donne 1 DON!! redressée et se sacrifie pour −3000 ; Robin donne −3000 ; Loki met KO pour un coût total de 4.' },
+    ],
+    mulligan: 'Garde Haguar D. Sauro, ou de quoi le chercher (Usopp, Nami OP01-016), avec deux ou trois Personnages de coût 1 ou 2. Repioche une main sans petit Personnage.',
+    strengths: ['Les petits Personnages deviennent très forts dès qu’un géant est en jeu', 'Recherche et pioche nombreuses', 'Rejoue ses Personnages depuis la Défausse'],
+    weaknesses: ['Sans Personnage de coût 12 ou plus, les petits Personnages restent à 2000', 'Le deck se vide vite (cartes défaussées)', 'Leader faible tant qu’il a 4 Vies ou plus'],
+  },
 };

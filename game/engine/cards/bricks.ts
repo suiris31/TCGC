@@ -8,9 +8,9 @@
 // Les conditions sont lues dans la partie au moment de l'effet, jamais supposées : une carte marche ou non selon son
 // deck, comme à une vraie table.
 import {
-  addDonFromDeck, addMod, addTopDeckToLife, canBeKO, canBeRested, canLeaveByEffect, chooseUpTo1, chooseUpToN, def,
+  addDonFromDeck, addMod, addTopDeckToLife, canBeKO, canBeRested, canLeaveByEffect, chooseUpTo1, chooseUpToN, def, describe,
   discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, knownFirst, lifeToHand, log, lookTopPick, may,
-  other, playCharacter, power, removeByEffect, restByEffect, returnDon, setActive, trashTopDeck, uniqueByNum,
+  other, playCharacter, power, removeByEffect, removeFromField, restByEffect, returnDon, setActive, trashTopDeck, uniqueByNum,
   untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
 import type { Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Modifier, PlayerId } from '../types.ts';
@@ -93,6 +93,8 @@ export const donOnFieldAtLeast = (n: number): Condition => (s, p) => donOnField(
 export const donOnFieldAtMost = (n: number): Condition => (s, p) => donOnField(s, p) <= n;
 export const trashAtLeast = (n: number): Condition => (s, p) => s.players[p].trash.length >= n;
 export const charsAtLeast = (n: number, spec: CharSpec = {}): Condition => (s, p) => s.players[p].chars.filter((c) => matches(s, c, spec)).length >= n;
+// « S'il y a un Personnage ayant un coût de N ou plus » : sur le terrain de l'un ou l'autre joueur
+export const characterCostAtLeast = (n: number): Condition => (s) => s.players.some((P) => P.chars.some((c) => fieldCost(s, c.uid) >= n));
 export const myTurn: Condition = (s, p) => s.active === p;
 export const oppTurn: Condition = (s, p) => s.active !== p;
 // [DON!! xN] : la carte qui porte l'effet a au moins N DON!! données
@@ -211,6 +213,33 @@ export function candidates(s: GameState, p: PlayerId, t: Targets, extra: (c: Fie
 const nameOf = (s: GameState, uid: number) => def(findField(s, uid)!.card.num).name;
 
 // ---------- Actions sur des cartes du terrain ----------
+
+// « Mettez KO des Personnages adverses ayant un coût total combiné de N ou moins » : le joueur les choisit un par un
+// tant qu'il en reste un qui tient dans le total (sans « jusqu'à », il ne peut pas s'arrêter avant), puis ils sont mis
+// KO ensemble
+export const koTotalCost = (t: Targets, total: number, source: string): Effect => {
+  const cost = (s: GameState, uid: number) => Math.max(0, fieldCost(s, uid));
+  const list = (s: GameState, p: PlayerId, left: number, chosen: number[]) =>
+    candidates(s, p, t, (c) => !chosen.includes(c.uid) && cost(s, c.uid) <= left && canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p));
+  return {
+    run: (ctx) => {
+      const chosen: number[] = [];
+      let left = total;
+      for (let options = list(ctx.s, ctx.me, left, chosen); options.length; options = list(ctx.s, ctx.me, left, chosen)) {
+        const answer = ctx.ask({
+          prompt: `${source} : ${t.label} à mettre KO (coût total restant : ${left}) :`,
+          options: options.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })),
+          tag: 'oppKo',
+        });
+        const uid = Number(answer.split(':')[1]);
+        chosen.push(uid);
+        left -= cost(ctx.s, uid);
+      }
+      for (const uid of chosen) removeByEffect(ctx, uid, 'ko');
+    },
+    useful: (s, p) => list(s, p, total, []).length > 0,
+  };
+};
 
 // « Mettez KO jusqu'à N ... »
 export const ko = (t: Targets, source: string, n = 1): Effect => {
@@ -350,8 +379,9 @@ export const trashTop = (n: number): Effect => effect((ctx) => {
 
 // « Regardez X cartes du dessus de votre deck, révélez jusqu'à N cartes ... et ajoutez-les à votre main. Puis, placez
 // les cartes restantes au-dessous de votre deck »
-export const searchTop = (count: number, n: number, spec: CharSpec & { category?: CardData['category'] }, what: string): Effect =>
-  effect((ctx) => { lookTopPick(ctx, count, n, (num) => cardMatches(num, spec), what); }, (s, p) => s.players[p].deck.length > 0);
+// rest : « Puis, placez les cartes restantes au-dessous de votre deck » (par défaut) ou « ... dans votre Défausse »
+export const searchTop = (count: number, n: number, spec: CharSpec & { category?: CardData['category'] }, what: string, rest: 'bottom' | 'trash' = 'bottom'): Effect =>
+  effect((ctx) => { lookTopPick(ctx, count, n, (num) => cardMatches(num, spec), what, rest); }, (s, p) => s.players[p].deck.length > 0);
 
 // « Jouez jusqu'à 1 carte Personnage ... de votre main / Défausse » (sans payer son coût)
 const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, opts: { rested?: boolean } = {}): Effect => {
@@ -432,6 +462,58 @@ export const restDon = (n: number): Cost => ({
     log(ctx.s, ctx.me, `épuise ${n} DON!!`);
     return true;
   },
+});
+
+// « Placer dans votre Défausse N cartes du dessus de votre deck »
+export const trashTopCost = (n: number): Cost => ({
+  label: `placer ${n} cartes du dessus de ton deck dans ta Défausse`,
+  can: (s, p) => s.players[p].deck.length >= n,
+  pay: (ctx) => {
+    if (ctx.s.players[ctx.me].deck.length < n) return false;
+    trashTopDeck(ctx.s, ctx.me, n);
+    log(ctx.s, ctx.me, `place les ${n} cartes du dessus de son deck dans sa Défausse`);
+    return true;
+  },
+});
+
+// « Placer ce Personnage dans votre Défausse »
+export const trashSelf = (): Cost => ({
+  label: 'placer cette carte dans ta Défausse',
+  can: (s, _p, self) => Boolean(findField(s, self)),
+  pay: (ctx) => {
+    const f = removeFromField(ctx.s, ctx.source, 'trash');
+    if (!f) return false;
+    log(ctx.s, ctx.me, `place ${def(f.card.num).name} dans sa Défausse`);
+    return true;
+  },
+});
+
+// « Donner 1 de vos cartes DON!! redressées à ... »
+export const giveActiveDon = (t: Targets): Cost => ({
+  label: `donner 1 de tes DON!! redressées (${t.label})`,
+  can: (s, p) => s.players[p].donActive > 0 && candidates(s, p, t).length > 0,
+  pay: (ctx) => {
+    const P = ctx.s.players[ctx.me];
+    const list = candidates(ctx.s, ctx.me, t);
+    if (P.donActive <= 0 || !list.length) return false;
+    const answer = list.length === 1 ? `card:${list[0]}` : ctx.ask({
+      prompt: 'Carte qui reçoit 1 DON!! redressée :',
+      options: list.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })),
+      tag: 'donTarget',
+    });
+    const f = findField(ctx.s, Number(answer.split(':')[1]))!;
+    P.donActive--;
+    f.card.don++;
+    log(ctx.s, ctx.me, `donne 1 DON!! à ${def(f.card.num).name}`);
+    return true;
+  },
+});
+
+// Plusieurs coûts à payer ensemble (« ... et ... »)
+export const bothCosts = (...costs: Cost[]): Cost => ({
+  label: costs.map((c) => c.label).join(' et '),
+  can: (s, p, self) => costs.every((c) => c.can(s, p, self)),
+  pay: (ctx) => costs.every((c) => c.pay(ctx)),
 });
 
 // ---------- Une carte faite de briques ----------

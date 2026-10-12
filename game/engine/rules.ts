@@ -310,7 +310,9 @@ export function drawAndDiscard(ctx: EffectCtx, drawCount: number, discardCount: 
 
 // « Regardez X cartes du dessus de votre deck, révélez jusqu'à N cartes ... et ajoutez-les à votre main. Puis, placez
 // les cartes restantes au-dessous de votre deck » (l'ordre de celles du dessous est gardé)
-export function lookTopPick(ctx: EffectCtx, count: number, max: number, filter: (num: string) => boolean, what: string): Card[] {
+// rest : où vont les cartes non prises (« placez les cartes restantes au-dessous de votre deck » ou « ... dans votre
+// Défausse »)
+export function lookTopPick(ctx: EffectCtx, count: number, max: number, filter: (num: string) => boolean, what: string, rest: 'bottom' | 'trash' = 'bottom'): Card[] {
   const { s } = ctx;
   const P = s.players[ctx.me];
   const looked = P.deck.splice(0, count);
@@ -330,10 +332,14 @@ export function lookTopPick(ctx: EffectCtx, count: number, max: number, filter: 
     picked.push(card);
   }
   P.hand.push(...picked);
-  P.deck.push(...looked);
   reveal(s, picked.map((c) => c.uid), ctx.opp);
-  reveal(s, looked.map((c) => c.uid), ctx.me);
-  log(s, ctx.me, `regarde ${count} cartes du dessus de son deck${picked.length ? ` et ajoute ${picked.map((c) => def(c.num).name).join(', ')} à sa main` : ''}`);
+  if (rest === 'trash') P.trash.push(...looked);
+  else {
+    P.deck.push(...looked);
+    reveal(s, looked.map((c) => c.uid), ctx.me);
+  }
+  const trashed = rest === 'trash' && looked.length ? `, et place ${looked.map((c) => def(c.num).name).join(', ')} dans sa Défausse` : '';
+  log(s, ctx.me, `regarde ${count} cartes du dessus de son deck${picked.length ? ` et ajoute ${picked.map((c) => def(c.num).name).join(', ')} à sa main` : ''}${trashed}`);
   return picked;
 }
 
@@ -562,7 +568,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
         const self = findField(s, Number(answer.split(':')[1]))!.card;
         const r = def(self.num).replaceRemoval!;
         if (r.oncePerTurn) self.usedOpt.push('replace');
-        r.apply(s, owner, self, f.card);
+        r.apply(s, owner, self, f.card, ctx);
         return false;
       }
     }

@@ -62,6 +62,20 @@ export const DECKS: Record<string, DeckList> = {
     leader: 'OP10-099',
     cards: { 'ST36-002': 2, 'ST36-003': 2, 'ST36-005': 2, 'ST36-001': 4, 'ST36-004': 4, 'OP10-101': 4, 'OP10-103': 4, 'OP10-109': 4, 'OP10-111': 4, 'OP10-114': 4, 'OP12-113': 4, 'OP13-116': 4, 'P-085': 4, 'P-088': 4 },
   },
+  // Méta d'octobre 2026, variante « Équipage de Chapeau de paille / Erbaf » : 1re place d'un tournoi qualificatif en
+  // boutique (Asie, format Standard), 30 septembre 2026 ; liste validée par l'utilisateur le 12 octobre 2026.
+  // https://opmetagame.com/tournaments/oo-gumgum-cs-store-qualifier-2026-09-30/
+  // Une liste publiée ne change plus : une nouvelle version portera un autre identifiant.
+  'META-SABO-2026-10': {
+    id: 'META-SABO-2026-10',
+    name: 'Sabo (méta, octobre 2026)',
+    series: 'META',
+    leader: 'OP13-004',
+    cards: {
+      'OP01-016': 3, 'OP04-016': 2, 'OP13-007': 3, 'OP15-088': 4, 'OP17-080': 4, 'OP17-082': 4, 'OP17-083': 2, 'OP17-084': 3,
+      'OP17-086': 3, 'OP17-087': 4, 'OP17-089': 4, 'OP17-093': 3, 'OP17-095': 4, 'OP17-119': 4, 'ST01-011': 3,
+    },
+  },
 };
 
 export function deckSize(deck: DeckList) {

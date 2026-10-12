@@ -294,7 +294,8 @@ export interface CardBehavior {
     onlyKo: boolean;  // false : aussi quand le Personnage quitte le terrain autrement (renvoyé en main, sous le deck...)
     label: (s: GameState, self: FieldCard, victim: FieldCard) => string;
     condition: (s: GameState, owner: PlayerId, self: FieldCard, victim: FieldCard) => boolean;
-    apply: (s: GameState, owner: PlayerId, self: FieldCard, victim: FieldCard) => void;
+    // ctx : l'effet adverse en cours (questions au propriétaire avec ctx.ask({ player: owner, ... }))
+    apply: (s: GameState, owner: PlayerId, self: FieldCard, victim: FieldCard, ctx: EffectCtx) => void;
   };
 }
 

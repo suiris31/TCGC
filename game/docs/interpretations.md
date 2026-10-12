@@ -40,6 +40,24 @@ questions-réponses Bandai, tournois).
     faire de la place, comme quand on joue une carte de sa main.
 11. **Premier tour** : aucun des deux joueurs ne peut attaquer pendant son propre premier tour (règle 6-5-6-1).
 
+## Sabo du méta (octobre 2026), choix à valider
+
+12. **« S'il y a un Personnage ayant un coût de 12 ou plus »** (Usopp, Sanji, Jinbe, Chopper, Robin, Luffy, Zoro de
+    l'extension OP-17) : n'importe quel Personnage **en jeu, des deux côtés** (le texte ne dit pas « vous avez »). Le
+    coût compté est le coût actuel : Haguar D. Sauro et Loki (+12) en font partie, Arrimage pirates 6 (5 + 6 = 11)
+    non.
+13. **« Ce Personnage gagne +6 / +12 de coût »** (Arrimage pirates 6, Haguar D. Sauro, Loki) : seulement en jeu ; le
+    coût pour les jouer depuis la main reste celui imprimé (comme Morley et Sabo P-105 dans ST-35).
+14. **Loki, [Jouée]** : « mettez KO des Personnages adverses ayant un coût total combiné de 4 ou moins ». Le texte ne dit
+    pas « jusqu'à » : le joueur choisit les Personnages **un par un, sans pouvoir s'arrêter** tant qu'un Personnage tient
+    dans ce qui reste du total ; ils sont ensuite mis KO ensemble. Coût actuel (avec les modifications).
+15. **Roronoa Zoro (OP17-095)** : le remplacement marche pour **chacun** de ses Personnages, lui compris, sans limite
+    par tour, pour toute sortie du terrain due à un effet adverse (KO, renvoi en main, sous le deck...) ; il faut au
+    moins 3 cartes dans la Défausse. Le joueur choisit les 3 cartes et leur ordre sous le deck.
+16. **Brook (ST01-011)** : « jusqu'à 2 DON!! épuisées » : on en donne autant que possible (2, ou 1 s'il n'y en a qu'une).
+17. **Ace, Sabo et Luffy (OP13-007)** : la DON!! redressée peut aussi être donnée à la carte elle-même (elle revient
+    alors épuisée dans la zone de coût quand la carte part dans la Défausse) ; le coût n'est payé qu'en entier.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

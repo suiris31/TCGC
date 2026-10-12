@@ -5,6 +5,7 @@
 import { DECKS } from '../decks.ts';
 import { leadingKeywords, onlyGenericEffects } from '../keywords.ts';
 import type { CardBehavior, CardData, CardDef } from '../types.ts';
+import { META_SABO } from './meta-sabo.ts';
 import { ST31 } from './st31.ts';
 import { ST32 } from './st32.ts';
 import { ST33 } from './st33.ts';
@@ -12,7 +13,8 @@ import { ST34 } from './st34.ts';
 import { ST35 } from './st35.ts';
 import { ST36 } from './st36.ts';
 
-const BEHAVIORS: Record<string, CardBehavior> = { ...ST31, ...ST32, ...ST33, ...ST34, ...ST35, ...ST36 };
+// Un fichier par deck : celui où ses cartes ont été codées (une carte reprise dans un autre deck n'est codée qu'une fois)
+const BEHAVIORS: Record<string, CardBehavior> = { ...ST31, ...ST32, ...ST33, ...ST34, ...ST35, ...ST36, ...META_SABO };
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir
 // view.ts). L'interface peut la lire sans erreur ; elle l'affiche de dos.
