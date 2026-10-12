@@ -261,6 +261,9 @@ export interface CardBehavior {
   selfCost?: (s: GameState, owner: PlayerId, card: FieldCard) => number;
   // valeur de Contre de la carte en main quand elle dépend de la partie (Rocks D. Xebec OP17-118) ; sinon CardData.counter
   handCounter?: (s: GameState, owner: PlayerId) => number;
+  // mot-clé donné en permanence par cette carte (sur le terrain) à une carte du même joueur, elle comprise (Holy :
+  // [Double attaque] à tous les [Om])
+  keywordAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard, k: Keyword) => boolean;
   // « l'adversaire ne peut attaquer aucune autre carte que [ce Personnage] » tant que la condition est vraie (Captain John)
   taunt?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
   // bonus de puissance donné par cette carte (sur le terrain) à une carte du même joueur, elle comprise

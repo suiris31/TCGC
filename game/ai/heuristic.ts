@@ -115,6 +115,8 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
   // Captain John et Miss Buckingham Stussy (Xebec du méta) : en fin de tour, épuisés pendant le tour adverse
   'OP17-044': (s, p) => (s.players[p].deck.length > 1 ? 'end' : null),
   'OP17-054': (s, p) => (s.players[p].donActive >= 3 && s.players[other(p)].chars.some((c) => !c.rested) ? 'end' : null),
+  // Leader Ener : remettre ses DON!! en jeu avant de jouer ses cartes
+  'OP15-058': (s, p) => (s.players[p].donDeck > 0 || (s.players[p].donRested > 0 && s.players[p].chars.length) ? 'early' : null),
   'OP10-114': (s, p, card) => {
     const others = attackers(s, p).filter((a) => a.uid !== card.uid);
     const opens = oppCharsWhere(s, p, (c) => !c.rested && fieldCost(s, c.uid) <= 4
@@ -212,6 +214,15 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
   'OP17-049': () => 1,
   'OP17-054': (s, p) => (oppCharsWhere(s, p, (c) => baseCost(c.num) <= 6).length ? 1 : 0),
   'OP17-118': () => 3,
+  // Ener du méta
+  'OP15-061': () => 1,
+  'OP15-066': () => 1,
+  'OP15-067': () => 1.5,
+  'OP12-071': () => 1,
+  'OP10-067': (s, p) => (s.players[p].trash.some((c) => def(c.num).category === 'EVENT' && def(c.num).colors.includes('Purple')) ? 2 : 0.5),
+  'OP15-118': () => 2,
+  'ST10-010': (s, p) => (s.players[other(p)].hand.length >= 7 ? 2 : 0),
+  'OP15-071': (s, p) => 1 + (s.players[p].chars.some((c) => def(c.num).names.includes('Ohm')) ? 1 : 0),
 };
 
 function playScore(s: GameState, p: PlayerId, num: string, st: Style = styleOf(s.players[p].deckId, p)) {
@@ -246,6 +257,15 @@ const EVENT_SCORE: Record<string, (s: GameState, p: PlayerId) => number | null> 
   'OP17-055': (s, p) => (fieldCards(s, p).some((c) => def(c.num).names.includes('Rocks.D.Xebec') && canAttack(s, p, c))
     && oppCharsWhere(s, p, (c) => !c.rested && hasBlocker(s, other(p), c)).length ? 2 : null),
   'OP17-056': (s, p) => (s.players[p].donActive >= 5 && oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 6 && fieldValue(s, c.uid) >= 6).length ? 3 : null),
+  // Ener du méta : les Événements se paient surtout en DON!! −1, que le Leader remet en jeu
+  'OP05-077': (s, p) => (enablesKo(s, p, 5000) ? 3 : null),
+  'OP09-077': (s, p) => (oppCharsWhere(s, p, (c) => power(s, c.uid) <= 6000 && fieldValue(s, c.uid) >= 4).length ? 3 : null),
+  'OP13-076': (s, p) => (s.players[p].donActive >= 5 && fieldCards(s, p).some((c) => c.don > 0) && oppCharsWhere(s, p, (c) => fieldValue(s, c.uid) >= 6).length ? 3 : null),
+  'OP15-075': (s, p) => (oppCharsWhere(s, p, (c) => power(s, c.uid) <= 3000).length ? 2 : null),
+  'OP15-076': (s, p) => (s.players[p].hand.length <= 5 ? 1 : null),
+  'OP15-074': (s, p) => (s.players[p].hand.length <= 4 ? 1 : null),
+  'OP15-077': (s, p) => (oppCharsWhere(s, p, (c) => c.rested && power(s, c.uid) <= 6000).length ? 1.5 : null),
+  'OP15-078': (s, p) => (oppCharsWhere(s, p, (c) => !c.rested && power(s, c.uid) <= 5000 && hasBlocker(s, other(p), c)).length ? 1.5 : null),
 };
 
 // ---------- Plan d'attaque ----------
@@ -440,6 +460,11 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP17-055':
     case 'OP17-056': return def(findField(s, targetUid)?.card.num ?? num).types.some((t) => t.includes('Rocks Pirates')) ? 2000 : 0;
     case 'EB02-030': return 0;
+    case 'OP15-074':
+    case 'OP15-075':
+    case 'OP15-076': return def(findField(s, targetUid)?.card.num ?? num).names.includes('Enel') ? 2000 : 0;
+    case 'OP15-078': return 1000;
+    case 'OP13-076': return s.players[p].hand.length >= 2 ? 3000 : 0;
     case 'OP09-078': return leaderHasType(s, p, 'Straw Hat Crew') && donOnField(s, p) >= 2 && s.players[p].hand.length >= 2 ? 4000 : 0;
     default: return 2000;
   }
@@ -547,6 +572,8 @@ function chooseEffect(s: GameState, d: Decision): string {
     const dp = power(s, s.battle.target);
     return yesNo(s.active === p ? atk < dp && atk + bonus >= dp : atk >= dp && atk < dp + bonus);
   }
+  // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus
+  if (d.tag === 'may' && sourceNum === 'ST10-010') return yesNo(O.hand.length >= 7);
   // Kyo : défausser 2 cartes pour garder un Personnage seulement avec une main fournie
   if (d.tag === 'replace' && P.hand.length < 4 && d.options.some((o) => o.id.startsWith('replace:') && findField(s, uidOf(o))?.card.num === 'OP17-045')) {
     const other = d.options.find((o) => o.id.startsWith('replace:') && findField(s, uidOf(o))?.card.num !== 'OP17-045');
@@ -597,6 +624,14 @@ function chooseEffect(s: GameState, d: Decision): string {
       // les cartes adverses (Gloriosa peut aussi viser les siennes)
       const opp = byValue(true).filter((o) => findField(s, uidOf(o))?.player !== p);
       return (opp[0] ?? d.options.find((o) => o.id === 'none') ?? d.options[0]).id;
+    }
+    case 'scry': {
+      // Satori : garder au-dessus les bonnes cartes, puis la meilleure tout en haut
+      if (d.options.some((o) => o.id === 'top')) {
+        const num = d.cards?.[0]?.num;
+        return num && handValue(s, p, num) >= 3 ? 'top' : 'bottom';
+      }
+      return (byHand(true)[0] ?? d.options[0]).id;
     }
     case 'oppChoice':
       // Charlotte Linlin bleue : défausser 2 cartes quand la main est grande, sinon laisser l'adversaire piocher

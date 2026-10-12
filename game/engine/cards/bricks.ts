@@ -9,11 +9,12 @@
 // deck, comme à une vraie table.
 import {
   addDonFromDeck, addMod, addTopDeckToLife, allField, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
-  bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, fieldCost, findField, giveRestedDon, knownFirst,
+  bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon, knownFirst,
   lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect, removeFromField, restByEffect,
   returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
 import type { Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Keyword, Modifier, PlayerId } from '../types.ts';
+import { random } from '../rng.ts';
 import { CARDS } from './index.ts';
 
 // ---------- Effets, conditions, coûts ----------
@@ -299,14 +300,17 @@ export const restAll = (t: Targets): Effect => {
 };
 
 // « Tous les ... épuisés ne pourront pas être redressés lors de la prochaine phase de Recharge de votre adversaire »
-// (les cartes visées sont celles du moment : un Personnage épuisé ensuite sera redressé normalement)
-export const keepRested = (t: Targets, source: string): Effect => {
+// (les cartes visées sont celles du moment : un Personnage épuisé ensuite sera redressé normalement) ; n : « jusqu'à N »
+// au choix du joueur au lieu de « tous »
+export const keepRested = (t: Targets, source: string, n?: number): Effect => {
   const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => c.rested);
   return {
     run: (ctx) => {
       // tour de la prochaine phase de Recharge adverse : le prochain tour si c'est le sien, sinon celui d'après
       const turn = ctx.s.turn + (ctx.s.active === ctx.me ? 1 : 2);
-      for (const uid of list(ctx.s, ctx.me)) {
+      const chosen = n === undefined ? list(ctx.s, ctx.me)
+        : chooseUpToN(ctx, list(ctx.s, ctx.me), n, `${source} : ${t.label} qui ne pourra pas être redressé :`, 'oppLock');
+      for (const uid of chosen) {
         addMod(ctx.s, { uid, stat: 'noRefresh', amount: 0, until: turn, source });
         log(ctx.s, ctx.me, `${nameOf(ctx.s, uid)} ne pourra pas être redressé lors de la prochaine phase de Recharge adverse (${source})`);
       }
@@ -510,6 +514,77 @@ export const selfKeyword = (keyword: Keyword, source: string): Effect => effect(
   log(ctx.s, ctx.me, `${def(f.card.num).name} gagne [${KEYWORD_FR[keyword]}] pour le tour (${source})`);
 }, (s, _p, self) => Boolean(findField(s, self)));
 
+// « Ajoutez à votre main jusqu'à 1 carte ... de votre Défausse » (carte connue de l'adversaire)
+export const trashToHand = (spec: CharSpec & { category?: CardData['category'] }, source: string): Effect => {
+  const eligible = (c: Card) => cardMatches(c.num, spec);
+  return {
+    run: (ctx) => {
+      const P = ctx.s.players[ctx.me];
+      const options = uniqueByNum(P.trash.filter(eligible));
+      if (!options.length) return;
+      const answer = ctx.ask({
+        prompt: `${source} : ajouter à ta main jusqu’à 1 ${describeSpec('carte', spec)} de ta Défausse :`,
+        options: [...options.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucune' }],
+        tag: 'pick',
+      });
+      if (answer === 'none') return;
+      const [card] = P.trash.splice(P.trash.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
+      P.hand.push(card);
+      reveal(ctx.s, [card.uid], ctx.opp);
+      log(ctx.s, ctx.me, `ajoute ${def(card.num).name} de sa Défausse à sa main`);
+    },
+    useful: (s, p) => s.players[p].trash.some(eligible),
+  };
+};
+
+// « Regardez N cartes du dessus de votre deck, réorganisez-les dans l'ordre de votre choix et placez-les au-dessus ou
+// au-dessous de votre deck » : pour chaque carte, dessus ou dessous, puis l'ordre de chaque groupe (le joueur les connaît)
+export const lookTopArrange = (count: number, source: string): Effect => effect((ctx) => {
+  const P = ctx.s.players[ctx.me];
+  const looked = P.deck.splice(0, count);
+  const top: Card[] = [];
+  const bottom: Card[] = [];
+  for (const c of looked) {
+    const answer = ctx.ask({
+      prompt: `${source} : tu regardes ${looked.map((x) => def(x.num).name).join(', ')}. Où placer ${def(c.num).name} ?`,
+      options: [{ id: 'top', label: 'Au-dessus du deck' }, { id: 'bottom', label: 'Au-dessous du deck' }],
+      tag: 'scry',
+      cards: [{ uid: c.uid, num: c.num, owner: ctx.me }],
+    });
+    (answer === 'top' ? top : bottom).push(c);
+  }
+  // au-dessus : la première choisie sera la plus haute
+  const ordered: Card[] = [];
+  while (top.length >= 2) {
+    const answer = ctx.ask({
+      prompt: `${source} : carte à placer tout en haut de ton deck :`,
+      options: top.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })),
+      tag: 'scry',
+      cards: top.map((c) => ({ uid: c.uid, num: c.num, owner: ctx.me })),
+    });
+    ordered.push(...top.splice(top.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1));
+  }
+  P.deck.unshift(...ordered, ...top);
+  P.deck.push(...bottomOrder(ctx, bottom));
+  reveal(ctx.s, looked.map((c) => c.uid), ctx.me);
+  log(ctx.s, ctx.me, `regarde ${looked.length} cartes du dessus de son deck et en place ${looked.length - bottom.length} au-dessus, ${bottom.length} au-dessous`);
+}, (s, p) => s.players[p].deck.length > 0);
+
+// « Défaussez N cartes de la main adverse » : choisies au hasard (le joueur ne voit pas la main adverse)
+export const trashFromOppHand = (n: number, source: string): Effect => effect((ctx) => {
+  const O = ctx.s.players[ctx.opp];
+  const names: string[] = [];
+  for (let i = 0; i < n && O.hand.length; i++) {
+    const [card] = O.hand.splice(Math.floor(random(ctx.s) * O.hand.length), 1);
+    O.trash.push(card);
+    names.push(def(card.num).name);
+  }
+  if (!names.length) return;
+  O.discardedTurn = ctx.s.turn;
+  log(ctx.s, ctx.me, `défausse au hasard ${names.join(', ')} de la main adverse (${source})`);
+  emit(ctx.s, { type: 'discard', player: ctx.opp, count: names.length, by: ctx.me, sourceNum: ctx.num });
+}, (s, p) => s.players[other(p)].hand.length > 0);
+
 // « Ajoutez jusqu'à N cartes DON!! de votre deck DON!! et redressez-les / épuisez-les »
 export const addDon = (n: number, state: 'active' | 'rested'): Effect =>
   effect((ctx) => { addDonFromDeck(ctx.s, ctx.me, n, state === 'active'); }, (s, p) => s.players[p].donDeck > 0);
@@ -692,7 +767,8 @@ export interface CardSpec {
   onCounter?: Effect;   // Événement [Contre]
   onTrigger?: Effect;   // [Déclenchement]
   onOpponentAttack?: Effect;  // [Attaque adverse]
-  activateMain?: { label: string; once?: boolean; cost?: Cost; effect: Effect };
+  // condition : l'effet ne peut être activé que si elle est vraie (« À partir de votre deuxième tour »)
+  activateMain?: { label: string; once?: boolean; condition?: Condition; cost?: Cost; effect: Effect };
 }
 
 // Comportement d'une carte à partir de ses briques ; les aides à l'IA (effet utile ou non) en découlent
@@ -715,11 +791,11 @@ export function card(spec: CardSpec, extra: CardBehavior = {}): CardBehavior {
   if (spec.onTrigger) b.onTrigger = spec.onTrigger.run;
   if (spec.onOpponentAttack) b.onOpponentAttack = { run: spec.onOpponentAttack.run };
   if (spec.activateMain) {
-    const { label, once = false, cost, effect: e } = spec.activateMain;
+    const { label, once = false, condition, cost, effect: e } = spec.activateMain;
     b.activateMain = {
       oncePerTurn: once,
       label,
-      canActivate: (s, p, self) => cost?.can(s, p, self.uid) ?? true,
+      canActivate: (s, p, self) => (condition?.(s, p, self.uid) ?? true) && (cost?.can(s, p, self.uid) ?? true),
       useful: (s, p, self) => e.useful(s, p, self.uid),
       run: (ctx, self) => {
         if (once) self.usedOpt.push('main');

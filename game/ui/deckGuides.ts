@@ -233,4 +233,25 @@ export const GUIDES: Record<string, DeckGuide> = {
     strengths: ['Le Leader pioche presque à chaque attaque', 'Captain John protège tout le reste', 'Rocks D. Xebec arrive avec deux autres Personnages'],
     weaknesses: ['Presque aucun Personnage n’a de Contre', 'Beaucoup d’effets demandent de défausser', 'Plan subtil, plus difficile à jouer'],
   },
+  'META-ENEL-2026-10': {
+    styles: ['Agressif', 'DON!! −1', 'Violet'],
+    summary: 'Seulement 6 cartes DON!! : le deck les dépense en DON!! −1 ou −2 pour piocher et contrôler, et le Leader Ener les remet en jeu à chaque tour. Petits Personnages agressifs (Shura attaque dès son arrivée, Holy donne [Double attaque] aux Om) et Événements qui servent aussi de Contre.',
+    plan: [
+      'Tours 1 et 2 : Om, Satori et Shura (coût 1) piochent 1 carte contre DON!! −1 ; Shura attaque dès son arrivée. Charlotte Pudding cherche un Événement ou Sanji.',
+      'À partir de ton 2e tour : active le Leader au début du tour. Il remet en jeu les DON!! renvoyées (1 redressée, jusqu’à 4 épuisées) et en donne jusqu’à 4 épuisées à un Personnage : choisis-en un qui peut attaquer.',
+      'Holy (coût 3) : tes Om et elle ont [Double attaque] ; pendant le tour adverse, leur puissance de base passe à 6000.',
+      'Contrôle : Gamma Knife (−5000), Gum Gum Foudre (KO 6000 ou moins), El Thor (KO 3000 ou moins), Djambuwal (un Personnage épuisé ne se redresse pas), Mamaragan (épuiser un Personnage de 5000 ou moins).',
+      'Défense : Vally, El Thor et Kiten donnent +2000 à ton Leader Ener en Contre, sans coût ; Trépas divin +3000 contre une carte défaussée.',
+    ],
+    combos: [
+      { title: 'Les DON!! qui reviennent', cards: ['OP15-058', 'OP15-061', 'OP15-067', 'OP15-075'], text: 'Chaque DON!! −1 renvoie une DON!! au deck DON!! ; le Leader les remet en jeu au tour suivant. Avec 6 DON!! au plus sur ton terrain, les effets « 6 cartes DON!! ou moins » sont toujours actifs.' },
+      { title: 'Double attaque', cards: ['OP15-071', 'OP15-061'], text: 'Holy donne [Double attaque] à chacun de tes Om et à elle-même : avec les DON!! données par le Leader, chaque attaque qui touche le Leader adverse lui retire 2 Vies.' },
+      { title: 'Le grand Ener', cards: ['OP15-118'], text: 'Ener (Personnage) : 10000 et impossible à retirer du terrain par un effet adverse tant que tu as 6 DON!! ou moins ; en arrivant, DON!! −1 pour choisir 1 carte parmi les 5 du dessus de ton deck.' },
+      { title: 'Récupérer les Événements', cards: ['OP10-067', 'OP12-071'], text: 'Señor Pink reprend de ta Défausse un Événement violet de coût 5 ou moins et redresse 1 DON!! ; Charlotte Pudding cherche un Événement ou Sanji.' },
+      { title: 'Défense', cards: ['OP15-074', 'OP15-075', 'OP15-076', 'OP13-076', 'OP07-064'], text: 'Les Événements d’Ener ne coûtent rien en Contre (+2000 à ton Leader Ener). Sanji ([Bloqueur]) coûte 3 de moins quand tu as au moins 2 DON!! de moins que l’adversaire.' },
+    ],
+    mulligan: 'Garde deux ou trois Personnages de coût 1 (Om, Satori, Shura, Pudding), et Holy si possible. Repioche une main sans Personnage de coût 1.',
+    strengths: ['Pioche et contrôle à chaque DON!! −1', 'Attaques tôt (Shura) et [Double attaque] (Holy et les Om)', 'Événements de Contre gratuits'],
+    weaknesses: ['Seulement 6 DON!! : pas de gros Personnages', 'Petits Personnages faciles à abattre', 'Plan exigeant : l’ordre des actions compte beaucoup'],
+  },
 };

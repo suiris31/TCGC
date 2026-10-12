@@ -101,6 +101,8 @@ export const BASE_STYLES: Record<string, Partial<Style>> = {
   'META-ROBIN-2026-10': { counterLife: 1, counterMid: 2, counterSmall: 1.5 },
   // Rocks D. Xebec du méta (bleu) : [Bloqueur] nombreux (Wang Zhi, Kaido, Gloriosa), gardés pour défendre
   'META-XEBEC-2026-10': { keepBlockers: 1 },
+  // Ener du méta (violet) : petits Personnages agressifs ([Initiative], [Double attaque]), Événements en guise de Contre
+  'META-ENEL-2026-10': { leaderAggro: 3.5 },
 };
 
 const TUNED = tuned as Record<string, Partial<Style>>;

@@ -133,6 +133,26 @@ questions-réponses Bandai, tournois).
     pour 21 autres Événements) ; leur [Contre] donne +2000 à la carte attaquée seulement si son type inclut « Équipage de
     Rocks ».
 
+## Ener (Enel) du méta (octobre 2026), choix faits sans validation (à revoir si besoin)
+
+43. **Leader Ener** : « À partir de votre deuxième tour » = à partir de son propre 2e tour. Il ajoute ce que le deck DON!!
+    contient encore (les DON!! renvoyées par les coûts DON!! −X) ; « jusqu'à 4 DON!! épuisées à 1 de vos Personnages » :
+    autant que possible, jusqu'à 4 (comme Brook, choix 16), rien sans Personnage.
+44. **« 6 cartes DON!! ou moins sur votre terrain »** : redressées, épuisées et données. Avec le Leader Ener (6 DON!! en
+    tout), c'est toujours vrai.
+45. **Ener (Personnage)** : « ne peut pas quitter le terrain à cause d'un effet adverse » comprend la mise KO par un effet.
+46. **Holy** : [Double attaque] pour tous ses [Om] en jeu et elle-même ; « puissance de base 6000 » pendant le tour
+    adverse = le bonus qui les amène à 6000 depuis leur puissance imprimée ; plusieurs Holy ne s'additionnent pas.
+47. **Vally, El Thor, Kiten** : « Si votre Leader est [Ener] » ne porte que sur la première phrase, la suite (« Puis »)
+    a lieu dans tous les cas. Leur [Contre] « +2000 à un [Ener] » : la carte attaquée, si c'est un [Ener] (Leader ou
+    Personnage).
+48. **Trépas divin** : « si vous avez des cartes DON!! données » = au moins une DON!! donnée à son Leader ou à un de ses
+    Personnages.
+49. **Trafalgar Law (ST10-010)** : les 2 cartes sont défaussées **au hasard** de la main adverse (le joueur ne la voit
+    pas) ; « 7 cartes ou plus » se vérifie après avoir payé DON!! −1.
+50. **Satori** : chaque carte va au-dessus ou au-dessous, puis le joueur choisit l'ordre (la première choisie au-dessus
+    sera la plus haute).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

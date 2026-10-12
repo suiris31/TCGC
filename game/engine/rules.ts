@@ -223,6 +223,10 @@ export function hasKeyword(s: GameState, p: PlayerId, card: FieldCard, k: Keywor
   const d = def(card.num);
   const own = k === 'Blocker' ? d.blocker : k === 'Rush' ? d.rush : k === 'Rush: Character' ? d.rushChar : undefined;
   if ((d.keywords?.includes(k) || own?.(s, p, card)) && !isNegated(s, card.uid)) return true;
+  for (const src of allField(s, p)) {
+    const aura = def(src.num).keywordAura;
+    if (aura && !isNegated(s, src.uid) && aura(s, p, src, card, k)) return true;
+  }
   return s.mods.some((m) => m.uid === card.uid && (m.stat === 'keyword' ? m.keyword === k : k === 'Blocker' && m.stat === 'blocker'));
 }
 

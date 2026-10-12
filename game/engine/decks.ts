@@ -116,6 +116,20 @@ export const DECKS: Record<string, DeckList> = {
       'OP17-048': 4, 'OP17-049': 4, 'OP17-054': 4, 'OP17-055': 4, 'OP17-056': 4, 'OP17-118': 4,
     },
   },
+  // Méta d'octobre 2026 : 2e place d'un Regional (format Standard), 4 octobre 2026 ; choisie sans validation, à la
+  // demande de l'utilisateur (le plus gros tournoi parmi les listes d'octobre trouvées, proche de leur médiane).
+  // https://opmetagame.com/tournaments/oo-egman-organized-play-events-london-regionals-2026-10-04/
+  'META-ENEL-2026-10': {
+    id: 'META-ENEL-2026-10',
+    name: 'Ener (méta, octobre 2026)',
+    series: 'META',
+    leader: 'OP15-058',
+    cards: {
+      'OP05-077': 2, 'OP07-064': 2, 'OP09-077': 1, 'OP10-067': 3, 'OP12-071': 4, 'OP13-076': 1, 'OP15-061': 4, 'OP15-066': 2,
+      'OP15-067': 4, 'OP15-071': 4, 'OP15-074': 3, 'OP15-075': 4, 'OP15-076': 4, 'OP15-077': 4, 'OP15-078': 4, 'OP15-118': 1,
+      'ST10-010': 3,
+    },
+  },
 };
 
 export function deckSize(deck: DeckList) {
