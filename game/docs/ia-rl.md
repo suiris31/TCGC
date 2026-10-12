@@ -411,3 +411,4 @@ poids nuls pour les nouvelles colonnes, état d'Adam prolongé (`rl/opcg_rl/migr
 réelles, écart nul avec l'ancien modèle au départ ; export ONNX et navigateur vérifiés (écarts < 2·10⁻⁶). Le gain
 une fois combiné à PPO n'est pas encore mesuré : c'est l'objet de la reprise de l'entraînement sur RTX 2070.
 
+État courant de l'entraînement, décisions et reprise : `rl/SUIVI.md`.
