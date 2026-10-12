@@ -11,9 +11,9 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
   simulateur (niveau « IA entraînée », ONNX dans le navigateur).
 - **Code** : branche `claude/awesome-hopper-nj0x4y` (commits depuis `553104f`). `main` a été avancé jusqu'à
   `4727d53` (mise en ligne). Seul `b56c2bd` (`evaluate.py`, sans effet sur le serveur) n'est pas encore sur `main`.
-- **En ligne** : modèle exporté au début du niveau 3 (~62 % contre l'heuristique « Débutant »).
+- **En ligne** : modèle u7713 (12 octobre 2026, niveau 5, commit `da638e7`), mis en ligne par l'utilisateur.
 - **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 5 (ligue) depuis u7650,
-  ~7 700 mises à jour, ~1,85 million de parties, 9 decks depuis u7713, vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
+  ~7 700 mises à jour, ~1,85 million de parties, 10 decks à la prochaine reprise (Xebec ajouté), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
 
 ## 2. Où en est l'IA (mesures)
 
@@ -32,6 +32,7 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 | **Niveau 4 validé (u7650)** | 65,6 % | contre u7200 : 61,7 % (59,4 % à u7600) | 1154 |
 | Niveau 5, ligue (u7700) | 63,3 % | contre les 4 dernières versions : 48–57 % | 1123 |
 | 9 decks, Robin jamais vu (u7713, 12 octobre 2026) | 57,5 % (7 776 parties ; 39,6 % en jouant Robin, 39,7 % Mihawk) | — | — |
+| 10 decks, Xebec jamais vu (u7713, même modèle) | 54,0 % (9 600 parties ; 31,2 % en jouant Xebec) | — | — |
 
 Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation** (fait à u7200).
 Le niveau 4 se valide à **58 % contre sa version de départ (u7200) et 60 % contre l'heuristique, deux évaluations de
@@ -116,10 +117,30 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    81 confrontations, vocabulaire toujours de 90 cartes). Nouvelles questions (`lookToLife`) rangées dans la famille
    `life`, « annulez les effets » non encodé ; encodage inchangé `a0664ced`.
 10. **Niveau 5 sans Monte-Carlo à l'entraînement** (12 octobre 2026, même règle que la décision 8, appliquée dans la
-   commande de reprise : à confirmer ou annuler par l'utilisateur). Le niveau 5 remet lui aussi `mc2` (5 %) parmi les
+   commande de reprise, gardée par l'utilisateur). Le niveau 5 remet lui aussi `mc2` (5 %) parmi les
    adversaires d'entraînement : 7,5 puis 3,3 parties/s (u7600–7713). Il n'est pas jugé par le Monte-Carlo : ses 5 %
    passent au self-play (self 0,4, ligue 0,4, heuristique 0,15, hasard 0,05).
-11. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
+11. **Quatrième deck du méta (Rocks D. Xebec) : mesuré, puis inclus** (12 octobre 2026, à la demande de
+   l'utilisateur). Même modèle u7713 que pour Robin : la reprise lancée après la mise en ligne du modèle n'a pas
+   démarré (aucune ligne dans `train.log`, aucun point de sauvegarde après 20 h 46). 960 parties par deck joué par le
+   modèle contre l'heuristique, comparées à l'heuristique jouant le même deck (2 000 parties par deck).
+
+   | Deck joué | Modèle | Heuristique | Écart |
+   |---|---|---|---|
+   | META-XEBEC-2026-10 (nouveau) | 31,2 % | 52,1 % | −21 |
+   | META-ROBIN-2026-10 (inclus, pas encore entraîné) | 37,0 % | 68,7 % | −32 |
+   | META-MIHAWK-2026-10 (inclus depuis u7383) | 43,6 % | 68,7 % | −25 |
+   | META-SABO-2026-10 | 86,0 % | 72,2 % | +14 |
+   | ST-31 / 32 / 33 / 34 / 35 / 36 | 58,4 / 61,8 / 56,8 / 30,6 / 68,1 / 66,1 % | 39,5 / 50,1 / 46,8 / 18,7 / 43,6 / 37,9 % | +10 à +28 (moyenne +18) |
+
+   Face à Xebec, le modèle garde son avance avec les 7 decks qu'il joue bien (~+15 points). Xebec est aussi le moins
+   bon des decks du méta pour l'heuristique (52 %) : son plan (Captain John qui attire les attaques, défausses pour
+   payer les effets, Personnages sans Contre) lui est difficile. **Xebec inclus dès la reprise** (10 decks,
+   évaluations sur 100 confrontations, vocabulaire toujours de 90 cartes). Nouvelles questions rangées dans les familles
+   existantes (`revealCost` → `discard`, `koGuard` → `replace`, `oppChoice` → `chooseOne`) ; « l'adversaire ne peut
+   attaquer que Captain John » et la valeur de Contre variable de Xebec ne sont pas encodées (le modèle les voit par les
+   options proposées) ; encodage inchangé `a0664ced`.
+12. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
    spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
 
@@ -152,14 +173,17 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- **Reprise avec 9 decks, niveau 5 (ligue) sans Monte-Carlo** (12 octobre 2026, depuis u7713, `main` à jour dans le
-  dossier de l'entraînement : Robin ajouté) : commande du § 4. Les évaluations portent sur 81 confrontations. Attendu :
-  retour vers ~12 parties/s. Le niveau 5 n'a pas de passage : c'est le dernier (Elo contre les anciennes versions).
-- À remesurer vers **u8300** comme au § 3.9 : Robin (39,6 % au départ) et Mihawk (39,7 % à u7713) joués par le modèle.
-- Decks suivants de la phase 4 (Xebec, puis Enel et Kaido) : à chaque deck, entraînement en pause, mesure
-  de généralisation (§ 3.6, 3.7 et 3.9), puis inclusion.
+- **Reprise avec 10 decks, niveau 5 (ligue) sans Monte-Carlo** (12 octobre 2026, depuis u7713, `main` à jour dans le
+  dossier de l'entraînement : Robin et Xebec ajoutés) : commande du § 4. La reprise précédente n'a pas démarré
+  (rien dans `train.log`) : vérifier que la ligne « === Entraînement « rtx2070-main » » apparaît, sinon garder le
+  message d'erreur de la console. Les évaluations portent sur 100 confrontations. Attendu : ~12 parties/s. Le niveau 5
+  n'a pas de passage : c'est le dernier (Elo contre les anciennes versions).
+- À remesurer vers **u8300** comme aux § 3.9 et 3.11 : Robin (37–40 % à u7713), Xebec (31,2 %) et Mihawk (43,6 %)
+  joués par le modèle.
+- Decks suivants de la phase 4 (Enel, puis Kaido) : à chaque deck, entraînement en pause, mesure de généralisation
+  (§ 3.6, 3.7, 3.9 et 3.11), puis inclusion.
 - Si l'IA ne progresse plus : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
-  autres pistes du § 3.11).
+  autres pistes du § 3.12).
 
 ## 6. Points ouverts et pièges connus
 
