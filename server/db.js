@@ -219,6 +219,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS game_matches_code ON game_matches(code);
   CREATE INDEX IF NOT EXISTS game_matches_host ON game_matches(host_id);
   CREATE INDEX IF NOT EXISTS game_matches_guest ON game_matches(guest_id);
+
+  -- Decks personnalisés (onglet Jouer, éditeur de decks) : un deck par ligne, liste des cartes en JSON
+  CREATE TABLE IF NOT EXISTS game_decks (
+    user_id    INTEGER NOT NULL,
+    id         TEXT NOT NULL,              -- "PERSO-k3x9..." (choisi par le navigateur)
+    name       TEXT NOT NULL,
+    leader     TEXT NOT NULL,              -- numéro du Leader
+    cards      TEXT NOT NULL,              -- {"OP13-008": 4, ...}
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, id)
+  );
 `);
 
 // Migrations des bases créées par une version précédente

@@ -117,13 +117,13 @@ resetStyles();
 // Style imposé à un joueur pour une partie d'essai (sinon : celui de son deck)
 export const playerStyle: [Style | null, Style | null] = [null, null];
 
-// Style d'un deck sans style appris : celui d'un deck du même Leader (le Sabo du méta joue comme celui de ST-35), sinon
-// le style par défaut
-export function styleOf(deckId: string, p: PlayerId): Style {
-  return playerStyle[p] ?? STYLES[deckId] ?? STYLES[sameLeaderDeck(deckId) ?? ''] ?? DEFAULT_STYLE;
+// Style d'un deck sans style appris : celui d'un deck du même Leader (le Sabo du méta joue comme celui de ST-35 ; un
+// deck personnalisé comme le deck préconstruit de son Leader), sinon le style par défaut
+export function styleOf(deckId: string, p: PlayerId, leader?: string): Style {
+  return playerStyle[p] ?? STYLES[deckId] ?? STYLES[sameLeaderDeck(deckId, leader) ?? ''] ?? DEFAULT_STYLE;
 }
 
-function sameLeaderDeck(deckId: string): string | undefined {
-  const leader = DECKS[deckId]?.leader;
+function sameLeaderDeck(deckId: string, leaderNum?: string): string | undefined {
+  const leader = leaderNum ?? DECKS[deckId]?.leader;
   return leader ? Object.values(DECKS).find((d) => d.id !== deckId && d.leader === leader && STYLES[d.id])?.id : undefined;
 }

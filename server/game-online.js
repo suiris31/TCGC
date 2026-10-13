@@ -18,6 +18,7 @@ import {
 import { rateLimit } from './auth.js';
 import { config } from './config.js';
 import { db } from './db.js';
+import { deckOf } from './game-decks.js';
 import { gameCards } from './game-cards.js';
 import { saveRecord } from './game-records.js';
 import { ENGINE } from './version.js';
@@ -65,7 +66,11 @@ function requireCards() {
   if (!gameCards()) throw new MatchError('cards_loading', 'Informations des cartes en cours de téléchargement, réessaie dans un instant', 503);
 }
 
-const player = (user, deck) => ({ userId: user.id, name: user.pseudo, deck: checkDeck(deck) });
+// Deck personnalisé : relu dans la base (seulement ceux du compte) ; sa liste reste côté serveur
+function player(user, deck) {
+  const list = typeof deck === 'string' && deck.startsWith('PERSO-') ? deckOf(user.id, deck) ?? undefined : undefined;
+  return { userId: user.id, name: user.pseudo, deck: checkDeck(deck, list), ...(list ? { list } : {}) };
+}
 
 // ---------- Temps réel ----------
 
@@ -151,7 +156,8 @@ export function onlineRoutes(app, { log }) {
     res.json(rows.map((r) => load(r.id)).filter((m) => m && !(m.status === 'waiting' && m.expiresAt < now)).map((m) => {
       const seat = seatOf(m, req.user.id);
       const opp = seat === 0 ? m.guest : m.host;
-      return { id: m.id, status: m.status, code: seat === 0 ? m.code : null, opponent: opp?.name ?? null, deck: (seat === 0 ? m.host : m.guest).deck };
+      const me = seat === 0 ? m.host : m.guest;
+      return { id: m.id, status: m.status, code: seat === 0 ? m.code : null, opponent: opp?.name ?? null, deck: me.deck, deckName: me.list?.name ?? null };
     }));
   });
 

@@ -1,7 +1,7 @@
 // IA simple : décisions de bon sens, sans simulation. Elle n'utilise que ce qu'un joueur voit : sa main, le terrain,
 // les cartes de Vie face visible, la carte du deck adverse qu'il a regardée, et le nombre de cartes de l'adversaire
 // (jamais sa main ni ses cartes cachées). Elle joue aussi la suite des parties simulées par l'IA Monte-Carlo.
-import { DECKS } from '../engine/decks.ts';
+import { publicList } from '../engine/decks.ts';
 import {
   attackAbility, attackTargets, baseCost, canBeRested, counterValue, def, donOnField, fieldCards, fieldCost, findField, handCost, hasBlocker,
   hasType, leaderHasType, other, power, restedCards, triggerEffect,
@@ -45,6 +45,8 @@ function handValue(s: GameState, p: PlayerId, num: string) {
 }
 
 const canAttack = (s: GameState, p: PlayerId, card: FieldCard) => s.active === p && attackAbility(s, p, card).can;
+// Style de jeu du joueur : celui de son deck, ou d'un deck du même Leader (deck personnalisé)
+const styleFor = (s: GameState, p: PlayerId) => styleOf(s.players[p].deckId, p, s.players[p].leader.num);
 const attackers = (s: GameState, p: PlayerId) => fieldCards(s, p).filter((f) => canAttack(s, p, f));
 const oppCharsWhere = (s: GameState, p: PlayerId, pred: (c: FieldCard) => boolean) => s.players[other(p)].chars.filter(pred);
 
@@ -71,10 +73,19 @@ function likelyTopCost(s: GameState, p: PlayerId): number {
   const O = s.players[other(p)];
   if (knowsTop(s, p)) return def(O.deck[0].num).cost ?? 0;
   const counts = new Map<number, number>();
-  // liste du deck adverse : celle notée dans la partie, sinon celle du registre (inconnue : aucune estimation)
-  for (const [num, n] of Object.entries((O.list ?? DECKS[O.deckId])?.cards ?? {})) {
-    const cost = def(num).cost;
-    if (cost !== null) counts.set(cost, (counts.get(cost) ?? 0) + n);
+  // liste du deck adverse si elle est publique (deck du registre) ; deck personnalisé : sa liste est secrète, on
+  // l'estime d'après les cartes déjà vues
+  const list = publicList(O.deckId);
+  if (list) {
+    for (const [num, n] of Object.entries(list.cards)) {
+      const cost = def(num).cost;
+      if (cost !== null) counts.set(cost, (counts.get(cost) ?? 0) + n);
+    }
+  } else {
+    for (const c of [...O.chars, ...(O.stage ? [O.stage] : []), ...O.trash, ...O.life.filter((x) => x.faceUp)]) {
+      const cost = def(c.num).cost;
+      if (cost !== null) counts.set(cost, (counts.get(cost) ?? 0) + 4);
+    }
   }
   for (const c of [...O.chars, ...(O.stage ? [O.stage] : []), ...O.trash, ...O.life.filter((x) => x.faceUp)]) {
     const cost = def(c.num).cost;
@@ -242,7 +253,7 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
   'OP17-073': (s, p) => (s.players[p].hand.length >= 3 ? 1 : 0),
 };
 
-function playScore(s: GameState, p: PlayerId, num: string, st: Style = styleOf(s.players[p].deckId, p)) {
+function playScore(s: GameState, p: PlayerId, num: string, st: Style = styleFor(s, p)) {
   const d = def(num);
   const score = (d.cost ?? 0) + st.playPower * ((d.power ?? 0) / 2000) + (hasBlocker(s, p, fakeField(s, num)) ? 0.5 : 0);
   return score + st.playEffect * (PLAY_BONUS[num] ? PLAY_BONUS[num](s, p) : d.onPlay ? 0.5 : 0);
@@ -386,7 +397,7 @@ function chooseMain(s: GameState, d: Decision): string {
   const p = d.player;
   const P = s.players[p];
   const O = s.players[other(p)];
-  const st = styleOf(P.deckId, p);
+  const st = styleFor(s, p);
   const byPrefix = (prefix: string) => d.options.filter((o) => o.id.startsWith(prefix));
   const ability = (timing: Timing) => byPrefix('act:').find((o) => abilityTiming(s, p, o.uid!) === timing);
   const key = keyReserve(s, p, st);
@@ -453,7 +464,7 @@ function chooseMain(s: GameState, d: Decision): string {
 
 function chooseBlocker(s: GameState, d: Decision): string {
   const b = s.battle!;
-  const st = styleOf(s.players[d.player].deckId, d.player);
+  const st = styleFor(s, d.player);
   const atk = power(s, b.attacker);
   const target = findField(s, b.target)!;
   const blocks = d.options.filter((o) => o.id.startsWith('block:')).sort((x, y) => fieldValue(s, uidOf(x)) - fieldValue(s, uidOf(y)));
@@ -504,7 +515,7 @@ function chooseCounter(s: GameState, d: Decision): string {
   const P = s.players[d.player];
   // « Quand les rêves de ses camarades ont été bafoués !! » : sauver un Personnage précieux en défaussant une carte
   const guard = d.options.find((o) => o.id.startsWith('cevent:') && cardNum(s, uidOf(o)) === 'EB02-030' && !uselessReason(s, d, o));
-  if (guard && !target.leader && fieldValue(s, b.target) >= styleOf(P.deckId, d.player).protectValue) return guard.id;
+  if (guard && !target.leader && fieldValue(s, b.target) >= styleFor(s, d.player).protectValue) return guard.id;
   const values = d.options
     .filter((o) => o.id !== 'pass' && !uselessReason(s, d, o))
     .map((o) => {
@@ -518,7 +529,7 @@ function chooseCounter(s: GameState, d: Decision): string {
   if (total < need) return 'pass';
   // une seule carte suffit, et c'est un Événement payé avec des DON!! inutilisées
   const cheapEvent = values.some((x) => x.event && x.value >= need);
-  const st = styleOf(P.deckId, d.player);
+  const st = styleFor(s, d.player);
   const life = P.life.length;
   const value = fieldValue(s, b.target);
   const small = st.counterSmall * 1000;
@@ -646,7 +657,7 @@ function chooseEffect(s: GameState, d: Decision): string {
     case 'oppRest': {
       // Épuiser d'abord les [Bloqueur], puis ce que nos attaquants peuvent battre
       const best = Math.max(0, ...attackers(s, p).map((a) => power(s, a.uid)));
-      const restBlocker = styleOf(P.deckId, p).restBlocker;
+      const restBlocker = styleFor(s, p).restBlocker;
       const score = (o: Option) => {
         const f = findField(s, uidOf(o))!;
         return (hasBlocker(s, f.player, f.card) ? restBlocker : 0) + (power(s, f.card.uid) <= best ? fieldValue(s, f.card.uid) : 0.1);
@@ -773,7 +784,7 @@ export function heuristicChooser(s: GameState, d: Decision): string {
   switch (d.kind) {
     case 'mulligan': {
       const cheap = s.players[d.player].hand.filter((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4).length;
-      return cheap >= styleOf(s.players[d.player].deckId, d.player).mulliganCheap ? 'keep' : 'mulligan';
+      return cheap >= styleFor(s, d.player).mulliganCheap ? 'keep' : 'mulligan';
     }
     case 'main':
       return chooseMain(s, d);

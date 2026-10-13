@@ -8,7 +8,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import sharp from 'sharp';
 import { fetchCatalog } from '../game/data/catalog.ts';
-import { CARDS, loadCardData, missingCards, neededCards } from '../game/engine/cards/index.ts';
+import { CARDS, loadCardData, missingCards, neededCards, playableCards } from '../game/engine/cards/index.ts';
 import { config } from './config.js';
 import { ENGINE } from './version.js';
 
@@ -40,7 +40,7 @@ function use(catalog) {
   loadCardData(catalog.cards);
   const needed = neededCards();
   ready = {
-    ...packed({ engine: ENGINE, cards: Object.fromEntries(needed.map((n) => [n, catalog.cards[n]])) }),
+    ...packed({ engine: ENGINE, cards: Object.fromEntries(playableCards().map((n) => [n, catalog.cards[n]])) }),
     legacy: packed(Object.fromEntries(needed.map((n) => [n, legacyCard(CARDS[n])]))),
     fetchedAt: Date.parse(catalog.fetchedAt) || 0,
   };

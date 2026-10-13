@@ -182,6 +182,25 @@ export const DECKS: Record<string, DeckList> = {
   },
 };
 
-export function deckSize(deck: DeckList) {
+export function deckSize(deck: Pick<DeckList, 'cards'>) {
   return Object.values(deck.cards).reduce((sum, n) => sum + n, 0);
 }
+
+// Decks personnalisés (phase 5) : construits par un joueur, gardés par le serveur pour son compte. Leur identifiant
+// commence par PERSO- ; leur liste est secrète pour l'adversaire (en ligne comme pour l'IA, qui la devine).
+export const CUSTOM_PREFIX = 'PERSO-';
+export const CUSTOM_SERIES = 'PERSO';
+export const isCustomDeck = (id: string) => id.startsWith(CUSTOM_PREFIX);
+
+// Deck d'une partie : l'identifiant d'un deck du registre, ou la liste complète (deck personnalisé)
+export type DeckSource = string | DeckList;
+
+export function resolveDeck(deck: DeckSource): DeckList {
+  if (typeof deck !== 'string') return deck;
+  const found = DECKS[deck];
+  if (!found) throw new Error(`Deck inconnu : ${deck}`);
+  return found;
+}
+
+// Liste connue de tous (deck du registre : préconstruit ou du méta) ; null pour un deck personnalisé
+export const publicList = (deckId: string): DeckList | null => DECKS[deckId] ?? null;

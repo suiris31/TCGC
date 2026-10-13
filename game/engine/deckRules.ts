@@ -3,7 +3,7 @@
 // 2-3-5), 4 exemplaires au plus d'un même numéro. Des effets peuvent changer ces règles (5-1-2-4) : carte autorisée en
 // autant d'exemplaires qu'on veut, restrictions d'un Leader (Rayleigh, Imu...).
 // Les formats (Standard, Extra) et les cartes bannies sont vérifiés à part.
-import { CARDS } from './cards/index.ts';
+import { CARDS, cardStatus } from './cards/index.ts';
 import type { CardData } from './types.ts';
 
 export const DECK_SIZE = 50;
@@ -35,4 +35,45 @@ export function deckErrors(leader: string, cards: Record<string, number>): strin
     if (forbidden) errors.push(`${label} : ${forbidden}`);
   }
   return errors;
+}
+
+// Pour jouer un deck dans l'appli : les règles de construction, et des cartes dont l'effet est géré par le moteur
+export function playableErrors(leader: string, cards: Record<string, number>): string[] {
+  const errors = deckErrors(leader, cards);
+  for (const num of [leader, ...Object.keys(cards)]) {
+    if (CARDS[num] && cardStatus(num) === 'todo') errors.push(`${CARDS[num].name} (${num}) : effet pas encore géré par le jeu`);
+  }
+  return errors;
+}
+
+// ---------- Formats officiels ----------
+
+// Standard (depuis le 1er avril 2026) : blocs 2 à 5. En avril 2027, le bloc 2 sortira à son tour.
+export const STANDARD_BLOCKS = ['2', '3', '4', '5'];
+
+// Un numéro est permis en Standard si au moins une de ses impressions est d'un bloc permis ; une impression au bloc
+// inconnu (réédition récente mal renseignée) compte comme permise
+export const standardLegal = (d: Pick<CardData, 'blocks'>) => !d.blocks.length || d.blocks.some((b) => STANDARD_BLOCKS.includes(b) || !/^\d+$/.test(b));
+
+// Cartes bannies ou limitées (table regulations de TCGC : liste officielle française)
+export type Regulations = Record<string, 'banned' | 'restricted' | 'pair'>;
+
+// Ce qui empêche de jouer le deck en tournoi officiel : cartes bannies, limitées au-delà d'1 exemplaire (Standard et
+// Extra). Avertissements seulement : les cartes dont aucune impression connue n'est du Standard (le catalogue ne connaît
+// pas toutes les rééditions : Brook ST01-011, rééditée depuis, y figure au bloc 1) et les paires bannies (la liste
+// officielle ne dit pas ici quelles cartes vont ensemble).
+export function formatIssues(leader: string, cards: Record<string, number>, regs: Regulations = {}) {
+  const errors: string[] = [];
+  const standard: string[] = [];
+  const pairs: string[] = [];
+  for (const [num, n] of [[leader, 1] as const, ...Object.entries(cards)]) {
+    const d = CARDS[num];
+    if (!d) continue;
+    const label = `${d.name} (${num})`;
+    if (!standardLegal(d)) standard.push(`${label} : bloc ${d.blocks.join(', ')} seulement d’après le catalogue`);
+    if (regs[num] === 'banned') errors.push(`${label} : bannie`);
+    else if (regs[num] === 'restricted' && n > 1) errors.push(`${label} : limitée à 1 exemplaire`);
+    else if (regs[num] === 'pair') pairs.push(`${label} : fait partie d’une paire bannie`);
+  }
+  return { errors, standard, pairs };
 }

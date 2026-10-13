@@ -11,6 +11,7 @@ import { config } from './config.js';
 import { getMeta } from './db.js';
 import { addDeck, deckContents, starterDecks } from './decks.js';
 import { enLargeImage, ensureGameCards, gameCards } from './game-cards.js';
+import { deckRoutes } from './game-decks.js';
 import { expireRooms, forgetUser, onlineRoutes } from './game-online.js';
 import { readRecordBody, RECORD_ID, recordBlob, recordSummariesJson, saveRecord } from './game-records.js';
 import { mailConfigured } from './mail.js';
@@ -466,6 +467,9 @@ app.put('/api/game/records/:id', express.raw({ type: ['application/json', 'appli
   saveRecord(req.user.id, req.params.id, rec, text);
   res.json({ ok: true });
 });
+
+// Decks personnalisés (éditeur de decks)
+deckRoutes(app);
 
 // Parties en ligne entre deux joueurs (salles, arbitrage, temps réel)
 onlineRoutes(app, { log });

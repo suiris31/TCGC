@@ -4,7 +4,8 @@
 // réel, ce qui permet de tout tester ici.
 import { buildRecord, type GameRecord } from '../coach/archive.ts';
 import type { Move } from '../coach/review.ts';
-import { DECKS } from '../engine/decks.ts';
+import { playableErrors } from '../engine/deckRules.ts';
+import { DECKS, isCustomDeck, type DeckList } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
@@ -15,7 +16,8 @@ export type MatchStatus = 'waiting' | 'playing' | 'over' | 'cancelled' | 'expire
 export interface MatchPlayer {
   userId: number;
   name: string;
-  deck: string;
+  deck: string;      // identifiant : deck du registre, ou PERSO-... (deck personnalisé du joueur)
+  list?: DeckList;   // deck personnalisé : sa liste, lue dans la base par le serveur ; jamais envoyée à l'adversaire
 }
 
 export interface Match {
@@ -40,8 +42,8 @@ export interface MatchView {
   status: MatchStatus;
   code: string | null;        // seulement pour l'hôte d'une salle en attente
   seat: Seat;
-  you: { name: string; deck: string };
-  opponent: { name: string; deck: string } | null;
+  you: { name: string; deck: string; deckName: string };
+  opponent: { name: string; deck: string; deckName: string } | null;
   seq: number;                // numéro du coup attendu (à renvoyer avec le choix)
   state: GameState | null;    // vue expurgée
   expiresAt: string | null;
@@ -63,13 +65,19 @@ export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
 export const WAIT_MINUTES = 15;
 
-export function checkDeck(deck: unknown): string {
-  if (typeof deck !== 'string' || !DECKS[deck]) throw new MatchError('invalid_deck', 'Deck inconnu');
-  return deck;
+export function checkDeck(deck: unknown, list?: DeckList): string {
+  if (typeof deck === 'string' && DECKS[deck]) return deck;
+  if (typeof deck === 'string' && isCustomDeck(deck) && list?.id === deck) {
+    if (playableErrors(list.leader, list.cards).length) throw new MatchError('invalid_deck', 'Ce deck n’est pas jouable : ouvre-le dans l’éditeur pour voir pourquoi');
+    return deck;
+  }
+  throw new MatchError('invalid_deck', 'Deck inconnu');
 }
 
+const deckName = (p: MatchPlayer) => p.list?.name ?? DECKS[p.deck]?.name ?? p.deck;
+
 export function createMatch(id: string, code: string, host: MatchPlayer, now: Date, engine: string): Match {
-  checkDeck(host.deck);
+  checkDeck(host.deck, host.list);
   return {
     id, code, host, guest: null, status: 'waiting', engine, initial: null, state: null,
     createdAt: now.toISOString(), updatedAt: now.toISOString(), expiresAt: new Date(now.getTime() + WAIT_MINUTES * 60_000).toISOString(),
@@ -85,14 +93,14 @@ export function seatOf(m: Match, userId: number): Seat | null {
 
 // L'invité rejoint la salle : la partie commence (qui joue en premier est tiré au sort par le moteur)
 export function joinMatch(m: Match, guest: MatchPlayer, now: Date, seed: number) {
-  checkDeck(guest.deck);
+  checkDeck(guest.deck, guest.list);
   if (m.status !== 'waiting' || (m.expiresAt && m.expiresAt < now.toISOString())) throw new MatchError('room_closed', 'Cette salle n’est plus ouverte', 410);
   if (guest.userId === m.host.userId) throw new MatchError('own_room', 'C’est ta propre salle : envoie le code à ton ami');
   m.guest = guest;
   m.code = null;
   m.expiresAt = null;
   m.status = 'playing';
-  m.initial = newGame({ decks: [m.host.deck, guest.deck], names: [m.host.name, guest.name], seed, first: 'random' });
+  m.initial = newGame({ decks: [m.host.list ?? m.host.deck, guest.list ?? guest.deck], names: [m.host.name, guest.name], seed, first: 'random' });
   m.state = m.initial;
   m.startedAt = m.updatedAt = now.toISOString();
 }
@@ -136,8 +144,8 @@ export function viewOf(m: Match, seat: Seat): MatchView {
     status: m.status,
     code: seat === 0 && m.status === 'waiting' ? m.code : null,
     seat,
-    you: { name: me.name, deck: me.deck },
-    opponent: opp ? { name: opp.name, deck: opp.deck } : null,
+    you: { name: me.name, deck: me.deck, deckName: deckName(me) },
+    opponent: opp ? { name: opp.name, deck: opp.deck, deckName: deckName(opp) } : null,
     seq: m.state?.history.length ?? 0,
     state: m.state ? viewFor(m.state, seat) : null,
     expiresAt: m.expiresAt,
@@ -166,7 +174,7 @@ export function recordFor(m: Match, seat: Seat, now: Date): GameRecord & { mode:
     startedAt: m.startedAt,
     now: now.toISOString(),
     endedAt: m.endedAt ?? undefined,
-    config: { myDeck: me.deck, aiDeck: opp.deck, level: 0, first: 'random' },
+    config: { myDeck: me.deck, aiDeck: opp.deck, level: 0, first: 'random', myDeckName: deckName(me), aiDeckName: deckName(opp) },
     human: seat,
     initial: m.initial,
     current: m.state,

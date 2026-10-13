@@ -244,6 +244,7 @@ export async function deleteAccount(req, res) {
     db.prepare('DELETE FROM trade_seen WHERE user_id = ? OR other_id = ?').run(req.user.id, req.user.id);
     db.prepare('DELETE FROM value_history WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM game_records WHERE user_id = ?').run(req.user.id);
+    db.prepare('DELETE FROM game_decks WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(req.user.id);
     db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);

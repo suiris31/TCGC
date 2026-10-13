@@ -42,6 +42,9 @@ export interface GameConfig {
   aiDeck: string;
   level: number;
   first: 'random' | 'me' | 'ai';
+  // noms des decks au moment de la partie (un deck personnalisé peut être renommé ou supprimé ensuite)
+  myDeckName?: string;
+  aiDeckName?: string;
 }
 
 export interface GameRecord {

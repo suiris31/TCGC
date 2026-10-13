@@ -90,6 +90,13 @@ export function neededCards(): string[] {
   return [...new Set(Object.values(DECKS).flatMap((deck) => [deck.leader, ...Object.keys(deck.cards)]))];
 }
 
+// Cartes jouables (codées ou gérées d'office) : celles que l'éditeur propose et qu'un deck personnalisé peut contenir.
+// L'interface les reçoit toutes : un deck personnalisé adverse peut en contenir n'importe laquelle, et les envoyer
+// toutes ne trahit pas sa liste.
+export function playableCards(): string[] {
+  return [...new Set([...neededCards(), ...Object.keys(CARDS).filter((n) => n !== HIDDEN && cardStatus(n) !== 'todo')])];
+}
+
 export function missingCards(data: Record<string, CardData>): string[] {
   return neededCards().filter((n) => !data[n]);
 }

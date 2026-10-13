@@ -1,9 +1,12 @@
 // IA par simulation (Monte-Carlo avec informations cachées) : pour chaque choix possible, on joue la suite de la
 // partie jusqu'au bout plusieurs fois, en redistribuant au hasard les cartes que le joueur ne peut pas connaître,
 // et on garde le choix qui gagne le plus souvent. Sert aussi au coach pour évaluer les décisions du joueur.
+import { CARDS, cardStatus, HIDDEN } from '../engine/cards/index.ts';
+import { MAX_COPIES } from '../engine/deckRules.ts';
+import { isCustomDeck } from '../engine/decks.ts';
 import { act, type Chooser } from '../engine/engine.ts';
-import { shuffle } from '../engine/rng.ts';
-import { knows, other } from '../engine/rules.ts';
+import { random, shuffle } from '../engine/rng.ts';
+import { def, knows, other } from '../engine/rules.ts';
 import type { Card, Decision, GameState, PlayerId } from '../engine/types.ts';
 import { heuristicChooser } from './heuristic.ts';
 import { uselessReason } from './prune.ts';
@@ -39,13 +42,55 @@ export interface Analysis {
   pruned: { id: string; label: string; reason: string }[];  // choix sans intérêt, non simulés
 }
 
+// Cartes jouables d'un deck aux couleurs de ce Leader (pour deviner un deck personnalisé)
+const colorPools = new Map<string, string[]>();
+function colorPool(leader: string): string[] {
+  let pool = colorPools.get(leader);
+  if (!pool) {
+    const colors = def(leader).colors;
+    pool = Object.keys(CARDS).filter((n) => {
+      const c = CARDS[n];
+      return n !== HIDDEN && c.category !== 'LEADER' && c.colors.length > 0 && c.colors.every((x) => colors.includes(x)) && cardStatus(n) !== 'todo';
+    });
+    colorPools.set(leader, pool);
+  }
+  return pool;
+}
+
+// Deck adverse personnalisé : sa liste est secrète. Les cartes cachées que le joueur ne connaît pas reçoivent une
+// identité devinée : le plus souvent un autre exemplaire d'une carte déjà vue de ce joueur (4 au plus par numéro),
+// sinon une carte jouable au hasard parmi les couleurs de son Leader
+function guessHidden(d: GameState, viewer: PlayerId, unknown: Card[], fixed: (c: Card) => boolean) {
+  const O = d.players[other(viewer)];
+  const counts = new Map<string, number>();
+  const known = [...O.hand, ...O.deck, ...O.life].filter(fixed);
+  for (const c of [...O.chars, ...(O.stage ? [O.stage] : []), ...O.trash, ...known]) counts.set(c.num, (counts.get(c.num) ?? 0) + 1);
+  const extras: string[] = [];
+  for (const [num, n] of counts) for (let i = n; i < MAX_COPIES; i++) extras.push(num);
+  shuffle(d, extras);
+  const pool = colorPool(O.leader.num);
+  for (const c of unknown) {
+    let num = extras.length && random(d) < 0.75 ? extras.pop() : undefined;
+    for (let tries = 0; !num && tries < 20 && pool.length; tries++) {
+      const pick = pool[Math.floor(random(d) * pool.length)];
+      if ((counts.get(pick) ?? 0) < MAX_COPIES) num = pick;
+    }
+    num ??= extras.pop() ?? c.num;
+    counts.set(num, (counts.get(num) ?? 0) + 1);
+    c.num = num;
+  }
+}
+
 // Redistribue au hasard les cartes cachées de l'adversaire (main, deck, Vie face cachée), sauf celles que le joueur
-// connaît (carte du dessus de son deck regardée, cartes révélées : voir rules.ts, reveal), qui restent à leur place
-function shuffleOpponent(d: GameState, viewer: PlayerId, keepHand: boolean) {
+// connaît (carte du dessus de son deck regardée, cartes révélées : voir rules.ts, reveal), qui restent à leur place.
+// secret : la liste du deck adverse est inconnue du joueur (deck personnalisé face à l'IA) : les cartes inconnues sont
+// devinées au lieu d'être tirées parmi les vraies cartes restantes.
+function shuffleOpponent(d: GameState, viewer: PlayerId, keepHand: boolean, secret = false) {
   const O = d.players[other(viewer)];
   const knownTop = d.peek[viewer] !== null && O.deck[0]?.uid === d.peek[viewer] ? O.deck[0].uid : null;
   const fixed = (c: Card) => c.uid === knownTop || Boolean(c.faceUp) || knows(d, viewer, c.uid);
   const pool = [...(keepHand ? [] : O.hand), ...O.deck, ...O.life].filter((c) => !fixed(c));
+  if (secret && isCustomDeck(O.deckId)) guessHidden(d, viewer, pool, fixed);
   shuffle(d, pool);
   const refill = (cards: Card[]) => cards.map((c) => (fixed(c) ? c : pool.shift()!));
   if (!keepHand) O.hand = refill(O.hand);
@@ -67,10 +112,10 @@ function shuffleOwn(d: GameState, viewer: PlayerId, keepTop: number, keepLife: b
 
 // Ce que voit un joueur : sa main, le terrain, les cartes de Vie face visible et la carte du deck adverse qu'il a
 // regardée. Le reste est redistribué au hasard entre les zones cachées concernées.
-export function determinize(s: GameState, viewer: PlayerId, seed: number): GameState {
+export function determinize(s: GameState, viewer: PlayerId, seed: number, secret = false): GameState {
   const d = structuredClone(s);
   d.rng = seed | 0;
-  shuffleOpponent(d, viewer, false);
+  shuffleOpponent(d, viewer, false, secret);
   shuffleOwn(d, viewer, 0, false);
   // Décision au milieu d'un effet : la suite se rejoue depuis l'instantané pris au début de l'effet, qu'on redistribue
   // aussi, sans toucher aux cartes que les réponses déjà données peuvent désigner (dessus de son deck, sa Vie, main
@@ -80,7 +125,7 @@ export function determinize(s: GameState, viewer: PlayerId, seed: number): GameS
     const snap = JSON.parse(p.snapshot) as GameState;
     snap.rng = (seed * 31 + 7) | 0;
     const named = new Set(p.answers.flatMap((a) => (/^[a-z]+:\d+$/i.test(a) ? [Number(a.split(':')[1])] : [])));
-    shuffleOpponent(snap, viewer, snap.players[other(viewer)].hand.some((c) => named.has(c.uid)));
+    shuffleOpponent(snap, viewer, snap.players[other(viewer)].hand.some((c) => named.has(c.uid)), secret);
     shuffleOwn(snap, viewer, 6, true);
     p.snapshot = JSON.stringify(snap);
   }
@@ -99,6 +144,9 @@ export interface AnalyzeOptions {
   rollout?: Chooser;
   only?: string[];   // n'évaluer que ces options
   prune?: boolean;   // écarter les choix sans intérêt (par défaut)
+  // l'IA ne connaît pas la liste d'un deck personnalisé adverse (le coach, lui, aide le joueur qui a construit le deck
+  // de l'IA : il la connaît)
+  secretOpponent?: boolean;
 }
 
 // Évalue chaque option de la décision en cours, du point de vue du joueur qui décide
@@ -120,7 +168,7 @@ export function analyze(s: GameState, opts: AnalyzeOptions): Analysis {
   let samples = 0;
   for (let i = 0; i < opts.samples; i++) {
     if (opts.budgetMs && i >= minSamples && now() - start > opts.budgetMs) break;
-    const base = determinize(s, viewer, seed + i * 7919);
+    const base = determinize(s, viewer, seed + i * 7919, opts.secretOpponent);
     // les options sont jouées sur la même redistribution ; un tirage où une suite a divergé (réponse rejouée devenue
     // impossible) est écarté pour toutes les options
     let wins: boolean[];
@@ -184,7 +232,7 @@ export function aiChoose(s: GameState, d: Decision, level: Level): string {
 // ce qui rend reproductibles les parties d'entraînement et d'évaluation de l'IA par apprentissage (game/rl/).
 export function mcChoose(s: GameState, d: Decision, cfg: { samples: number; budgetMs?: number; margin: number }): string {
   if (d.inEffect || d.options.length === 1 || s.decision !== d) return heuristicChooser(s, d);
-  const analysis = analyze(s, { samples: cfg.samples, budgetMs: cfg.budgetMs });
+  const analysis = analyze(s, { samples: cfg.samples, budgetMs: cfg.budgetMs, secretOpponent: true });
   const best = analysis.stats[0];
   if (!best) return analysis.heuristic;
   const fallback = analysis.stats.find((x) => x.id === analysis.heuristic);

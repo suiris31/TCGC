@@ -2,7 +2,7 @@
 // Le moteur avance tout seul jusqu'à la prochaine décision d'un joueur (state.decision).
 // - act(state, choix) : applique la décision d'un joueur (partie humaine) et renvoie le nouvel état
 // - advance(state, chooser) : fait jouer toutes les décisions par une fonction (IA, simulations)
-import { DECKS } from './decks.ts';
+import { resolveDeck, type DeckSource } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
   addMod, allField, attackTargets, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def, describe,
@@ -29,7 +29,8 @@ class NeedDecision {
 export const RULES_VERSION = 2;
 
 export interface NewGameOptions {
-  decks: [string, string];
+  // identifiant d'un deck du registre, ou liste complète (deck personnalisé, vérifiée avant : voir deckRules.ts)
+  decks: [DeckSource, DeckSource];
   names: [string, string];
   seed?: number;
   first?: PlayerId | 'random';
@@ -37,9 +38,9 @@ export interface NewGameOptions {
 
 // ---------- Préparation (5-2) ----------
 
-function makePlayer(s: GameState, deckId: string, playerName: string): PlayerState {
-  const deck = DECKS[deckId];
-  if (!deck) throw new Error(`Deck inconnu : ${deckId}`);
+function makePlayer(s: GameState, source: DeckSource, playerName: string): PlayerState {
+  const deck = resolveDeck(source);
+  const deckId = deck.id;
   const cards = Object.entries(deck.cards).flatMap(([num, n]) => Array.from({ length: n }, () => ({ uid: s.nextUid++, num })));
   return {
     name: playerName,
