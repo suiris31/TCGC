@@ -63,7 +63,7 @@ export const ST30: Record<string, CardBehavior> = {
     onKO: withCost(discardCost(1, SIX), effect((ctx) => {
       const P = ctx.s.players[ctx.me];
       const i = P.trash.findIndex((c) => c.uid === ctx.source);
-      if (i < 0 || !canPlayCharacters(ctx.s, ctx.me)) return;
+      if (i < 0 || !canPlayCharacters(ctx.s, ctx.me, P.trash[i].num)) return;
       const [self] = P.trash.splice(i, 1);
       playCharacter(ctx, ctx.me, self, { rested: true });
     }, (s, p, self) => canPlayCharacters(s, p) && s.players[p].trash.some((c) => c.uid === self)), 'Marco'),

@@ -71,7 +71,9 @@ export interface PlayerState {
   donRested: number;  // DON!! épuisées dans la zone de Coût
   turns: number;      // nombre de tours commencés
   discardedTurn: number;  // dernier tour où une carte de sa main a été défaussée par un effet
-  noCharsTurn?: number;   // tour pendant lequel il ne peut plus jouer de carte Personnage (Leader Mihawk OP14-020)
+  noCharsTurn?: number;
+  // « vous ne pouvez plus jouer de carte Personnage de coût de base X ou plus pour tout le tour » (Mihawk OP12-030)
+  noCharsFromCost?: { turn: number; cost: number };   // tour pendant lequel il ne peut plus jouer de carte Personnage (Leader Mihawk OP14-020)
   koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
 }
 
@@ -319,6 +321,7 @@ export interface CardBehavior {
   replaceRemoval?: {
     oncePerTurn: boolean;
     onlyKo: boolean;  // false : aussi quand le Personnage quitte le terrain autrement (renvoyé en main, sous le deck...)
+    exceptKo?: boolean;  // seulement les sorties autres que la mise KO (le KO passe par koReplace : Ganzui)
     label: (s: GameState, self: FieldCard, victim: FieldCard) => string;
     condition: (s: GameState, owner: PlayerId, self: FieldCard, victim: FieldCard) => boolean;
     // ctx : l'effet adverse en cours (questions au propriétaire avec ctx.ask({ player: owner, ... }))

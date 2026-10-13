@@ -63,7 +63,7 @@ export function drawLog(ctx: EffectCtx, n: number) {
 
 // [Déclenchement] « jouez cette carte »
 export function playTriggerCard(ctx: EffectCtx, opts: { rested?: boolean } = {}) {
-  if (!ctx.trigger || (isCharacter(ctx.trigger.card.num) && !canPlayCharacters(ctx.s, ctx.me))) return;
+  if (!ctx.trigger || (isCharacter(ctx.trigger.card.num) && !canPlayCharacters(ctx.s, ctx.me, ctx.trigger.card.num))) return;
   ctx.trigger.moved = true;
   playCharacter(ctx, ctx.me, ctx.trigger.card, opts);
 }

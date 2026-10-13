@@ -239,6 +239,29 @@ questions-réponses Bandai, tournois).
     ne change rien).
 88. **Sabo (OP13-120)** : +2 de coût jusqu'à la fin du prochain tour adverse ; la DON!! épuisée va à son Leader.
 
+## Familles des Leaders Xebec, Ener et Mihawk, choix faits sans validation (à revoir si besoin)
+
+89. **Ganzui** : « s'il devait quitter le terrain » couvre la mise KO (en combat ou par n'importe quel effet) et les autres
+    sorties causées par un effet adverse (main, deck) ; la puissance de base du Leader devient 6000 jusqu'à la fin du
+    prochain tour adverse (ses autres bonus s'y ajoutent).
+90. **Streusen** : comme Satori (choix 50), chaque carte regardée va au-dessus ou au-dessous, dans l'ordre choisi.
+91. **Barbell** : c'est l'adversaire qui choisit les 2 cartes de sa main placées sous son deck, et lui seul sait lesquelles.
+92. **Ruche** : le +1000 peut aller à son Leader ou à un de ses Personnages incluant « Équipage de Rocks » dans son type,
+    pas forcément celui qui est attaqué.
+93. **Amazon** : l'adversaire choisit de renvoyer 1 DON!! redressée ; s'il n'en a pas, il ne peut pas, et le −2000
+    s'applique. Une DON!! renvoyée ainsi compte comme « renvoyée au deck DON!! » pour les autres cartes.
+94. **Ener (OP15-060), Gedatsu, Garde sacrée** : « 6 DON!! ou moins sur votre terrain » comme au choix 44 (redressées,
+    épuisées et données) ; avec un Leader à 10 DON!!, la condition dépend du nombre de DON!! en jeu.
+95. **Fuza** : « leur puissance de base devient 6000 » pendant le tour adverse est calculée comme un bonus qui amène la
+    puissance de base à 6000 (comme Holy, choix 46).
+96. **Nora** : protège n'importe lequel de ses Personnages de 7000 de puissance de base ou moins (elle comprise) contre
+    toute sortie du terrain due à un effet adverse ; la DON!! renvoyée suit la règle des DON!! −X.
+97. **Crocodile (OP09-025)** : « ne peut pas être mis KO en combat par un Leader » = quand l'attaquant est le Leader
+    adverse.
+98. **Dracule Mihawk (OP14-119)** : son premier effet se déclenche quand il est épuisé pendant son tour, que ce soit pour
+    attaquer ou pour payer un coût ; « Dracule Mihawk (OP12-030) » interdit ensuite de jouer, ce tour-ci, toute carte
+    Personnage de coût de base 7 ou plus, de la main comme par un effet.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

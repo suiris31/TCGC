@@ -25,8 +25,9 @@ const counterOn = (amount: number, source: string): Effect => effect((ctx) => co
 function playFromHandOrTrash(ctx: EffectCtx, eligible: (c: Card) => boolean, prompt: string) {
   if (!canPlayCharacters(ctx.s, ctx.me)) return;
   const P = ctx.s.players[ctx.me];
-  const fromHand = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(eligible)));
-  const fromTrash = uniqueByNum(P.trash.filter(eligible));
+  const ok = (c: Card) => eligible(c) && canPlayCharacters(ctx.s, ctx.me, c.num);
+  const fromHand = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(ok)));
+  const fromTrash = uniqueByNum(P.trash.filter(ok));
   if (!fromHand.length && !fromTrash.length) return;
   const answer = ctx.ask({
     prompt,

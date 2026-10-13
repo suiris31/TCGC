@@ -245,7 +245,13 @@ export const canBeRested = (s: GameState, uid: number) => !hasMod(s, uid, 'cantR
 
 // « Vous ne pouvez pas jouer de carte Personnage pour tout le tour » (Leader Mihawk) : ni de sa main en payant son
 // coût, ni par un effet
-export const canPlayCharacters = (s: GameState, p: PlayerId) => s.players[p].noCharsTurn !== s.turn;
+// num : la carte à jouer (« plus de Personnage de coût de base X ou plus ce tour-ci », Mihawk OP12-030)
+export const canPlayCharacters = (s: GameState, p: PlayerId, num?: string) => {
+  const P = s.players[p];
+  if (P.noCharsTurn === s.turn) return false;
+  const cap = P.noCharsFromCost;
+  return !(num && cap && cap.turn === s.turn && baseCost(num) >= cap.cost);
+};
 
 // « Vous avez N cartes ou plus épuisées » : Leader, Personnages, Lieu et DON!! de la zone de Coût (les DON!! données à
 // une carte n'en font pas partie)
@@ -646,7 +652,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
   if (owner !== ctx.me) {
     const options: Option[] = fieldCards(s, owner).flatMap((self) => {
       const r = def(self.num).replaceRemoval;
-      if (!r || isNegated(s, self.uid) || (r.onlyKo && to !== 'ko') || (r.oncePerTurn && self.usedOpt.includes('replace')) || !r.condition(s, owner, self, f.card)) return [];
+      if (!r || isNegated(s, self.uid) || (r.onlyKo && to !== 'ko') || (r.exceptKo && to === 'ko') || (r.oncePerTurn && self.usedOpt.includes('replace')) || !r.condition(s, owner, self, f.card)) return [];
       return [{ id: `replace:${self.uid}`, label: r.label(s, self, f.card), uid: self.uid }];
     });
     if (options.length) {
@@ -728,7 +734,7 @@ export function playStage(ctx: EffectCtx, p: PlayerId, card: Card) {
 // « Jouez jusqu'à 1 carte ... de votre main » (sans payer son coût)
 export function playFromHandFree(ctx: EffectCtx, filter: (c: Card) => boolean, prompt: string, opts: { rested?: boolean } = {}): Card | null {
   const P = ctx.s.players[ctx.me];
-  const allowed = (c: Card) => filter(c) && (def(c.num).category !== 'CHARACTER' || canPlayCharacters(ctx.s, ctx.me));
+  const allowed = (c: Card) => filter(c) && (def(c.num).category !== 'CHARACTER' || canPlayCharacters(ctx.s, ctx.me, c.num));
   const candidates = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(allowed)));
   if (!candidates.length) return null;
   const answer = ctx.ask({
@@ -754,7 +760,7 @@ export function triggerEffect(num: string): ((ctx: EffectCtx) => void) | undefin
 }
 
 function playTriggered(ctx: EffectCtx) {
-  if (!ctx.trigger || (def(ctx.trigger.card.num).category === 'CHARACTER' && !canPlayCharacters(ctx.s, ctx.me))) return;
+  if (!ctx.trigger || (def(ctx.trigger.card.num).category === 'CHARACTER' && !canPlayCharacters(ctx.s, ctx.me, ctx.trigger.card.num))) return;
   ctx.trigger.moved = true;
   playCharacter(ctx, ctx.me, ctx.trigger.card);
 }

@@ -588,7 +588,7 @@ function mainDecision(s: GameState): Decision {
     const d = def(c.num);
     const cost = handCost(s, p, c);
     if (cost > P.donActive) continue;
-    if ((d.category === 'CHARACTER' && canPlayCharacters(s, p)) || d.category === 'STAGE') {
+    if ((d.category === 'CHARACTER' && canPlayCharacters(s, p, c.num)) || d.category === 'STAGE') {
       options.push({ id: `play:${c.uid}`, label: `Jouer ${d.name} (coût ${cost})`, uid: c.uid, group: 'play' });
     }
     if (d.category === 'EVENT' && d.onMain) options.push({ id: `event:${c.uid}`, label: `Activer ${d.name} (coût ${cost})`, uid: c.uid, group: 'play' });

@@ -509,7 +509,7 @@ export const searchTop = (count: number, n: number, spec: CharSpec & { category?
 export const lookTopPlay = (count: number, spec: CharSpec, source: string, opts: { rested?: boolean } = {}): Effect => effect((ctx) => {
   const P = ctx.s.players[ctx.me];
   const looked = P.deck.splice(0, count);
-  const eligible = canPlayCharacters(ctx.s, ctx.me) ? uniqueByNum(looked.filter((c) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec))) : [];
+  const eligible = uniqueByNum(looked.filter((c) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec) && canPlayCharacters(ctx.s, ctx.me, c.num)));
   const answer = eligible.length ? ctx.ask({
     prompt: `${source} : tu regardes ${looked.map((c) => def(c.num).name).join(', ')}. Jouer jusqu’à 1 ${describeSpec('Personnage', spec)} :`,
     options: [...eligible.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucun' }],
@@ -532,7 +532,7 @@ const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, op
       const P = ctx.s.players[ctx.me];
       const list = zone === 'hand' ? P.hand : P.trash;
       if (!canPlayCharacters(ctx.s, ctx.me)) return;
-      const options = uniqueByNum(knownFirst(ctx.s, ctx.me, list.filter(eligible)));
+      const options = uniqueByNum(knownFirst(ctx.s, ctx.me, list.filter((c) => eligible(c) && canPlayCharacters(ctx.s, ctx.me, c.num))));
       if (!options.length) return;
       const where = zone === 'hand' ? 'de ta main' : 'de ta Défausse';
       const answer = ctx.ask({

@@ -65,7 +65,7 @@ const playTwoRocks: Effect = effect((ctx) => {
     const P = ctx.s.players[ctx.me];
     const eligible = P.hand.filter((c) => {
       const d = def(c.num);
-      return (d.category === 'STAGE' || (d.category === 'CHARACTER' && canPlayCharacters(ctx.s, ctx.me))) && d.types.includes(RP)
+      return (d.category === 'STAGE' || (d.category === 'CHARACTER' && canPlayCharacters(ctx.s, ctx.me, c.num))) && d.types.includes(RP)
         && (d.cost ?? 0) <= budget && !d.names.some((n) => names.includes(n));
     });
     const options = uniqueByNum(knownFirst(ctx.s, ctx.me, eligible));
