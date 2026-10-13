@@ -13,7 +13,7 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
   `4727d53` (mise en ligne). Seul `b56c2bd` (`evaluate.py`, sans effet sur le serveur) n'est pas encore sur `main`.
 - **En ligne** : modèle u7713 (12 octobre 2026, niveau 5, commit `da638e7`), mis en ligne par l'utilisateur.
 - **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 5 (ligue) depuis u7650,
-  ~7 700 mises à jour, ~1,85 million de parties, 10 decks à la prochaine reprise (Xebec ajouté), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
+  ~7 750 mises à jour, ~1,86 million de parties, 11 decks à la prochaine reprise (Ener ajouté), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
 
 ## 2. Où en est l'IA (mesures)
 
@@ -33,6 +33,7 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 | Niveau 5, ligue (u7700) | 63,3 % | contre les 4 dernières versions : 48–57 % | 1123 |
 | 9 decks, Robin jamais vu (u7713, 12 octobre 2026) | 57,5 % (7 776 parties ; 39,6 % en jouant Robin, 39,7 % Mihawk) | — | — |
 | 10 decks, Xebec jamais vu (u7713, même modèle) | 54,0 % (9 600 parties ; 31,2 % en jouant Xebec) | — | — |
+| 11 decks, Ener jamais vu (u7754, 13 octobre 2026) | 51,5 % (11 616 parties ; 8,2 % en jouant Ener) | — | — |
 
 Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation** (fait à u7200).
 Le niveau 4 se valide à **58 % contre sa version de départ (u7200) et 60 % contre l'heuristique, deux évaluations de
@@ -140,7 +141,28 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    existantes (`revealCost` → `discard`, `koGuard` → `replace`, `oppChoice` → `chooseOne`) ; « l'adversaire ne peut
    attaquer que Captain John » et la valeur de Contre variable de Xebec ne sont pas encodées (le modèle les voit par les
    options proposées) ; encodage inchangé `a0664ced`.
-12. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
+12. **Cinquième deck du méta (Ener / Enel) : mesuré, puis inclus** (13 octobre 2026, à la demande de l'utilisateur).
+   Modèle u7754 : la reprise de 22 h 27 n'a fait que 41 mises à jour avec 10 decks (~4 parties/s au niveau 5, adversaires
+   de la ligue). 1 056 parties par deck joué par le modèle contre l'heuristique, comparées à l'heuristique jouant le
+   même deck (2 200 parties par deck).
+
+   | Deck joué | Modèle | Heuristique | Écart |
+   |---|---|---|---|
+   | META-ENEL-2026-10 (nouveau) | 8,2 % | 35,7 % | −27,5 |
+   | META-XEBEC-2026-10 (inclus depuis u7713) | 38,3 % | 54,5 % | −16 (−21 à u7713) |
+   | META-ROBIN-2026-10 (inclus depuis u7713) | 47,4 % | 69,0 % | −22 (−32 à u7713) |
+   | META-MIHAWK-2026-10 (inclus depuis u7383) | 42,5 % | 69,2 % | −27 |
+   | META-SABO-2026-10 | 87,3 % | 73,3 % | +14 |
+   | ST-31 / 32 / 33 / 34 / 35 / 36 | 59,0 / 59,4 / 57,3 / 29,9 / 68,7 / 68,9 % | 41,2 / 52,0 / 49,5 / 20,2 / 45,3 / 39,2 % | +7 à +30 (moyenne +16) |
+
+   Face à Ener, l'avance du modèle est faible (+6 points avec les 7 decks qu'il joue bien). En jouant Ener, parties
+   relues : il active des Événements à coût 0 (Djambuwal, Trépas divin) puis refuse d'en payer le coût DON!! −1 ou
+   l'épuisement de 5 DON!!, et la carte part pour rien ; aucun deck connu n'avait d'Événements dont le seul coût est un
+   « vous pouvez ». Ener est aussi le deck du méta que l'heuristique joue le moins bien (35,7 %). Robin et Xebec
+   progressent déjà après 41 mises à jour. **Ener inclus dès la reprise** (11 decks, évaluations sur 121
+   confrontations, vocabulaire toujours de 90 cartes). Nouvelle question `scry` → famille `trashToDeck` ; « 6 DON!! ou
+   moins » se lit dans les DON!! du terrain (déjà encodées) ; encodage inchangé `a0664ced`.
+13. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
    spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
 
@@ -173,17 +195,16 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- **Reprise avec 10 decks, niveau 5 (ligue) sans Monte-Carlo** (12 octobre 2026, depuis u7713, `main` à jour dans le
-  dossier de l'entraînement : Robin et Xebec ajoutés) : commande du § 4. La reprise précédente n'a pas démarré
-  (rien dans `train.log`) : vérifier que la ligne « === Entraînement « rtx2070-main » » apparaît, sinon garder le
-  message d'erreur de la console. Les évaluations portent sur 100 confrontations. Attendu : ~12 parties/s. Le niveau 5
-  n'a pas de passage : c'est le dernier (Elo contre les anciennes versions).
-- À remesurer vers **u8300** comme aux § 3.9 et 3.11 : Robin (37–40 % à u7713), Xebec (31,2 %) et Mihawk (43,6 %)
-  joués par le modèle.
-- Decks suivants de la phase 4 (Enel, puis Kaido) : à chaque deck, entraînement en pause, mesure de généralisation
-  (§ 3.6, 3.7, 3.9 et 3.11), puis inclusion.
+- **Reprise avec 11 decks, niveau 5 (ligue) sans Monte-Carlo** (13 octobre 2026, depuis u7754, `main` à jour dans le
+  dossier de l'entraînement : Ener ajouté) : commande du § 4, **lancée depuis `TCGCl`** (la relance du 12 octobre
+  au soir, lancée depuis `TCGC\`, n'avait pas démarré). Vérifier la ligne « === Entraînement « rtx2070-main » ».
+  Les évaluations portent sur 121 confrontations. Vitesse observée au niveau 5 : ~4 parties/s (le réseau, ~90 % du
+  temps, calcule aussi les anciennes versions de la ligue) : à surveiller ; le niveau 5 n'a pas de passage (Elo).
+- À remesurer vers **u8300** comme aux § 3.9, 3.11 et 3.12 : Ener (8,2 % à u7754), Xebec (38,3 %), Robin (47,4 %) et
+  Mihawk (42,5 %) joués par le modèle.
+- Dernier deck de la phase 4C (Kaido) : entraînement en pause, mesure de généralisation, puis inclusion.
 - Si l'IA ne progresse plus : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
-  autres pistes du § 3.12).
+  autres pistes du § 3.13).
 
 ## 6. Points ouverts et pièges connus
 
