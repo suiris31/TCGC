@@ -293,6 +293,47 @@ export const koTotalCost = (t: Targets, total: number, source: string): Effect =
 };
 
 // « Mettez KO jusqu'à N ... »
+// « Mettez KO jusqu'à N Personnages adverses ayant une puissance totale de X ou moins »
+export const koTotalPower = (t: Targets, total: number, max: number, source: string): Effect => {
+  const list = (s: GameState, p: PlayerId, left: number, chosen: number[]) =>
+    candidates(s, p, t, (c) => !chosen.includes(c.uid) && power(s, c.uid) <= left && canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p));
+  return {
+    run: (ctx) => {
+      const chosen: number[] = [];
+      let left = total;
+      for (let options = list(ctx.s, ctx.me, left, chosen); options.length && chosen.length < max; options = list(ctx.s, ctx.me, left, chosen)) {
+        const answer = ctx.ask({
+          prompt: `${source} : ${t.label} à mettre KO (puissance totale restante : ${left}) :`,
+          options: [...options.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })), { id: 'none', label: 'Aucun autre' }],
+          tag: 'oppKo',
+        });
+        if (answer === 'none') break;
+        const uid = Number(answer.split(':')[1]);
+        chosen.push(uid);
+        left -= Math.max(0, power(ctx.s, uid));
+      }
+      for (const uid of chosen) removeByEffect(ctx, uid, 'ko');
+    },
+    useful: (s, p) => list(s, p, total, []).length > 0,
+  };
+};
+
+// « Mettez KO jusqu'à 1 Lieu adverse ayant un coût de X ou moins » (le Lieu va dans la Défausse)
+export const koOppStage = (costMax: number, source: string): Effect => effect((ctx) => {
+  const stage = ctx.s.players[ctx.opp].stage;
+  if (!stage || (def(stage.num).cost ?? 0) > costMax) return;
+  const uid = chooseUpTo1(ctx, [stage.uid], `${source} : Lieu adverse de coût ${costMax} ou moins à mettre KO :`, 'oppKo');
+  if (uid === null) return;
+  const f = removeFromField(ctx.s, uid, 'trash');
+  if (f) log(ctx.s, ctx.opp, `le Lieu ${def(f.card.num).name} est mis KO (${source})`);
+}, (s, p) => {
+  const stage = s.players[other(p)].stage;
+  return Boolean(stage && (def(stage.num).cost ?? 0) <= costMax);
+});
+
+// Tour de fin de « jusqu'à la fin de votre prochain tour » (pendant son tour : le suivant des siens)
+export const untilMyNextEnd = (s: GameState, me: PlayerId) => s.turn + (s.active === me ? 2 : 1);
+
 export const ko = (t: Targets, source: string, n = 1): Effect => {
   const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p));
   return {
@@ -463,6 +504,26 @@ export const trashTop = (n: number): Effect => effect((ctx) => {
 export const searchTop = (count: number, n: number, spec: CharSpec & { category?: CardData['category'] }, what: string, rest: 'bottom' | 'trash' = 'bottom'): Effect =>
   effect((ctx) => { lookTopPick(ctx, count, n, (num) => cardMatches(num, spec), what, rest); }, (s, p) => s.players[p].deck.length > 0);
 
+// « Regardez N cartes du dessus de votre deck et jouez jusqu'à 1 carte Personnage ... Puis, placez les cartes restantes
+// au-dessous de votre deck dans l'ordre de votre choix »
+export const lookTopPlay = (count: number, spec: CharSpec, source: string, opts: { rested?: boolean } = {}): Effect => effect((ctx) => {
+  const P = ctx.s.players[ctx.me];
+  const looked = P.deck.splice(0, count);
+  const eligible = canPlayCharacters(ctx.s, ctx.me) ? uniqueByNum(looked.filter((c) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec))) : [];
+  const answer = eligible.length ? ctx.ask({
+    prompt: `${source} : tu regardes ${looked.map((c) => def(c.num).name).join(', ')}. Jouer jusqu’à 1 ${describeSpec('Personnage', spec)} :`,
+    options: [...eligible.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucun' }],
+    tag: 'playFree',
+    cards: looked.map((c) => ({ uid: c.uid, num: c.num, owner: ctx.me })),
+  }) : 'none';
+  log(ctx.s, ctx.me, `regarde ${count} cartes du dessus de son deck`);
+  const played = answer === 'none' ? null : looked.splice(looked.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1)[0];
+  const ordered = bottomOrder(ctx, looked);
+  P.deck.push(...ordered);
+  reveal(ctx.s, ordered.map((c) => c.uid), ctx.me);
+  if (played) playCharacter(ctx, ctx.me, played, opts);
+}, (s, p) => s.players[p].deck.length > 0 && canPlayCharacters(s, p));
+
 // « Jouez jusqu'à 1 carte Personnage ... de votre main / Défausse » (sans payer son coût ; rested : « épuisée »)
 const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, opts: { rested?: boolean } = {}): Effect => {
   const eligible = (c: Card) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec);
@@ -557,6 +618,28 @@ export const handToBottom = (n: number, source: string): Effect => effect((ctx) 
     log(ctx.s, ctx.me, `place 1 carte de sa main au-dessous de son deck (${source})`);
   }
 }, (s, p) => s.players[p].hand.length > 0);
+
+// « Activez jusqu'à 1 Événement ... de votre main » : son effet [Principale] se résout après l'effet en cours, sans payer
+// son coût
+export const activateEventFromHand = (spec: CharSpec, source: string): Effect => {
+  const eligible = (c: Card) => def(c.num).category === 'EVENT' && Boolean(def(c.num).onMain) && cardMatches(c.num, spec);
+  return {
+    run: (ctx) => {
+      const options = uniqueByNum(knownFirst(ctx.s, ctx.me, ctx.s.players[ctx.me].hand.filter(eligible)));
+      if (!options.length) return;
+      const answer = ctx.ask({
+        prompt: `${source} : activer jusqu’à 1 ${describeSpec('Événement', spec)} de ta main (sans payer son coût) :`,
+        options: [...options.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucun' }],
+        tag: 'playFree',
+      });
+      if (answer === 'none') return;
+      const uid = Number(answer.split(':')[1]);
+      const num = ctx.s.players[ctx.me].hand.find((c) => c.uid === uid)!.num;
+      ctx.s.pending.unshift({ kind: 'system', action: 'activateEventFree', source: uid, num, controller: ctx.me, answers: [] });
+    },
+    useful: (s, p) => s.players[p].hand.some(eligible),
+  };
+};
 
 // « Ce Personnage gagne [Initiative] pour tout le tour » (la carte qui porte l'effet)
 export const selfKeyword = (keyword: Keyword, source: string): Effect => effect((ctx) => {
@@ -735,7 +818,73 @@ export const trashSelf = (): Cost => ({
   },
 });
 
-// « Donner 1 de vos cartes DON!! redressées à ... »
+// « Placer ce Personnage au-dessous du deck de son propriétaire »
+export const selfToDeckBottom = (): Cost => ({
+  label: 'placer cette carte au-dessous de ton deck',
+  can: (s, _p, self) => Boolean(findField(s, self)),
+  pay: (ctx) => {
+    const f = removeFromField(ctx.s, ctx.source, 'deckBottom');
+    if (!f) return false;
+    reveal(ctx.s, [f.card.uid], 'both');
+    log(ctx.s, ctx.me, `place ${def(f.card.num).name} au-dessous de son deck`);
+    return true;
+  },
+});
+
+// « Placer N cartes (de type ...) de votre Défausse au-dessous de votre deck dans l'ordre de votre choix » (cartes
+// publiques : les deux joueurs savent qu'elles sont au-dessous)
+export const trashToBottomCost = (n: number, spec: CharSpec & { category?: CardData['category'] } = {}): Cost => {
+  const eligible = (c: Card) => cardMatches(c.num, spec);
+  return {
+    get label() { return `placer ${n} ${describeSpec(n > 1 ? 'cartes' : 'carte', spec)} de ta Défausse au-dessous de ton deck`; },
+    can: (s, p) => s.players[p].trash.filter(eligible).length >= n,
+    pay: (ctx) => {
+      const P = ctx.s.players[ctx.me];
+      const chosen: Card[] = [];
+      for (let i = 0; i < n; i++) {
+        const left = uniqueByNum(P.trash.filter((c) => eligible(c) && !chosen.includes(c)));
+        if (!left.length) return false;
+        const answer = left.length === 1 ? `card:${left[0].uid}` : ctx.ask({
+          prompt: `Carte de ta Défausse à placer au-dessous de ton deck (${i + 1}/${n}) :`,
+          options: left.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })),
+          tag: 'trashToDeck',
+        });
+        chosen.push(P.trash.find((c) => c.uid === Number(answer.split(':')[1]))!);
+      }
+      P.trash = P.trash.filter((c) => !chosen.includes(c));
+      const ordered = bottomOrder(ctx, chosen);
+      P.deck.push(...ordered);
+      reveal(ctx.s, ordered.map((c) => c.uid), 'both');
+      log(ctx.s, ctx.me, `place ${ordered.map((c) => def(c.num).name).join(', ')} de sa Défausse au-dessous de son deck`);
+      return true;
+    },
+  };
+};
+
+// « Épuiser 1 de vos Leaders ou Lieux de type {X} »
+export const restLeaderOrStage = (type: string): Cost => {
+  const list = (s: GameState, p: PlayerId) => [s.players[p].leader, ...(s.players[p].stage ? [s.players[p].stage!] : [])]
+    .filter((c) => def(c.num).types.includes(type) && !c.rested && canBeRested(s, c.uid));
+  return {
+    get label() { return `épuiser ton Leader ou ton Lieu de type {${typeLabel(type)}}`; },
+    can: (s, p) => list(s, p).length > 0,
+    pay: (ctx) => {
+      const options = list(ctx.s, ctx.me);
+      if (!options.length) return false;
+      const uid = options.length === 1 ? options[0].uid : Number(ctx.ask({
+        prompt: 'Carte à épuiser pour payer le coût :',
+        options: options.map((c) => ({ id: `card:${c.uid}`, label: describe(ctx.s, c.uid), uid: c.uid })),
+        tag: 'restCost',
+      }).split(':')[1]);
+      const f = findField(ctx.s, uid)!;
+      f.card.rested = true;
+      log(ctx.s, ctx.me, `épuise ${def(f.card.num).name}`);
+      return true;
+    },
+  };
+};
+
+// « Donner 1 de vos cartes DON!! redressées à ... »// « Donner 1 de vos cartes DON!! redressées à ... »
 export const giveActiveDon = (t: Targets): Cost => ({
   label: `donner 1 de tes DON!! redressées (${t.label})`,
   can: (s, p) => s.players[p].donActive > 0 && candidates(s, p, t).length > 0,
@@ -804,7 +953,7 @@ export const returnOwnChar = (notSelf = false): Cost => ({
 
 // Plusieurs coûts à payer ensemble (« ... et ... »)
 export const bothCosts = (...costs: Cost[]): Cost => ({
-  label: costs.map((c) => c.label).join(' et '),
+  get label() { return costs.map((c) => c.label).join(' et '); },
   can: (s, p, self) => costs.every((c) => c.can(s, p, self)),
   pay: (ctx) => costs.every((c) => c.pay(ctx)),
 });

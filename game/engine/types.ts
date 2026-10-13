@@ -272,7 +272,8 @@ export interface CardBehavior {
   koReplace?: {
     label: string;
     condition: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
-    apply: (s: GameState, owner: PlayerId, self: FieldCard) => void;
+    // ctx : l'effet ou le combat en cours (questions au propriétaire avec ctx.ask({ player: owner, ... }))
+    apply: (s: GameState, owner: PlayerId, self: FieldCard, ctx: EffectCtx) => void;
   };
   // « l'adversaire ne peut attaquer aucune autre carte que [ce Personnage] » tant que la condition est vraie (Captain John)
   taunt?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;

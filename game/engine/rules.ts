@@ -639,7 +639,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
       tag: 'replace',
     });
     if (answer === 'yes') {
-      self.apply(s, owner, f.card);
+      self.apply(s, owner, f.card, ctx);
       return false;
     }
   }

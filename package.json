@@ -19,6 +19,7 @@
     "game:analyse": "node --no-warnings scripts/game/analyse.ts",
     "game:coverage": "node --no-warnings scripts/game/coverage.ts",
     "game:fingerprint": "node --no-warnings scripts/game/fingerprint.ts",
+    "game:custom-smoke": "node --no-warnings scripts/game/custom-smoke.ts",
     "rl:bench": "node --no-warnings game/rl/bench.ts",
     "rl:synthetic-catalog": "node --no-warnings game/rl/testing/synthetic-catalog.ts"
   },

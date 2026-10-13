@@ -215,6 +215,30 @@ questions-réponses Bandai, tournois).
 74. **Mr 3** : deux Personnages différents, chacun reçoit jusqu'à 2 DON!! épuisées, l'un après l'autre (le second
     reçoit ce qui reste).
 
+## Famille du Leader Sabo ({Armée révolutionnaire}, {Dressrosa}), choix faits sans validation (à revoir si besoin)
+
+75. **Cartes de la Défausse comptées par un Événement** (Dragon Claw, Gum Gum Rhino Schneider) : l'Événement activé est
+    déjà dans la Défausse quand son effet se résout, il se compte donc lui-même (comme pour tous les Événements du jeu).
+76. **Sabo (OP05-007)** : jusqu'à 2 Personnages, dont la puissance actuelle cumulée fait 4000 ou moins.
+77. **Souffle du dragon** : le Lieu adverse « mis KO » va dans la Défausse de son propriétaire.
+78. **KEEP OUT** : en [Contre] comme en [Déclenchement], le bonus peut aller à n'importe lequel de ses Personnages
+    {Armée révolutionnaire} (pas forcément celui qui est attaqué) ; il dure jusqu'à la fin de son prochain tour.
+79. **Ginney** : « 2 Personnages ou plus ayant un coût de 8 ou plus » compte les Personnages des deux joueurs.
+80. **Bartolomeo (OP15-014)** : l'Événement activé de la main se résout juste après l'effet [Jouée], sans payer son coût,
+    puis va dans la Défausse ; « coût de base » = coût imprimé. Son remplacement (défausser un Événement au choix) vaut
+    pour tout KO, en combat comme par un effet.
+81. **Monkey D. Luffy (OP10-118)** : « une fois par tour, ne peut pas être mis KO par un effet adverse » est proposé au
+    joueur comme un remplacement (il l'accepte toujours en pratique) ; le KO en combat n'est pas concerné.
+82. **Ursus Shock** : avec un de ses Personnages de coût 8 ou plus, la cible peut avoir un coût de 6 ou moins.
+83. **Mansherry** : ➀ = épuiser 1 DON!! ; les 2 cartes placées sous le deck sont choisies avant la carte reprise.
+84. **Rebecca (EB03-048)** : le Lieu {Dressrosa} de coût 1 joué peut être celui qu'elle vient de trouver.
+85. **Sai** : Leader {Dressrosa} « redressé » = pas épuisé au moment où la puissance est lue.
+86. **Koala (EB03-042)** : son [En cas de KO] ne se déclenche que si elle est mise KO pendant le tour adverse ; la carte
+    jouée vient de la main ou de la Défausse, au choix.
+87. **Haute Couture Patch★Work** : le Personnage de coût 0 qui « ne se redressera pas » doit être épuisé (sinon l'effet
+    ne change rien).
+88. **Sabo (OP13-120)** : +2 de coût jusqu'à la fin du prochain tour adverse ; la DON!! épuisée va à son Leader.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

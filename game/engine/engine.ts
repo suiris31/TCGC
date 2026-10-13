@@ -331,6 +331,19 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     d.onMain?.(ctx);
   },
 
+  // « Activez jusqu'à 1 Événement ... de votre main » (Bartolomeo OP15-014) : son effet [Principale], sans payer son coût
+  activateEventFree(ctx, p) {
+    const P = ctx.s.players[ctx.me];
+    const index = P.hand.findIndex((c) => c.uid === p.source);
+    if (index < 0) return;
+    const [card] = P.hand.splice(index, 1);
+    const d = def(card.num);
+    P.trash.push(card);
+    log(ctx.s, ctx.me, `active ${d.name} [Principale] sans payer son coût`);
+    emit(ctx.s, { type: 'event', player: ctx.me, uid: card.uid, num: card.num, timing: 'main' });
+    d.onMain?.(ctx);
+  },
+
   counterEvent(ctx, p) {
     const P = ctx.s.players[ctx.me];
     const index = P.hand.findIndex((c) => c.uid === p.source);
@@ -373,7 +386,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     const r = koSelfReplacement(s, p.source);
     if (!f || !r) return;
     if (may(ctx, `${def(p.num).name} va être mis KO en combat. ${r.label} à la place ?`, 'replace')) {
-      r.apply(s, ctx.me, f.card);
+      r.apply(s, ctx.me, f.card, ctx);
       return;
     }
     if (s.players[ctx.me].koGuardTurn === s.turn && s.players[ctx.me].hand.length) SYSTEM.koGuard(ctx, p);
