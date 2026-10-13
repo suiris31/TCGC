@@ -347,6 +347,22 @@ questions-réponses Bandai, tournois).
      **« Je ne suis pas né homme... »** : son Leader devient inesquivable pour le tour, si la condition de Vie est vraie
      quand l'Événement se résout. **« Je ferai de Barbe Blanche... »** : la carte révélée non jouée reste au-dessus.
 
+## Famille du Leader Luffy rouge, choix faits sans validation (à revoir si besoin)
+
+131. **Mini-Merry** : « 1000 de puissance de base » = puissance imprimée de 1000 exactement. **Thousand Sunny** : la DON!!
+     déplacée vient de n'importe laquelle de ses cartes (Leader ou Personnage) et va à un autre de ses Personnages
+     {Équipage de Chapeau de paille}.
+132. **Nami (EB03-006)** : « Leader redressé » = pas épuisé ; le −5000 est le coût de la pioche.
+133. **Monkey D. Luffy (OP12-015)** : les « DON!! données » se comptent sur son Leader et tous ses Personnages ; la DON!!
+     donnée ensuite n'arrive que si les 2 Événements ont été révélés.
+134. **Monkey D. Luffy (OP16-015)** : « nom incluant Ace » vaut pour Ace et Newgate ; le Personnage défaussé doit avoir
+     8000 de puissance imprimée exactement.
+135. **Monkey.D.Luffy (ST10-006)** : se déclenche quand l'adversaire active [Bloqueur] ; il peut mettre KO le bloqueur
+     lui-même. **« Arrête de discuter et viens avec nous !! »** : le Personnage joué pendant le [Contre] ne change rien
+     au combat en cours.
+136. **« Votre Leader gagne +X »** (Roronoa Zoro EB04-007, Barrier Bulls, Poing ardent) : appliqué sans question, à la
+     différence de « jusqu'à 1 de vos Leader ou Personnages ».
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

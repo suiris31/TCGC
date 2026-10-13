@@ -282,7 +282,6 @@ test('Bartolomeo (OP15-014) : [Jouée] activer un Événement {Dressrosa} de co�
   assert.equal(s.decision!.options.some((o) => o.label === 'Poing ardent'), false, 'coût 7');
   const before = power(s, s.players[0].leader.uid);
   s = choose(s, (o) => o.label === 'Barrier Bulls');
-  s = choose(s, `card:${s.players[0].leader.uid}`);
   assert.equal(s.players[0].donActive, 0, 'seul Bartolomeo a été payé');
   assert.equal(power(s, s.players[0].leader.uid), before + 1000);
   assert.ok(s.players[0].trash.some((c) => c.num === 'OP15-019'));
@@ -307,15 +306,14 @@ test('Bartolomeo (OP15-014) : [Jouée] activer un Événement {Dressrosa} de co�
 
 test('Barrier Bulls, Poing ardent (OP15-020)', () => {
   let s = scenario([TEST, 'ST-21'], (g) => { setHand(g, 0, ['OP15-019']); setDon(g, 0, 3); });
-  s = choose(play(s, 'OP15-019'), `card:${s.players[0].leader.uid}`);
+  s = play(s, 'OP15-019');
   assert.equal(s.players[0].hand.length, 1);
   assert.equal(s.mods.find((m) => m.source === 'Barrier Bulls')!.until, s.turn + 1);
   coherent(s);
 
   s = scenario([TEST, 'ST-21'], (g) => { setHand(g, 0, ['OP15-020', 'OP10-088', 'OP10-083']); setDon(g, 0, 7); setChars(g, 1, [{ num: O_CHOPPER }]); });
   const before = power(s, s.players[0].leader.uid);
-  s = choose(play(s, 'OP15-020'), `card:${s.players[0].leader.uid}`);
-  s = choose(s, `card:${theirs(s, O_CHOPPER).uid}`);
+  s = choose(play(s, 'OP15-020'), `card:${theirs(s, O_CHOPPER).uid}`);
   expectTag(s, 'may');
   s = choose(s, 'yes');
   s = choose(s, (o) => o.label === 'Nami');

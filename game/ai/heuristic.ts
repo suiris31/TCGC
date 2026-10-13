@@ -3,7 +3,7 @@
 // (jamais sa main ni ses cartes cachées). Elle joue aussi la suite des parties simulées par l'IA Monte-Carlo.
 import { publicList } from '../engine/decks.ts';
 import {
-  attackAbility, attackTargets, baseCost, canBeRested, counterValue, def, donOnField, fieldCards, fieldCost, findField, handCost, hasBlocker,
+  attackAbility, attackTargets, baseCost, basePower, canBeRested, counterValue, def, donOnField, fieldCards, fieldCost, findField, handCost, hasBlocker,
   hasType, leaderHasType, other, power, restedCards, triggerEffect,
 } from '../engine/rules.ts';
 import type { Decision, FieldCard, GameState, Option, PlayerId } from '../engine/types.ts';
@@ -507,6 +507,8 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP17-078': return 4000;
     case 'OP05-018':
     case 'OP08-054': return 3000;
+    case 'OP06-017': return s.players[p].life.length >= 1 ? 3000 : 0;
+    case 'EB01-009': return 0;
     case 'OP13-057':
     case 'OP13-058': return findField(s, targetUid)?.leader ? 3000 : 0;
     case 'OP06-059': return 1000;
@@ -516,12 +518,17 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP17-077': return findField(s, targetUid)?.leader && donOnField(s, p) >= 1 ? 4000 : 0;
     case 'OP10-117': return s.players[p].life.length <= 1 ? 3000 : 0;
     case 'OP17-076': return s.players[p].hand.length >= 2 ? 3000 : 0;
-    // −3000 à l'attaquant, ou KO de l'attaquant (épuisé) : seulement contre un Personnage
+    // −3000 à l'attaquant, ou KO de l'attaquant (qui arrête l'attaque) : seulement contre un Personnage
     case 'OP15-021':
-    case 'OP10-040': {
+    case 'OP10-040':
+    case 'EB01-010':
+    case 'ST10-015': {
       const atk = s.battle ? findField(s, s.battle.attacker) : null;
-      if (!atk || atk.leader) return 0;
-      return num === 'OP15-021' ? 3000 : fieldCost(s, atk.card.uid) <= 7 ? 10000 : 0;
+      const bonus = num === 'ST10-015' ? 2000 : 0;
+      if (!atk || atk.leader) return bonus;
+      if (num === 'OP15-021') return 3000;
+      const koable = num === 'OP10-040' ? fieldCost(s, atk.card.uid) <= 7 : num === 'EB01-010' ? basePower(s, atk.card.uid) <= 6000 : power(s, atk.card.uid) <= 2000;
+      return koable ? 10000 : bonus;
     }
     default: return 2000;
   }
@@ -549,6 +556,9 @@ function chooseCounter(s: GameState, d: Decision): string {
       return { o, value, event };
     })
     .filter((x) => x.value > 0);
+  // un Événement qui met KO l'attaquant (valeur 10000) : toujours, il arrête l'attaque et retire une carte adverse
+  const killer = values.find((x) => x.event && x.value >= 10000);
+  if (killer) return killer.o.id;
   const total = values.reduce((sum, x) => sum + x.value, 0);
   if (total < need) return 'pass';
   // une seule carte suffit, et c'est un Événement payé avec des DON!! inutilisées
@@ -641,6 +651,16 @@ function chooseEffect(s: GameState, d: Decision): string {
   // Sasaki (défausser 2) et Basil Hawkins (défausser 1) : seulement avec une main fournie
   if (d.tag === 'may' && sourceNum === 'OP17-068') return yesNo(P.hand.length >= 4);
   if (d.tag === 'may' && sourceNum === 'OP17-073') return yesNo(P.hand.length >= 3);
+  // Nami (EB03-006) : −5000 à son Leader pour piocher seulement s'il ne peut pas attaquer ce tour-ci
+  if (d.tag === 'may' && sourceNum === 'EB03-006') return yesNo(!canAttack(s, p, P.leader));
+  // Monkey D. Luffy (OP16-015) : défausser un Personnage de 8000 seulement si la puissance de base 7000 sauve le combat
+  if (d.tag === 'may' && sourceNum === 'OP16-015' && s.battle) {
+    const b = s.battle;
+    const atk = power(s, b.attacker);
+    const dp = power(s, b.target);
+    const gain = 7000 - basePower(s, b.target);
+    return yesNo((b.target === P.leader.uid || b.target === d.source) && gain > 0 && atk >= dp && atk < dp + gain);
+  }
   // Whitey Bay (ST-22) : révéler 2 cartes pour +2000 au Leader seulement s'il peut encore attaquer ce tour-ci
   if (d.tag === 'may' && sourceNum === 'ST22-011') return yesNo(canAttack(s, p, P.leader));
   // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus

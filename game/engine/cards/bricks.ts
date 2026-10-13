@@ -451,6 +451,13 @@ export const grant = (t: Targets, mod: Pick<Modifier, 'stat' | 'keyword' | 'scop
   useful: (s, p) => candidates(s, p, t).length > 0,
 });
 
+// « Votre Leader gagne +X de puissance ... » (sans choix, contrairement à « jusqu'à 1 de vos Leader ou Personnages »)
+export const leaderPower = (amount: number, until: 'battle' | 'turn' | 'oppNextEnd', source: string): Effect => effect((ctx) => {
+  const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
+  addMod(ctx.s, { uid: ctx.s.players[ctx.me].leader.uid, stat: 'power', amount, until: u, source });
+  log(ctx.s, ctx.me, `son Leader gagne ${amount > 0 ? '+' : '−'}${Math.abs(amount)} de puissance ${UNTIL_TEXT(ctx.s, u)} (${source})`);
+});
+
 // « Redressez jusqu'à N ... »
 export const setActiveTargets = (t: Targets, source: string, n = 1): Effect => {
   const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => c.rested);

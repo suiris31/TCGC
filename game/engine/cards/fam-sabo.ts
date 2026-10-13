@@ -9,7 +9,7 @@ import {
 import type { Card, CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import {
   activateEventFromHand, all, bothCosts, card, chooseOne, costMod, discardCost, drawCards, effect, giveDon, ko, koOppStage, koTotalPower,
-  keepRested, leaderType, lifeAtMost, lookTopPlay, oppChar, oppDiscards, oppHandAtLeast, ownChar, ownLeader, ownLeaderOrChar,
+  keepRested, leaderPower, leaderType, lifeAtMost, lookTopPlay, oppChar, oppDiscards, oppHandAtLeast, ownChar, ownLeader, ownLeaderOrChar,
   playFromHand, playFromTrash, powerMod, restDon, restLeaderOrStage, restSelf, searchTop, selfToDeckBottom, seq, trashAtLeast,
   trashSelf, trashToBottomCost, trashToHand, trashTop, untilMyNextEnd, when, withCost, type Effect,
 } from './bricks.ts';
@@ -181,7 +181,7 @@ export const FAM_SABO: Record<string, CardBehavior> = {
   // Barrier Bulls : [Principale] piocher 1 et Leader +1000 jusqu'à la fin du prochain tour adverse ; [Déclenchement]
   // −4000 à un Personnage adverse
   'OP15-019': card({
-    onMain: seq(drawCards(1), powerMod(ownLeader(), 1000, 'oppNextEnd', 'Barrier Bulls')),
+    onMain: seq(drawCards(1), leaderPower(1000, 'oppNextEnd', 'Barrier Bulls')),
     onTrigger: powerMod(oppChar(), -4000, 'turn', 'Barrier Bulls'),
   }),
 
@@ -189,7 +189,7 @@ export const FAM_SABO: Record<string, CardBehavior> = {
   // adverse, puis défausser 2 cartes : KO d'un Personnage adverse de 0 ou moins
   'OP15-020': card({
     onMain: seq(
-      powerMod(ownLeader(), 3000, 'turn', 'Poing ardent'),
+      leaderPower(3000, 'turn', 'Poing ardent'),
       powerMod(oppChar(), -8000, 'oppNextEnd', 'Poing ardent'),
       withCost(discardCost(2), ko(oppChar({ powerMax: 0 }), 'Poing ardent'), 'Poing ardent'),
     ),
