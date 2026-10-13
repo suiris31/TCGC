@@ -13,7 +13,7 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
   `4727d53` (mise en ligne). Seul `b56c2bd` (`evaluate.py`, sans effet sur le serveur) n'est pas encore sur `main`.
 - **En ligne** : modèle u7713 (12 octobre 2026, niveau 5, commit `da638e7`), mis en ligne par l'utilisateur.
 - **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 5 (ligue) depuis u7650,
-  ~7 750 mises à jour, ~1,86 million de parties, 11 decks à la prochaine reprise (Ener ajouté), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
+  ~7 800 mises à jour, ~1,86 million de parties, 12 decks à la prochaine reprise (Kaido ajouté), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
 
 ## 2. Où en est l'IA (mesures)
 
@@ -34,6 +34,7 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 | 9 decks, Robin jamais vu (u7713, 12 octobre 2026) | 57,5 % (7 776 parties ; 39,6 % en jouant Robin, 39,7 % Mihawk) | — | — |
 | 10 decks, Xebec jamais vu (u7713, même modèle) | 54,0 % (9 600 parties ; 31,2 % en jouant Xebec) | — | — |
 | 11 decks, Ener jamais vu (u7754, 13 octobre 2026) | 51,5 % (11 616 parties ; 8,2 % en jouant Ener) | — | — |
+| 12 decks, Kaido jamais vu (u7815, 13 octobre 2026) | 48,9 % (13 824 parties ; 11,0 % en jouant Kaido) | — | — |
 
 Le niveau 3 se valide à **55 % contre `mc:16` et 60 % contre l'heuristique dans la même évaluation** (fait à u7200).
 Le niveau 4 se valide à **58 % contre sa version de départ (u7200) et 60 % contre l'heuristique, deux évaluations de
@@ -162,7 +163,29 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    progressent déjà après 41 mises à jour. **Ener inclus dès la reprise** (11 decks, évaluations sur 121
    confrontations, vocabulaire toujours de 90 cartes). Nouvelle question `scry` → famille `trashToDeck` ; « 6 DON!! ou
    moins » se lit dans les DON!! du terrain (déjà encodées) ; encodage inchangé `a0664ced`.
-13. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
+13. **Sixième deck du méta (Kaido) : mesuré, puis inclus** (13 octobre 2026, à la demande de l'utilisateur).
+   Modèle u7815 : 61 mises à jour avec 11 decks depuis u7754 (~4,5 parties/s). 1 152 parties par deck joué par le
+   modèle contre l'heuristique, comparées à l'heuristique jouant le même deck (2 400 parties par deck, 12 decks).
+
+   | Deck joué | Modèle | Heuristique | Écart |
+   |---|---|---|---|
+   | META-KAIDO-2026-10 (nouveau) | 11,0 % | 45,4 % | −34 |
+   | META-ENEL-2026-10 (inclus depuis u7754) | 10,1 % | 36,3 % | −26 (−27,5 à u7754) |
+   | META-XEBEC-2026-10 (inclus depuis u7713) | 45,5 % | 54,5 % | −9 (−16 à u7754) |
+   | META-ROBIN-2026-10 (inclus depuis u7713) | 55,0 % | 67,4 % | −12 (−22 à u7754) |
+   | META-MIHAWK-2026-10 (inclus depuis u7383) | 40,1 % | 66,7 % | −27 |
+   | META-SABO-2026-10 | 85,2 % | 74,1 % | +11 |
+   | ST-31 / 32 / 33 / 34 / 35 / 36 | 55,7 / 63,6 / 56,9 / 29,1 / 64,9 / 69,6 % | 41,6 / 54,0 / 49,5 / 21,1 / 47,4 / 40,3 % | +7 à +29 (moyenne +14) |
+
+   Face à Kaido, l'avance du modèle est plus faible qu'ailleurs (+10 points avec les 7 decks qu'il joue bien, contre
+   +14 face aux autres decks). En jouant Kaido, parties relues : il refuse presque toujours l'effet du Leader (DON!! −1
+   pour −2000), même en défense, pose peu de Personnages dans les premiers tours (souvent rien au tour 1) et perd vite
+   sa Vie. Comme Ener, Kaido paie ses effets en renvoyant des DON!!, ce que les decks connus faisaient peu. Ener
+   progresse à peine en 61 mises à jour (8,2 → 10,1 %) ; Robin et Xebec continuent de progresser. **Kaido inclus dès
+   la reprise** (12 decks, évaluations sur 144 confrontations, vocabulaire toujours de 90 cartes). La question du
+   remplacement de King (renvoyer 1 DON!! au lieu d'être mis KO) va dans la famille existante `replace` ; encodage
+   inchangé `a0664ced`.
+14. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
    spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
 
@@ -195,16 +218,17 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- **Reprise avec 11 decks, niveau 5 (ligue) sans Monte-Carlo** (13 octobre 2026, depuis u7754, `main` à jour dans le
-  dossier de l'entraînement : Ener ajouté) : commande du § 4, **lancée depuis `TCGCl`** (la relance du 12 octobre
-  au soir, lancée depuis `TCGC\`, n'avait pas démarré). Vérifier la ligne « === Entraînement « rtx2070-main » ».
-  Les évaluations portent sur 121 confrontations. Vitesse observée au niveau 5 : ~4 parties/s (le réseau, ~90 % du
-  temps, calcule aussi les anciennes versions de la ligue) : à surveiller ; le niveau 5 n'a pas de passage (Elo).
-- À remesurer vers **u8300** comme aux § 3.9, 3.11 et 3.12 : Ener (8,2 % à u7754), Xebec (38,3 %), Robin (47,4 %) et
-  Mihawk (42,5 %) joués par le modèle.
-- Dernier deck de la phase 4C (Kaido) : entraînement en pause, mesure de généralisation, puis inclusion.
+- **Reprise avec 12 decks, niveau 5 (ligue) sans Monte-Carlo** (13 octobre 2026, depuis u7815, `main` à jour dans le
+  dossier de l'entraînement : Kaido ajouté) : commande du § 4, **lancée depuis `TCGC\rl`** (une relance lancée depuis
+  `TCGC\` ne démarre pas). Vérifier la ligne « === Entraînement « rtx2070-main » ». Les évaluations portent sur 144
+  confrontations. Vitesse observée au niveau 5 : ~4,5 parties/s (le réseau, ~90 % du temps, calcule aussi les
+  anciennes versions de la ligue) : à surveiller ; le niveau 5 n'a pas de passage (Elo).
+- À remesurer vers **u8300** comme aux § 3.9, 3.11, 3.12 et 3.13 : Kaido (11,0 % à u7815), Ener (10,1 %), Xebec
+  (45,5 %), Robin (55,0 %) et Mihawk (40,1 %) joués par le modèle.
+- Phase 4C finie (les 6 decks du méta d'octobre 2026). Suite à choisir avec l'utilisateur ; chaque nouveau deck suit
+  le même chemin : entraînement en pause, mesure de généralisation, puis inclusion.
 - Si l'IA ne progresse plus : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
-  autres pistes du § 3.13).
+  autres pistes du § 3.14).
 
 ## 6. Points ouverts et pièges connus
 
