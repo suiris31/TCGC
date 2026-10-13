@@ -8,8 +8,8 @@ import {
 } from '../rules.ts';
 import type { CardBehavior, GameState, PlayerId } from '../types.ts';
 import {
-  card, discardCost, drawCards, effect, ko, oppChar, ownChar, powerMod, restDon, restSelf, seq,
-  setActiveTargets, when, withCost, type Cost, type Effect,
+  card, discardCost, drawCards, effect, flipTopLife, ko, lifeToHandCost, oppChar, ownChar, powerMod, restDon, restSelf, seq,
+  setActiveTargets, when, withCost, type Effect,
 } from './bricks.ts';
 import { counterBoost, isNamed, playTriggerCard } from './common.ts';
 
@@ -23,35 +23,6 @@ const leaderBattle = (amount: number, source: string): Effect => effect((ctx) =>
   log(ctx.s, ctx.me, `son Leader gagne +${amount} de puissance pour le combat (${source})`);
 });
 const drawTrash = (draw: number, trash: number): Effect => effect((ctx) => drawAndDiscard(ctx, draw, trash), (s, p) => s.players[p].deck.length > 0);
-
-// « Retournez 1 carte du dessus de votre Vie face visible / cachée » (coût)
-const flipTopLife = (faceUp: boolean): Cost => ({
-  label: `retourner la carte du dessus de ta Vie face ${faceUp ? 'visible' : 'cachée'}`,
-  can: (s, p) => s.players[p].life.length > 0 && Boolean(s.players[p].life[0].faceUp) !== faceUp,
-  pay: (ctx) => {
-    const top = ctx.s.players[ctx.me].life[0];
-    if (!top || Boolean(top.faceUp) === faceUp) return false;
-    top.faceUp = faceUp;
-    reveal(ctx.s, [top.uid], 'both');
-    log(ctx.s, ctx.me, `retourne la carte du dessus de sa Vie face ${faceUp ? `visible (${def(top.num).name})` : 'cachée'}`);
-    return true;
-  },
-});
-
-// « Ajoutez à votre main 1 carte du dessus (ou du dessous) de votre Vie » (coût)
-const lifeToHandCost = (ends: 'top' | 'both'): Cost => ({
-  label: `ajouter à ta main la carte du dessus${ends === 'both' ? ' ou du dessous' : ''} de ta Vie`,
-  can: (s, p) => s.players[p].life.length > 0,
-  pay: (ctx) => {
-    if (!ctx.s.players[ctx.me].life.length) return false;
-    const from = ends === 'top' ? 'top' : ctx.ask({
-      prompt: 'Carte de ta Vie à ajouter à ta main :',
-      options: [{ id: 'top', label: 'La carte du dessus' }, { id: 'bottom', label: 'La carte du dessous' }],
-      tag: 'lifeSide',
-    }) as 'top' | 'bottom';
-    return Boolean(lifeToHand(ctx.s, ctx.me, from));
-  },
-});
 
 // [Déclenchement] « jouez cette carte » sous condition
 const playIf = (cond: (s: GameState, p: PlayerId) => boolean): Effect => effect((ctx) => { if (cond(ctx.s, ctx.me)) playTriggerCard(ctx); });

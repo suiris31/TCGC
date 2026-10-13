@@ -293,6 +293,22 @@ questions-réponses Bandai, tournois).
 110. **Charlotte Linlin (OP11-073)** : le coût déclaré va de 0 à 10 ; la carte révélée reste au-dessus du deck adverse.
      **Shanks (P-104)** : « 10 DON!! sur le terrain » se compte comme au choix 44, chez l'un ou l'autre joueur.
 
+## Famille du Leader Katakuri, choix faits sans validation (à revoir si besoin)
+
+111. **Charlotte Brûlée (EB03-033)** : « renvoyée par votre effet » = par un DON!! −X ou un effet de ses propres cartes ;
+     une DON!! qu'il renvoie parce qu'un effet adverse le lui demande (Amazon) ne compte pas.
+112. **Count Niwatori, Viscount Hiyoko** : le joueur cherche dans son deck (lui seul voit les cartes proposées), puis
+     mélange son deck, même s'il n'a rien joué.
+113. **Charlotte Linlin (OP08-069)** : « jusqu'à 1 » carte du deck ajoutée à la Vie est toujours faite ; c'est le joueur
+     de Linlin qui choisit dessus ou dessous de la Vie adverse, et le Personnage y est placé face visible.
+114. **Charlotte Mont d'or** : l'adversaire choisit les 2 cartes de sa Défausse, une par une (la première est placée au
+     plus haut) ; la Défausse étant publique, tout le monde sait lesquelles. Puis la carte du dessus de la Vie va en
+     main (obligatoire, s'il en reste une).
+115. **Charlotte Pudding (EB04-034)** : les 4 Événements se comptent après avoir défaussé : si la carte défaussée est un
+     Événement, elle compte.
+116. **Charlotte Katakuri (OP08-062), Sanji et Pudding, Charlotte Pudding (PRB02-010)** : les DON!! « sur le terrain »
+     se comptent comme au choix 44 ; **Randolph** peut se donner le +2 de coût à lui-même.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

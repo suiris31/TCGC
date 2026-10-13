@@ -794,6 +794,35 @@ export const restDon = (n: number): Cost => ({
   },
 });
 
+// « Retournez 1 carte du dessus de votre Vie face visible / cachée » (coût)
+export const flipTopLife = (faceUp: boolean): Cost => ({
+  label: `retourner la carte du dessus de ta Vie face ${faceUp ? 'visible' : 'cachée'}`,
+  can: (s, p) => s.players[p].life.length > 0 && Boolean(s.players[p].life[0].faceUp) !== faceUp,
+  pay: (ctx) => {
+    const top = ctx.s.players[ctx.me].life[0];
+    if (!top || Boolean(top.faceUp) === faceUp) return false;
+    top.faceUp = faceUp;
+    reveal(ctx.s, [top.uid], 'both');
+    log(ctx.s, ctx.me, `retourne la carte du dessus de sa Vie face ${faceUp ? `visible (${def(top.num).name})` : 'cachée'}`);
+    return true;
+  },
+});
+
+// « Ajoutez à votre main 1 carte du dessus (ou du dessous) de votre Vie » (coût)
+export const lifeToHandCost = (ends: 'top' | 'both'): Cost => ({
+  label: `ajouter à ta main la carte du dessus${ends === 'both' ? ' ou du dessous' : ''} de ta Vie`,
+  can: (s, p) => s.players[p].life.length > 0,
+  pay: (ctx) => {
+    if (!ctx.s.players[ctx.me].life.length) return false;
+    const from = ends === 'top' ? 'top' : ctx.ask({
+      prompt: 'Carte de ta Vie à ajouter à ta main :',
+      options: [{ id: 'top', label: 'La carte du dessus' }, { id: 'bottom', label: 'La carte du dessous' }],
+      tag: 'lifeSide',
+    }) as 'top' | 'bottom';
+    return Boolean(lifeToHand(ctx.s, ctx.me, from));
+  },
+});
+
 // « Placer dans votre Défausse N cartes du dessus de votre deck »
 export const trashTopCost = (n: number): Cost => ({
   label: `placer ${n} cartes du dessus de ton deck dans ta Défausse`,
