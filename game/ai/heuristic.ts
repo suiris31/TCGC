@@ -510,7 +510,15 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP06-017': return s.players[p].life.length >= 1 ? 3000 : 0;
     case 'EB01-009': return 0;
     case 'OP13-057':
-    case 'OP13-058': return findField(s, targetUid)?.leader ? 3000 : 0;
+    case 'OP13-058':
+    case 'OP11-038':
+    case 'OP12-037':
+    case 'OP12-038':
+    case 'OP13-040':
+    case 'OP16-040':
+    case 'OP16-038': return findField(s, targetUid)?.leader ? 3000 : 0;
+    case 'OP09-039': return leaderHasType(s, p, 'ODYSSEY') && s.players[p].chars.filter((c) => c.rested).length >= 2 ? 2000 : 0;
+    case 'ST12-016': return 0;
     case 'OP06-059': return 1000;
     case 'OP07-018': return findField(s, targetUid)?.leader === false && hasType(findField(s, targetUid)!.card.num, 'Revolutionary Army') ? 2000 : 0;
     case 'OP14-037':
@@ -522,12 +530,14 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP15-021':
     case 'OP10-040':
     case 'EB01-010':
-    case 'ST10-015': {
+    case 'ST10-015':
+    case 'OP13-039': {
       const atk = s.battle ? findField(s, s.battle.attacker) : null;
       const bonus = num === 'ST10-015' ? 2000 : 0;
       if (!atk || atk.leader) return bonus;
       if (num === 'OP15-021') return 3000;
-      const koable = num === 'OP10-040' ? fieldCost(s, atk.card.uid) <= 7 : num === 'EB01-010' ? basePower(s, atk.card.uid) <= 6000 : power(s, atk.card.uid) <= 2000;
+      const koable = num === 'OP10-040' ? fieldCost(s, atk.card.uid) <= 7 : num === 'OP13-039' ? fieldCost(s, atk.card.uid) <= 4
+        : num === 'EB01-010' ? basePower(s, atk.card.uid) <= 6000 : power(s, atk.card.uid) <= 2000;
       return koable ? 10000 : bonus;
     }
     default: return 2000;

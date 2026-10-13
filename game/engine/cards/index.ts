@@ -10,6 +10,7 @@ import { FAM_KATAKURI } from './fam-katakuri.ts';
 import { FAM_KUZAN } from './fam-kuzan.ts';
 import { FAM_SH_RED } from './fam-sh-red.ts';
 import { FAM_WB } from './fam-wb.ts';
+import { FAM_ZORO } from './fam-zoro.ts';
 import { FAM_KIDD } from './fam-kidd.ts';
 import { FAM_META } from './fam-meta.ts';
 import { FAM_SABO } from './fam-sabo.ts';
@@ -33,7 +34,7 @@ import { ST36 } from './st36.ts';
 const BEHAVIORS: Record<string, CardBehavior> = {
   ...ST31, ...ST32, ...ST33, ...ST34, ...ST35, ...ST36, ...META_SABO, ...META_MIHAWK, ...META_ROBIN,
   ...META_XEBEC, ...META_ENEL, ...META_KAIDO, ...ST21, ...ST22, ...ST30, ...FAM_SABO, ...FAM_META, ...FAM_KIDD, ...FAM_KAIDO,
-  ...FAM_KATAKURI, ...FAM_KUZAN, ...FAM_WB, ...FAM_SH_RED,
+  ...FAM_KATAKURI, ...FAM_KUZAN, ...FAM_WB, ...FAM_SH_RED, ...FAM_ZORO,
 };
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir

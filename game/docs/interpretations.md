@@ -363,6 +363,20 @@ questions-réponses Bandai, tournois).
 136. **« Votre Leader gagne +X »** (Roronoa Zoro EB04-007, Barrier Bulls, Poing ardent) : appliqué sans question, à la
      différence de « jusqu'à 1 de vos Leader ou Personnages ».
 
+## Famille du Leader Zoro, choix faits sans validation (à revoir si besoin)
+
+137. **« Épuisez N cartes de votre adversaire »** (Brook OP15-032, Franky OP13-033, Roronoa Zoro OP16-035) : son Leader,
+     ses Personnages, son Lieu ou ses DON!! redressées, une carte à la fois ; « Personnages ou DON!! » (Ashura, sabres au
+     clair ; Monkey D. Luffy OP09-036) exclut le Leader et le Lieu.
+138. **Gum Gum Gigant Pistol** : le Personnage choisi n'est pas redressé lors de la prochaine phase de Recharge de son
+     propriétaire. **Franky (OP10-034)** : seulement quand il est le Personnage attaqué et battu, une fois par tour.
+139. **Nico Robin (OP09-033)** : protège les Personnages présents quand l'effet se résout. **Monkey D. Luffy (OP14-034)**
+     : le bonus ne va pas au Leader ; le remplacement épuise un de ses Personnages redressés, au choix (lui-même compris).
+140. **Monkey D. Luffy (OP13-118)** : l'interdiction de jouer des Personnages de coût de base 5 ou plus s'applique même si
+     le Leader n'est pas multicolore.
+141. **Monkey D. Luffy (OP16-034)** : compte les noms de carte différents parmi ses Personnages, lui compris.
+     **Sanji (EB01-014)** : les DON!! épuisées de sa zone de Coût (pas celles données).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

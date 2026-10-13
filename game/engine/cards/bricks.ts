@@ -458,6 +458,38 @@ export const leaderPower = (amount: number, until: 'battle' | 'turn' | 'oppNextE
   log(ctx.s, ctx.me, `son Leader gagne ${amount > 0 ? '+' : '−'}${Math.abs(amount)} de puissance ${UNTIL_TEXT(ctx.s, u)} (${source})`);
 });
 
+// « Épuisez jusqu'à N des cartes de votre adversaire » : son Leader, ses Personnages (spec), son Lieu et/ou ses DON!!
+// redressées, une à une
+export const restOppCards = (n: number, source: string, what: { leader?: boolean; stage?: boolean; don?: boolean; spec?: CharSpec } = {}): Effect => {
+  const list = (s: GameState, p: PlayerId) => {
+    const O = s.players[other(p)];
+    return [...(what.leader ? [O.leader] : []), ...O.chars.filter((c) => matches(s, c, what.spec ?? {})), ...(what.stage && O.stage ? [O.stage] : [])]
+      .filter((c) => !c.rested && canBeRested(s, c.uid));
+  };
+  const dons = (s: GameState, p: PlayerId) => (what.don ? s.players[other(p)].donActive : 0);
+  return {
+    run: (ctx) => {
+      const O = ctx.s.players[ctx.opp];
+      for (let i = 0; i < n; i++) {
+        const options = [
+          ...list(ctx.s, ctx.me).map((c) => ({ id: `card:${c.uid}`, label: describe(ctx.s, c.uid), uid: c.uid })),
+          ...(dons(ctx.s, ctx.me) > 0 ? [{ id: 'don', label: '1 DON!! redressée adverse' }] : []),
+        ];
+        if (!options.length) return;
+        const answer = ctx.ask({ prompt: `${source} : carte adverse à épuiser${n > 1 ? ` (${i + 1}/${n})` : ''} :`, options: [...options, { id: 'none', label: 'Aucune' }], tag: 'oppRest' });
+        if (answer === 'none') return;
+        if (answer !== 'don') restByEffect(ctx, Number(answer.split(':')[1]));
+        else {
+          O.donActive--;
+          O.donRested++;
+          log(ctx.s, ctx.me, `épuise 1 DON!! adverse (${source})`);
+        }
+      }
+    },
+    useful: (s, p) => list(s, p).length + dons(s, p) > 0,
+  };
+};
+
 // « Redressez jusqu'à N ... »
 export const setActiveTargets = (t: Targets, source: string, n = 1): Effect => {
   const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => c.rested);
