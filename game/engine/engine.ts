@@ -600,7 +600,7 @@ function counterDecision(s: GameState): Decision | null {
       options.push({ id: `counter:${c.uid}`, label: `Contre +${value} : défausser ${d.name}`, uid: c.uid, group: 'counter' });
     }
     if (d.category === 'EVENT' && d.onCounter && (d.cost ?? 0) <= P.donActive) {
-      options.push({ id: `cevent:${c.uid}`, label: `Activer ${d.name} [Contre] (coût ${d.cost})`, uid: c.uid, group: 'counter' });
+      options.push({ id: `cevent:${c.uid}`, label: `Activer ${d.name} [Contre] (coût ${d.cost ?? 0})`, uid: c.uid, group: 'counter' });
     }
   }
   if (!options.length) return null;
