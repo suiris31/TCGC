@@ -517,7 +517,8 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP12-038':
     case 'OP13-040':
     case 'OP16-040':
-    case 'OP16-038': return findField(s, targetUid)?.leader ? 3000 : 0;
+    case 'OP16-038':
+    case 'OP11-080': return findField(s, targetUid)?.leader ? 3000 : 0;
     case 'OP09-039': return leaderHasType(s, p, 'ODYSSEY') && s.players[p].chars.filter((c) => c.rested).length >= 2 ? 2000 : 0;
     case 'ST12-016': return 0;
     case 'OP06-059': return 1000;

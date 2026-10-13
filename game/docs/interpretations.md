@@ -396,6 +396,16 @@ questions-réponses Bandai, tournois).
 150. **Law et Bepo** : le Leader gagne +2000 si l'adversaire a 2 Personnages épuisés ou plus après l'épuisement.
      **Jewelry Bonney (OP07-026)** : le joueur choisit un Personnage épuisé ou une DON!! épuisée adverse.
 
+## Famille du Leader Robin, choix faits sans validation (à revoir si besoin)
+
+151. **« Renvoyez 1 DON!! ou plus »** (Sanji OP09-065, Nami OP09-070, Brook OP09-073...) : le joueur choisit combien, au
+     moins 1 ; l'effet ne dépend pas du nombre renvoyé.
+152. **« 8 (ou 10) DON!! sur votre terrain »** : comme au choix 44 (redressées, épuisées et données).
+153. **Thousand Sunny (OP09-080)** : pendant le tour adverse, quand un de ses Personnages {Équipage de Chapeau de paille}
+     est mis KO ou renvoyé (main, deck...) par un effet adverse, le Lieu peut s'épuiser pour 1 DON!! épuisée.
+154. **O-Soba Mask** : « 7000 de puissance de base » ; il renvoie en main tous ses [San-Gorou] et [Sanji], même celui qui a
+     réduit son coût. **Monkey D. Luffy (ST26-005)** : la puissance de base du Leader devient 7000 (choix 46).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
