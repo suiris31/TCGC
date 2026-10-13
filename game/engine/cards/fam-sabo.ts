@@ -4,7 +4,7 @@
 // d'interprétation sont dans game/docs/interpretations.md.
 import {
   RA, addMod, canPlayCharacters, chooseUpTo1, def, discardFromHand, drawAndDiscard, fieldCost, findField, hasType, knownFirst,
-  log, lookTopPick, playCharacter, playFromHandFree, power, uniqueByNum,
+  log, lookTopPick, playCharacter, playFromHandFree, playableByEffect, power, uniqueByNum,
 } from '../rules.ts';
 import type { Card, CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import {
@@ -26,7 +26,7 @@ function playFromHandOrTrash(ctx: EffectCtx, eligible: (c: Card) => boolean, pro
   if (!canPlayCharacters(ctx.s, ctx.me)) return;
   const P = ctx.s.players[ctx.me];
   const ok = (c: Card) => eligible(c) && canPlayCharacters(ctx.s, ctx.me, c.num);
-  const fromHand = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(ok)));
+  const fromHand = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter((c) => ok(c) && playableByEffect(c.num))));
   const fromTrash = uniqueByNum(P.trash.filter(ok));
   if (!fromHand.length && !fromTrash.length) return;
   const answer = ctx.ask({

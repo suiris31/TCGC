@@ -4,7 +4,7 @@ import { CARDS } from './cards/index.ts';
 import { genericTrigger } from './keywords.ts';
 import { shuffle } from './rng.ts';
 import type {
-  Card, CardDef, DelayedEffect, EffectCtx, FieldCard, GameEvent, GameState, HiddenZone, Keyword, Modifier, Option, PendingEffect,
+  Card, CardBehavior, CardDef, DelayedEffect, EffectCtx, FieldCard, GameEvent, GameState, HiddenZone, Keyword, Modifier, Option, PendingEffect,
   PlayerId,
 } from './types.ts';
 
@@ -241,7 +241,18 @@ export function hasKeyword(s: GameState, p: PlayerId, card: FieldCard, k: Keywor
 
 export const hasBlocker = (s: GameState, p: PlayerId, card: FieldCard) => hasKeyword(s, p, card, 'Blocker');
 
-export const canBeRested = (s: GameState, uid: number) => !hasMod(s, uid, 'cantRest');
+// by : le joueur dont l'effet l'épuiserait et sa carte (« ne peut pas être épuisé par les effets adverses », Usopp)
+export function canBeRested(s: GameState, uid: number, by?: { player: PlayerId; num: string }): boolean {
+  if (hasMod(s, uid, 'cantRest')) return false;
+  if (!by) return true;
+  const f = findField(s, uid);
+  if (!f || f.player === by.player) return true;
+  const own = def(f.card.num).cantBeRestedBy;
+  return !(own && !isNegated(s, uid) && own(s, f.player, f.card, by.num));
+}
+
+// La carte de la main peut-elle être jouée par un effet ? (Roronoa Zoro OP12-036 : non)
+export const playableByEffect = (num: string) => !def(num).noPlayByEffect;
 
 // « Vous ne pouvez pas jouer de carte Personnage pour tout le tour » (Leader Mihawk) : ni de sa main en payant son
 // coût, ni par un effet
@@ -303,11 +314,19 @@ export function counterValue(s: GameState, p: PlayerId, num: string): number {
 }
 
 // Remplacement « si ce Personnage devait être mis KO » proposé à son propriétaire (combat ou effet)
-export function koSelfReplacement(s: GameState, uid: number) {
+export function koSelfReplacement(s: GameState, uid: number): NonNullable<CardBehavior['koReplace']> | null {
   const f = findField(s, uid);
   if (!f || f.leader || f.stage) return null;
   const r = def(f.card.num).koReplace;
-  return r && !isNegated(s, uid) && r.condition(s, f.player, f.card) ? r : null;
+  if (r && !isNegated(s, uid) && r.condition(s, f.player, f.card)) return r;
+  // une autre de ses cartes peut le remplacer (Nami OP17-023)
+  for (const c of allField(s, f.player)) {
+    const a = def(c.num).koReplaceAlly;
+    if (a && !isNegated(s, c.uid) && a.condition(s, f.player, c, f.card)) {
+      return { label: a.label(s, c, f.card), condition: () => true, apply: (s2, p, victim, ctx) => a.apply(s2, p, c, victim, ctx) };
+    }
+  }
+  return null;
 }
 
 // ---------- Pioche, deck, défausse ----------
@@ -535,7 +554,21 @@ export function untapDon(s: GameState, p: PlayerId, n: number) {
 export function restByEffect(ctx: EffectCtx, uid: number): boolean {
   const { s } = ctx;
   const f = findField(s, uid);
-  if (!f || f.card.rested || !canBeRested(s, uid)) return false;
+  if (!f || f.card.rested || !canBeRested(s, uid, { player: ctx.me, num: ctx.num })) return false;
+  // « s'il devait être épuisé par un effet adverse, ... à la place » (Roronoa Zoro PRB02-006)
+  const r = f.player !== ctx.me ? def(f.card.num).restReplace : undefined;
+  if (r && !isNegated(s, uid) && r.condition(s, f.player, f.card, ctx)) {
+    const answer = ctx.ask({
+      player: f.player,
+      prompt: `${def(f.card.num).name} va être épuisé par un effet adverse. ${r.label} à la place ?`,
+      options: [{ id: 'yes', label: 'Oui' }, { id: 'no', label: 'Non' }],
+      tag: 'replace',
+    });
+    if (answer === 'yes') {
+      r.apply(s, f.player, f.card, ctx);
+      return false;
+    }
+  }
   f.card.rested = true;
   log(s, ctx.me, `épuise ${def(f.card.num).name}`);
   emit(s, { type: 'rest', player: f.player, uid, num: f.card.num, zone: zoneOf(f), by: ctx.me, cause: 'effect', sourceNum: ctx.num });
@@ -591,6 +624,10 @@ export function canBeKO(s: GameState, uid: number, cause: 'battle' | 'effect', b
   if (!f) return false;
   const own = def(f.card.num).cantBeKO;
   if (own && !isNegated(s, uid) && own(s, f.player, f.card, cause, by)) return false;
+  for (const c of allField(s, f.player)) {
+    const shield = def(c.num).koShield;
+    if (shield && !isNegated(s, c.uid) && shield(s, f.player, c, f.card, cause, by)) return false;
+  }
   return !s.mods.some((m) => m.uid === uid && m.stat === 'cantBeKO'
     && (!m.scope || m.scope === cause || (m.scope === 'oppEffect' && cause === 'effect' && by !== f.player)));
 }
@@ -746,7 +783,7 @@ export function playStage(ctx: EffectCtx, p: PlayerId, card: Card) {
 // « Jouez jusqu'à 1 carte ... de votre main » (sans payer son coût)
 export function playFromHandFree(ctx: EffectCtx, filter: (c: Card) => boolean, prompt: string, opts: { rested?: boolean } = {}): Card | null {
   const P = ctx.s.players[ctx.me];
-  const allowed = (c: Card) => filter(c) && (def(c.num).category !== 'CHARACTER' || canPlayCharacters(ctx.s, ctx.me, c.num));
+  const allowed = (c: Card) => filter(c) && playableByEffect(c.num) && (def(c.num).category !== 'CHARACTER' || canPlayCharacters(ctx.s, ctx.me, c.num));
   const candidates = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(allowed)));
   if (!candidates.length) return null;
   const answer = ctx.ask({

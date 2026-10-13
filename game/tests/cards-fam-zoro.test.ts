@@ -7,7 +7,8 @@ import { heuristicChooser } from '../ai/heuristic.ts';
 import { FAM_ZORO } from '../engine/cards/fam-zoro.ts';
 import { DECKS } from '../engine/decks.ts';
 import { act } from '../engine/engine.ts';
-import { attackAbility, canBeKO, canPlayCharacters, donOnField, power } from '../engine/rules.ts';
+import { playFromHand } from '../engine/cards/bricks.ts';
+import { attackAbility, canBeKO, canBeRested, canPlayCharacters, donOnField, power } from '../engine/rules.ts';
 import type { GameState } from '../engine/types.ts';
 import {
   aiAnswers, attack, choose, coherent, expectTag, play, scenario, setChars, setDon, setHand, setLife, take,
@@ -240,4 +241,76 @@ test('Gum Gum Snake Shot : [Contre] KO de l’attaquant épuisé de coût 4 ou m
   assert.ok(theirs(s, O_SENTOMARU).rested);
   void setLife;
   void O_STUSSY;
+});
+
+test('Monkey D. Luffy (OP07-033) : avec 3 Personnages, ses Personnages de coût 3 ou moins (sauf Luffy) ne peuvent pas être mis KO par des effets adverses', () => {
+  const s = scenario([ZORO, 'ST-21'], (g) => { setChars(g, 0, [{ num: 'OP07-033' }, { num: 'OP13-034' }, { num: 'OP16-034' }]); });
+  assert.equal(canBeKO(s, mine(s, 'OP13-034').uid, 'effect', 1), false);
+  assert.equal(canBeKO(s, mine(s, 'OP13-034').uid, 'battle', 1), true);
+  assert.equal(canBeKO(s, mine(s, 'OP13-034').uid, 'effect', 0), true, 'ses propres effets');
+  assert.equal(canBeKO(s, mine(s, 'OP16-034').uid, 'effect', 1), true, '[Monkey.D.Luffy]');
+  s.players[0].chars = s.players[0].chars.slice(0, 2);
+  assert.equal(canBeKO(s, mine(s, 'OP13-034').uid, 'effect', 1), true, '2 Personnages');
+});
+
+test('Nami (OP10-033) : une DON!! épuisée adverse reste épuisée ; Monkey D. Luffy (PRB02-005) : l’adversaire épuise 1 DON!! au début de sa phase principale', () => {
+  let s = scenario([ZORO, 'ST-21'], (g) => {
+    setHand(g, 0, ['OP10-033']);
+    setDon(g, 0, 2);
+    setChars(g, 0, [{ num: 'OP09-029', extra: { rested: true } }, { num: 'OP10-034', extra: { rested: true } }]);
+    setDon(g, 1, 3, 2);
+  });
+  s = play(s, 'OP10-033');
+  s = toMain(act(s, 'end'));
+  assert.equal(s.active, 1);
+  assert.equal(s.players[1].donRested, 1);
+  coherent(s);
+  for (const deck of [ODY, ZORO]) {
+    let t = scenario([deck, 'ST-21'], (g) => { setHand(g, 0, ['PRB02-005']); setDon(g, 0, 4); setDon(g, 1, 5); });
+    t = toMain(act(play(t, 'PRB02-005'), 'end'));
+    assert.equal(t.players[1].donRested, deck === ODY ? 1 : 0, deck);
+  }
+});
+
+test('Roronoa Zoro (OP12-036) : pas jouable de la main par un effet ; avec un Leader <Slash>, +1000 et pas mis KO en combat par une carte <Slash>', () => {
+  const only = scenario([ZORO, 'ST-21'], (g) => { setHand(g, 0, ['OP12-036']); });
+  assert.equal(playFromHand({}, 'Essai').useful(only, 0, -1), false, 'seul Zoro en main');
+  const both = scenario([ZORO, 'ST-21'], (g) => { setHand(g, 0, ['OP12-036', 'OP13-030']); });
+  assert.equal(playFromHand({}, 'Essai').useful(both, 0, -1), true);
+  let s = scenario([ZORO, 'ST-21'], (g) => { setChars(g, 0, [{ num: 'OP12-036', extra: { rested: true } }]); setChars(g, 1, [{ num: O_SENTOMARU }, { num: O_CHOPPER }]); });
+  const zoro = mine(s, 'OP12-036').uid;
+  assert.equal(power(s, zoro), 6000);
+  s.battle = { attacker: theirs(s, O_SENTOMARU).uid, target: zoro } as GameState['battle'];
+  assert.equal(canBeKO(s, zoro, 'battle', 1), false, '<Slash>');
+  s.battle = { attacker: theirs(s, O_CHOPPER).uid, target: zoro } as GameState['battle'];
+  assert.equal(canBeKO(s, zoro, 'battle', 1), true);
+  const k = scenario([KAIDO, 'ST-21'], (g) => { setChars(g, 0, [{ num: 'OP12-036' }]); });
+  assert.equal(power(k, mine(k, 'OP12-036').uid), 5000, 'Leader Kaido');
+});
+
+test('Usopp (OP15-024) : pendant le tour adverse, pas épuisé par un Personnage adverse ; Nami (OP17-023) : s’épuiser à la place d’un KO ; Zoro (PRB02-006)', () => {
+  let s = scenario([ZORO, ZORO], (g) => { setChars(g, 0, [{ num: 'OP15-024' }, { num: 'OP13-034' }]); setHand(g, 1, ['P-135']); setDon(g, 1, 5); }, 1);
+  assert.equal(canBeRested(s, mine(s, 'OP15-024').uid, { player: 1, num: 'P-135' }), false);
+  assert.equal(canBeRested(s, mine(s, 'OP15-024').uid, { player: 1, num: 'OP13-038' }), true, 'Événement');
+  s = play(s, 'P-135', 1);
+  assert.equal(s.decision!.options.some((o) => o.id === `card:${mine(s, 'OP15-024').uid}`), false);
+
+  s = scenario([ZORO, ZORO], (g) => { setChars(g, 0, [{ num: 'OP17-023' }, { num: 'OP13-030' }]); setHand(g, 1, ['EB01-039']); setDon(g, 1, 6); }, 1);
+  s = choose(play(s, 'EB01-039', 1), 'yes');
+  s = choose(s, `card:${mine(s, 'OP13-030').uid}`);
+  expectTag(s, 'replace');
+  aiAnswers(s);
+  s = choose(s, 'yes');
+  assert.ok(mine(s, 'OP13-030'));
+  assert.ok(mine(s, 'OP17-023').rested);
+  coherent(s);
+
+  s = scenario([ZORO, ZORO], (g) => { setChars(g, 0, [{ num: 'PRB02-006' }, { num: 'OP13-030' }]); setHand(g, 1, ['P-135']); setDon(g, 1, 5); }, 1);
+  s = play(s, 'P-135', 1);
+  s = choose(s, `card:${mine(s, 'PRB02-006').uid}`);
+  expectTag(s, 'replace');
+  s = choose(s, 'yes');
+  assert.equal(mine(s, 'PRB02-006').rested, false);
+  assert.ok(mine(s, 'OP13-030').rested);
+  coherent(s);
 });

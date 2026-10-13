@@ -3,8 +3,8 @@
 // DON!! comprises), redressent leurs DON!! et leurs Personnages, et se protègent. Chaque condition se vérifie dans la
 // partie. Les choix d'interprétation sont dans game/docs/interpretations.md.
 import {
-  addDelayed, addMod, canBeRested, canPlayCharacters, chooseUpTo1, def, drawAndDiscard, findField, hasType, leaderHasType, lifeToHand,
-  log, other, playCharacter, restByEffect, setActive, uniqueByNum, untilOpponentsNextEnd,
+  addDelayed, addMod, canBeRested, canPlayCharacters, chooseUpTo1, def, donOnField, drawAndDiscard, fieldCost, findField, hasType,
+  leaderHasType, lifeToHand, log, other, playCharacter, restByEffect, setActive, uniqueByNum, untilOpponentsNextEnd,
 } from '../rules.ts';
 import type { CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 import {
@@ -412,6 +412,86 @@ export const FAM_ZORO: Record<string, CardBehavior> = {
         s.players[p].donActive--;
         s.players[p].donRested++;
         log(s, p, 'épuise 1 DON!! à la place (Nico Robin)');
+      },
+    },
+  },
+
+  // Monkey D. Luffy (OP07-033) : avec 3 Personnages ou plus, ses Personnages de coût 3 ou moins autres que
+  // [Monkey.D.Luffy] ne peuvent pas être mis KO par des effets adverses
+  'OP07-033': {
+    koShield: (s, p, _src, target, cause, by) => cause === 'effect' && by !== p && s.players[p].chars.length >= 3
+      && s.players[p].chars.some((c) => c.uid === target.uid) && fieldCost(s, target.uid) <= 3 && !def(target.num).names.includes('Monkey.D.Luffy'),
+  },
+
+  // Nami (OP10-033) : [Jouée] avec 2 Personnages {ODYSSEY} épuisés ou plus, une DON!! épuisée adverse ne sera pas
+  // redressée lors de la prochaine phase de Recharge adverse
+  'OP10-033': card({
+    onPlay: when((s, p) => s.players[p].chars.filter((c) => c.rested && hasType(c.num, ODY)).length >= 2, effect((ctx) => {
+      const O = ctx.s.players[ctx.opp];
+      if (!O.donRested) return;
+      const turn = ctx.s.turn + (ctx.s.active === ctx.me ? 1 : 2);
+      const before = O.donNoRefresh?.turn === turn ? O.donNoRefresh.count : 0;
+      O.donNoRefresh = { turn, count: Math.min(before + 1, O.donRested) };
+      log(ctx.s, ctx.me, '1 DON!! épuisée adverse ne sera pas redressée lors de la prochaine phase de Recharge adverse (Nami)');
+    }, (s, p) => s.players[other(p)].donRested > 0)),
+  }),
+
+  // Roronoa Zoro (OP12-036) : ne peut pas être joué de la main par un effet ; avec un Leader <Slash>, +1000 et pas mis KO
+  // en combat par une carte <Slash>
+  'OP12-036': {
+    noPlayByEffect: true,
+    selfPower: (s, p) => (def(s.players[p].leader.num).attributes.includes('Slash') ? 1000 : 0),
+    cantBeKO: (s, p, self, cause) => cause === 'battle' && def(s.players[p].leader.num).attributes.includes('Slash') && Boolean(s.battle)
+      && def(findField(s, s.battle!.attacker)?.card.num ?? self.num).attributes.includes('Slash') && s.battle!.attacker !== self.uid,
+  },
+
+  // Usopp (OP15-024) : [Tour adverse] pas épuisé par les effets du Leader ou des Personnages adverses, et [Bloqueur] ;
+  // [En cas de KO] épuiser le Leader ou un Personnage adverse de coût 7 ou moins
+  'OP15-024': card({ onKO: rest(oppLeaderOrChar({ costMax: 7 }), 'Usopp') }, {
+    blocker: (s, p) => s.active !== p,
+    cantBeRestedBy: (s, p, _self, num) => s.active !== p && ['LEADER', 'CHARACTER'].includes(def(num).category),
+  }),
+
+  // Nami (OP17-023) : à la place d'un de ses Personnages {East Blue} ou {Équipage de Chapeau de paille} mis KO, s'épuiser
+  'OP17-023': {
+    koReplaceAlly: {
+      label: (_s, _self, victim) => `Nami : t'épuiser pour que ${def(victim.num).name} ne soit pas mis KO`,
+      condition: (s, _p, self, victim) => !self.rested && canBeRested(s, self.uid) && (hasType(victim.num, 'East Blue') || hasType(victim.num, SH)),
+      apply: (s, p, self) => {
+        self.rested = true;
+        log(s, p, 'Nami s’épuise à la place');
+      },
+    },
+  },
+
+  // Monkey D. Luffy (PRB02-005) : [Votre tour] [Jouée] avec un Leader multicolore et 7 DON!! adverses ou moins sur le
+  // terrain, l'adversaire épuise 1 DON!! redressée au début de sa prochaine phase principale
+  'PRB02-005': card({
+    onPlay: when(all((s, p) => s.active === p, (s, p) => def(s.players[p].leader.num).colors.length >= 2, (s, p) => donOnField(s, other(p)) <= 7), effect((ctx) => {
+      ctx.s.players[ctx.opp].restDonAtMain = ctx.s.turn + 1;
+      log(ctx.s, ctx.me, 'l’adversaire épuisera 1 DON!! au début de sa prochaine phase principale (Monkey D. Luffy)');
+    })),
+  }),
+
+  // Roronoa Zoro (PRB02-006) : [Tour adverse] épuisé par l'effet d'un Personnage adverse : épuiser un autre de ses
+  // Personnages à la place ; [Bloqueur]
+  'PRB02-006': {
+    restReplace: {
+      label: 'Épuiser un autre de tes Personnages',
+      condition: (s, p, self, ctx) => s.active !== p && def(ctx.num).category === 'CHARACTER'
+        && s.players[p].chars.some((c) => c.uid !== self.uid && !c.rested && canBeRested(s, c.uid)),
+      apply: (s, p, self, ctx) => {
+        const list = s.players[p].chars.filter((c) => c.uid !== self.uid && !c.rested && canBeRested(s, c.uid));
+        const answer = ctx.ask({
+          player: p,
+          prompt: 'Roronoa Zoro : Personnage à épuiser à sa place :',
+          options: list.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
+          tag: 'restCost',
+        });
+        const f = findField(s, Number(answer.split(':')[1]));
+        if (!f) return;
+        f.card.rested = true;
+        log(s, p, `épuise ${def(f.card.num).name} à la place de Roronoa Zoro`);
       },
     },
   },

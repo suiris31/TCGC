@@ -11,7 +11,7 @@ import {
   addDonFromDeck, addMod, addTopDeckToLife, allField, basePower, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
   bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon, hasKeyword, knownFirst,
   lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect, removeFromField, restByEffect,
-  returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
+  playableByEffect, returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
 import type { Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Keyword, Modifier, PlayerId } from '../types.ts';
 import { random } from '../rng.ts';
@@ -346,10 +346,10 @@ export const ko = (t: Targets, source: string, n = 1): Effect => {
 
 // « Épuisez jusqu'à N ... »
 export const rest = (t: Targets, source: string, n = 1): Effect => {
-  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => !c.rested && canBeRested(s, c.uid));
+  const list = (s: GameState, p: PlayerId, num?: string) => candidates(s, p, t, (c) => !c.rested && canBeRested(s, c.uid, num ? { player: p, num } : undefined));
   return {
     run: (ctx) => {
-      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me), n, `${source} : ${t.label} à épuiser :`, t.side === 'opp' ? 'oppRest' : 'rest')) restByEffect(ctx, uid);
+      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me, ctx.num), n, `${source} : ${t.label} à épuiser :`, t.side === 'opp' ? 'oppRest' : 'rest')) restByEffect(ctx, uid);
     },
     useful: (s, p) => list(s, p).length > 0,
   };
@@ -461,10 +461,10 @@ export const leaderPower = (amount: number, until: 'battle' | 'turn' | 'oppNextE
 // « Épuisez jusqu'à N des cartes de votre adversaire » : son Leader, ses Personnages (spec), son Lieu et/ou ses DON!!
 // redressées, une à une
 export const restOppCards = (n: number, source: string, what: { leader?: boolean; stage?: boolean; don?: boolean; spec?: CharSpec } = {}): Effect => {
-  const list = (s: GameState, p: PlayerId) => {
+  const list = (s: GameState, p: PlayerId, num?: string) => {
     const O = s.players[other(p)];
     return [...(what.leader ? [O.leader] : []), ...O.chars.filter((c) => matches(s, c, what.spec ?? {})), ...(what.stage && O.stage ? [O.stage] : [])]
-      .filter((c) => !c.rested && canBeRested(s, c.uid));
+      .filter((c) => !c.rested && canBeRested(s, c.uid, num ? { player: p, num } : undefined));
   };
   const dons = (s: GameState, p: PlayerId) => (what.don ? s.players[other(p)].donActive : 0);
   return {
@@ -472,7 +472,7 @@ export const restOppCards = (n: number, source: string, what: { leader?: boolean
       const O = ctx.s.players[ctx.opp];
       for (let i = 0; i < n; i++) {
         const options = [
-          ...list(ctx.s, ctx.me).map((c) => ({ id: `card:${c.uid}`, label: describe(ctx.s, c.uid), uid: c.uid })),
+          ...list(ctx.s, ctx.me, ctx.num).map((c) => ({ id: `card:${c.uid}`, label: describe(ctx.s, c.uid), uid: c.uid })),
           ...(dons(ctx.s, ctx.me) > 0 ? [{ id: 'don', label: '1 DON!! redressée adverse' }] : []),
         ];
         if (!options.length) return;
@@ -565,7 +565,7 @@ export const lookTopPlay = (count: number, spec: CharSpec, source: string, opts:
 
 // « Jouez jusqu'à 1 carte Personnage ... de votre main / Défausse » (sans payer son coût ; rested : « épuisée »)
 const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, opts: { rested?: boolean } = {}): Effect => {
-  const eligible = (c: Card) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec);
+  const eligible = (c: Card) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec) && (zone !== 'hand' || playableByEffect(c.num));
   return {
     run: (ctx) => {
       const P = ctx.s.players[ctx.me];

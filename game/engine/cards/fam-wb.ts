@@ -5,7 +5,7 @@
 // game/docs/interpretations.md.
 import {
   addMod, basePower, canLeaveByEffect, canPlayCharacters, chooseUpTo1, def, drawAndDiscard, emit, fieldCost, findField, knownFirst, log,
-  lookTopPick, may, other, playCharacter, removeByEffect, removeFromField, reveal, uniqueByNum, untilOpponentsNextEnd,
+  lookTopPick, may, other, playCharacter, playableByEffect, removeByEffect, removeFromField, reveal, uniqueByNum, untilOpponentsNextEnd,
 } from '../rules.ts';
 import type { CardBehavior, EffectCtx, FieldCard, GameEvent, GameState, PlayerId } from '../types.ts';
 import {
@@ -169,7 +169,7 @@ const aceBounce: Effect = {
     if (uid === null || !removeByEffect(ctx, uid, 'hand')) return;
     const O = ctx.s.players[ctx.opp];
     if (!canPlayCharacters(ctx.s, ctx.opp)) return;
-    const options = uniqueByNum(knownFirst(ctx.s, ctx.opp, O.hand.filter((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4 && canPlayCharacters(ctx.s, ctx.opp, c.num))));
+    const options = uniqueByNum(knownFirst(ctx.s, ctx.opp, O.hand.filter((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4 && playableByEffect(c.num) && canPlayCharacters(ctx.s, ctx.opp, c.num))));
     if (!options.length) return;
     const answer = ctx.ask({
       player: ctx.opp,

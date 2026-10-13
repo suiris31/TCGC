@@ -520,8 +520,12 @@ function stepFlow(s: GameState) {
       }
       const consumed = (m: Modifier) => m.stat === 'noRefresh' && m.until === s.turn;
       if (s.mods.some(consumed)) s.mods = s.mods.filter((m) => !consumed(m));
-      P.donActive += P.donRested;
-      P.donRested = 0;
+      // DON!! qu'un effet adverse empêche d'être redressées (Nami OP10-033)
+      const keep = P.donNoRefresh?.turn === s.turn ? Math.min(P.donNoRefresh.count, P.donRested) : 0;
+      if (P.donNoRefresh && P.donNoRefresh.turn <= s.turn) delete P.donNoRefresh;
+      if (keep) log(s, p, `${keep} DON!! reste${keep > 1 ? 'nt' : ''} épuisée${keep > 1 ? 's' : ''}`);
+      P.donActive += P.donRested - keep;
+      P.donRested = keep;
       s.flow = { stage: 'draw' };
       return;
     }
@@ -539,6 +543,15 @@ function stepFlow(s: GameState) {
       const n = Math.min(P.donDeck, p === s.first && P.turns === 1 ? 1 : 2);
       P.donDeck -= n;
       P.donActive += n;
+      // « épuise 1 de ses DON!! redressées au début de sa prochaine phase principale » (Monkey D. Luffy PRB02-005)
+      if (P.restDonAtMain !== undefined && P.restDonAtMain <= s.turn) {
+        if (P.restDonAtMain === s.turn && P.donActive > 0) {
+          P.donActive--;
+          P.donRested++;
+          log(s, p, 'épuise 1 DON!! redressée (Monkey D. Luffy adverse)');
+        }
+        delete P.restDonAtMain;
+      }
       // effets « au début de la phase principale » (6-5-1)
       s.flow = { stage: 'main' };
       emit(s, { type: 'mainStart', player: p });
@@ -575,6 +588,10 @@ function stepFlow(s: GameState) {
         delete s.players[s.active].extraTurn;
         for (const m of s.mods) if (typeof m.until === 'number' && m.until > s.turn) m.until++;
         for (const d of s.delayed) if (d.turn > s.turn) d.turn++;
+        for (const Q of s.players) {
+          if (Q.donNoRefresh && Q.donNoRefresh.turn > s.turn) Q.donNoRefresh.turn++;
+          if (Q.restDonAtMain !== undefined && Q.restDonAtMain > s.turn) Q.restDonAtMain++;
+        }
         log(s, s.active, 'joue un tour supplémentaire');
       } else s.active = other(s.active);
       s.turn++;

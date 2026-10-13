@@ -76,6 +76,10 @@ export interface PlayerState {
   noCharsFromCost?: { turn: number; cost: number };
   // « prenez un tour supplémentaire après celui-ci » (Luffy OP05-119) : numéro du tour qui sera suivi d'un autre du joueur
   extraTurn?: number;
+  // « jusqu'à N de vos DON!! épuisées ne seront pas redressées lors de votre prochaine phase de Recharge » (Nami OP10-033)
+  donNoRefresh?: { turn: number; count: number };
+  // « épuise 1 de ses DON!! redressées au début de sa prochaine phase principale » (Monkey D. Luffy PRB02-005)
+  restDonAtMain?: number;
   koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
 }
 
@@ -282,6 +286,24 @@ export interface CardBehavior {
     // ctx : l'effet ou le combat en cours (questions au propriétaire avec ctx.ask({ player: owner, ... }))
     apply: (s: GameState, owner: PlayerId, self: FieldCard, ctx: EffectCtx) => void;
   };
+  // « ... ne peuvent pas être mis KO » donné par cette carte (sur le terrain) à une carte du même joueur (Luffy OP07-033)
+  koShield?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard, cause: 'battle' | 'effect', by: PlayerId) => boolean;
+  // « si un de vos Personnages ... devait être mis KO, vous pouvez ... à la place » (combat ou effet ; Nami OP17-023)
+  koReplaceAlly?: {
+    label: (s: GameState, self: FieldCard, victim: FieldCard) => string;
+    condition: (s: GameState, owner: PlayerId, self: FieldCard, victim: FieldCard) => boolean;
+    apply: (s: GameState, owner: PlayerId, self: FieldCard, victim: FieldCard, ctx: EffectCtx) => void;
+  };
+  // « ne peut pas être épuisé par les effets adverses ... » (sourceNum : la carte dont l'effet l'épuiserait ; Usopp OP15-024)
+  cantBeRestedBy?: (s: GameState, owner: PlayerId, self: FieldCard, sourceNum: string) => boolean;
+  // « s'il devait être épuisé par un effet adverse, vous pouvez ... à la place » (Roronoa Zoro PRB02-006)
+  restReplace?: {
+    label: string;
+    condition: (s: GameState, owner: PlayerId, self: FieldCard, ctx: EffectCtx) => boolean;
+    apply: (s: GameState, owner: PlayerId, self: FieldCard, ctx: EffectCtx) => void;
+  };
+  // « Cette carte dans votre main ne peut pas être jouée par des effets » (Roronoa Zoro OP12-036)
+  noPlayByEffect?: boolean;
   // « l'adversaire ne peut attaquer aucune autre carte que [ce Personnage] » tant que la condition est vraie (Captain John)
   taunt?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
   // bonus de puissance donné par cette carte (sur le terrain) à une carte du même joueur, elle comprise

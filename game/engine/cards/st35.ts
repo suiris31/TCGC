@@ -1,7 +1,7 @@
 // DECK POUR DÉBUTANT -ROUGE/NOIR Sabo- [ST-35] : effets codés d'après le texte officiel français
 import {
   RA, addMod, chooseUpTo1, def, draw, fieldCards, fieldCost, findField, giveRestedDon, hasType, koByEffect, leaderHasType,
-  knownFirst, log, may, payDon, playCharacter, power, removeFromField, reveal, trashTopDeck,
+  knownFirst, log, may, payDon, playCharacter, playableByEffect, power, removeFromField, reveal, trashTopDeck,
 } from '../rules.ts';
 import type { Card, CardBehavior, EffectCtx, GameState, PlayerId } from '../types.ts';
 
@@ -37,7 +37,7 @@ function playRevolutionaryFromHandOrTrash(ctx: EffectCtx) {
     return d.category === 'CHARACTER' && d.types.includes(RA) && (d.power ?? 0) <= 4000;
   };
   const options = [
-    ...uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(eligible))).map((c) => ({ id: `hand:${c.uid}`, label: `${def(c.num).name} (main)`, uid: c.uid })),
+    ...uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter((c) => eligible(c) && playableByEffect(c.num)))).map((c) => ({ id: `hand:${c.uid}`, label: `${def(c.num).name} (main)`, uid: c.uid })),
     ...uniqueByNum(P.trash.filter(eligible)).map((c) => ({ id: `trash:${c.uid}`, label: `${def(c.num).name} (Défausse)`, uid: c.uid })),
   ];
   if (!options.length) return;

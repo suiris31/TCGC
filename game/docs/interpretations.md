@@ -376,6 +376,17 @@ questions-réponses Bandai, tournois).
      le Leader n'est pas multicolore.
 141. **Monkey D. Luffy (OP16-034)** : compte les noms de carte différents parmi ses Personnages, lui compris.
      **Sanji (EB01-014)** : les DON!! épuisées de sa zone de Coût (pas celles données).
+142. **Monkey D. Luffy (OP07-033)** : « coût 3 ou moins » = coût actuel ; la protection vaut tant qu'il a 3 Personnages
+     ou plus (lui compris), contre les effets adverses seulement.
+143. **Nami (OP10-033)** : il faut que l'adversaire ait une DON!! épuisée quand l'effet se résout ; elle reste épuisée à
+     sa prochaine phase de Recharge (les DON!! données qui reviennent ne comptent pas à part).
+144. **Monkey D. Luffy (PRB02-005)** : l'adversaire épuise 1 DON!! redressée juste après sa phase DON!! de son prochain
+     tour, s'il en a une.
+145. **Roronoa Zoro (OP12-036)** : « ne peut pas être jouée par des effets » vaut pour les effets qui jouent une carte
+     de la main, des deux joueurs ; il reste jouable normalement en payant son coût.
+146. **Usopp (OP15-024)** : protégé des effets du Leader et des Personnages adverses, pas des Événements ni des Lieux.
+     **Nami (OP17-023)** : peut se protéger elle-même si elle est redressée. **Roronoa Zoro (PRB02-006)** : seulement
+     contre l'effet d'un Personnage adverse, pendant le tour adverse.
 
 ## Comment c'est vérifié
 
