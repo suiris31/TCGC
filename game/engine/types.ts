@@ -94,7 +94,9 @@ export interface Modifier {
 export interface DelayedEffect {
   turn: number;
   player: PlayerId;
-  action: 'untapDon';
+  // untapDon : redresser `amount` DON!! ; matchDon : renvoyer des DON!! au deck DON!! jusqu'à en avoir autant sur le
+  // terrain que l'adversaire (Black Maria)
+  action: 'untapDon' | 'matchDon';
   amount: number;
 }
 
@@ -264,6 +266,14 @@ export interface CardBehavior {
   // mot-clé donné en permanence par cette carte (sur le terrain) à une carte du même joueur, elle comprise (Holy :
   // [Double attaque] à tous les [Om])
   keywordAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard, k: Keyword) => boolean;
+  // valeur de Contre donnée (sur le terrain) aux Personnages sans Contre de la main de son propriétaire (Kaido OP17-063)
+  handCounterAura?: (s: GameState, owner: PlayerId, source: FieldCard, num: string) => number;
+  // « Si ce Personnage devait être mis KO, vous pouvez ... à la place » (KO en combat ou par n'importe quel effet ; King)
+  koReplace?: {
+    label: string;
+    condition: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
+    apply: (s: GameState, owner: PlayerId, self: FieldCard) => void;
+  };
   // « l'adversaire ne peut attaquer aucune autre carte que [ce Personnage] » tant que la condition est vraie (Captain John)
   taunt?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
   // bonus de puissance donné par cette carte (sur le terrain) à une carte du même joueur, elle comprise

@@ -130,6 +130,20 @@ export const DECKS: Record<string, DeckList> = {
       'ST10-010': 3,
     },
   },
+  // Méta d'octobre 2026 : 1re place d'un tournoi Standard Battle (Japon, format Standard), 4 octobre 2026 ; choisie sans
+  // validation, à la demande de l'utilisateur (la seule liste d'octobre publiée trouvée).
+  // https://opmetagame.com/tournaments/oo-gumgum-standard-battle-2026-10-04/
+  'META-KAIDO-2026-10': {
+    id: 'META-KAIDO-2026-10',
+    name: 'Kaido (méta, octobre 2026)',
+    series: 'META',
+    leader: 'OP17-058',
+    cards: {
+      'EB04-031': 4, 'EB04-032': 4, 'EB04-040': 1, 'OP07-076': 3, 'OP07-077': 4, 'OP08-074': 3, 'OP13-076': 2, 'OP15-077': 1,
+      'OP15-078': 4, 'OP17-061': 3, 'OP17-062': 4, 'OP17-063': 3, 'OP17-065': 2, 'OP17-068': 1, 'OP17-073': 4, 'OP17-074': 4,
+      'ST34-004': 3,
+    },
+  },
 };
 
 export function deckSize(deck: DeckList) {

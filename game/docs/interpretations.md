@@ -153,6 +153,25 @@ questions-réponses Bandai, tournois).
 50. **Satori** : chaque carte va au-dessus ou au-dessous, puis le joueur choisit l'ordre (la première choisie au-dessus
     sera la plus haute).
 
+## Kaido du méta (octobre 2026), choix faits sans validation (à revoir si besoin)
+
+51. **Leader Kaido** : [En attaquant] et [Attaque adverse] partagent la même limite [Une fois par tour], comptée quand
+    DON!! −1 est payé (comme Shiki, choix 38).
+52. **King** : le remplacement marche pour tout KO (combat ou effet, de l'un ou l'autre joueur), à chaque fois, tant qu'il
+    a au moins 1 DON!! sur son terrain ; la DON!! renvoyée suit la règle des DON!! −X (épuisées d'abord). « Pas d'autre
+    [King] » = aucun autre Personnage nommé King sur son terrain.
+53. **Black Maria** : les 5 DON!! arrivent épuisées ; à la fin du tour, des DON!! sont renvoyées (épuisées d'abord, puis
+    redressées, puis données) jusqu'à en avoir autant sur le terrain que l'adversaire ; rien si c'est déjà le cas.
+54. **Kaido (OP17-062)** : se déclenche une fois par tour et par exemplaire, pendant son tour, pour n'importe quelle DON!!
+    renvoyée (DON!! −X, Black Maria, King) ; il ajoute 1 DON!! redressée si le deck DON!! en a, puis redresse 1 DON!!.
+55. **Kaido (OP17-063)** : Contre +1000 aux Personnages de la main sans valeur de Contre imprimée (deux Kaido ne
+    s'additionnent pas). Son activation : « joué ce tour » = joué de la main ou par un effet ; le coût de 6 ou moins se
+    lit au moment du choix ; les effets de la cible sont annulés avant le KO (son [En cas de KO] ne se déclenche pas).
+56. **Torche du dragon** : « un de vos [Kaido] » = Leader ou Personnage nommé Kaido ; son [Contre] ne protège que le
+    Leader.
+57. **Les Superstars** : « jouez jusqu'à 1 [King], [Queen] ou [Jack] » de la main, sans limite de coût (les deux Queen
+    comptent), joué redressé.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

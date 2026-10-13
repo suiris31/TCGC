@@ -117,6 +117,13 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
   'OP17-054': (s, p) => (s.players[p].donActive >= 3 && s.players[other(p)].chars.some((c) => !c.rested) ? 'end' : null),
   // Leader Ener : remettre ses DON!! en jeu avant de jouer ses cartes
   'OP15-058': (s, p) => (s.players[p].donDeck > 0 || (s.players[p].donRested > 0 && s.players[p].chars.length) ? 'early' : null),
+  // Kaido du méta : King et Black Maria ajoutent des DON!! avant de jouer ; Queen épuise 2 DON!! inutilisées en fin de
+  // tour ; Kaido (OP17-063) met KO le tour où il arrive ; les Superstars laissent leur place à Queen (OP17-065)
+  'EB04-031': (s, p) => (s.players[p].donDeck > 0 ? 'early' : null),
+  'OP08-074': (s, p) => (s.players[p].donDeck >= 3 ? 'early' : null),
+  'EB04-032': (s, p) => (s.players[p].donActive >= 2 && s.players[p].donDeck > 0 ? 'end' : null),
+  'OP17-063': (s, p) => (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 6 && fieldValue(s, c.uid) >= 3).length ? 'early' : null),
+  'OP17-061': (s, p) => (s.players[p].hand.some((c) => c.num === 'OP17-065') ? 'late' : null),
   'OP10-114': (s, p, card) => {
     const others = attackers(s, p).filter((a) => a.uid !== card.uid);
     const opens = oppCharsWhere(s, p, (c) => !c.rested && fieldCost(s, c.uid) <= 4
@@ -223,6 +230,16 @@ const PLAY_BONUS: Record<string, (s: GameState, p: PlayerId) => number> = {
   'OP15-118': () => 2,
   'ST10-010': (s, p) => (s.players[other(p)].hand.length >= 7 ? 2 : 0),
   'OP15-071': (s, p) => 1 + (s.players[p].chars.some((c) => def(c.num).names.includes('Ohm')) ? 1 : 0),
+  // Kaido du méta
+  'EB04-032': (s, p) => (inHand(s, p, (n) => n !== 'EB04-032' && def(n).types.includes('Animal Kingdom Pirates')) ? 1.5 : 0.5),
+  'EB04-031': () => 1,
+  'OP08-074': () => 1,
+  'OP17-061': () => 2,
+  'OP17-062': () => 2,
+  'OP17-063': (s, p) => 2 + (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 6).length ? 2 : 0),
+  'OP17-065': () => 2,
+  'OP17-068': () => 0.5,
+  'OP17-073': (s, p) => (s.players[p].hand.length >= 3 ? 1 : 0),
 };
 
 function playScore(s: GameState, p: PlayerId, num: string, st: Style = styleOf(s.players[p].deckId, p)) {
@@ -266,6 +283,9 @@ const EVENT_SCORE: Record<string, (s: GameState, p: PlayerId) => number | null> 
   'OP15-074': (s, p) => (s.players[p].hand.length <= 4 ? 1 : null),
   'OP15-077': (s, p) => (oppCharsWhere(s, p, (c) => c.rested && power(s, c.uid) <= 6000).length ? 1.5 : null),
   'OP15-078': (s, p) => (oppCharsWhere(s, p, (c) => !c.rested && power(s, c.uid) <= 5000 && hasBlocker(s, other(p), c)).length ? 1.5 : null),
+  // Kaido du méta
+  'OP07-077': (s, p) => (s.players[p].hand.length <= 5 ? 1.5 : null),
+  'EB04-040': (s, p) => (s.players[p].donActive >= 6 && fieldCards(s, p).some((c) => def(c.num).names.includes('Kaido') && canAttack(s, p, c)) ? 2 : null),
 };
 
 // ---------- Plan d'attaque ----------
@@ -464,6 +484,8 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP15-075':
     case 'OP15-076': return def(findField(s, targetUid)?.card.num ?? num).names.includes('Enel') ? 2000 : 0;
     case 'OP15-078': return 1000;
+    case 'EB04-040': return findField(s, targetUid)?.leader && donOnField(s, p) >= 1 ? 4000 : 0;
+    case 'OP07-076': return donOnField(s, p) >= 1 ? 2000 : 0;
     case 'OP13-076': return s.players[p].hand.length >= 2 ? 3000 : 0;
     case 'OP09-078': return leaderHasType(s, p, 'Straw Hat Crew') && donOnField(s, p) >= 2 && s.players[p].hand.length >= 2 ? 4000 : 0;
     default: return 2000;
@@ -572,6 +594,18 @@ function chooseEffect(s: GameState, d: Decision): string {
     const dp = power(s, s.battle.target);
     return yesNo(s.active === p ? atk < dp && atk + bonus >= dp : atk >= dp && atk < dp + bonus);
   }
+  // Leader Kaido (DON!! −1 : −2000) : seulement si ça change l'issue du combat
+  if (d.tag === 'may' && sourceNum === 'OP17-058' && s.battle) {
+    const b = s.battle;
+    const atk = power(s, b.attacker);
+    const dp = power(s, b.target);
+    const targetIsChar = !findField(s, b.target)?.leader;
+    const attackerIsChar = !findField(s, b.attacker)?.leader;
+    return yesNo(s.active === p ? targetIsChar && atk < dp && atk >= dp - 2000 : attackerIsChar && atk >= dp && atk - 2000 < dp);
+  }
+  // Sasaki (défausser 2) et Basil Hawkins (défausser 1) : seulement avec une main fournie
+  if (d.tag === 'may' && sourceNum === 'OP17-068') return yesNo(P.hand.length >= 4);
+  if (d.tag === 'may' && sourceNum === 'OP17-073') return yesNo(P.hand.length >= 3);
   // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus
   if (d.tag === 'may' && sourceNum === 'ST10-010') return yesNo(O.hand.length >= 7);
   // Kyo : défausser 2 cartes pour garder un Personnage seulement avec une main fournie

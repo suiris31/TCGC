@@ -6,9 +6,9 @@ import { DECKS } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
   addMod, allField, attackTargets, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def, describe,
-  discardFromHand, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated, knownFirst,
-  koCharacter, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack, reveal, shuffleDeck,
-  triggerEffect, untapDon,
+  discardFromHand, donOnField, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated, knownFirst,
+  koCharacter, koSelfReplacement, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack,
+  returnDon, reveal, shuffleDeck, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
   Decision, EffectCtx, GameState, HistoryEntry, Modifier, Option, PendingEffect, PlayerId, PlayerState,
@@ -364,6 +364,21 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     emit(s, { type: 'attack', player: ctx.me, uid, num: attacker.card.num, zone: attacker.leader ? 'leader' : 'character', by: ctx.me, cause: 'attack', target }, effects);
   },
 
+  // Personnage battu en combat qui peut se sauver lui-même (King : renvoyer 1 DON!! à la place) ; sinon, la protection
+  // du tour (EB02-030) peut encore s'appliquer
+  koSelf(ctx, p) {
+    const { s } = ctx;
+    const f = findField(s, p.source);
+    const r = koSelfReplacement(s, p.source);
+    if (!f || !r) return;
+    if (may(ctx, `${def(p.num).name} va être mis KO en combat. ${r.label} à la place ?`, 'replace')) {
+      r.apply(s, ctx.me, f.card);
+      return;
+    }
+    if (s.players[ctx.me].koGuardTurn === s.turn && s.players[ctx.me].hand.length) SYSTEM.koGuard(ctx, p);
+    else koCharacter(s, p.source, 'battle', ctx.opp);
+  },
+
   // Personnage battu en combat, son propriétaire protégé pour le tour (EB02-030) : défausser 1 carte à la place du KO
   koGuard(ctx, p) {
     const { s } = ctx;
@@ -524,6 +539,10 @@ function stepFlow(s: GameState) {
         emit(s, { type: 'turnEnd', player: s.active }, effects);
         for (const d of s.delayed.filter((x) => x.turn === s.turn)) {
           if (d.action === 'untapDon') untapDon(s, d.player, d.amount);
+          if (d.action === 'matchDon') {
+            const extra = donOnField(s, d.player) - donOnField(s, other(d.player));
+            if (extra > 0) returnDon(s, d.player, extra);
+          }
         }
         s.delayed = s.delayed.filter((x) => x.turn !== s.turn);
         return;
@@ -670,7 +689,9 @@ function stepBattle(s: GameState) {
           log(s, s.active, `l'attaque gagne le combat (${atk} contre ${dp})`);
           const D = s.players[target.player];
           // « si un de vos Personnages devait être mis KO en combat, vous pouvez défausser 1 carte à la place » (EB02-030)
-          if (D.koGuardTurn === s.turn && D.hand.length && canBeKO(s, b.target, 'battle', s.active)) {
+          if (koSelfReplacement(s, b.target) && canBeKO(s, b.target, 'battle', s.active)) {
+            s.pending.push({ kind: 'system', action: 'koSelf', source: b.target, num: target.card.num, controller: target.player, answers: [] });
+          } else if (D.koGuardTurn === s.turn && D.hand.length && canBeKO(s, b.target, 'battle', s.active)) {
             s.pending.push({ kind: 'system', action: 'koGuard', source: b.target, num: target.card.num, controller: target.player, answers: [] });
           } else {
             koCharacter(s, b.target, 'battle', s.active);

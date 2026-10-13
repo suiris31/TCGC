@@ -254,4 +254,25 @@ export const GUIDES: Record<string, DeckGuide> = {
     strengths: ['Pioche et contrôle à chaque DON!! −1', 'Attaques tôt (Shura) et [Double attaque] (Holy et les Om)', 'Événements de Contre gratuits'],
     weaknesses: ['Seulement 6 DON!! : pas de gros Personnages', 'Petits Personnages faciles à abattre', 'Plan exigeant : l’ordre des actions compte beaucoup'],
   },
+  'META-KAIDO-2026-10': {
+    styles: ['DON!!', 'Contrôle', 'Violet'],
+    summary: 'L’Équipage des cent bêtes joue avec les DON!! : King, Queen, Black Maria et Basil Hawkins en ajoutent, et chaque DON!! −1 se recharge grâce à Kaido (OP17-062). Deux Kaido à 12000, Queen à 10000 et Charlotte Linlin pour finir.',
+    plan: [
+      'Tours 1 à 3 : Queen (coût 1) pioche 2 cartes contre une carte {Équipage des cent bêtes} ; Yamato ([Bloqueur]) et Basil Hawkins ajoutent des DON!! ; « We’re Going to Claim the One Piece!!! » cherche une carte de l’équipage.',
+      'Dès 3 DON!! : Black Maria ajoute 5 DON!! épuisées pour payer les DON!! −1 du tour ; à la fin du tour, tu reviens au même nombre de DON!! que l’adversaire.',
+      'Dès 6 DON!! : King (7000) ajoute 2 DON!! par tour et se sauve d’un KO en renvoyant 1 DON!!.',
+      'Dès 9 et 10 DON!! : les Superstars (11000, +1 Vie), Queen (10000, [Exil], 2 Personnages adverses ne peuvent plus attaquer), Kaido (12000) : celui d’OP17-062 ([Bloqueur]) rend une DON!! quand une autre est renvoyée, celui d’OP17-063 met KO un Personnage de coût 6 ou moins le tour où il arrive.',
+      'Défense : le Leader donne −2000 à un attaquant (DON!! −1, une fois par tour) ; Torche du dragon (+4000 au Leader), Ramollo Beam Sword, Mamaragan et Trépas divin en Contre.',
+    ],
+    combos: [
+      { title: 'Les DON!! qui reviennent', cards: ['OP17-062', 'OP17-065', 'OP17-058', 'OP08-074'], text: 'Avec Kaido (OP17-062) en jeu, la première DON!! renvoyée de ton tour revient redressée, et une autre se redresse : le DON!! −1 de Queen ou du Leader ne coûte presque rien. Black Maria donne de quoi payer.' },
+      { title: 'Le roi des bêtes', cards: ['OP17-063'], text: 'Kaido (OP17-063) : le tour où il arrive, DON!! −1 pour annuler les effets d’un Personnage adverse de coût 6 ou moins et le mettre KO. En jeu, il donne Contre +1000 à tes Personnages sans Contre de ta main.' },
+      { title: 'King', cards: ['EB04-031'], text: 'S’il devait être mis KO, en combat ou par un effet, renvoie 1 DON!! à la place. Une fois par tour, il ajoute 1 DON!! redressée et 1 épuisée.' },
+      { title: 'Les Superstars', cards: ['OP17-061', 'OP17-065', 'EB04-031'], text: 'Elles ajoutent la carte du dessus de ton deck à ta Vie (DON!! −1) ; plus tard, place-les dans ta Défausse pour jouer gratuitement Queen (coût 9) ou King de ta main.' },
+      { title: 'Contrôle', cards: ['OP17-065', 'OP15-077', 'OP15-078', 'ST34-004'], text: 'Queen empêche 2 Personnages de coût 5 ou moins d’attaquer ; Djambuwal et Mamaragan bloquent ou épuisent ; Charlotte Linlin met à 0 la puissance d’un Personnage adverse.' },
+    ],
+    mulligan: 'Garde Queen (coût 1), Yamato ou Basil Hawkins, et une carte de recherche (« We’re Going to Claim the One Piece!!! »). Repioche une main sans carte de coût 3 ou moins.',
+    strengths: ['Beaucoup de DON!! en jeu tôt', 'Gros Personnages (Kaido 12000, Queen 10000) et contrôle', 'King très difficile à mettre KO'],
+    weaknesses: ['Les DON!! −1 vident le terrain sans Kaido (OP17-062)', 'Démarrage lent sans petite carte en main', 'Black Maria oblige à revenir au niveau de DON!! de l’adversaire en fin de tour'],
+  },
 };

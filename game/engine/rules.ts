@@ -272,7 +272,22 @@ export function attackTargets(s: GameState, p: PlayerId, card: FieldCard): numbe
 // Valeur de Contre d'une carte de la main de p
 export function counterValue(s: GameState, p: PlayerId, num: string): number {
   const d = def(num);
-  return d.handCounter ? d.handCounter(s, p) : d.counter ?? 0;
+  const own = d.handCounter ? d.handCounter(s, p) : d.counter ?? 0;
+  if (own || d.category !== 'CHARACTER') return own;
+  let given = 0;
+  for (const src of allField(s, p)) {
+    const aura = def(src.num).handCounterAura;
+    if (aura && !isNegated(s, src.uid)) given = Math.max(given, aura(s, p, src, num));
+  }
+  return given;
+}
+
+// Remplacement « si ce Personnage devait être mis KO » proposé à son propriétaire (combat ou effet)
+export function koSelfReplacement(s: GameState, uid: number) {
+  const f = findField(s, uid);
+  if (!f || f.leader || f.stage) return null;
+  const r = def(f.card.num).koReplace;
+  return r && !isNegated(s, uid) && r.condition(s, f.player, f.card) ? r : null;
 }
 
 // ---------- Pioche, deck, défausse ----------
@@ -605,6 +620,19 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
   if (!canLeaveByEffect(s, uid, ctx.me)) {
     log(s, owner, `${def(f.card.num).name} ne peut pas quitter le terrain à cause d'un effet adverse`);
     return false;
+  }
+  const self = to === 'ko' ? koSelfReplacement(s, uid) : null;
+  if (self) {
+    const answer = ctx.ask({
+      player: owner,
+      prompt: `${def(f.card.num).name} va être mis KO. ${self.label} à la place ?`,
+      options: [{ id: 'yes', label: 'Oui' }, { id: 'no', label: 'Non' }],
+      tag: 'replace',
+    });
+    if (answer === 'yes') {
+      self.apply(s, owner, f.card);
+      return false;
+    }
   }
   if (owner !== ctx.me) {
     const options: Option[] = fieldCards(s, owner).flatMap((self) => {
