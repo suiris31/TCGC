@@ -694,7 +694,8 @@ function chooseEffect(s: GameState, d: Decision): string {
     case 'lifeSideOpp':
       return 'lifeBottom';
     case 'playFree': {
-      const score = (o: Option) => playScore(s, p, cardNum(s, o.uid!)!) + (o.id.startsWith('trash:') ? 0.5 : 0);
+      // numéro porté par l'option : la carte peut être hors des zones connues (cartes regardées sur le deck)
+      const score = (o: Option) => playScore(s, p, numOf(o)) + (o.id.startsWith('trash:') ? 0.5 : 0);
       return ([...cards].sort((a, b) => score(b) - score(a))[0] ?? d.options[0]).id;
     }
     case 'fullZone':

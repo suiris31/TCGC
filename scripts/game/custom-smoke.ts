@@ -2,7 +2,9 @@
 // jouables à ses couleurs, joués par l'IA simple contre les decks du registre, avec contrôle de cohérence à chaque
 // décision. Vérifie que n'importe quelle carte jouable marche dans n'importe quel deck (pas seulement celui pour lequel
 // elle a été codée), et compte les cartes jamais jouées.
-//   node --no-warnings scripts/game/custom-smoke.ts [decks par Leader] [parties par deck] [Leader,Leader...]
+// Avec --hasard, les choix des effets (et une partie des autres) sont tirés au hasard pour explorer plus de chemins, et
+// la réponse que donnerait l'IA est vérifiée à chaque décision (elle doit faire partie des choix proposés).
+//   node --no-warnings scripts/game/custom-smoke.ts [decks par Leader] [parties par deck] [Leader,Leader...] [--hasard]
 import '../../game/data/load-local.ts';
 import { heuristicChooser } from '../../game/ai/heuristic.ts';
 import { CARDS, cardStatus, HIDDEN } from '../../game/engine/cards/index.ts';
@@ -11,7 +13,9 @@ import { CUSTOM_SERIES, DECKS, type DeckList } from '../../game/engine/decks.ts'
 import { newGame } from '../../game/engine/engine.ts';
 import { invariantErrors } from '../../game/engine/invariants.ts';
 
-const [decksArg = '4', gamesArg = '6', leadersArg] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const randomChoices = args.includes('--hasard');
+const [decksArg = '4', gamesArg = '6', leadersArg] = args.filter((a) => a !== '--hasard');
 const perLeader = Number(decksArg);
 const games = Number(gamesArg);
 const playable = Object.keys(CARDS).filter((n) => n !== HIDDEN && cardStatus(n) !== 'todo');
@@ -65,7 +69,10 @@ for (const leader of leaders) {
             const bad = invariantErrors(st);
             if (bad.length) throw new Error(bad.join(' ; '));
           }
-          return heuristicChooser(st, d);
+          const ai = heuristicChooser(st, d);
+          if (!randomChoices) return ai;
+          if (!d.options.some((o) => o.id === ai)) throw new Error(`réponse de l'IA hors des choix : ${ai} (${d.tag ?? d.kind})`);
+          return d.kind === 'effect' || rand() < 0.3 ? d.options[Math.floor(rand() * d.options.length)].id : ai;
         });
         total++;
         for (const l of s.log) {
@@ -81,6 +88,6 @@ for (const leader of leaders) {
   }
 }
 const never = [...inDecks].filter((n) => !played.has(n) && CARDS[n].category !== 'LEADER');
-console.log(`${total} parties (${leaders.length} Leaders × ${perLeader} decks × ${games} parties) en ${Math.round((Date.now() - t0) / 1000)} s, ${failures} problème(s)`);
+console.log(`${total} parties${randomChoices ? ' (choix au hasard)' : ''} (${leaders.length} Leaders × ${perLeader} decks × ${games} parties) en ${Math.round((Date.now() - t0) / 1000)} s, ${failures} problème(s)`);
 console.log(`${inDecks.size} cartes différentes dans les decks, ${never.length} jamais jouées ni activées : ${never.slice(0, 40).join(' ')}`);
 if (failures) process.exitCode = 1;
