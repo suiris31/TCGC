@@ -11,7 +11,7 @@ import {
   addDonFromDeck, addMod, addTopDeckToLife, allField, basePower, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
   bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon, hasKeyword, knownFirst,
   lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect, removeFromField, restByEffect,
-  playableByEffect, returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
+  canTakeLife, playableByEffect, returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
 import type { Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Keyword, Modifier, PlayerId } from '../types.ts';
 import { random } from '../rng.ts';
@@ -603,7 +603,7 @@ export const lifeIntoHand = (from: 'top' | 'bottom'): Effect => effect((ctx) => 
 
 // « Ajoutez à la main de son propriétaire jusqu'à 1 carte du dessus de la Vie adverse » (pas des dégâts : pas de
 // [Déclenchement])
-export const oppLifeToHand = (): Effect => effect((ctx) => { lifeToHand(ctx.s, ctx.opp, 'top'); }, (s, p) => s.players[other(p)].life.length > 0);
+export const oppLifeToHand = (): Effect => effect((ctx) => { lifeToHand(ctx.s, ctx.opp, 'top', ctx.me); }, (s, p) => s.players[other(p)].life.length > 0);
 
 // « Regardez N cartes du dessus de votre deck et ajoutez au-dessus de votre Vie jusqu'à 1 carte. Puis, placez les
 // cartes restantes au-dessous de votre deck dans l'ordre de votre choix » (le joueur sait quelle carte il a placée)
@@ -869,9 +869,9 @@ export const flipTopLife = (faceUp: boolean): Cost => ({
 // « Ajoutez à votre main 1 carte du dessus (ou du dessous) de votre Vie » (coût)
 export const lifeToHandCost = (ends: 'top' | 'both'): Cost => ({
   label: `ajouter à ta main la carte du dessus${ends === 'both' ? ' ou du dessous' : ''} de ta Vie`,
-  can: (s, p) => s.players[p].life.length > 0,
+  can: (s, p) => s.players[p].life.length > 0 && canTakeLife(s, p),
   pay: (ctx) => {
-    if (!ctx.s.players[ctx.me].life.length) return false;
+    if (!ctx.s.players[ctx.me].life.length || !canTakeLife(ctx.s, ctx.me)) return false;
     const from = ends === 'top' ? 'top' : ctx.ask({
       prompt: 'Carte de ta Vie à ajouter à ta main :',
       options: [{ id: 'top', label: 'La carte du dessus' }, { id: 'bottom', label: 'La carte du dessous' }],

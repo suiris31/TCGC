@@ -251,6 +251,9 @@ export function canBeRested(s: GameState, uid: number, by?: { player: PlayerId; 
   return !(own && !isNegated(s, uid) && own(s, f.player, f.card, by.num));
 }
 
+// Peut-il ajouter une carte de Vie à sa main par ses propres effets ? (Atmos ST15-001)
+export const canTakeLife = (s: GameState, p: PlayerId) => s.players[p].noLifeToHandTurn !== s.turn;
+
 // La carte de la main peut-elle être jouée par un effet ? (Roronoa Zoro OP12-036 : non)
 export const playableByEffect = (num: string) => !def(num).noPlayByEffect;
 
@@ -303,6 +306,11 @@ export function attackTargets(s: GameState, p: PlayerId, card: FieldCard): numbe
 // Valeur de Contre d'une carte de la main de p
 export function counterValue(s: GameState, p: PlayerId, num: string): number {
   const d = def(num);
+  for (const src of allField(s, p)) {
+    const set = def(src.num).handCounterOverride;
+    const v = set && !isNegated(s, src.uid) ? set(s, p, src, num) : null;
+    if (v !== null) return v;
+  }
   const own = d.handCounter ? d.handCounter(s, p) : d.counter ?? 0;
   if (own || d.category !== 'CHARACTER') return own;
   let given = 0;
@@ -828,8 +836,13 @@ export function addTopDeckToLife(s: GameState, p: PlayerId) {
 }
 
 // Ajoute à la main la carte du dessus ou du dessous de la Vie
-export function lifeToHand(s: GameState, p: PlayerId, from: 'top' | 'bottom') {
+// by : le joueur dont l'effet prend la carte (par défaut son propriétaire)
+export function lifeToHand(s: GameState, p: PlayerId, from: 'top' | 'bottom', by: PlayerId = p) {
   const P = s.players[p];
+  if (by === p && !canTakeLife(s, p)) {
+    log(s, p, 'ne peut pas ajouter de carte de Vie à sa main ce tour-ci');
+    return null;
+  }
   const card = from === 'top' ? P.life.shift() : P.life.pop();
   if (!card) return null;
   P.hand.push({ uid: card.uid, num: card.num });

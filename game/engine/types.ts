@@ -80,6 +80,8 @@ export interface PlayerState {
   donNoRefresh?: { turn: number; count: number };
   // « épuise 1 de ses DON!! redressées au début de sa prochaine phase principale » (Monkey D. Luffy PRB02-005)
   restDonAtMain?: number;
+  // « vous ne pouvez pas ajouter de cartes de Vie à votre main avec vos propres effets pour tout le tour » (Atmos ST15-001)
+  noLifeToHandTurn?: number;
   koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
 }
 
@@ -277,6 +279,8 @@ export interface CardBehavior {
   // mot-clé donné en permanence par cette carte (sur le terrain) à une carte du même joueur, elle comprise (Holy :
   // [Double attaque] à tous les [Om])
   keywordAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard, k: Keyword) => boolean;
+  // « le Contre de vos Personnages ... de votre main devient +X » (Portgas D. Ace OP16-118) : null si la carte n'est pas visée
+  handCounterOverride?: (s: GameState, owner: PlayerId, source: FieldCard, num: string) => number | null;
   // valeur de Contre donnée (sur le terrain) aux Personnages sans Contre de la main de son propriétaire (Kaido OP17-063)
   handCounterAura?: (s: GameState, owner: PlayerId, source: FieldCard, num: string) => number;
   // « Si ce Personnage devait être mis KO, vous pouvez ... à la place » (KO en combat ou par n'importe quel effet ; King)

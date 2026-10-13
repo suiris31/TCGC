@@ -416,6 +416,18 @@ questions-réponses Bandai, tournois).
 159. **Monkey D. Luffy (OP07-109)** : la pioche a lieu même sans la mise KO (plus de 2 Vies). **Gum Gum Carabine Dorée** :
      tout l'effet [Principale] dépend du Leader {Équipage de Chapeau de paille}.
 
+## Famille du Leader Luffy et Ace, choix faits sans validation (à revoir si besoin)
+
+160. **« Personnage de 8000 de puissance »** (à révéler ou défausser de la main) : puissance imprimée de 8000 exactement.
+161. **Marco (OP16-014, OP17-015)** : peut se mettre KO à la place de n'importe lequel de ses Personnages (lui compris)
+     retiré par un effet adverse ; c'est une mise KO par son propre effet, et son [En cas de KO] se déclenche.
+162. **Portgas D. Ace (OP16-118)** : le Contre « devient +2000 », même pour une carte qui avait déjà +1000.
+163. **Atmos (ST15-001)** : le reste du tour, ses propres effets ne lui font plus prendre de Vie en main (et les coûts
+     qui le demandent ne sont plus payables) ; les dégâts reçus ne sont pas concernés.
+164. **Edward Newgate (OP17-005)** : « Leader monocolore » = d'une seule couleur. **Inazuma (OP16-024)** : seulement mis
+     KO par un effet adverse. **Kingdew (ST15-003)** : mis KO par un effet (de l'un ou l'autre joueur) pendant le tour
+     adverse. **Gra ha ha ha ha !!** : le +2000 va à la carte attaquée si elle est « Équipage de Barbe Blanche ».
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
