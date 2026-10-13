@@ -405,6 +405,16 @@ questions-réponses Bandai, tournois).
      est mis KO ou renvoyé (main, deck...) par un effet adverse, le Lieu peut s'épuiser pour 1 DON!! épuisée.
 154. **O-Soba Mask** : « 7000 de puissance de base » ; il renvoie en main tous ses [San-Gorou] et [Sanji], même celui qui a
      réduit son coût. **Monkey D. Luffy (ST26-005)** : la puissance de base du Leader devient 7000 (choix 46).
+155. **« Ajoutez cette carte à votre main »** ([Déclenchement] de Jinbe OP07-102, Tony Tony.Chopper OP07-103) : la carte
+     révélée va dans la main au lieu de la Défausse.
+156. **Nico Robin (EB03-055)** : le dégât infligé suit les règles d'un dégât de combat (la carte de Vie peut activer son
+     [Déclenchement]). **Nico Robin (OP09-107)** : la Vie adverse défaussée ne déclenche rien.
+157. **Monkey D. Luffy (OP15-119)** : à chaque Événement ou [Bloqueur] activé par l'adversaire (pas une fois par tour) ; la
+     carte révélée reste au-dessus de la Vie, connue des deux joueurs.
+158. **Nami (ST29-008)** : sans limite par tour, tant que la Vie du dessus est face cachée. **Sanji (EB04-052)** : prend la
+     puissance de base actuelle du Leader adverse.
+159. **Monkey D. Luffy (OP07-109)** : la pioche a lieu même sans la mise KO (plus de 2 Vies). **Gum Gum Carabine Dorée** :
+     tout l'effet [Principale] dépend du Leader {Équipage de Chapeau de paille}.
 
 ## Comment c'est vérifié
 
