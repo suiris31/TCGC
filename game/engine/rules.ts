@@ -258,10 +258,15 @@ export const canPlayCharacters = (s: GameState, p: PlayerId, num?: string) => {
 export const restedCards = (s: GameState, p: PlayerId) => allField(s, p).filter((c) => c.rested).length + s.players[p].donRested;
 
 // Peut attaquer ce tour-ci ? charsOnly : [Initiative : Personnage] le tour où il est joué
+// Cartes à défausser pour attaquer avec cette carte (Edward.Newgate OP08-043), 0 sinon
+export function attackTax(s: GameState, uid: number): number {
+  return Math.max(0, ...s.mods.filter((m) => m.uid === uid && m.stat === 'attackTax').map((m) => m.amount));
+}
+
 export function attackAbility(s: GameState, p: PlayerId, card: FieldCard): { can: boolean; charsOnly: boolean } {
   const P = s.players[p];
   const no = { can: false, charsOnly: false };
-  if (card.rested || P.turns <= 1 || hasMod(s, card.uid, 'cantAttack') || !canBeRested(s, card.uid)) return no;
+  if (card.rested || P.turns <= 1 || hasMod(s, card.uid, 'cantAttack') || !canBeRested(s, card.uid) || attackTax(s, card.uid) > P.hand.length) return no;
   if (card.uid === P.leader.uid || card.playedTurn < s.turn) return { can: true, charsOnly: false };
   if (hasKeyword(s, p, card, 'Rush')) return { can: true, charsOnly: false };
   if (hasKeyword(s, p, card, 'Rush: Character')) return { can: true, charsOnly: true };
@@ -609,7 +614,7 @@ export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect
     log(s, f0.player, `${d.name} ne peut pas être mis KO`);
     return false;
   }
-  const triggers = d.onKO && !isNegated(s, uid) && (d.onKOCondition?.(s, f0.player, f0.card) ?? true);
+  const triggers = d.onKO && !isNegated(s, uid) && (d.onKOCondition?.(s, f0.player, f0.card, cause, by) ?? true);
   const f = removeFromField(s, uid, 'trash');
   if (!f) return false;
   log(s, f.player, `${d.name} est mis KO${cause === 'effect' ? ' par un effet' : ''}`);
@@ -681,6 +686,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
   else {
     removeFromField(s, uid, to);
     log(s, owner, `${def(f.card.num).name} est ${DESTINATION_TEXT[to]}`);
+    emit(s, { type: 'leave', player: owner, uid, num: f.card.num, zone: 'character', by: ctx.me, cause: 'effect', sourceNum: ctx.num });
   }
   return true;
 }

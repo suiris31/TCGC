@@ -326,6 +326,27 @@ questions-réponses Bandai, tournois).
      **Hina (EB03-025)** : « 6000 de puissance de base » = exactement 6000. **White Snake** : le +1000 peut aller à
      n'importe lequel de ses Personnages ou à son Leader, pour tout le tour.
 
+## Famille du Leader Ace et Newgate, choix faits sans validation (à revoir si besoin)
+
+123. **« Placez N cartes de votre main au-dessus ou au-dessous de votre deck dans l'ordre de votre choix »** (Namule,
+     Portgas D. Ace OP07-053 et P-103) : une carte à la fois ; la dernière placée au-dessus est la plus haute.
+124. **Edward.Newgate (OP08-043)** : vise les Personnages adverses présents quand il est joué ; l'adversaire choisit les
+     2 cartes à défausser à chaque déclaration d'attaque, et ne peut pas attaquer avec eux s'il a moins de 2 cartes en
+     main. La défausse est due à l'effet de Newgate.
+125. **Thatch** : le remplacement couvre toute mise KO (combat ou effet) et toute sortie due à un effet adverse ; il est
+     proposé (toujours avantageux) ; Thatch placé dans la Défausse n'est pas mis KO.
+126. **Vista (OP13-046)** : un seul [Une fois par tour] pour la mise KO et la sortie due à un effet adverse.
+     **Fossa** protège un autre de ses Personnages, pas lui-même ; il n'est pas mis KO en se défaussant.
+127. **Marco (OP09-052)** : la carte est défaussée au moment où il est mis KO par un effet adverse pendant le tour adverse
+     (pas en combat).
+128. **Moby Dick** : « retiré du terrain par un effet » = mis KO par un effet ou renvoyé en main, sous le deck, dans la
+     Vie ou la Défausse par un effet, y compris par un coût de ses propres cartes (Joz, Brilliant Punk) ; pas en combat.
+129. **Marshall D. Teach (OP13-053)** : un autre de ses Personnages, pas lui-même. **Portgas D. Ace (OP13-119)** :
+     l'adversaire choisit s'il joue un Personnage et lequel.
+130. **Vista (OP14-053)** : la puissance de base de son Leader est appliquée comme un bonus (comme Holy, choix 46).
+     **« Je ne suis pas né homme... »** : son Leader devient inesquivable pour le tour, si la condition de Vie est vraie
+     quand l'Événement se résout. **« Je ferai de Barbe Blanche... »** : la carte révélée non jouée reste au-dessus.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

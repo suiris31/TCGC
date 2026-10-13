@@ -29,6 +29,7 @@ function modText(s: GameState, m: Modifier): string {
     case 'negated': return `effets annulés ${until} (${m.source})`;
     case 'noRefresh': return `ne sera pas redressé lors de la prochaine phase de Recharge de son propriétaire (${m.source})`;
     case 'noBlocker': return `ne peut pas activer [Bloqueur] ${until} (${m.source})`;
+    case 'attackTax': return `ne peut attaquer qu’en défaussant ${m.amount} cartes ${until} (${m.source})`;
   }
 }
 

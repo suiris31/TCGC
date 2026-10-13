@@ -5,7 +5,7 @@
 import { resolveDeck, type DeckSource } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def, describe,
+  addMod, allField, attackTargets, attackTax, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def, describe,
   discardFromHand, donOnField, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated, knownFirst,
   koCharacter, koSelfReplacement, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack,
   returnDon, reveal, shuffleDeck, triggerEffect, untapDon,
@@ -365,6 +365,12 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     const target = Number(p.data?.target);
     if (!attacker || attacker.player !== ctx.me || !attackTargets(s, ctx.me, attacker.card).includes(target)) return;
     const uid = attacker.card.uid;
+    // Edward.Newgate (OP08-043) : défausser pour pouvoir attaquer (la défausse est due à l'effet adverse)
+    const tax = attackTax(s, uid);
+    if (tax) {
+      const m = s.mods.find((x) => x.uid === uid && x.stat === 'attackTax' && x.amount === tax)!;
+      discardFromHand({ ...ctx, me: ctx.opp, opp: ctx.me, num: m.num ?? p.num }, ctx.me, tax, `Pour attaquer avec ${def(attacker.card.num).name}, carte à défausser :`);
+    }
     s.battle = { attacker: uid, target, step: 'block', blocked: false };
     s.flow = { stage: 'battle' };
     log(s, ctx.me, `${def(attacker.card.num).name} (${power(s, uid)}) attaque ${describe(s, target)}`);
@@ -614,7 +620,7 @@ function mainDecision(s: GameState): Decision {
     for (const target of attackTargets(s, p, f)) {
       options.push({
         id: `attack:${f.uid}:${target}`,
-        label: `${def(f.num).name} (${power(s, f.uid)}) attaque ${describe(s, target)}`,
+        label: `${def(f.num).name} (${power(s, f.uid)}) attaque ${describe(s, target)}${attackTax(s, f.uid) ? ` (défausser ${attackTax(s, f.uid)} cartes)` : ''}`,
         uid: f.uid,
         target,
         group: 'attack',

@@ -83,10 +83,13 @@ export interface PlayerState {
 // du tour à la fin duquel elle expire (« jusqu'à la fin de la prochaine phase de Fin de votre adversaire » = tour + 1)
 // stat 'noRefresh' : la carte ne sera pas redressée lors de la phase de Recharge du tour `until` (retirée à ce moment)
 // stat 'negated' : « annulez les effets de ce Personnage » (voir isNegated)
+// stat 'attackTax' : il ne peut attaquer que si son propriétaire défausse `amount` cartes à chaque attaque (Edward.Newgate
+// OP08-043, carte `num`)
 export interface Modifier {
   uid: number;
   stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost' | 'cantBeKO' | 'cantLeave'
-    | 'noRefresh' | 'negated' | 'noBlocker';
+    | 'noRefresh' | 'negated' | 'noBlocker' | 'attackTax';
+  num?: string;
   scope?: 'battle' | 'effect' | 'oppEffect';  // stat 'cantBeKO' : seulement en combat, par un effet, par un effet adverse
   keyword?: Keyword;  // stat 'keyword' : mot-clé accordé
   amount: number;
@@ -153,7 +156,7 @@ export type EffectKind = 'onPlay' | 'whenAttacking' | 'onOpponentAttack' | 'acti
 // Événement de la partie, annoncé par le moteur (rules.ts, emit) : les effets « quand ... » des cartes y réagissent
 export interface GameEvent {
   type: 'gameStart' | 'turnStart' | 'mainStart' | 'turnEnd' | 'play' | 'ko' | 'rest' | 'attack' | 'block' | 'donReturned' | 'event'
-    | 'discard';
+    | 'discard' | 'leave';  // 'leave' : Personnage sorti du terrain par un effet autrement que par KO (main, deck, Vie)
   player: PlayerId;          // joueur concerné : propriétaire de la carte, ou joueur qui agit
   uid?: number;              // carte concernée
   num?: string;
@@ -297,7 +300,7 @@ export interface CardBehavior {
   onOpponentAttack?: { optKey?: string; run: (ctx: EffectCtx) => void };
   onKO?: (ctx: EffectCtx) => void;                  // [En cas de KO], résolu depuis la Défausse
   // condition de l'effet [En cas de KO], lue au moment du KO, carte encore sur le terrain (« [DON!! x2] [En cas de KO] »)
-  onKOCondition?: (s: GameState, owner: PlayerId, card: FieldCard) => boolean;
+  onKOCondition?: (s: GameState, owner: PlayerId, card: FieldCard, cause?: 'battle' | 'effect', by?: PlayerId) => boolean;
   endOfTurn?: (ctx: EffectCtx) => void;             // [Fin de votre tour]
   when?: WhenEffect[];                              // effets « quand ... » (carte sur le terrain)
   activateMain?: {

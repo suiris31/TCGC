@@ -505,7 +505,10 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP14-036':
     case 'OP10-115':
     case 'OP17-078': return 4000;
-    case 'OP05-018': return 3000;
+    case 'OP05-018':
+    case 'OP08-054': return 3000;
+    case 'OP13-057':
+    case 'OP13-058': return findField(s, targetUid)?.leader ? 3000 : 0;
     case 'OP06-059': return 1000;
     case 'OP07-018': return findField(s, targetUid)?.leader === false && hasType(findField(s, targetUid)!.card.num, 'Revolutionary Army') ? 2000 : 0;
     case 'OP14-037':
