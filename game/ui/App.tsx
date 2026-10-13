@@ -4,6 +4,7 @@ import { heuristicChooser } from '../ai/heuristic.ts';
 import { LEVELS, type Analysis, type Level } from '../ai/search.ts';
 import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary } from '../coach/archive.ts';
 import { buildRecap, HINT, isReviewable, REVIEW, toReview, type Move, type MoveReview } from '../coach/review.ts';
+import { CARDS } from '../engine/cards/index.ts';
 import { DECKS } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
 import { counterValue, def } from '../engine/rules.ts';
@@ -17,7 +18,9 @@ import { ActionBar, ActionMenu, BattlePanel } from './Interaction.tsx';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from './Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
 import { UI_SCALES, ZOOM_DELAYS, useSettings, type Settings } from './settings.ts';
+import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
+import { deckInfo, deckLabel, playable, useMyDecks } from './myDecks.ts';
 import { GUIDES } from './deckGuides.ts';
 import { CardZoom, useCardZoom } from './Zoom.tsx';
 import { setSoundEnabled, sfx } from './sound.ts';
@@ -46,6 +49,9 @@ interface Config {
   aiDeck: string;
   first: First;
   level: Level;
+  // deck personnalisé : son nom au moment de la partie (gardé dans « Mes parties »)
+  myDeckName?: string;
+  aiDeckName?: string;
 }
 
 // Partie en cours d'enregistrement (voir game/coach/archive.ts)
@@ -64,7 +70,7 @@ interface Recording {
 type Records = Record<string, RecordLine>;
 const recordKey = (c: Pick<Config, 'myDeck' | 'aiDeck' | 'level'>) => `${c.myDeck}|${c.aiDeck}|${c.level}`;
 const matchupName = (c: Pick<Config, 'myDeck' | 'aiDeck' | 'level'>) =>
-  `${DECKS[c.myDeck].name} contre ${DECKS[c.aiDeck].name} (${LEVELS[c.level].name})`;
+  `${deckLabel(c.myDeck)} contre ${deckLabel(c.aiDeck)} (${LEVELS[c.level].name})`;
 
 // Calculé à partir des parties enregistrées sur le compte : parties terminées, hors entraînement
 function recordsOf(list: GameSummary[]): Records {
@@ -140,6 +146,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
   const shownAt = useRef(Date.now());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [history, setHistory] = useState(false);
+  const [builder, setBuilder] = useState(false);
 
   const snapshot = useCallback((abandoned = false): GameRecord | null => {
     const r = recording.current;
@@ -322,12 +329,20 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
   };
 
   const start = () => {
+    if (![config.myDeck, config.aiDeck].every((id) => DECKS[id] || (deckInfo(id) && playable(deckInfo(id)!)))) return;
     closeRecording();
     const first = config.first === 'me' ? HUMAN : config.first === 'ai' ? AI : 'random';
-    const initial = newGame({ decks: [config.myDeck, config.aiDeck], names: ['Toi', 'IA'], first });
-    setSession(config);
+    // deck personnalisé : sa liste complète (le moteur ne connaît que les decks du registre par leur identifiant)
+    const source = (id: string) => (DECKS[id] ? id : deckInfo(id)!);
+    const named: Config = {
+      ...config,
+      ...(DECKS[config.myDeck] ? {} : { myDeckName: deckLabel(config.myDeck) }),
+      ...(DECKS[config.aiDeck] ? {} : { aiDeckName: deckLabel(config.aiDeck) }),
+    };
+    const initial = newGame({ decks: [source(config.myDeck), source(config.aiDeck)], names: ['Toi', 'IA'], first });
+    setSession(named);
     setGame(initial);
-    startRecording(initial, config);
+    startRecording(initial, named);
     setUndo([]);
     setShowEnd(true);
     setPractice(false);
@@ -413,7 +428,10 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
     if (index < 0) throw new Error('ce moment n’existe plus dans la partie');
     closeRecording();
     const state = replayed.moves[index].state;
-    const cfg: Config = { myDeck: rec.config.myDeck, aiDeck: rec.config.aiDeck, level: rec.config.level as Level, first: rec.config.first };
+    const cfg: Config = {
+      myDeck: rec.config.myDeck, aiDeck: rec.config.aiDeck, level: rec.config.level as Level, first: rec.config.first,
+      ...(rec.config.myDeckName ? { myDeckName: rec.config.myDeckName } : {}), ...(rec.config.aiDeckName ? { aiDeckName: rec.config.aiDeckName } : {}),
+    };
     const earlier = replayed.moves.slice(0, index);
     moves.current = earlier;
     nextMove.current = Math.max(nextMove.current, ...replayed.moves.map((m) => m.id + 1));
@@ -437,9 +455,13 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
     return (
       <>
         <SetupScreen notice={notice} online={online} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
-          settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => setHistory(true)} />
+          settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => setHistory(true)} onBuilder={() => setBuilder(true)} />
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { setHistory(false); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
+        {builder && (
+          <DeckBuilderScreen onClose={() => { setBuilder(false); cardZoom.close(); }} onHover={cardZoom.onHover}
+            onPlay={(id) => { setBuilder(false); cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); }} />
+        )}
         {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
       </>
     );
@@ -574,7 +596,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">☠ OP Coach</div>
-          <div className="match op-small op-muted">{DECKS[session.myDeck].name} <span className="vs">contre</span> {DECKS[session.aiDeck].name} · IA {LEVELS[session.level].name}</div>
+          <div className="match op-small op-muted">{deckLabel(session.myDeck, session.myDeckName)} <span className="vs">contre</span> {deckLabel(session.aiDeck, session.aiDeckName)} · IA {LEVELS[session.level].name}</div>
           <div className={`phase-pill ${game.active === HUMAN ? 'pill-me' : 'pill-opp'}`}>
             Tour {game.turn || 1} · {compact ? `${game.winner !== null ? 'fin' : game.active === HUMAN ? 'à toi' : 'IA'}${game.battle ? ' ⚔' : ''}` : phaseLabel(game, HUMAN)}
           </div>
@@ -728,15 +750,16 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
 const COLOR: Record<string, string> = { Red: '#d9443a', Green: '#2f9e5b', Blue: '#2f6fd1', Purple: '#8a4fc9', Yellow: '#e2b623', Black: '#3a3a44' };
 
 export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string; selected: boolean; onClick: () => void; note?: string; onGuide: (id: string) => void }) {
-  const deck = DECKS[id];
+  const deck = deckInfo(id);
+  if (!deck) return null;
   const leader = def(deck.leader);
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');
   return (
     <button className={`deck-tile ${selected ? 'on' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
       <img src={cardImage(leader)} alt="" />
       <span className="deck-name">{deck.name}</span>
-      <span className="deck-id">{deck.id}{note ? ` · ${note}` : ''}</span>
-      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ')}</span>
+      <span className="deck-id">{DECKS[id] ? deck.id : leader.name}{note ? ` · ${note}` : ''}</span>
+      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? 'Deck perso'}</span>
       <span className="deck-guide-btn" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
         onClick={(e) => { e.stopPropagation(); onGuide(id); }}>📖 Guide</span>
     </button>
@@ -754,9 +777,20 @@ const DECK_GROUPS: { label: string; ids: () => string[] }[] = [
 ];
 const COLOR_FILTERS: [string, string][] = [['', 'Toutes'], ['Red', 'Rouge'], ['Green', 'Vert'], ['Blue', 'Bleu'], ['Purple', 'Violet'], ['Black', 'Noir'], ['Yellow', 'Jaune']];
 
-export function DeckPicker({ selected, onPick, onGuide, note }: { selected: string; onPick: (id: string) => void; onGuide: (id: string) => void; note?: (id: string) => string | undefined }) {
+export function DeckPicker({ selected, onPick, onGuide, note, onBuilder }: {
+  selected: string;
+  onPick: (id: string) => void;
+  onGuide: (id: string) => void;
+  note?: (id: string) => string | undefined;
+  onBuilder?: () => void;  // ouvrir l'éditeur de decks
+}) {
   const [color, setColor] = useState('');
-  const shown = (id: string) => !color || def(DECKS[id].leader).colors.includes(color as never);
+  const { decks } = useMyDecks();
+  const shown = (id: string) => !color || def(deckInfo(id)!.leader).colors.includes(color as never);
+  // mes decks jouables (les decks incomplets restent dans l'éditeur)
+  const mine = decks.filter((d) => d.leader in CARDS && playable(d)).map((d) => d.id);
+  const unfinished = decks.length - mine.length;
+  const groups = [{ label: 'Mes decks', ids: () => mine }, ...DECK_GROUPS];
   return (
     <>
       <div className="deck-filter" role="group" aria-label="Couleur du Leader">
@@ -764,7 +798,13 @@ export function DeckPicker({ selected, onPick, onGuide, note }: { selected: stri
           <button key={c} className={`deck-chip ${color === c ? 'on' : ''}`} style={c ? { ['--c1' as string]: COLOR[c] } : undefined} onClick={() => setColor(c)}>{label}</button>
         ))}
       </div>
-      {DECK_GROUPS.map((g) => {
+      {onBuilder && (
+        <p className="op-small op-muted deck-mine-note">
+          <button className="op-link" onClick={onBuilder}>🃏 Mes decks : créer ou modifier un deck</button>
+          {unfinished > 0 ? ` · ${unfinished} deck${unfinished > 1 ? 's' : ''} à terminer dans l’éditeur` : ''}
+        </p>
+      )}
+      {groups.map((g) => {
         const ids = g.ids().filter(shown);
         return ids.length ? (
           <div key={g.label} className="deck-group">
@@ -777,7 +817,7 @@ export function DeckPicker({ selected, onPick, onGuide, note }: { selected: stri
   );
 }
 
-function SetupScreen({ notice, online, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory }: {
+function SetupScreen({ notice, online, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory, onBuilder }: {
   notice?: string;
   online?: OnlineEntry;
   config: Config;
@@ -791,7 +831,11 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
   updateSettings: (patch: Partial<Settings>) => void;
   onGuide: (id: string) => void;
   onHistory: () => void;
+  onBuilder: () => void;
 }) {
+  // decks choisis : du registre, ou mes decks jouables (un deck supprimé ou rendu incomplet dans l'éditeur ne l'est plus)
+  const usable = (id: string) => Boolean(DECKS[id]) || Boolean(deckInfo(id) && playable(deckInfo(id)!));
+  const ready = usable(config.myDeck) && usable(config.aiDeck);
   // niveau « IA entraînée » : seulement si un modèle compatible est installé (web/public/rl-model/, voir rl/README.md) ;
   // sinon un réglage resté sur ce niveau (partie reprise, modèle retiré ou d'un ancien encodage) redevient « Débutant »,
   // pour ne pas compter sous ce nom des parties jouées par l'IA simple
@@ -805,7 +849,7 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
       const [myDeck, aiDeck, level] = key.split('|');
       return { key, line, myDeck, aiDeck, level: Number(level) as Level };
     })
-    .filter((r) => DECKS[r.myDeck] && DECKS[r.aiDeck] && LEVELS[r.level])
+    .filter((r) => deckInfo(r.myDeck) && deckInfo(r.aiDeck) && LEVELS[r.level])
     .sort((a, b) => (b.line.wins + b.line.losses) - (a.line.wins + a.line.losses));
   const rec = (aiDeck: string) => {
     const r = records[recordKey({ ...config, aiDeck })];
@@ -818,6 +862,7 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
         <p className="op-muted">Entraîne-toi contre l’IA, et laisse le coach t’aider à progresser.</p>
         <div className="setup-links">
           <button className="op-link" onClick={onHistory}>📈 Mes parties</button>
+          <button className="op-link" onClick={onBuilder}>🃏 Mes decks</button>
           <button className="op-link" onClick={onHelp}>Comment jouer ?</button>
           <label className="op-small op-muted">Taille de l’interface{' '}
             <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
@@ -842,7 +887,7 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
       )}
       <section className="setup-section">
         <h2>Ton deck</h2>
-        <DeckPicker selected={config.myDeck} onPick={(id) => onChange({ ...config, myDeck: id })} onGuide={onGuide} />
+        <DeckPicker selected={config.myDeck} onPick={(id) => onChange({ ...config, myDeck: id })} onGuide={onGuide} onBuilder={onBuilder} />
       </section>
       <section className="setup-section">
         <h2>Ton adversaire</h2>
@@ -873,8 +918,10 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
         </div>
       </section>
       <div className="setup-go">
-        <span className="op-muted op-small">Ton bilan dans cette confrontation : {recordText(records[recordKey(config)])}</span>
-        <button className="op-btn op-btn-primary btn-big" onClick={onStart}>Lancer la partie</button>
+        {ready
+          ? <span className="op-muted op-small">Ton bilan dans cette confrontation : {recordText(records[recordKey(config)])}</span>
+          : <span className="danger op-small">Choisis deux decks jouables (un deck perso incomplet se termine dans l’éditeur).</span>}
+        <button className="op-btn op-btn-primary btn-big" onClick={onStart} disabled={!ready}>Lancer la partie</button>
       </div>
       {played.length > 0 && (
         <section className="setup-section">
@@ -884,8 +931,8 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
             <tbody>
               {played.map((r) => (
                 <tr key={r.key}>
-                  <td>{DECKS[r.myDeck].name}</td>
-                  <td>{DECKS[r.aiDeck].name}</td>
+                  <td>{deckLabel(r.myDeck)}</td>
+                  <td>{deckLabel(r.aiDeck)}</td>
                   <td>{LEVELS[r.level].name}</td>
                   <td>{r.line.wins}/{r.line.wins + r.line.losses} ({Math.round((r.line.wins / Math.max(1, r.line.wins + r.line.losses)) * 100)} %)</td>
                 </tr>

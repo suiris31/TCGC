@@ -118,6 +118,7 @@ export function onlineRoutes(app, { log }) {
   app.post('/api/game/matches', (req, res) => {
     rateLimit(`room:${req.user.id}`, 20, 10 * 60_000);
     requireCards();
+    const host = player(req.user, req.body?.deck);  // deck vérifié d'abord : un deck refusé ne ferme pas la salle en cours
     // une seule salle en attente par compte : la précédente est fermée
     for (const row of db.prepare("SELECT id FROM game_matches WHERE host_id = ? AND status = 'waiting'").all(req.user.id)) {
       const old = load(row.id);
@@ -126,7 +127,7 @@ export function onlineRoutes(app, { log }) {
       save(old);
       broadcast(old);
     }
-    const m = createMatch(crypto.randomBytes(16).toString('base64url'), newCode(), player(req.user, req.body?.deck), new Date(), ENGINE);
+    const m = createMatch(crypto.randomBytes(16).toString('base64url'), newCode(), host, new Date(), ENGINE);
     save(m);
     log(`Salle ${m.code} créée par ${req.user.pseudo}`);
     res.status(201).json(viewOf(m, 0));

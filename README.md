@@ -200,7 +200,13 @@ Prices don't depend on the language (Cardmarket's public price data doesn't sepa
 The **Play** tab is a game simulator to practice against an AI, with a coach that reviews each of your decisions
 (formerly the OP Coach project, in the `game/` folder):
 
-- the **6 starter decks ST-31 to ST-36**, each with a guide (game plan, combos, opening hand);
+- **15 decks**: the starter decks ST-21, ST-22, ST-30 and ST-31 to ST-36, and 6 meta decks from October 2026 (Sabo,
+  Mihawk, Nico Robin, Rocks D. Xebec, Enel, Kaido), each with a guide (game plan, combos, opening hand);
+- **My decks**: a deck builder (phone first), starting from a Leader, a copied preconstructed deck or a pasted list
+  ("4xOP13-008"). It only offers the cards the game can already play, checks the deck building rules, flags banned or
+  restricted cards, shows the cost curve, and tells which cards your collection is missing to build it for real, with
+  their price (and adds them to your wishlist). A custom deck can be played against the AI (which does not know your
+  list) and online (your friend cannot see it);
 - **AI with three levels**: Beginner (common-sense rules and a learned style for each deck), Advanced and Expert
   (it simulates the rest of the game before each choice, without ever seeing your hidden cards);
 - **coach**: advice on demand (💡) or automatic (★), and an end-of-game recap (mistakes, best moves, turning

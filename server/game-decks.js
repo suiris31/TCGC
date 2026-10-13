@@ -4,8 +4,13 @@
 //   GET    /api/game/decks          mes decks
 //   PUT    /api/game/decks/:id      créer ou modifier un deck { name, leader, cards }
 //   DELETE /api/game/decks/:id      supprimer un deck
+//   GET    /api/game/owned          mes cartes possédées, par numéro (filtre « possédées » de l'éditeur)
+//   POST   /api/game/decks-prices   pour une liste de numéros : possédées, prix de la moins chère, déjà recherchée
+//   POST   /api/game/decks-wish     cartes manquantes d'un deck dans les recherches { missing: {numéro: n}, lang }
+//   GET    /api/game/regulations    cartes bannies ou limitées en tournoi officiel { numéro: statut }
 import { CARDS } from '../game/engine/cards/index.ts';
 import { CUSTOM_SERIES } from '../game/engine/decks.ts';
+import { deckCollection, ownedNumbers, viewerOf, wishDeckMissing } from './cards.js';
 import { db } from './db.js';
 
 export const DECK_ID = /^PERSO-[a-z0-9]{6,24}$/;
@@ -78,6 +83,19 @@ export function deckRoutes(app) {
   });
   app.put('/api/game/decks/:id', (req, res) => {
     res.json(saveDeck(req.user.id, req.params.id, req.body));
+  });
+  app.get('/api/game/regulations', (req, res) => {
+    res.json(Object.fromEntries(db.prepare('SELECT number, status FROM regulations').all().map((r) => [r.number, r.status])));
+  });
+  app.get('/api/game/owned', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(ownedNumbers(viewerOf(req.user)));
+  });
+  app.post('/api/game/decks-prices', (req, res) => {
+    res.json(deckCollection(viewerOf(req.user), req.body?.numbers));
+  });
+  app.post('/api/game/decks-wish', (req, res) => {
+    res.json({ added: wishDeckMissing(viewerOf(req.user), req.body?.missing, req.body?.lang ?? 'fr') });
   });
   app.delete('/api/game/decks/:id', (req, res) => {
     if (!deleteDeck(req.user.id, req.params.id)) return res.status(404).json({ code: 'unknown_deck', error: 'Deck introuvable' });

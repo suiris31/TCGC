@@ -440,6 +440,47 @@ export function wishMissing(viewer, groupId, lang = 'fr') {
   return cards.length;
 }
 
+// ---------- Éditeur de decks (onglet Jouer) ----------
+
+const CARD_NUMBER = /^[A-Z]{1,5}\d{0,2}-\d{3}$/;
+
+// Exemplaires possédés par numéro de carte, toutes versions et langues confondues
+export function ownedNumbers(viewer) {
+  const rows = db.prepare(`SELECT c.number, SUM(col.quantity) AS n FROM collection col JOIN cards c ON c.product_id = col.product_id
+    WHERE col.user_id = ? GROUP BY c.number`).all(uid(viewer));
+  return Object.fromEntries(rows.map((r) => [r.number, r.n]));
+}
+
+// Pour les cartes d'un deck : exemplaires possédés, version la moins chère au prix connu (selon la source de prix du
+// compte) pour chiffrer les manquantes, et si une version est déjà dans les recherches
+export function deckCollection(viewer, numbers) {
+  const list = [...new Set(Array.isArray(numbers) ? numbers : [])].filter((n) => typeof n === 'string' && CARD_NUMBER.test(n)).slice(0, 120);
+  if (!list.length) return {};
+  const rows = db.prepare(`SELECT ${cardColumns(viewer)} ${cardFrom(viewer)} WHERE c.number IN (${list.map(() => '?').join(', ')})`).all(...list);
+  const out = {};
+  for (const row of rows) {
+    const card = formatCard(row, viewer);
+    const o = (out[card.number] ??= { owned: 0, wished: false, cheapest: null });
+    o.owned += card.owned;
+    if (card.wish) o.wished = true;
+    if (card.price.eur != null && (!o.cheapest || card.price.eur < o.cheapest.eur)) o.cheapest = { id: card.id, eur: card.price.eur };
+  }
+  return out;
+}
+
+// Cartes manquantes d'un deck dans les recherches : pour chaque numéro pas encore recherché, sa version la moins chère
+export function wishDeckMissing(viewer, missing, lang = 'fr') {
+  if (!LANGS.includes(lang)) throw invalid('invalid_lang', 'Langue invalide');
+  const info = deckCollection(viewer, Object.keys(missing ?? {}));
+  let added = 0;
+  for (const [num, o] of Object.entries(info)) {
+    if (o.wished || !o.cheapest || !(Number(missing[num]) > 0)) continue;
+    setWish(viewer, o.cheapest.id, { lang });
+    added++;
+  }
+  return added;
+}
+
 // ---------- Doubles ----------
 
 // Exemplaires gardés par carte et par langue (1 pour une collection, 4 pour jouer...) : au-delà, ce sont des doubles

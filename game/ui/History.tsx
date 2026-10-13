@@ -3,13 +3,13 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { replayRecord, type GameRecord, type GameSummary } from '../coach/archive.ts';
 import { progress, type Axis, type Group, type Period, type Progress } from '../coach/progress.ts';
 import { buildRecap, MISTAKE, type Recap } from '../coach/review.ts';
-import { DECKS } from '../engine/decks.ts';
 import { def } from '../engine/rules.ts';
 import type { Preview } from './CardView.tsx';
 import { pct, RecapBody, ReviewItem, StatsTable } from './Coach.tsx';
 import { CardThumb } from './DeckGuide.tsx';
 import { importFiles, loadRecord, loadSummaries } from './archiveClient.ts';
 import { isTouch } from './device.ts';
+import { deckLabel } from './myDecks.ts';
 
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
 type Tab = 'progress' | 'axes' | 'games';
@@ -22,7 +22,15 @@ const STATUS: Record<GameSummary['status'], [string, string]> = {
   playing: ['Interrompue', 'res-other'],
 };
 
-const deckName = (id: string) => DECKS[id]?.name ?? id;
+// Nom d'un deck : du registre, de mes decks, sinon celui noté dans une partie (deck perso renommé ou supprimé depuis)
+const savedNames = new Map<string, string>();
+const deckName = (id: string) => deckLabel(id, savedNames.get(id));
+function rememberNames(list: GameSummary[]) {
+  for (const g of list) {
+    if (g.config.myDeckName) savedNames.set(g.config.myDeck, g.config.myDeckName);
+    if (g.config.aiDeckName) savedNames.set(g.config.aiDeck, g.config.aiDeckName);
+  }
+}
 const pctOr = (x: number | null) => (x === null ? '—' : pct(x));
 const num = (x: number | null, digits = 1) => (x === null ? '—' : x.toLocaleString('fr-FR', { maximumFractionDigits: digits }));
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
@@ -43,7 +51,7 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
   const [tab, setTab] = useState<Tab>('progress');
   const [open, setOpen] = useState<string | null>(null);
   const [imported, setImported] = useState<string | null>(null);
-  const reload = () => loadSummaries().then(setList, (e: Error) => setError(e.message));
+  const reload = () => loadSummaries().then((l) => { rememberNames(l); setList(l); }, (e: Error) => setError(e.message));
   useEffect(() => {
     void reload();
   }, []);

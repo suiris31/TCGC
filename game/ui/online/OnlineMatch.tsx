@@ -78,7 +78,7 @@ function WaitingRoom({ view, onLeave }: { view: LiveView; onLeave: () => void })
       </div>
       {copied && <p className="good">{copied}</p>}
       <p className="op-muted"><span className="op-spinner" /> En attente de ton ami… La partie commence dès qu’il rejoint la salle{minutes !== null ? ` (encore ${minutes} min)` : ''}.</p>
-      <p className="op-small op-muted">Ton deck : {DECKS[view.you.deck]?.name ?? view.you.deck}</p>
+      <p className="op-small op-muted">Ton deck : {view.you.deckName ?? DECKS[view.you.deck]?.name ?? view.you.deck}</p>
     </div>
   );
 }
@@ -290,7 +290,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">🌐 En ligne</div>
-          <div className="match op-small op-muted">{DECKS[view.you.deck]?.name} <span className="vs">contre</span> {oppName} · {DECKS[view.opponent?.deck ?? '']?.name}</div>
+          <div className="match op-small op-muted">{view.you.deckName ?? DECKS[view.you.deck]?.name} <span className="vs">contre</span> {oppName} · {view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}</div>
           <div className={`phase-pill ${game.active === seat ? 'pill-me' : 'pill-opp'}`}>Tour {game.turn || 1} · {who}{game.battle ? ' ⚔' : ''}</div>
           <span className={view.opponentOnline ? 'presence presence-on' : 'presence'} title={view.opponentOnline ? `${oppName} est connecté` : `${oppName} n’est pas connecté en ce moment`}>●</span>
           <div className="top-actions">
@@ -388,7 +388,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       {help && !intro && <HelpModal onClose={() => setHelp(false)} />}
       {guide && (
         <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover}
-          alt={guide === view.you.deck ? view.opponent?.deck : view.you.deck} altLabel={guide === view.you.deck ? 'Voir le deck de ton adversaire' : 'Voir ton deck'} onSwitch={setGuide} />
+          alt={guide === view.you.deck ? (DECKS[view.opponent?.deck ?? ''] ? view.opponent?.deck : undefined) : view.you.deck} altLabel={guide === view.you.deck ? 'Voir le deck de ton adversaire' : 'Voir ton deck'} onSwitch={setGuide} />
       )}
       {cardZoom.zoom && <CardZoom s={game} preview={cardZoom.zoom} onClose={cardZoom.close} />}
       {leaving && (

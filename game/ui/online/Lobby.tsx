@@ -1,7 +1,7 @@
 // Jouer avec un ami : créer une salle (le serveur donne un code à lui transmettre) ou rejoindre la sienne avec son
 // code. Chacun choisit son deck.
 import { useState } from 'react';
-import { DECKS } from '../../engine/decks.ts';
+import { DECKS, isCustomDeck } from '../../engine/decks.ts';
 import { DeckPicker } from '../App.tsx';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
@@ -12,7 +12,7 @@ const DECK_KEY = 'tcgc.game.online-deck';
 function lastDeck(): string {
   try {
     const d = localStorage.getItem(DECK_KEY);
-    if (d && DECKS[d]) return d;
+    if (d && (DECKS[d] || isCustomDeck(d))) return d;  // deck perso : vérifié par le serveur
   } catch { /* stockage indisponible */ }
   return 'ST-35';
 }

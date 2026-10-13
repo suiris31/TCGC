@@ -90,3 +90,17 @@ test('règles de construction : carte pas encore gérée, cartes bannies ou limi
   assert.ok(formatIssues(sabo.leader, sabo.cards).standard.some((e) => e.includes('ST01-011')), 'bloc 1 d’après le catalogue : avertissement');
   assert.deepEqual(formatIssues(sabo.leader, sabo.cards).errors, []);
 });
+
+test('listes en texte : export « 4xOP13-008 », import des formats courants (Leader reconnu, lignes inconnues signalées)', async () => {
+  const { deckText, parseDeckText } = await import('../ui/deckText.ts');
+  const isLeader = (n: string) => CARDS[n]?.category === 'LEADER';
+  const text = deckText(custom);
+  assert.ok(text.startsWith('1xST21-001\n'));
+  const back = parseDeckText(text, isLeader);
+  assert.equal(back.leader, custom.leader);
+  assert.deepEqual(back.cards, custom.cards);
+  const loose = parseDeckText('1 x OP13-004 Sabo\n4xOP13-008\nOP12-090 x2\n2 op12-093\nST35-001\nBonjour', isLeader);
+  assert.equal(loose.leader, 'OP13-004');
+  assert.deepEqual(loose.cards, { 'OP13-008': 4, 'OP12-090': 2, 'OP12-093': 2, 'ST35-001': 1 });
+  assert.deepEqual(loose.unknown, ['Bonjour']);
+});

@@ -208,7 +208,14 @@ Mesures sur des photos simulées (inclinaison, reflet, flou, fond) : la bonne ca
 L'onglet **Jouer** est un simulateur du jeu pour s'entraîner contre une IA, avec un coach qui analyse chacune
 de tes décisions (ancien projet OP Coach, dans le dossier `game/`) :
 
-- les **6 decks pour débutant ST-31 à ST-36**, avec un guide par deck (plan de jeu, combinaisons, main de départ) ;
+- **15 decks** : les decks pour débutant ST-21, ST-22, ST-30 et ST-31 à ST-36, et 6 decks du méta d'octobre 2026
+  (Sabo, Mihawk, Nico Robin, Rocks D. Xebec, Ener, Kaido), avec un guide par deck (plan de jeu, combinaisons, main
+  de départ) ;
+- **Mes decks** : un éditeur pour construire ses propres decks (téléphone d'abord) à partir d'un Leader, d'un deck
+  préconstruit copié ou d'une liste collée (« 4xOP13-008 »). Il ne propose que les cartes que le jeu sait jouer,
+  vérifie les règles de construction, signale les cartes bannies ou limitées, montre la courbe des coûts, et dit
+  quelles cartes manquent à ta collection pour le construire en vrai, avec leur prix (et les ajoute à tes recherches).
+  Un deck perso se joue contre l'IA (qui ne connaît pas ta liste) et en ligne (ton ami ne la voit pas) ;
 - **IA à trois niveaux** : Débutant (règles de bon sens et style appris pour chaque deck), Confirmé et Expert (elle
   simule la suite de la partie avant chaque choix, sans jamais voir tes cartes cachées) ;
 - **coach** : conseil à la demande (💡) ou automatique (★), et récap en fin de partie (erreurs, meilleurs choix,
