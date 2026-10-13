@@ -262,6 +262,37 @@ questions-réponses Bandai, tournois).
     attaquer ou pour payer un coût ; « Dracule Mihawk (OP12-030) » interdit ensuite de jouer, ce tour-ci, toute carte
     Personnage de coût de base 7 ou plus, de la main comme par un effet.
 
+## Familles des Leaders Kidd et Kaido, choix faits sans validation (à revoir si besoin)
+
+99. **Personnage placé face cachée dans la Vie** (Slam Gibson, Capone "Gang" Bege) : la carte reste face cachée (elle
+    ne compte pas comme une Vie face visible), mais les deux joueurs savent laquelle c'est, puisqu'elle était en jeu.
+    Même chose pour la carte révélée par **Trafalgar Law (OP10-119)** avant d'être placée dans la Vie.
+100. **Slam Gibson** : peut viser n'importe quel Personnage de coût 9 ou moins, le sien comme celui de l'adversaire ;
+     c'est le joueur de l'Événement qui choisit dessus ou dessous de la Vie du propriétaire.
+101. **Damned Punk** : le joueur choisit quelle Vie regarder (la sienne ou celle de l'adversaire) ; lui seul voit la
+     carte, et il peut la laisser au-dessus ou la placer au-dessous.
+102. **Capone "Gang" Bege** : une fois par tour, pour toute sortie du terrain causée par un effet adverse (KO, main,
+     deck) d'un autre de ses Personnages {Supernovae} ; pas pour une mise KO en combat.
+103. **Jewelry Bonney (OP13-109)** : le remplacement n'est possible que si la carte du dessus de sa Vie est face cachée
+     (une carte déjà face visible ne peut pas être « retournée face visible »). **Jewelry Bonney (OP15-105)** peut se
+     protéger elle-même, sans limite par tour, tant qu'il reste une Vie.
+104. **Jewelry Bonney (OP10-107)** : le joueur choisit la carte du dessus ou du dessous de sa Vie ; le Personnage de
+     coût 5 est placé face visible.
+105. **Monkey D. Luffy (OP05-119)** : au début du tour supplémentaire, tout effet qui doit finir lors d'un tour à venir
+     est prolongé d'un tour : « jusqu'à la fin du prochain tour adverse » vise toujours le vrai tour adverse.
+     Simplification : un effet « jusqu'au début de votre prochain tour » dure lui aussi jusqu'à la fin du vrai tour
+     adverse. Les Personnages sont placés sous le deck dans l'ordre choisi.
+106. **Kaido & Linlin** : met KO tous les autres Personnages, des deux camps ; « jusqu'à 1 » carte ajoutée à la Vie et
+     « jusqu'à 1 » Vie adverse défaussée sont toujours faits (c'est toujours à l'avantage du joueur). La Vie adverse
+     défaussée ne déclenche pas de [Déclenchement].
+107. **Ulti (P-077)** : « 2 DON!! ou plus » renvoyées en une seule fois (un DON!! −2 ou plus, ou un effet adverse qui en
+     renvoie plusieurs) ; deux renvois séparés d'une DON!! ne comptent pas.
+108. **X-Drake (OP17-075)** : la carte défaussée de la main adverse est tirée au hasard (la main est cachée), comme pour
+     les autres effets « défaussez 1 carte de la main adverse ».
+109. **Kaido (EB04-030)** : le remplacement couvre toute mise KO (en combat ou par effet) ; le joueur peut le refuser.
+110. **Charlotte Linlin (OP11-073)** : le coût déclaré va de 0 à 10 ; la carte révélée reste au-dessus du deck adverse.
+     **Shanks (P-104)** : « 10 DON!! sur le terrain » se compte comme au choix 44, chez l'un ou l'autre joueur.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

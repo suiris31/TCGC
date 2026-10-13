@@ -555,7 +555,9 @@ export function setActive(s: GameState, p: PlayerId, uid: number) {
 
 // ---------- Quitter le terrain ----------
 
-type Destination = 'trash' | 'hand' | 'deckBottom' | 'lifeTop' | 'lifeBottom';
+// lifeTop / lifeBottom : face visible ; lifeTopHidden / lifeBottomHidden : face cachée, connue des deux joueurs (la carte
+// était sur le terrain)
+type Destination = 'trash' | 'hand' | 'deckBottom' | 'lifeTop' | 'lifeBottom' | 'lifeTopHidden' | 'lifeBottomHidden';
 
 // La carte quitte le terrain : ses DON!! retournent épuisées dans la zone de Coût et ses modifications disparaissent
 export function removeFromField(s: GameState, uid: number, to: Destination) {
@@ -571,8 +573,10 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
   else if (to === 'hand') P.hand.push(card);
   else if (to === 'deckBottom') P.deck.push(card);
   else if (to === 'lifeTop') P.life.unshift({ ...card, faceUp: true });
-  else P.life.push({ ...card, faceUp: true });
-  if (to === 'hand' || to === 'deckBottom') reveal(s, [card.uid], 'both');
+  else if (to === 'lifeBottom') P.life.push({ ...card, faceUp: true });
+  else if (to === 'lifeTopHidden') P.life.unshift(card);
+  else P.life.push(card);
+  if (to === 'hand' || to === 'deckBottom' || to === 'lifeTopHidden' || to === 'lifeBottomHidden') reveal(s, [card.uid], 'both');
   return f;
 }
 
@@ -619,6 +623,8 @@ const DESTINATION_TEXT: Record<Exclude<Destination, 'trash'>, string> = {
   deckBottom: 'placé au-dessous du deck de son propriétaire',
   lifeTop: 'ajouté face visible au-dessus de la Vie de son propriétaire',
   lifeBottom: 'ajouté face visible au-dessous de la Vie de son propriétaire',
+  lifeTopHidden: 'ajouté face cachée au-dessus de la Vie de son propriétaire',
+  lifeBottomHidden: 'ajouté face cachée au-dessous de la Vie de son propriétaire',
 };
 
 // Un effet fait quitter le terrain à un Personnage (KO, main, deck, Vie). Le propriétaire de la victime peut

@@ -564,7 +564,13 @@ function stepFlow(s: GameState) {
       endOfTurnDefeat(s);
       if (s.winner !== null) return;
       s.mods = s.mods.filter((m) => m.until !== 'turn' && m.until !== s.turn);
-      s.active = other(s.active);
+      if (s.players[s.active].extraTurn === s.turn) {
+        // tour supplémentaire : un tour du même joueur s'intercale, les échéances à venir sont décalées d'un tour
+        delete s.players[s.active].extraTurn;
+        for (const m of s.mods) if (typeof m.until === 'number' && m.until > s.turn) m.until++;
+        for (const d of s.delayed) if (d.turn > s.turn) d.turn++;
+        log(s, s.active, 'joue un tour supplémentaire');
+      } else s.active = other(s.active);
       s.turn++;
       s.flow = { stage: 'refresh' };
       return;

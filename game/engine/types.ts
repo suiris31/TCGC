@@ -71,9 +71,11 @@ export interface PlayerState {
   donRested: number;  // DON!! épuisées dans la zone de Coût
   turns: number;      // nombre de tours commencés
   discardedTurn: number;  // dernier tour où une carte de sa main a été défaussée par un effet
-  noCharsTurn?: number;
+  noCharsTurn?: number;   // tour pendant lequel il ne peut plus jouer de carte Personnage (Leader Mihawk OP14-020)
   // « vous ne pouvez plus jouer de carte Personnage de coût de base X ou plus pour tout le tour » (Mihawk OP12-030)
-  noCharsFromCost?: { turn: number; cost: number };   // tour pendant lequel il ne peut plus jouer de carte Personnage (Leader Mihawk OP14-020)
+  noCharsFromCost?: { turn: number; cost: number };
+  // « prenez un tour supplémentaire après celui-ci » (Luffy OP05-119) : numéro du tour qui sera suivi d'un autre du joueur
+  extraTurn?: number;
   koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
 }
 
