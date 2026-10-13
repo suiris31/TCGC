@@ -720,6 +720,25 @@ export const trashFromOppHand = (n: number, source: string): Effect => effect((c
   emit(ctx.s, { type: 'discard', player: ctx.opp, count: names.length, by: ctx.me, sourceNum: ctx.num });
 }, (s, p) => s.players[other(p)].hand.length > 0);
 
+// « Votre adversaire place 2 cartes de sa main au-dessous de son deck dans l'ordre de son choix » (il les
+// choisit ; lui seul sait lesquelles)
+export const oppHandToBottom = (n: number, source: string): Effect => effect((ctx) => {
+  const O = ctx.s.players[ctx.opp];
+  for (let i = 0; i < n && O.hand.length; i++) {
+    const options = uniqueByNum(knownFirst(ctx.s, ctx.opp, O.hand));
+    const answer = ctx.ask({
+      player: ctx.opp,
+      prompt: `${source} : carte de ta main à placer au-dessous de ton deck (${i + 1}/${n}) :`,
+      options: options.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
+      tag: 'discard',
+    });
+    const [c] = O.hand.splice(O.hand.findIndex((x) => x.uid === Number(answer.split(':')[1])), 1);
+    O.deck.push(c);
+    reveal(ctx.s, [c.uid], ctx.opp);
+    log(ctx.s, ctx.opp, `place 1 carte de sa main au-dessous de son deck (${source})`);
+  }
+}, (s, p) => s.players[p === 0 ? 1 : 0].hand.length > 0);
+
 // « Ajoutez jusqu'à N cartes DON!! de votre deck DON!! et redressez-les / épuisez-les »
 export const addDon = (n: number, state: 'active' | 'rested'): Effect =>
   effect((ctx) => { addDonFromDeck(ctx.s, ctx.me, n, state === 'active'); }, (s, p) => s.players[p].donDeck > 0);

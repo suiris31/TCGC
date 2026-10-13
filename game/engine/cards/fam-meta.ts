@@ -9,7 +9,7 @@ import {
 import type { CardBehavior, EffectCtx, FieldCard, GameState, PlayerId } from '../types.ts';
 import {
   bothCosts, card, discard, discardCost, donMinus, donOnFieldAtMost, drawCards, effect, grant, ko, lookTopArrange, onceWithCost,
-  oppChar, oppLeaderOrChar, ownChar, ownLeaderOrChar, powerMod, readyDon, rest, restCost, restSelf, searchTop, seq, setActiveTargets,
+  oppChar, oppHandToBottom, oppLeaderOrChar, ownChar, ownLeaderOrChar, powerMod, readyDon, rest, restCost, restSelf, searchTop, seq, setActiveTargets,
   trashToHand, when, withCost, type Effect,
 } from './bricks.ts';
 import { counterBoost, isNamed, playCharFromHand } from './common.ts';
@@ -32,25 +32,6 @@ function selfMod(ctx: EffectCtx, mod: { stat: 'power'; amount: number } | { stat
   const what = mod.stat === 'power' ? `+${mod.amount} de puissance` : '[Bloqueur]';
   log(ctx.s, ctx.me, `${def(f.card.num).name} gagne ${what} ${u === 'turn' ? 'pour le tour' : 'jusqu’à la fin du prochain tour adverse'} (${source})`);
 }
-
-// Barbell : « votre adversaire place 2 cartes de sa main au-dessous de son deck dans l'ordre de son choix » (il les
-// choisit ; lui seul sait lesquelles)
-const oppHandToBottom = (n: number, source: string): Effect => effect((ctx) => {
-  const O = ctx.s.players[ctx.opp];
-  for (let i = 0; i < n && O.hand.length; i++) {
-    const options = uniqueByNum(knownFirst(ctx.s, ctx.opp, O.hand));
-    const answer = ctx.ask({
-      player: ctx.opp,
-      prompt: `${source} : carte de ta main à placer au-dessous de ton deck (${i + 1}/${n}) :`,
-      options: options.map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
-      tag: 'discard',
-    });
-    const [c] = O.hand.splice(O.hand.findIndex((x) => x.uid === Number(answer.split(':')[1])), 1);
-    O.deck.push(c);
-    reveal(ctx.s, [c.uid], ctx.opp);
-    log(ctx.s, ctx.opp, `place 1 carte de sa main au-dessous de son deck (${source})`);
-  }
-}, (s, p) => s.players[p === 0 ? 1 : 0].hand.length > 0);
 
 // Amazon : « votre adversaire peut renvoyer 1 de ses DON!! redressées ; s'il ne le fait pas, −2000 »
 const amazon: Effect = {

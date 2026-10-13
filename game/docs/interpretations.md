@@ -309,6 +309,23 @@ questions-réponses Bandai, tournois).
 116. **Charlotte Katakuri (OP08-062), Sanji et Pudding, Charlotte Pudding (PRB02-010)** : les DON!! « sur le terrain »
      se comptent comme au choix 44 ; **Randolph** peut se donner le +2 de coût à lui-même.
 
+## Famille du Leader Kuzan, choix faits sans validation (à revoir si besoin)
+
+117. **« un Personnage »** (Iska, Borsalino, Sakazuki, Jaguar.D.Saul, Chien ardent, Lame-gravité, coût d'Aramaki) : le
+     sien comme celui de l'adversaire, placé sous le deck de son propriétaire.
+118. **It's a Waste of Human Life!!** : tous les Personnages de coût 3 ou moins des deux camps (ceux de l'adversaire,
+     puis les siens, sans choix d'ordre) ; puis le joueur, et ensuite l'adversaire, défaussent chacun les cartes de leur
+     choix jusqu'à 5 en main. Avec le Leader Kuzan, il pioche autant qu'il a défaussé.
+119. **Gion** : « active un Événement » = un Événement joué de la main ([Principale] ou [Contre]), pas un
+     [Déclenchement] ; l'adversaire choisit la carte placée sous son deck.
+120. **Tsuru** : c'est l'adversaire qui choisit lequel de ses Personnages retourne dans sa main.
+121. **Don Quijote Rosinante (OP12-048), Borsalino (OP12-053)** : la carte défaussée à la place compte comme défaussée
+     par l'effet d'une carte {Marine} (le Leader Kuzan pioche) ; Rosinante doit être redressée et peut se protéger
+     elle-même.
+122. **Monkey.D.Garp (OP06-055)** : l'interdiction de [Bloqueur] vise les Personnages adverses présents quand il attaque.
+     **Hina (EB03-025)** : « 6000 de puissance de base » = exactement 6000. **White Snake** : le +1000 peut aller à
+     n'importe lequel de ses Personnages ou à son Leader, pour tout le tour.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
