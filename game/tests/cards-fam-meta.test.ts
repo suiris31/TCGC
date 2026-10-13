@@ -9,7 +9,7 @@ import { act } from '../engine/engine.ts';
 import { canBeRested, hasBlocker, hasKeyword, hasMod, power } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import {
-  attack, choose, coherent, expectTag, hasOption, keepOrder, logHas, play, scenario, setChars, setDeckTop, setDon, setHand, take,
+  aiAnswers, attack, choose, coherent, expectTag, hasOption, keepOrder, logHas, play, scenario, setChars, setDeckTop, setDon, setHand, take,
 } from './helpers.ts';
 
 const FAMILY = Object.keys(FAM_META);
@@ -131,8 +131,9 @@ test('Amazon : [Attaque adverse] s’épuiser : l’adversaire renvoie 1 DON!! r
     let s = scenario([ENEL, 'ST-21'], (g) => { setChars(g, 0, [{ num: 'OP15-059' }]); enelDon(g, 0); setChars(g, 1, [{ num: O_STUSSY }]); setDon(g, 1, 2); }, 1);
     s = attack(s, theirs(s, O_STUSSY).uid, s.players[0].leader.uid);
     s = choose(s, 'yes');
-    expectTag(s, 'oppChoice');
+    expectTag(s, 'oppPayDon');
     assert.equal(s.decision!.player, 1);
+    aiAnswers(s);
     s = choose(s, pays ? 'yes' : 'no');
     if (pays) assert.equal(s.players[1].donActive, 1);
     else {

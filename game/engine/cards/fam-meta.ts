@@ -60,7 +60,7 @@ const amazon: Effect = {
       player: ctx.opp,
       prompt: 'Amazon : renvoyer 1 de tes DON!! redressées dans ton deck DON!! ? Sinon, un de tes Personnages ou ton Leader reçoit −2000.',
       options: [{ id: 'yes', label: 'Oui, renvoyer 1 DON!!' }, { id: 'no', label: 'Non' }],
-      tag: 'oppChoice',
+      tag: 'oppPayDon',
     }) === 'yes';
     if (pay) {
       O.donActive--;

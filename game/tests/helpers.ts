@@ -1,5 +1,6 @@
 // Outils communs aux tests de cartes : situations construites à la main et réponses aux décisions
 import assert from 'node:assert/strict';
+import { heuristicChooser } from '../ai/heuristic.ts';
 import { act, advance, newGame } from '../engine/engine.ts';
 import { invariantErrors } from '../engine/invariants.ts';
 import type { Card, FieldCard, GameState, Option, PlayerId } from '../engine/types.ts';
@@ -56,6 +57,11 @@ export const play = (s: GameState, num: string, p: PlayerId = 0) => {
   return act(s, option(s, (o) => (o.id.startsWith('play:') || o.id.startsWith('event:')) && s.players[p].hand.some((c) => c.uid === o.uid && c.num === num)));
 };
 export const attack = (s: GameState, attacker: number, target: number) => act(s, `attack:${attacker}:${target}`);
+// L'IA heuristique répond à la décision en cours par un des choix proposés (sinon la partie s'arrêterait)
+export function aiAnswers(s: GameState) {
+  const answer = heuristicChooser(s, s.decision!);
+  assert.ok(s.decision!.options.some((o) => o.id === answer), `réponse de l'IA hors des choix : ${answer} (${s.decision!.tag})`);
+}
 export const logHas = (s: GameState, text: string | RegExp) => s.log.some((l) => (typeof text === 'string' ? l.text.includes(text) : text.test(l.text)));
 export const onField = (s: GameState, p: PlayerId, u: number) => s.players[p].chars.some((c) => c.uid === u);
 

@@ -65,10 +65,10 @@ const linlinToLife: Effect = {
     if (uid === null) return;
     const where = ctx.ask({
       prompt: 'Au-dessus ou au-dessous de sa Vie ?',
-      options: [{ id: 'top', label: 'Au-dessus' }, { id: 'bottom', label: 'Au-dessous' }],
+      options: [{ id: 'lifeBottom', label: 'Au-dessous' }, { id: 'lifeTop', label: 'Au-dessus' }],
       tag: 'lifeSideOpp',
     });
-    removeByEffect(ctx, uid, where === 'top' ? 'lifeTop' : 'lifeBottom');
+    removeByEffect(ctx, uid, where === 'lifeTop' ? 'lifeTop' : 'lifeBottom');
   },
   useful: (s, p) => linlinTargets(s, p).length > 0,
 };

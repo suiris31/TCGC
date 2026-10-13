@@ -9,7 +9,9 @@ import { DECKS } from '../engine/decks.ts';
 import { act } from '../engine/engine.ts';
 import { donOnField, fieldCost, power } from '../engine/rules.ts';
 import type { GameState } from '../engine/types.ts';
-import { attack, choose, coherent, expectTag, logHas, play, scenario, setChars, setDeckTop, setDon, setHand, take } from './helpers.ts';
+import {
+  aiAnswers, attack, choose, coherent, expectTag, logHas, play, scenario, setChars, setDeckTop, setDon, setHand, take,
+} from './helpers.ts';
 
 const FAMILY = Object.keys(FAM_KATAKURI);
 const cards = { ...Object.fromEntries(FAMILY.map((n) => [n, 2])), 'OP08-075': 4, 'OP08-077': 2, 'OP17-077': 2 };
@@ -170,7 +172,8 @@ test('Charlotte Linlin (OP08-069) : DON!! −1 et défausser 1 : +1 Vie, puis un
   s = choose(play(s, 'OP08-069'), 'yes');
   if (s.decision?.tag === 'discard') s = choose(s, (o) => o.id.startsWith('card:'));
   s = choose(s, `card:${theirs(s, O_LUFFY).uid}`);
-  s = choose(s, 'bottom');
+  aiAnswers(s);
+  s = choose(s, 'lifeBottom');
   assert.equal(s.players[0].life.length, life + 1);
   assert.equal(s.players[1].life.length, oppLife + 1);
   assert.equal(s.players[1].life.at(-1)!.num, O_LUFFY);

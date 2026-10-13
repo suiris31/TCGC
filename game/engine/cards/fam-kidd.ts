@@ -3,7 +3,7 @@
 // retourner, en prendre une carte, y placer un Personnage. Chaque condition se vérifie dans la partie. Les choix
 // d'interprétation sont dans game/docs/interpretations.md.
 import {
-  addMod, basePower, canBeRested, chooseUpTo1, def, draw, drawAndDiscard, giveRestedDon, hasType, knownFirst, leaderHasType,
+  addMod, basePower, canBeRested, canLeaveByEffect, chooseUpTo1, def, draw, drawAndDiscard, giveRestedDon, hasType, knownFirst, leaderHasType,
   lifeToHand, log, lookTopPick, removeByEffect, removeFromField, restByEffect, reveal, uniqueByNum, untilOpponentsNextEnd,
 } from '../rules.ts';
 import type { CardBehavior, GameState, PlayerId } from '../types.ts';
@@ -62,15 +62,16 @@ const damnedPunkLook: Effect = effect((ctx) => {
 // « Ajoutez jusqu'à 1 Personnage de coût 9 ou moins au-dessus ou au-dessous de la Vie de son propriétaire, face cachée »
 const slamGibson: Effect = {
   run: (ctx) => {
-    const list = [...ctx.s.players[ctx.opp].chars, ...ctx.s.players[ctx.me].chars].filter((c) => (def(c.num).cost ?? 0) <= 9).map((c) => c.uid);
+    const list = [...ctx.s.players[ctx.opp].chars, ...ctx.s.players[ctx.me].chars]
+      .filter((c) => (def(c.num).cost ?? 0) <= 9 && canLeaveByEffect(ctx.s, c.uid, ctx.me)).map((c) => c.uid);
     const uid = chooseUpTo1(ctx, list, 'Slam Gibson : Personnage de coût 9 ou moins à placer dans la Vie de son propriétaire :', 'oppRemove');
     if (uid === null) return;
     const where = ctx.ask({
       prompt: 'Au-dessus ou au-dessous de la Vie ?',
-      options: [{ id: 'top', label: 'Au-dessus' }, { id: 'bottom', label: 'Au-dessous' }],
+      options: [{ id: 'lifeBottom', label: 'Au-dessous' }, { id: 'lifeTop', label: 'Au-dessus' }],
       tag: 'lifeSideOpp',
     });
-    removeByEffect(ctx, uid, where === 'top' ? 'lifeTopHidden' : 'lifeBottomHidden');
+    removeByEffect(ctx, uid, where === 'lifeTop' ? 'lifeTopHidden' : 'lifeBottomHidden');
   },
   useful: (s, p) => s.players[opp(p)].chars.some((c) => (def(c.num).cost ?? 0) <= 9),
 };

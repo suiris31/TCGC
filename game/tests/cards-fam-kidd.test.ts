@@ -8,7 +8,8 @@ import { act } from '../engine/engine.ts';
 import { attackAbility, canBeKO, hasBlocker, power } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import {
-  attack, choose, coherent, expectTag, hasOption, keepOrder, logHas, play, scenario, setChars, setDeckTop, setDon, setHand, setLife, take,
+  aiAnswers, attack, choose, coherent, expectTag, hasOption, keepOrder, logHas, play, scenario, setChars, setDeckTop, setDon, setHand, setLife,
+  take,
 } from './helpers.ts';
 
 const FAMILY = Object.keys(FAM_KIDD);
@@ -209,7 +210,8 @@ test('Jewelry Bonney (OP12-101) : s’épuiser, Leader {Supernovae} +1000 ; Slam
   const lives = s.players[1].life.length;
   s = choose(play(s, 'OP12-117'), 'yes');
   s = choose(s, `card:${theirs(s, O_LUFFY).uid}`);
-  s = choose(s, 'bottom');
+  aiAnswers(s);
+  s = choose(s, 'lifeBottom');
   assert.equal(s.players[1].life.length, lives + 1);
   assert.equal(s.players[1].life.at(-1)!.num, O_LUFFY);
   coherent(s);
