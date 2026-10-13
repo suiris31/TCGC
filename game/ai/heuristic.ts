@@ -508,6 +508,7 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP05-018':
     case 'OP08-054': return 3000;
     case 'OP06-017': return s.players[p].life.length >= 1 ? 3000 : 0;
+    case 'OP07-035': return s.players[p].chars.length >= 3 ? 3000 : 2000;
     case 'EB01-009': return 0;
     case 'OP13-057':
     case 'OP13-058':

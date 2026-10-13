@@ -387,6 +387,14 @@ questions-réponses Bandai, tournois).
 146. **Usopp (OP15-024)** : protégé des effets du Leader et des Personnages adverses, pas des Événements ni des Lieux.
      **Nami (OP17-023)** : peut se protéger elle-même si elle est redressée. **Roronoa Zoro (PRB02-006)** : seulement
      contre l'effet d'un Personnage adverse, pendant le tour adverse.
+147. **Chambres** : renvoyer un Personnage est obligatoire ; le Personnage joué doit avoir au moins une couleur que le
+     Personnage renvoyé n'a pas.
+148. **« N cartes épuisées ou plus »** (Jewelry Bonney OP12-118, Capone "Gang" Bege ST24-001) : Leader, Personnages, Lieu
+     et DON!! épuisées de la zone de Coût, une fois le coût de la carte payé.
+149. **Bartolomeo (OP07-031)** : un Personnage (des deux camps) épuisé par un effet de ses cartes, y compris un coût
+     payé par un effet.
+150. **Law et Bepo** : le Leader gagne +2000 si l'adversaire a 2 Personnages épuisés ou plus après l'épuisement.
+     **Jewelry Bonney (OP07-026)** : le joueur choisit un Personnage épuisé ou une DON!! épuisée adverse.
 
 ## Comment c'est vérifié
 

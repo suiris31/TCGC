@@ -268,12 +268,12 @@ export const canPlayCharacters = (s: GameState, p: PlayerId, num?: string) => {
 // une carte n'en font pas partie)
 export const restedCards = (s: GameState, p: PlayerId) => allField(s, p).filter((c) => c.rested).length + s.players[p].donRested;
 
-// Peut attaquer ce tour-ci ? charsOnly : [Initiative : Personnage] le tour où il est joué
 // Cartes à défausser pour attaquer avec cette carte (Edward.Newgate OP08-043), 0 sinon
 export function attackTax(s: GameState, uid: number): number {
   return Math.max(0, ...s.mods.filter((m) => m.uid === uid && m.stat === 'attackTax').map((m) => m.amount));
 }
 
+// Peut attaquer ce tour-ci ? charsOnly : [Initiative : Personnage] le tour où il est joué
 export function attackAbility(s: GameState, p: PlayerId, card: FieldCard): { can: boolean; charsOnly: boolean } {
   const P = s.players[p];
   const no = { can: false, charsOnly: false };
