@@ -144,6 +144,42 @@ export const DECKS: Record<string, DeckList> = {
       'ST34-004': 3,
     },
   },
+  // Decks pour débutant EX (phase 4D) : listes officielles relevées sur https://cardgamebase.com (quantités par numéro
+  // de carte, total vérifié : 50 cartes).
+  // https://cardgamebase.com/one-piece-st21-decklist-card-list/
+  'ST-21': {
+    id: 'ST-21',
+    name: 'Luffy Gear 5 (rouge)',
+    series: 'ST-21',
+    leader: 'ST21-001',
+    cards: {
+      'ST21-002': 2, 'ST21-003': 2, 'ST21-004': 4, 'ST21-005': 4, 'ST21-006': 4, 'ST21-007': 4, 'ST21-008': 4, 'ST21-009': 4,
+      'ST21-010': 2, 'ST21-011': 4, 'ST21-012': 4, 'ST21-013': 4, 'ST21-014': 2, 'ST21-015': 2, 'ST21-016': 2, 'ST21-017': 2,
+    },
+  },
+  // https://cardgamebase.com/one-piece-st22-decklist-card-list/
+  'ST-22': {
+    id: 'ST-22',
+    name: 'Ace et Newgate (bleu)',
+    series: 'ST-22',
+    leader: 'ST22-001',
+    cards: {
+      'ST22-002': 2, 'ST22-003': 2, 'ST22-004': 4, 'ST22-005': 4, 'ST22-006': 4, 'ST22-007': 4, 'ST22-008': 4, 'ST22-009': 4,
+      'ST22-010': 2, 'ST22-011': 4, 'ST22-012': 4, 'ST22-013': 4, 'ST22-014': 2, 'ST22-015': 2, 'ST22-016': 2, 'ST22-017': 2,
+    },
+  },
+  // https://cardgamebase.com/one-piece-st30-decklist-card-list/ (les noms des Événements y sont mélangés : les numéros
+  // font foi)
+  'ST-30': {
+    id: 'ST-30',
+    name: 'Luffy et Ace (rouge/vert)',
+    series: 'ST-30',
+    leader: 'ST30-001',
+    cards: {
+      'ST30-002': 2, 'ST30-003': 4, 'ST30-004': 2, 'ST30-005': 4, 'ST30-006': 4, 'ST30-007': 2, 'ST30-008': 4, 'ST30-009': 4,
+      'ST30-010': 4, 'ST30-011': 2, 'ST30-012': 2, 'ST30-013': 4, 'ST30-014': 2, 'ST30-015': 4, 'ST30-016': 2, 'ST30-017': 4,
+    },
+  },
 };
 
 export function deckSize(deck: DeckList) {

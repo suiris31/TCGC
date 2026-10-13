@@ -82,7 +82,7 @@ export interface PlayerState {
 export interface Modifier {
   uid: number;
   stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost' | 'cantBeKO' | 'cantLeave'
-    | 'noRefresh' | 'negated';
+    | 'noRefresh' | 'negated' | 'noBlocker';
   scope?: 'battle' | 'effect' | 'oppEffect';  // stat 'cantBeKO' : seulement en combat, par un effet, par un effet adverse
   keyword?: Keyword;  // stat 'keyword' : mot-clé accordé
   amount: number;
@@ -291,7 +291,8 @@ export interface CardBehavior {
   // [Attaque adverse] : quand l'adversaire déclare une attaque (clé [Une fois par tour] partagée possible)
   onOpponentAttack?: { optKey?: string; run: (ctx: EffectCtx) => void };
   onKO?: (ctx: EffectCtx) => void;                  // [En cas de KO], résolu depuis la Défausse
-  onKOCondition?: (s: GameState, owner: PlayerId) => boolean;
+  // condition de l'effet [En cas de KO], lue au moment du KO, carte encore sur le terrain (« [DON!! x2] [En cas de KO] »)
+  onKOCondition?: (s: GameState, owner: PlayerId, card: FieldCard) => boolean;
   endOfTurn?: (ctx: EffectCtx) => void;             // [Fin de votre tour]
   when?: WhenEffect[];                              // effets « quand ... » (carte sur le terrain)
   activateMain?: {

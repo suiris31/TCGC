@@ -606,6 +606,8 @@ function chooseEffect(s: GameState, d: Decision): string {
   // Sasaki (défausser 2) et Basil Hawkins (défausser 1) : seulement avec une main fournie
   if (d.tag === 'may' && sourceNum === 'OP17-068') return yesNo(P.hand.length >= 4);
   if (d.tag === 'may' && sourceNum === 'OP17-073') return yesNo(P.hand.length >= 3);
+  // Whitey Bay (ST-22) : révéler 2 cartes pour +2000 au Leader seulement s'il peut encore attaquer ce tour-ci
+  if (d.tag === 'may' && sourceNum === 'ST22-011') return yesNo(canAttack(s, p, P.leader));
   // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus
   if (d.tag === 'may' && sourceNum === 'ST10-010') return yesNo(O.hand.length >= 7);
   // Kyo : défausser 2 cartes pour garder un Personnage seulement avec une main fournie

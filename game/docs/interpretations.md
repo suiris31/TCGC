@@ -172,6 +172,49 @@ questions-réponses Bandai, tournois).
 57. **Les Superstars** : « jouez jusqu'à 1 [King], [Queen] ou [Jack] » de la main, sans limite de coût (les deux Queen
     comptent), joué redressé.
 
+## Decks pour débutant EX ST-21, ST-22 et ST-30, choix faits sans validation (à revoir si besoin)
+
+58. **« [DON!! x2] [En cas de KO] »** (Jewelry Bonney ST21-004) : les DON!! comptent au moment du KO, carte encore sur
+    le terrain (ensuite, ses DON!! retournent dans la zone de Coût).
+59. **Sanji (ST21-003)** : « si le Personnage choisi attaque durant ce tour, l'adversaire ne peut pas activer
+    [Bloqueur] » = le Personnage choisi gagne [Imblocable] pour le tour ; la puissance de 6000 ou plus se lit au moment
+    du choix.
+60. **Franky (ST21-011)** : le bonus vise ses Personnages (lui compris), pas son Leader ; « puissance de base » = la
+    puissance imprimée, ou celle fixée par un effet.
+61. **Gum Gum Dawn Whip** : « ne peut pas activer [Bloqueur] pour tout le tour » = la cible perd [Bloqueur] pour le tour,
+    même si un effet le lui donne ensuite.
+62. **Gum Gum Taupe Bullet** : le KO de 2000 ou moins peut viser le Personnage qui vient de recevoir −5000.
+63. **« Révélez 1 carte du dessus de votre deck ; si elle ... »** (Newgate, Joz, Squardo, Marco, « Retire
+    immédiatement... ») : la carte reste au-dessus du deck, et les deux joueurs savent laquelle c'est. « Incluant
+    « Équipage de Barbe Blanche » dans son type » compte aussi « Whitebeard Pirates Allies » (Elmy, les frères Decalvan,
+    Squardo...), comme en VO.
+64. **Leader Ace et Newgate** : la carte révélée reste en main pendant la pioche, puis va au-dessus du deck (connue des
+    deux joueurs) ; l'effet n'est proposé qu'avec une carte de l'équipage en main.
+65. **Izo (ST22-002)** : son [Attaque adverse] (se placer dans la Défausse) se joue à chaque attaque adverse, avant les
+    [Bloqueur] ; la carte placée au-dessous du deck est choisie par son propriétaire, qui sait où elle est.
+66. **Oden Kozuki (ST22-005)** : le remplacement (défausser 2 cartes) vaut pour toute sortie du terrain due à un effet
+    adverse (KO, main, deck) ; son activation n'est proposée que s'il est épuisé et qu'un autre Personnage peut retourner
+    en main.
+67. **Marco (ST22-012)** : son remplacement ne vaut que pour un KO par un effet adverse, une fois par tour ; le +1000 de
+    son [En attaquant] dure jusqu'à la fin du prochain tour adverse.
+68. **« Je suis "Barbe Blanche" !! »** : la condition du Leader ne porte que sur [Edward Newgate] ; la carte de Vie
+    prise en main (au choix : dessus ou dessous) se fait même avec un autre Leader, et donne +2000 au Leader.
+69. **Poing ardent** : « jusqu'à 1 Personnage ayant un coût de 5 ou moins » peut viser n'importe quel Personnage (le
+    sien aussi), comme le texte ne dit pas « adverse » ; la pioche et le Personnage placé sous le deck dépendent tous
+    deux de la révélation des 2 cartes.
+70. **« Ayant 6000 de puissance »** (Inazuma, Ivankov, Jinbe, Marco, « Tu fonces toujours... ») : exactement 6000,
+    puissance imprimée (main, deck) ; **« 6000 de puissance de base »** (Newgate ST30-003, Little Oz Junior, Baggy,
+    Mr 3, les deux Événements) : exactement 6000, sur le terrain.
+71. **Leader Luffy et Ace** : le −2000 vient de n'importe quel Personnage de 7000 de puissance de base ou plus de son
+    terrain ; le +3000 du tour adverse vaut pour ses cartes nommées [Portgas D. Ace] ou [Monkey D. Luffy] (pas le
+    Leader lui-même, nommé « Luffy & Ace »).
+72. **Little Oz Junior (ST30-009) et Baggy (ST30-011)** : ils protègent un autre de leurs Personnages de 6000 de base
+    contre toute sortie du terrain due à un effet adverse (KO, main, deck) ; Baggy doit être redressé pour s'épuiser.
+73. **Marco (ST30-008)** : revenir de la Défausse compte comme un Personnage joué (son [Jouée] n'existe pas, mais les
+    effets « quand un Personnage est joué » se déclenchent) ; rien si les Personnages ne peuvent pas être joués ce tour.
+74. **Mr 3** : deux Personnages différents, chacun reçoit jusqu'à 2 DON!! épuisées, l'un après l'autre (le second
+    reçoit ce qui reste).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

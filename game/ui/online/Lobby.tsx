@@ -2,7 +2,7 @@
 // code. Chacun choisit son deck.
 import { useState } from 'react';
 import { DECKS } from '../../engine/decks.ts';
-import { DeckTile } from '../App.tsx';
+import { DeckPicker } from '../App.tsx';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { createRoom, joinRoom } from './api.ts';
@@ -63,7 +63,7 @@ export function Lobby({ initialCode, onOpen, onBack }: { initialCode?: string; o
       )}
       <section className="setup-section">
         <h2>Ton deck</h2>
-        <div className="deck-grid">{Object.keys(DECKS).map((id) => <DeckTile key={id} id={id} selected={deck === id} onClick={() => pick(id)} onGuide={setGuide} />)}</div>
+        <DeckPicker selected={deck} onPick={pick} onGuide={setGuide} />
       </section>
       {error && <p className="danger lobby-error">{error}</p>}
       <div className="setup-go">

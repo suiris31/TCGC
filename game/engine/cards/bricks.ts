@@ -8,8 +8,8 @@
 // Les conditions sont lues dans la partie au moment de l'effet, jamais supposées : une carte marche ou non selon son
 // deck, comme à une vraie table.
 import {
-  addDonFromDeck, addMod, addTopDeckToLife, allField, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
-  bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon, knownFirst,
+  addDonFromDeck, addMod, addTopDeckToLife, allField, basePower, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
+  bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon, hasKeyword, knownFirst,
   lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect, removeFromField, restByEffect,
   returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
@@ -123,7 +123,8 @@ export interface CharSpec {
   baseCostMax?: number;    // coût de base (imprimé)
   powerMax?: number;       // puissance actuelle
   powerMin?: number;
-  basePowerMax?: number;
+  basePowerMax?: number;   // puissance de base (imprimée, ou fixée par un effet)
+  basePowerMin?: number;
   type?: string;           // type exact, en VO ({Navy})
   typeIncludes?: string;   // « dont le type contient » (« CP » : CP9, CP0...)
   name?: string;           // nom en VO
@@ -132,16 +133,18 @@ export interface CharSpec {
   attribute?: string;      // en VO (Slash...)
   rested?: boolean;        // true : épuisé ; false : redressé
   trigger?: boolean;       // « ayant [Déclenchement] » (d'après le texte VO)
+  keyword?: Keyword;       // « ayant [Bloqueur] » (sur le terrain : mot-clé actif, même donné par un effet)
 }
 
 // La carte correspond-elle au texte ? Sur le terrain : coût et puissance actuels ; ailleurs : ceux imprimés
-function fits(d: CardData, cost: number, pw: number, rested: boolean | undefined, spec: CharSpec): boolean {
+function fits(d: CardData, cost: number, pw: number, base: number, rested: boolean | undefined, spec: CharSpec): boolean {
   return (spec.costMax === undefined || cost <= spec.costMax)
     && (spec.costMin === undefined || cost >= spec.costMin)
     && (spec.baseCostMax === undefined || (d.cost ?? 0) <= spec.baseCostMax)
     && (spec.powerMax === undefined || pw <= spec.powerMax)
     && (spec.powerMin === undefined || pw >= spec.powerMin)
-    && (spec.basePowerMax === undefined || (d.power ?? 0) <= spec.basePowerMax)
+    && (spec.basePowerMax === undefined || base <= spec.basePowerMax)
+    && (spec.basePowerMin === undefined || base >= spec.basePowerMin)
     && (spec.type === undefined || d.types.includes(spec.type))
     && (spec.typeIncludes === undefined || d.types.some((t) => t.includes(spec.typeIncludes!)))
     && (spec.name === undefined || d.names.includes(spec.name))
@@ -156,13 +159,15 @@ export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
   const d = def(c.num);
   const f = findField(s, c.uid);
   const cost = f && !f.leader ? fieldCost(s, c.uid) : d.cost ?? 0;
-  return fits(d, cost, f ? power(s, c.uid) : d.power ?? 0, c.rested, spec);
+  return fits(d, cost, f ? power(s, c.uid) : d.power ?? 0, f ? basePower(s, c.uid) : d.power ?? 0, c.rested, spec)
+    && (spec.keyword === undefined || (f ? hasKeyword(s, f.player, c, spec.keyword) : d.keywords.includes(spec.keyword)));
 }
 
 // Même chose pour une carte hors du terrain (main, deck, Défausse)
 export function cardMatches(num: string, spec: CharSpec & { category?: CardData['category'] }): boolean {
   const d = def(num);
-  return (spec.category === undefined || d.category === spec.category) && fits(d, d.cost ?? 0, d.power ?? 0, undefined, { ...spec, rested: undefined });
+  return (spec.category === undefined || d.category === spec.category) && fits(d, d.cost ?? 0, d.power ?? 0, d.power ?? 0, undefined, { ...spec, rested: undefined })
+    && (spec.keyword === undefined || d.keywords.includes(spec.keyword));
 }
 
 // Libellé VF d'un type de la VO, d'après les cartes chargées (« Navy » -> « Marine »)
@@ -178,6 +183,17 @@ export function typeLabel(type: string): string {
     }
   }
   return type;
+}
+
+// Nom VF d'une carte d'après son nom VO (« Edward.Newgate » -> « Edward Newgate »), pris sur une carte à un seul nom
+const nameLabelCache = new Map<string, string>();
+export function nameLabel(name: string): string {
+  const known = nameLabelCache.get(name);
+  if (known) return known;
+  const d = Object.values(CARDS).find((c) => c.names?.length === 1 && c.names[0] === name && c.lang === 'fr');
+  if (!d) return name;
+  nameLabelCache.set(name, d.name);
+  return d.name;
 }
 
 const KEYWORD_FR: Record<Keyword, string> = {
@@ -196,15 +212,23 @@ export function describeSpec(what: string, spec: CharSpec): string {
   if (spec.type) parts.push(`de type {${typeLabel(spec.type)}}`);
   if (spec.typeIncludes) parts.push(`dont le type contient « ${typeLabel(spec.typeIncludes)} »`);
   if (spec.attribute) parts.push(`<${ATTRIBUTE_FR[spec.attribute] ?? spec.attribute}>`);
-  if (spec.name) parts.push(`[${spec.name}]`);
-  if (spec.notName) parts.push(`autre que [${spec.notName}]`);
+  if (spec.name) parts.push(`[${nameLabel(spec.name)}]`);
+  if (spec.notName) parts.push(`autre que [${nameLabel(spec.notName)}]`);
   if (spec.costMax !== undefined) parts.push(`de coût ${spec.costMax} ou moins`);
   if (spec.costMin !== undefined) parts.push(`de coût ${spec.costMin} ou plus`);
   if (spec.baseCostMax !== undefined) parts.push(`de coût de base ${spec.baseCostMax} ou moins`);
-  if (spec.powerMax !== undefined) parts.push(`de ${spec.powerMax} de puissance ou moins`);
-  if (spec.powerMin !== undefined) parts.push(`de ${spec.powerMin} de puissance ou plus`);
-  if (spec.basePowerMax !== undefined) parts.push(`de ${spec.basePowerMax} de puissance de base ou moins`);
+  if (spec.powerMin !== undefined && spec.powerMin === spec.powerMax) parts.push(`de ${spec.powerMin} de puissance`);
+  else {
+    if (spec.powerMax !== undefined) parts.push(`de ${spec.powerMax} de puissance ou moins`);
+    if (spec.powerMin !== undefined) parts.push(`de ${spec.powerMin} de puissance ou plus`);
+  }
+  if (spec.basePowerMin !== undefined && spec.basePowerMin === spec.basePowerMax) parts.push(`de ${spec.basePowerMin} de puissance de base`);
+  else {
+    if (spec.basePowerMax !== undefined) parts.push(`de ${spec.basePowerMax} de puissance de base ou moins`);
+    if (spec.basePowerMin !== undefined) parts.push(`de ${spec.basePowerMin} de puissance de base ou plus`);
+  }
   if (spec.trigger) parts.push('ayant [Déclenchement]');
+  if (spec.keyword) parts.push(`ayant [${KEYWORD_FR[spec.keyword]}]`);
   return parts.join(' ');
 }
 
@@ -506,6 +530,34 @@ export const lookTopToLife = (count: number, source: string): Effect => effect((
   reveal(ctx.s, ordered.map((c) => c.uid), ctx.me);
 }, (s, p) => s.players[p].deck.length > 0);
 
+// « Révélez 1 carte du dessus de votre deck ; si elle ..., ... » (elle reste au-dessus du deck, connue des deux joueurs)
+export const revealTop = (test: (num: string) => boolean, then: Effect, source: string): Effect => ({
+  run: (ctx) => {
+    const top = ctx.s.players[ctx.me].deck[0];
+    if (!top) return;
+    reveal(ctx.s, [top.uid], 'both');
+    log(ctx.s, ctx.me, `révèle ${def(top.num).name}, la carte du dessus de son deck (${source})`);
+    if (test(top.num)) then.run(ctx);
+  },
+  useful: (s, p, self) => s.players[p].deck.length > 0 && then.useful(s, p, self),
+});
+
+// « Placez N cartes de votre main au-dessous de votre deck » (son propriétaire sait où elles sont)
+export const handToBottom = (n: number, source: string): Effect => effect((ctx) => {
+  const P = ctx.s.players[ctx.me];
+  for (let i = 0; i < n && P.hand.length; i++) {
+    const answer = ctx.ask({
+      prompt: `${source} : carte de ta main à placer au-dessous de ton deck${n > 1 ? ` (${i + 1}/${n})` : ''} :`,
+      options: uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand)).map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid })),
+      tag: 'discard',
+    });
+    const [card] = P.hand.splice(P.hand.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
+    P.deck.push(card);
+    reveal(ctx.s, [card.uid], ctx.me);
+    log(ctx.s, ctx.me, `place 1 carte de sa main au-dessous de son deck (${source})`);
+  }
+}, (s, p) => s.players[p].hand.length > 0);
+
 // « Ce Personnage gagne [Initiative] pour tout le tour » (la carte qui porte l'effet)
 export const selfKeyword = (keyword: Keyword, source: string): Effect => effect((ctx) => {
   const f = findField(ctx.s, ctx.source);
@@ -734,11 +786,12 @@ export const restCost = (n: number, what: 'cards' | 'characters'): Cost => {
 };
 
 // « Renvoyer 1 de vos Personnages à la main de son propriétaire » (la carte qui porte l'effet comprise)
-export const returnOwnChar = (): Cost => ({
-  label: 'renvoyer 1 de tes Personnages dans ta main',
-  can: (s, p) => s.players[p].chars.length > 0,
+// (notSelf : « autre que celui-ci »)
+export const returnOwnChar = (notSelf = false): Cost => ({
+  label: `renvoyer 1 de tes Personnages${notSelf ? ' (autre que celui-ci)' : ''} dans ta main`,
+  can: (s, p, self) => s.players[p].chars.some((c) => !notSelf || c.uid !== self),
   pay: (ctx) => {
-    const list = ctx.s.players[ctx.me].chars.map((c) => c.uid);
+    const list = ctx.s.players[ctx.me].chars.filter((c) => !notSelf || c.uid !== ctx.source).map((c) => c.uid);
     if (!list.length) return false;
     const answer = ctx.ask({
       prompt: 'Personnage à renvoyer dans ta main :',

@@ -743,6 +743,40 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
   );
 }
 
+// Choix d'un deck : decks rangés par sorte (méta, pour débutant, du plus récent au plus ancien), filtre par couleur du
+// Leader. L'ordre de DECKS ne change pas (il sert aux graines des parties de vérification).
+const DECK_GROUPS: { label: string; ids: () => string[] }[] = [
+  { label: 'Decks du méta', ids: () => Object.keys(DECKS).filter((id) => DECKS[id].series === 'META') },
+  {
+    label: 'Decks pour débutant',
+    ids: () => Object.keys(DECKS).filter((id) => DECKS[id].series !== 'META').sort((a, b) => b.localeCompare(a, 'fr', { numeric: true })),
+  },
+];
+const COLOR_FILTERS: [string, string][] = [['', 'Toutes'], ['Red', 'Rouge'], ['Green', 'Vert'], ['Blue', 'Bleu'], ['Purple', 'Violet'], ['Black', 'Noir'], ['Yellow', 'Jaune']];
+
+export function DeckPicker({ selected, onPick, onGuide, note }: { selected: string; onPick: (id: string) => void; onGuide: (id: string) => void; note?: (id: string) => string | undefined }) {
+  const [color, setColor] = useState('');
+  const shown = (id: string) => !color || def(DECKS[id].leader).colors.includes(color as never);
+  return (
+    <>
+      <div className="deck-filter" role="group" aria-label="Couleur du Leader">
+        {COLOR_FILTERS.map(([c, label]) => (
+          <button key={c} className={`deck-chip ${color === c ? 'on' : ''}`} style={c ? { ['--c1' as string]: COLOR[c] } : undefined} onClick={() => setColor(c)}>{label}</button>
+        ))}
+      </div>
+      {DECK_GROUPS.map((g) => {
+        const ids = g.ids().filter(shown);
+        return ids.length ? (
+          <div key={g.label} className="deck-group">
+            <h3>{g.label}</h3>
+            <div className="deck-grid">{ids.map((id) => <DeckTile key={id} id={id} selected={selected === id} note={note?.(id)} onClick={() => onPick(id)} onGuide={onGuide} />)}</div>
+          </div>
+        ) : null;
+      })}
+    </>
+  );
+}
+
 function SetupScreen({ notice, online, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory }: {
   notice?: string;
   online?: OnlineEntry;
@@ -758,7 +792,6 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
   onGuide: (id: string) => void;
   onHistory: () => void;
 }) {
-  const ids = Object.keys(DECKS);
   // niveau « IA entraînée » : seulement si un modèle compatible est installé (web/public/rl-model/, voir rl/README.md) ;
   // sinon un réglage resté sur ce niveau (partie reprise, modèle retiré ou d'un ancien encodage) redevient « Débutant »,
   // pour ne pas compter sous ce nom des parties jouées par l'IA simple
@@ -809,11 +842,11 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
       )}
       <section className="setup-section">
         <h2>Ton deck</h2>
-        <div className="deck-grid">{ids.map((id) => <DeckTile key={id} id={id} selected={config.myDeck === id} onClick={() => onChange({ ...config, myDeck: id })} onGuide={onGuide} />)}</div>
+        <DeckPicker selected={config.myDeck} onPick={(id) => onChange({ ...config, myDeck: id })} onGuide={onGuide} />
       </section>
       <section className="setup-section">
         <h2>Ton adversaire</h2>
-        <div className="deck-grid">{ids.map((id) => <DeckTile key={id} id={id} selected={config.aiDeck === id} note={rec(id)} onClick={() => onChange({ ...config, aiDeck: id })} onGuide={onGuide} />)}</div>
+        <DeckPicker selected={config.aiDeck} note={rec} onPick={(id) => onChange({ ...config, aiDeck: id })} onGuide={onGuide} />
       </section>
       <section className="setup-row">
         <div>

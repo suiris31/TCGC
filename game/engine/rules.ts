@@ -195,6 +195,13 @@ export function handCost(s: GameState, p: PlayerId, card: Card): number {
   return Math.max(0, (d.cost ?? 0) + (d.handCost?.(s, p) ?? 0));
 }
 
+// Puissance de base : celle imprimée, ou celle fixée par un effet (4-9-2-1)
+export function basePower(s: GameState, uid: number): number {
+  const f = findField(s, uid);
+  const bases = s.mods.filter((m) => m.uid === uid && m.stat === 'basePower').map((m) => m.amount);
+  return bases.length ? Math.max(...bases) : (f ? def(f.card.num).power ?? 0 : 0);
+}
+
 // Puissance actuelle : base (éventuellement fixée par un effet, 4-9-2-1), DON!! données (+1000 chacune pendant le tour
 // de leur propriétaire), effets permanents, modifications temporaires
 export function power(s: GameState, uid: number): number {
@@ -220,6 +227,8 @@ export function power(s: GameState, uid: number): number {
 // Mot-clé d'une carte du terrain : toujours actif (en tête de son texte), donné sous condition par son propre effet,
 // ou accordé par un effet (modification temporaire)
 export function hasKeyword(s: GameState, p: PlayerId, card: FieldCard, k: Keyword): boolean {
+  // « ... ne peut pas activer [Bloqueur] pour tout le tour »
+  if (k === 'Blocker' && hasMod(s, card.uid, 'noBlocker')) return false;
   const d = def(card.num);
   const own = k === 'Blocker' ? d.blocker : k === 'Rush' ? d.rush : k === 'Rush: Character' ? d.rushChar : undefined;
   if ((d.keywords?.includes(k) || own?.(s, p, card)) && !isNegated(s, card.uid)) return true;
@@ -590,7 +599,7 @@ export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect
     log(s, f0.player, `${d.name} ne peut pas être mis KO`);
     return false;
   }
-  const triggers = d.onKO && !isNegated(s, uid) && (d.onKOCondition?.(s, f0.player) ?? true);
+  const triggers = d.onKO && !isNegated(s, uid) && (d.onKOCondition?.(s, f0.player, f0.card) ?? true);
   const f = removeFromField(s, uid, 'trash');
   if (!f) return false;
   log(s, f.player, `${d.name} est mis KO${cause === 'effect' ? ' par un effet' : ''}`);

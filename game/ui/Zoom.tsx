@@ -28,6 +28,7 @@ function modText(s: GameState, m: Modifier): string {
     case 'cantLeave': return `ne peut pas quitter le terrain à cause d’un effet adverse ${until} (${m.source})`;
     case 'negated': return `effets annulés ${until} (${m.source})`;
     case 'noRefresh': return `ne sera pas redressé lors de la prochaine phase de Recharge de son propriétaire (${m.source})`;
+    case 'noBlocker': return `ne peut pas activer [Bloqueur] ${until} (${m.source})`;
   }
 }
 
