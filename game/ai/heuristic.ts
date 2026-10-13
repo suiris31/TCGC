@@ -499,6 +499,27 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP07-076': return donOnField(s, p) >= 1 ? 2000 : 0;
     case 'OP13-076': return s.players[p].hand.length >= 2 ? 3000 : 0;
     case 'OP09-078': return leaderHasType(s, p, 'Straw Hat Crew') && donOnField(s, p) >= 2 && s.players[p].hand.length >= 2 ? 4000 : 0;
+    // familles 4E (dans aucun deck du registre)
+    case 'OP05-095':
+    case 'EB01-019':
+    case 'OP14-036':
+    case 'OP10-115':
+    case 'OP17-078': return 4000;
+    case 'OP05-018': return 3000;
+    case 'OP06-059': return 1000;
+    case 'OP07-018': return findField(s, targetUid)?.leader === false && hasType(findField(s, targetUid)!.card.num, 'Revolutionary Army') ? 2000 : 0;
+    case 'OP14-037':
+    case 'OP12-117': return findField(s, targetUid)?.leader ? 3000 : 0;
+    case 'OP17-077': return findField(s, targetUid)?.leader && donOnField(s, p) >= 1 ? 4000 : 0;
+    case 'OP10-117': return s.players[p].life.length <= 1 ? 3000 : 0;
+    case 'OP17-076': return s.players[p].hand.length >= 2 ? 3000 : 0;
+    // −3000 à l'attaquant, ou KO de l'attaquant (épuisé) : seulement contre un Personnage
+    case 'OP15-021':
+    case 'OP10-040': {
+      const atk = s.battle ? findField(s, s.battle.attacker) : null;
+      if (!atk || atk.leader) return 0;
+      return num === 'OP15-021' ? 3000 : fieldCost(s, atk.card.uid) <= 7 ? 10000 : 0;
+    }
     default: return 2000;
   }
 }
