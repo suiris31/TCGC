@@ -28,6 +28,19 @@ function knownMissing(productId) {
   }
 }
 
+// La synchro annonce une image pour ces cartes (souvent publiée après la prévente) : on oublie qu'elle manquait pour
+// la télécharger dès la mise à jour de l'index qui suit, sans attendre les 3 jours
+export function forgetMissing(productIds) {
+  const markers = new Set(fs.readdirSync(config.imagesDir).filter((f) => f.endsWith('.missing')));
+  let n = 0;
+  for (const id of productIds) {
+    if (!markers.has(`${id}.missing`)) continue;
+    fs.rmSync(missingMarker(id), { force: true });
+    n++;
+  }
+  return n;
+}
+
 export async function downloadThumb(productId) {
   const file = thumbPath(productId);
   if (fs.existsSync(file)) return file;

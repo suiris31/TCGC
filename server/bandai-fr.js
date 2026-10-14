@@ -58,12 +58,23 @@ export function syncFrench({ log = console.log, force = false } = {}) {
 async function doSync(log, force) {
   const last = getMeta('fr_sync');
   const fresh = last && Date.now() - new Date(last).getTime() < 7 * 86400_000;
-  if (!fresh || force) {
+  // La liste des séries (une page) est relue à chaque passage : une nouvelle extension VF est récupérée tout de suite,
+  // toutes les séries une fois par semaine (noms ou visuels corrigés)
+  const known = new Set(JSON.parse(getMeta('fr_series') ?? '[]'));
+  let series = null;
+  try {
     const home = await getText(`${BASE}/cardlist/`);
-    const series = [...home.matchAll(/<option value="(\d+)"[^>]*>([^<]*)/g)].map((m) => ({ id: m[1], name: decodeHtml(m[2]) }));
-    log(`Cartes VF : ${series.length} séries sur le site officiel français...`);
+    series = [...home.matchAll(/<option value="(\d+)"[^>]*>([^<]*)/g)].map((m) => ({ id: m[1], name: decodeHtml(m[2]) }));
+  } catch (err) {
+    if (!fresh || force) throw err;
+  }
+  const full = !fresh || force || !known.size;
+  const todo = !series ? [] : full ? series : series.filter((s) => !known.has(s.id));
+  if (todo.length) {
+    log(full ? `Cartes VF : ${series.length} séries sur le site officiel français...`
+      : `Cartes VF : nouvelle${todo.length > 1 ? 's' : ''} série${todo.length > 1 ? 's' : ''} ${todo.map((s) => s.name).join(', ')}...`);
     const all = [];
-    for (const s of series) {
+    for (const s of todo) {
       const html = await getText(`${BASE}/cardlist/?series=${s.id}`);
       for (const card of parseCardList(html)) all.push({ ...card, series: s.name });
     }
@@ -73,7 +84,8 @@ async function doSync(log, force) {
       for (const c of all) upsert.run(c.imageId, c.number, c.name, c.series);
       db.exec(`UPDATE cards SET name_fr = (SELECT f.name FROM fr_cards f WHERE f.number = cards.number ORDER BY f.image_id LIMIT 1)`);
     });
-    setMeta('fr_sync', new Date().toISOString());
+    if (full) setMeta('fr_sync', new Date().toISOString());
+    setMeta('fr_series', JSON.stringify(series.map((x) => x.id)));
     log(`Cartes VF : ${all.length} visuels référencés`);
   }
 

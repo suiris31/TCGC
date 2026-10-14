@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { config } from './config.js';
 import { db, getMeta, setMeta, transaction } from './db.js';
 import { syncCardmarket } from './cardmarket.js';
+import { forgetMissing } from './images.js';
 import { syncRegulations } from './regulations.js';
 import { snapshotAllUsers } from './valuation.js';
 
@@ -122,6 +123,7 @@ async function doSync(log) {
 
   let cardCount = 0;
   let priceCount = 0;
+  const withImage = [];
   transaction(() => {
     for (const { group, products, prices } of perGroup) {
       upsertSet.run(group.groupId, group.abbreviation ?? null, group.name, group.publishedOn ?? null, group.modifiedOn ?? null);
@@ -140,6 +142,7 @@ async function doSync(log) {
           stripHtml(ext(p, 'Description')), p.imageUrl ?? null, p.url ?? null, p.modifiedOn ?? null,
         );
         cardIds.add(p.productId);
+        if (p.imageCount > 0) withImage.push(p.productId);
         cardCount++;
       }
 
@@ -160,6 +163,9 @@ async function doSync(log) {
     setMeta('price_date', priceDate);
     setMeta('last_sync', new Date().toISOString());
   });
+
+  const published = forgetMissing(withImage);
+  if (published) log(`${published} nouveaux visuels publiés par TCGplayer`);
 
   try {
     await syncCardmarket({ log });
