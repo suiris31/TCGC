@@ -66,6 +66,14 @@ interface Recording {
   endedAt?: string;
 }
 
+// Adversaire « Aléatoire » : un deck du registre (méta ou pour débutant) tiré au sort au lancement de chaque partie,
+// autre que le sien quand c'est possible
+const RANDOM_DECK = 'random';
+function randomDeck(myDeck: string) {
+  const pool = Object.keys(DECKS).filter((id) => id !== myDeck);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // Bilan victoires / défaites par confrontation et niveau
 type Records = Record<string, RecordLine>;
 const recordKey = (c: Pick<Config, 'myDeck' | 'aiDeck' | 'level'>) => `${c.myDeck}|${c.aiDeck}|${c.level}`;
@@ -329,17 +337,19 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
   };
 
   const start = () => {
-    if (![config.myDeck, config.aiDeck].every((id) => DECKS[id] || (deckInfo(id) && playable(deckInfo(id)!)))) return;
+    const aiDeck = config.aiDeck === RANDOM_DECK ? randomDeck(config.myDeck) : config.aiDeck;
+    if (![config.myDeck, aiDeck].every((id) => DECKS[id] || (deckInfo(id) && playable(deckInfo(id)!)))) return;
     closeRecording();
     const first = config.first === 'me' ? HUMAN : config.first === 'ai' ? AI : 'random';
     // deck personnalisé : sa liste complète (le moteur ne connaît que les decks du registre par leur identifiant)
     const source = (id: string) => (DECKS[id] ? id : deckInfo(id)!);
     const named: Config = {
       ...config,
+      aiDeck,
       ...(DECKS[config.myDeck] ? {} : { myDeckName: deckLabel(config.myDeck) }),
-      ...(DECKS[config.aiDeck] ? {} : { aiDeckName: deckLabel(config.aiDeck) }),
+      ...(DECKS[aiDeck] ? {} : { aiDeckName: deckLabel(aiDeck) }),
     };
-    const initial = newGame({ decks: [source(config.myDeck), source(config.aiDeck)], names: ['Toi', 'IA'], first });
+    const initial = newGame({ decks: [source(config.myDeck), source(aiDeck)], names: ['Toi', 'IA'], first });
     setSession(named);
     setGame(initial);
     startRecording(initial, named);
@@ -777,12 +787,13 @@ const DECK_GROUPS: { label: string; ids: () => string[] }[] = [
 ];
 const COLOR_FILTERS: [string, string][] = [['', 'Toutes'], ['Red', 'Rouge'], ['Green', 'Vert'], ['Blue', 'Bleu'], ['Purple', 'Violet'], ['Black', 'Noir'], ['Yellow', 'Jaune']];
 
-export function DeckPicker({ selected, onPick, onGuide, note, onBuilder }: {
+export function DeckPicker({ selected, onPick, onGuide, note, onBuilder, onRandom }: {
   selected: string;
   onPick: (id: string) => void;
   onGuide: (id: string) => void;
   note?: (id: string) => string | undefined;
   onBuilder?: () => void;  // ouvrir l'éditeur de decks
+  onRandom?: () => void;   // proposer « Aléatoire » (deck tiré au sort au lancement)
 }) {
   const [color, setColor] = useState('');
   const { decks } = useMyDecks();
@@ -803,6 +814,18 @@ export function DeckPicker({ selected, onPick, onGuide, note, onBuilder }: {
           <button className="op-link" onClick={onBuilder}>🃏 Mes decks : créer ou modifier un deck</button>
           {unfinished > 0 ? ` · ${unfinished} deck${unfinished > 1 ? 's' : ''} à terminer dans l’éditeur` : ''}
         </p>
+      )}
+      {onRandom && (
+        <div className="deck-group">
+          <h3>Au hasard</h3>
+          <div className="deck-grid">
+            <button className={`deck-tile deck-random ${selected === RANDOM_DECK ? 'on' : ''}`} onClick={onRandom}>
+              <span className="deck-random-dice" aria-hidden="true">🎲</span>
+              <span className="deck-name">Aléatoire</span>
+              <span className="deck-id">Un deck du méta ou pour débutant, tiré au sort à chaque partie</span>
+            </button>
+          </div>
+        </div>
       )}
       {groups.map((g) => {
         const ids = g.ids().filter(shown);
@@ -835,7 +858,8 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
 }) {
   // decks choisis : du registre, ou mes decks jouables (un deck supprimé ou rendu incomplet dans l'éditeur ne l'est plus)
   const usable = (id: string) => Boolean(DECKS[id]) || Boolean(deckInfo(id) && playable(deckInfo(id)!));
-  const ready = usable(config.myDeck) && usable(config.aiDeck);
+  const random = config.aiDeck === RANDOM_DECK;
+  const ready = usable(config.myDeck) && (random || usable(config.aiDeck));
   // niveau « IA entraînée » : seulement si un modèle compatible est installé (web/public/rl-model/, voir rl/README.md) ;
   // sinon un réglage resté sur ce niveau (partie reprise, modèle retiré ou d'un ancien encodage) redevient « Débutant »,
   // pour ne pas compter sous ce nom des parties jouées par l'IA simple
@@ -891,7 +915,8 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
       </section>
       <section className="setup-section">
         <h2>Ton adversaire</h2>
-        <DeckPicker selected={config.aiDeck} note={rec} onPick={(id) => onChange({ ...config, aiDeck: id })} onGuide={onGuide} />
+        <DeckPicker selected={config.aiDeck} note={rec} onPick={(id) => onChange({ ...config, aiDeck: id })} onGuide={onGuide}
+          onRandom={() => onChange({ ...config, aiDeck: RANDOM_DECK })} />
       </section>
       <section className="setup-row">
         <div>
@@ -919,7 +944,7 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
       </section>
       <div className="setup-go">
         {ready
-          ? <span className="op-muted op-small">Ton bilan dans cette confrontation : {recordText(records[recordKey(config)])}</span>
+          ? <span className="op-muted op-small">{random ? 'Ton adversaire sera tiré au sort au lancement de la partie.' : <>Ton bilan dans cette confrontation : {recordText(records[recordKey(config)])}</>}</span>
           : <span className="danger op-small">Choisis deux decks jouables (un deck perso incomplet se termine dans l’éditeur).</span>}
         <button className="op-btn op-btn-primary btn-big" onClick={onStart} disabled={!ready}>Lancer la partie</button>
       </div>
