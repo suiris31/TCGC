@@ -11,6 +11,7 @@ aucune règle stratégique écrite à la main, seulement +1 quand elle gagne et 
 - Le modèle entraîné s'exporte en ONNX et devient un niveau « IA entraînée » dans le simulateur.
 
 État du chantier, décisions prises et commande de reprise de l'entraînement en cours : [`SUIVI.md`](SUIVI.md).
+Toutes les commandes d'un coup d'œil : [`AIDE-MEMOIRE.md`](AIDE-MEMOIRE.md).
 
 Sommaire : [Prérequis](#1-prérequis) · [Installation](#2-installation) · [Matériel](#3-matériel-gpu-ou-processeur) ·
 [Entraîner](#4-lancer-un-entraînement) · [Suivre](#5-suivre-lentraînement) · [Reprendre](#6-interrompre-et-reprendre) ·
