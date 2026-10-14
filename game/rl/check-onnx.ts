@@ -29,7 +29,8 @@ const count = Number(opt('--games') ?? 4);
 const t0 = performance.now();
 let decisions = 0;
 for (let g = 0; g < count; g++) {
-  const decks: [string, string] = [ids[g % ids.length], ids[(g * 5 + 2) % ids.length]];
+  // IA spécialisée : le modèle joue son deck
+  const decks: [string, string] = [info.deck ?? ids[g % ids.length], ids[(g * 5 + 2) % ids.length]];
   const seed = 2 ** 30 + 777 + g;
   const env = new RlEnv().reset({ seed, decks, first: 'random', seats: [{ kind: 'agent' }, { kind: 'heuristic' }] });
   const steps = [];

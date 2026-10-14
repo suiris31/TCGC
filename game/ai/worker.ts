@@ -7,14 +7,39 @@ import { aiChoose, coachAnalyze, type CoachOptions, type Level } from './search.
 export type WorkerRequest =
   | { id: number; type: 'choose'; state: GameState; level: Level }
   | { id: number; type: 'coach'; state: GameState; opts: CoachOptions }
-  | { id: number; type: 'chooseRl'; state: GameState; modelUrl: string };
+  | { id: number; type: 'chooseRl'; state: GameState; modelUrls: string[] };
 
 // Premier message : les informations des cartes (le fil de calcul a ses propres modules, à remplir aussi)
 export type CardsMessage = { type: 'cards'; data: Record<string, CardData> };
 
-// IA entraînée : onnxruntime-web et le modèle ne sont chargés qu'au premier besoin (une seule fois : un échec n'est
-// pas retenté à chaque coup)
-let rl: Promise<RlPolicy> | null = null;
+// IA entraînée : onnxruntime-web et chaque modèle ne sont chargés qu'au premier besoin (une seule fois : un échec n'est
+// pas retenté à chaque coup). Plusieurs modèles possibles (un par deck, IA spécialisées) : les 3 derniers utilisés
+// restent chargés.
+const policies = new Map<string, Promise<RlPolicy>>();
+async function policyFor(urls: string[]): Promise<RlPolicy> {
+  let error: unknown;
+  for (const url of urls) {
+    let p = policies.get(url);
+    if (p) policies.delete(url);
+    p ??= loadPolicy(url).catch((err) => {
+      console.warn(`IA entraînée : modèle ${url} indisponible`, err);
+      throw err;
+    });
+    policies.set(url, p);
+    while (policies.size > 3) {
+      const [oldest, old] = policies.entries().next().value!;
+      policies.delete(oldest);
+      old.then((policy) => policy.release(), () => {});
+    }
+    try {
+      return await p;
+    } catch (err) {
+      error = err;   // modèle du deck indisponible : modèle suivant (le général)
+    }
+  }
+  throw error;
+}
+
 async function loadPolicy(modelUrl: string): Promise<RlPolicy> {
   const [ort, { RlPolicy: Policy }] = await Promise.all([import('onnxruntime-web/wasm'), import('./rl.ts')]);
   ort.env.wasm.numThreads = 1;
@@ -34,8 +59,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest | CardsMessage>) => {
     postMessage({ id: msg.id, choice: aiChoose(msg.state, msg.state.decision!, msg.level) });
   } else if (msg.type === 'chooseRl') {
     try {
-      rl ??= loadPolicy(msg.modelUrl);
-      const policy = await rl;
+      const policy = await policyFor(msg.modelUrls);
       const d = msg.state.decision!;
       postMessage({ id: msg.id, choice: await policy.choose(msg.state, d.player as PlayerId) });
     } catch (err) {

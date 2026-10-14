@@ -294,3 +294,55 @@ def test_mc_pairs_cover_every_deck_on_both_sides():
     assert len(spread_pairs(decks, 36)) == 36 and len(set(spread_pairs(decks, 50))) == 36
     sub = spread_pairs(decks, 8)
     assert len(set(b for _, b in sub)) == 6 and len(set(a for a, _ in sub)) == 6
+
+
+def test_specialization_keeps_the_policy_and_extends_adam():
+    from types import SimpleNamespace
+
+    from opcg_rl.model import ModelConfig
+    from opcg_rl.specialize import extend_optimizer, extend_vocab, extend_weights
+    spec = SimpleNamespace(decks={"A": {"leader": "L1", "cards": {"c2": 4, "c9": 4}}, "B": {"leader": "L2", "cards": {"c1": 4}}})
+    assert extend_vocab(["c9", "c1"], spec) == ["c9", "c1", "L1", "L2", "c2"], "rangs connus inchangés, nouvelles à la suite"
+    old = make_model()
+    opt = torch.optim.Adam(old.parameters(), lr=1e-3)
+    b = batch()
+    l, v = old(**b)
+    (l[b["opt_mask"] > 0].sum() + v.sum()).backward()
+    opt.step()
+    new = PolicyValueNet(ModelConfig(**{**old.cfg.to_dict(), "vocab_size": 25})).eval()
+    new.load_state_dict(extend_weights(old.state_dict(), 5))
+    # les cartes inconnues du modèle général (0) reçoivent leurs nouveaux identifiants (21 à 25) : même jeu au départ
+    g = torch.Generator().manual_seed(3)
+    known = {k: b[k].clone() for k in ("a_ids", "p_ids")}
+    for k, ids in known.items():
+        ids[ids == 0] = torch.randint(21, 26, (int((ids == 0).sum()),), generator=g)
+    assert any(int((b[k] == 0).sum()) for k in known), "le lot contient des cartes inconnues"
+    with torch.no_grad():
+        l1, v1 = old.eval()(**b)
+        l2, v2 = new(**{**b, **known})
+    mask = b["opt_mask"] > 0
+    assert torch.allclose(l1[mask], l2[mask], atol=1e-6) and torch.allclose(v1, v2, atol=1e-6)
+    opt2 = torch.optim.Adam(new.parameters(), lr=1e-3)
+    opt2.load_state_dict(extend_optimizer(opt.state_dict(), new, 5))
+    before = new.id_emb.weight[21:].detach().clone()
+    l3, v3 = new.train()(**{**b, **known})
+    (l3[mask].sum() + v3.sum()).backward()
+    opt2.step()
+    assert (new.id_emb.weight[21:].detach() - before).abs().sum() > 0, "les nouvelles cartes apprennent"
+
+
+def test_specialized_collector_always_plays_its_deck():
+    from types import SimpleNamespace
+
+    from opcg_rl.league import OpponentChoice
+    from opcg_rl.ppo import Collector
+    pool = SimpleNamespace(spec=SimpleNamespace(decks={"A": {}, "B": {}, "C": {}}))
+    c = Collector(pool, [], None, None, None, np.random.default_rng(0), {}, None, deck="B")
+    c.level = {"decks": "all"}
+    heuristic, mirror = OpponentChoice("heuristic", "heuristic"), OpponentChoice("self", "self")
+    pairs = [c._decks(heuristic) for _ in range(200)]
+    assert {a for a, _ in pairs} == {"B"} and {b for _, b in pairs} == {"A", "B", "C"}
+    assert {c._decks(mirror) for _ in range(20)} == {("B", "B")}, "contre lui-même : les deux côtés jouent le deck"
+    c.deck = None
+    pairs = [c._decks(mirror) for _ in range(200)]
+    assert len({a for a, _ in pairs}) == 3 and any(a != b for a, b in pairs), "modèle général : tous les decks"

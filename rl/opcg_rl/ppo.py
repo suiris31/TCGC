@@ -49,7 +49,7 @@ class Traj:
 @dataclass
 class Game:
     opponent: OpponentChoice
-    controllers: list[str | None]   # « learner », « snap:<id> » (ancienne version) ou None (IA intégrée)
+    controllers: list[str | None]   # « learner », « snap:<id> » (ancienne version, « snap:base » : modèle général) ou None (IA intégrée)
     decks: list[str]
     seed: int
     record: bool
@@ -91,8 +91,9 @@ class Stats:
 
 class Collector:
     def __init__(self, pool: EnvPool, env_ids: list[int], agent: Agent, league: League, seeds: TrainSeeds,
-                 rng: np.random.Generator, cfg: dict, load_snapshot):
+                 rng: np.random.Generator, cfg: dict, load_snapshot, deck: str | None = None):
         self.pool = pool
+        self.deck = deck                             # IA spécialisée : le modèle ne joue que ce deck
         self.env_ids = env_ids
         self.agent = agent
         self.league = league
@@ -119,21 +120,26 @@ class Collector:
 
     # ---------- nouvelles parties ----------
 
-    def _decks(self) -> tuple[str, str]:
+    def _decks(self, opp: OpponentChoice) -> tuple[str, str]:
+        """(deck du modèle, deck adverse). IA spécialisée : toujours son deck, contre tous les decks du niveau ; contre
+        lui-même, miroir (les deux côtés sont appris, ils doivent jouer ce deck)."""
         decks = self.level.get("decks") or "all"
         pool = list(self.pool.spec.decks) if decks == "all" else list(decks)
-        a = pool[int(self.rng.integers(len(pool)))]
-        b = a if self.level.get("mirror") else pool[int(self.rng.integers(len(pool)))]
+        a = self.deck or pool[int(self.rng.integers(len(pool)))]
+        mirror = self.level.get("mirror") or (self.deck is not None and opp.kind == "self")
+        b = a if mirror else pool[int(self.rng.integers(len(pool)))]
         return a, b
 
     def _new_game(self, env: int) -> dict:
         opp = choose_opponent(self.level, self.league, self.rng)
-        learner_deck, opp_deck = self._decks()
+        learner_deck, opp_deck = self._decks(opp)
         ls = int(self.rng.integers(2))
         seats: list[dict] = [{"kind": "agent"}, {"kind": "agent"}]
         controllers: list[str | None] = ["learner", "learner"]
         if opp.kind == "pool":
             controllers[1 - ls] = f"snap:{opp.snapshot.id}"
+        elif opp.kind == "base":
+            controllers[1 - ls] = "snap:base"
         elif opp.kind != "self":
             seats[1 - ls] = {"kind": opp.kind, **({"samples": opp.samples} if opp.samples else {}),
                              **({"noise": opp.noise} if opp.noise else {})}

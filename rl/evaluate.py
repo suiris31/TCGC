@@ -4,6 +4,7 @@
     python evaluate.py --checkpoint opcg --opponents random heuristic mc:16
     python evaluate.py --checkpoint checkpoints/opcg/ckpt_0000500.pt --decks ST-31,ST-35 --seeds 10
     python evaluate.py --compare checkpoints/opcg/ckpt_0000200.pt checkpoints/opcg/latest.pt   # versions + Elo
+    python evaluate.py --checkpoint deck-META-ROBIN-2026-10 --deck META-ROBIN-2026-10 --opponents heuristic model:rtx2070-main
 
 Chaque graine est jouée deux fois (le modèle à chaque siège), sur toutes les confrontations de decks choisies. Le
 rapport (taux de victoire avec intervalle de confiance, par deck, par confrontation, premier/second joueur, durée des
@@ -35,6 +36,7 @@ def main() -> int:
                    help="random, heuristic, heuristic:0.25 (1 décision sur 4 au hasard), mc:N (Monte-Carlo, N tirages ; "
                         "16 = niveau Confirmé), model:<chemin.pt ou nom d'entraînement>")
     p.add_argument("--decks", default="all", help="all, ou liste séparée par des virgules (ex. ST-31,ST-35)")
+    p.add_argument("--deck", help="le modèle évalué ne joue que ce deck, contre chacun des decks de --decks (IA spécialisée)")
     p.add_argument("--seeds", type=int, default=2, help="graines par confrontation de decks (×2 sièges)")
     p.add_argument("--mc-pairs", type=int, default=12,
                    help="confrontations jouées contre le Monte-Carlo (lent), réparties sur tous les decks des deux côtés")
@@ -83,7 +85,10 @@ def main() -> int:
             opponent_agents[ref], ock = agent_from_checkpoint(path, spec, device, name=ref)
             print(f"Adversaire {ref} : {path}, mise à jour {ock.get('state', {}).get('update', '?')}")
     decks = list(spec.decks) if args.decks == "all" else args.decks.split(",")
-    pairs = [(a, b) for a in decks for b in decks]
+    if args.deck and args.deck not in spec.decks:
+        pool.close()
+        p.error(f"deck inconnu : {args.deck}")
+    pairs = [(args.deck, b) for b in decks] if args.deck else [(a, b) for a in decks for b in decks]
     t0 = time.perf_counter()
     stamp = time.strftime("%Y%m%d-%H%M%S")
     reports = {}
@@ -97,7 +102,7 @@ def main() -> int:
             all_outcomes = []
             for opp in opponents:
                 sub = pairs
-                if opp.startswith("mc") and args.mc_pairs and args.mc_pairs < len(pairs):
+                if opp.startswith("mc") and args.mc_pairs and args.mc_pairs < len(pairs) and not args.deck:
                     # sous-ensemble équilibré : chaque deck joue et est affronté autant de fois
                     sub = spread_pairs(decks, args.mc_pairs)
                 games = plan_games([opp], sub, args.seeds, args.seed_offset)

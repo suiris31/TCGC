@@ -17,7 +17,7 @@ Sommaire : [Prérequis](#1-prérequis) · [Installation](#2-installation) · [Ma
 [Niveaux](#7-les-5-niveaux-et-leurs-critères) · [Évaluer](#8-évaluer) · [Analyser une partie](#9-analyser-une-partie) ·
 [Réglages](#10-modifier-les-paramètres) · [Exporter](#11-exporter-le-modèle-onnx) ·
 [Simulateur](#12-utiliser-le-modèle-dans-le-simulateur) · [Tests](#13-tests) · [Fonctionnement](#14-comment-ça-marche) ·
-[Dépannage](#15-dépannage)
+[Dépannage](#15-dépannage) · [IA par deck](#16-ia-spécialisée-par-deck)
 
 ---
 
@@ -441,3 +441,76 @@ joué. Ligue : anciennes versions tirées en privilégiant celles que le modèle
 | `CATALOGUE SYNTHÉTIQUE` | catalogue de test (cartes inventées) : utilise le vrai (`npm run game:cards`) |
 | Niveau non validé (code 3) | voir § 7 |
 | Parties tronquées ou en erreur | `logs/<run>/anomalies/` : `python play.py --replay <fichier>` pour voir où ça bloque |
+
+## 16. IA spécialisée par deck
+
+Le modèle général joue tous les decks avec le même réseau. Un deck au plan de jeu très particulier (violet qui paie
+ses effets en renvoyant des DON!!, jaune qui joue avec sa Vie...) se joue mieux par une **IA spécialisée** : une copie
+du modèle général qui continue d'apprendre en ne jouant **que ce deck**, contre tous les decks du registre.
+
+- **Départ** : le dernier point de sauvegarde de l'entraînement général (`specialize.base` dans `config/deck.yaml`,
+  par défaut `rtx2070-main`), avec l'état de son optimiseur. Il est copié dans `checkpoints/deck-<deck>/base.pt` : la
+  spécialisation garde son point de départ même si l'entraînement général reprend. Le vocabulaire des cartes est
+  prolongé avec toutes les cartes des decks du registre (le modèle général en connaissait 90) : au départ, elles ont
+  l'identifiant de la carte « inconnue », l'IA joue donc exactement comme le modèle général, puis apprend à les
+  reconnaître.
+- **Adversaires** (`config/deck.yaml`) : le modèle général figé (50 %, il joue bien tous les decks), l'heuristique
+  (35 %) et l'IA elle-même en miroir (15 %, même deck des deux côtés : les deux côtés apprennent ce deck). Decks
+  adverses tirés parmi tous les decks du registre.
+- **Évaluations** : au départ (la référence : le modèle général qui joue ce deck), puis toutes les 50 mises à jour :
+  ce deck contre chacun des decks du registre, contre l'heuristique et contre le modèle général (240 parties chacun,
+  ~30 s). Pas de niveau à valider : on arrête quand les évaluations ne progressent plus.
+
+```powershell
+# un deck : entraînement « deck-META-ROBIN-2026-10 », 300 mises à jour par défaut
+python train.py --config gpu --deck META-ROBIN-2026-10
+# prolonger : la même commande avec un maximum plus grand
+python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600
+# plusieurs decks : l'un après l'autre, ou deux à la fois
+python train_decks.py --config gpu --decks meta                    # les 6 decks du méta (starter : ceux pour débutant)
+python train_decks.py --config gpu --decks all --parallel 2        # tous les decks du registre, deux à la fois
+python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10 --max-updates 500
+```
+
+Ctrl+C : point de sauvegarde et arrêt (de tous les entraînements en cours avec `train_decks.py`) ; la même commande
+reprend. Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire »).
+
+**Vitesse mesurée sur le PC** (RTX 2070, 8 cœurs, 14 octobre 2026) : seul, ~13 parties/s, une mise à jour toutes
+les ~25 s (~145 par heure : 300 mises à jour en ~2 h, évaluations comprises) ; GPU ~1,3 Gio.
+
+**Plusieurs en même temps** : chaque entraînement a ses dossiers, ils ne se gênent pas. Deux à la fois : ~7 parties/s
+chacun, soit à peine plus (~1,1 fois) que le débit d'un seul : le processeur est partagé. C'est pratique pour faire
+avancer deux decks pendant une nuit, pas plus rapide au total ; au-delà de deux, aucun gain.
+
+**Suivre** : `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
+messages de chaque entraînement sont dans `logs/deck-<deck>/console.txt`.
+
+**Mesurer à part** (graines d'évaluation, rien n'est appris) :
+`python evaluate.py --checkpoint deck-META-ROBIN-2026-10 --deck META-ROBIN-2026-10 --opponents heuristic model:rtx2070-main --seeds 8`
+
+**Installer dans le simulateur** : `python export_onnx.py --checkpoint deck-META-ROBIN-2026-10 --install` vérifie le
+modèle (comme au § 11, en jouant ce deck), le copie dans `web/public/rl-model/decks/META-ROBIN-2026-10/` et met à jour
+`web/public/rl-model/decks.json` (la liste des IA spécialisées installées). Au niveau « IA entraînée », quand l'IA joue
+un deck qui a son IA spécialisée, c'est elle qui décide (l'écran de départ le signale) ; pour les autres decks et les
+decks personnels, le modèle général. Le modèle général reste nécessaire (`web/public/rl-model/model.onnx`) : sans lui,
+le niveau n'est pas proposé. Chaque modèle pèse ~6,7 Mo dans l'historique du dépôt : ne mettre en ligne que les IA
+qui jouent nettement mieux leur deck que le modèle général (évaluations).
+
+**Mettre en ligne** (dans `rl/`, comme le modèle général) :
+
+```powershell
+python export_onnx.py --checkpoint deck-META-ROBIN-2026-10 --install
+cd ..
+git add web/public/rl-model/decks.json web/public/rl-model/decks/META-ROBIN-2026-10
+git diff --cached --stat
+git commit -m "IA entraînée : IA spécialisée Robin, mise à jour <numéro>"
+git push
+git push origin HEAD:main
+```
+
+puis sur le serveur `sudo bash /opt/tcgc/app/deploy/update.sh`.
+
+**Decks et cartes figés** : une IA spécialisée apprend avec les decks du registre et les effets des cartes du moteur
+de son entraînement (version notée dans son point de sauvegarde et dans `model.json`). Elle reste utilisable tant que
+l'encodage (`SPEC_HASH`) ne change pas ; si la liste de son deck change, la prolonger un peu (même commande, maximum
+plus grand).

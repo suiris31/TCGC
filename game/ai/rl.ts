@@ -15,6 +15,7 @@ export interface RlModelInfo {
   name: string;
   specHash: string;
   vocab: string[];           // cartes du vocabulaire (identifiant appris = rang + 1 ; 0 = carte inconnue)
+  deck?: string;             // IA spécialisée : le deck qu'elle joue (rl/README.md § 16)
   synthetic?: boolean;
   [key: string]: unknown;
 }
@@ -97,6 +98,11 @@ export class RlPolicy {
     const exp = Array.from(logits, (x) => Math.exp(x - max));
     const sum = exp.reduce((s, x) => s + x, 0);
     return { options: o.options, probs: exp.map((x) => x / sum), value: (out.value.data as Float32Array)[0] };
+  }
+
+  // Libère la mémoire du modèle (fil de calcul : plusieurs modèles d'IA spécialisées chargés tour à tour)
+  async release(): Promise<void> {
+    await this.session.release();
   }
 
   // Choix : selon les probabilités du modèle (sa vraie politique), ou toujours la plus probable (greedy)

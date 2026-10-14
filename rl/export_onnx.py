@@ -2,6 +2,7 @@
 
     python export_onnx.py --checkpoint opcg                 # rl/models/opcg/model.onnx + model.json, vérifiés
     python export_onnx.py --checkpoint opcg --install       # et copie dans web/public/rl-model/ (niveau « IA entraînée »)
+    python export_onnx.py --checkpoint deck-META-ROBIN-2026-10 --install   # IA spécialisée : web/public/rl-model/decks/<deck>/
 
 Vérifications :
 1. PyTorch contre ONNX Runtime (Python) sur des observations de vraies parties : écarts des probabilités et de la
@@ -69,20 +70,21 @@ def export(model: torch.nn.Module, spec, path: Path) -> str:
             return "dynamo"
 
 
-def collect_observations(pool, agent, count: int, seed: int) -> list:
-    """Observations de vraies parties (modèle contre heuristique), pour comparer PyTorch et ONNX Runtime."""
+def collect_observations(pool, agent, count: int, seed: int, deck: str | None = None) -> list:
+    """Observations de vraies parties (modèle contre heuristique), pour comparer PyTorch et ONNX Runtime. IA
+    spécialisée : le modèle joue son deck."""
     rng = np.random.default_rng(seed)
     decks = list(pool.spec.decks)
     out = []
     env = 0
-    results = pool.run(resets=[{"env": env, "seed": 2 ** 30 + 5000 + seed, "decks": [decks[0], decks[-1]],
+    results = pool.run(resets=[{"env": env, "seed": 2 ** 30 + 5000 + seed, "decks": [deck or decks[0], decks[-1]],
                                 "seats": [{"kind": "agent"}, {"kind": "heuristic"}]}])
     games = 0
     while len(out) < count and games < 50:
         r = results[0]
         if r.done:
             games += 1
-            d = [decks[games % len(decks)], decks[(games * 5 + 1) % len(decks)]]
+            d = [deck or decks[games % len(decks)], decks[(games * 5 + 1) % len(decks)]]
             results = pool.run(resets=[{"env": env, "seed": 2 ** 30 + 5000 + seed + games, "decks": d,
                                         "seats": [{"kind": "agent"}, {"kind": "heuristic"}]}])
             continue
@@ -176,8 +178,10 @@ def main() -> int:
         size = onnx_path.stat().st_size
         print(f"Export ONNX ({exporter}) : {onnx_path} ({size / 1024:.0f} Kio)")
         state = ckpt.get("state", {})
+        deck = (state.get("specialize") or {}).get("deck")
         info = {
-            "name": name, "createdAt": time.strftime("%Y-%m-%d %H:%M:%S"), "specHash": pool.spec.spec_hash,
+            "name": name, **({"deck": deck} if deck else {}), "createdAt": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "specHash": pool.spec.spec_hash,
             "encodingVersion": pool.spec.encoding_version, "engine": ckpt.get("engine", pool.spec.engine),
             "synthetic": bool(ckpt.get("synthetic", pool.spec.synthetic)), "vocab": ckpt["vocab"],
             "modelConfig": ckpt["model_config"], "inputs": INPUTS, "outputs": ["logits", "value"],
@@ -187,7 +191,7 @@ def main() -> int:
             "sha256": hashlib.sha256(onnx_path.read_bytes()).hexdigest(),
         }
         (out_dir / "model.json").write_text(json.dumps(info, indent=1, ensure_ascii=False), encoding="utf-8")
-        obs = collect_observations(pool, agent, args.samples, seed=1)
+        obs = collect_observations(pool, agent, args.samples, seed=1, deck=deck)
         check = {"onnxruntime": compare_onnxruntime(agent, onnx_path, obs)}
         print(f"PyTorch / ONNX Runtime : {json.dumps(check['onnxruntime'])}")
         ok = check["onnxruntime"]["max_prob_diff"] < TOL and check["onnxruntime"]["max_value_diff"] < TOL
@@ -208,11 +212,30 @@ def main() -> int:
         if info["synthetic"] and not args.force:
             print("Modèle entraîné sur le catalogue SYNTHÉTIQUE : pas installé dans le simulateur (--force pour le faire quand même).")
             return 1
-        WEB_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(onnx_path, WEB_MODEL_DIR / "model.onnx")
-        shutil.copyfile(out_dir / "model.json", WEB_MODEL_DIR / "model.json")
-        print(f"Installé dans {WEB_MODEL_DIR} : le simulateur propose le niveau « IA entraînée » (après `npm run build` en production).")
+        target = WEB_MODEL_DIR / "decks" / deck if deck else WEB_MODEL_DIR
+        target.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(onnx_path, target / "model.onnx")
+        shutil.copyfile(out_dir / "model.json", target / "model.json")
+        if deck:
+            index = write_deck_index()
+            print(f"Installé dans {target} : quand l'IA entraînée joue {deck}, c'est ce modèle qui décide "
+                  f"({len(index)} deck(s) avec leur IA : {', '.join(index)} ; après `npm run build` en production).")
+        else:
+            print(f"Installé dans {target} : le simulateur propose le niveau « IA entraînée » (après `npm run build` en production).")
     return 0
+
+
+def write_deck_index() -> dict:
+    """web/public/rl-model/decks.json : les IA spécialisées installées (le simulateur le lit pour savoir quel modèle
+    charger selon le deck que joue l'IA)."""
+    decks = {}
+    for f in sorted((WEB_MODEL_DIR / "decks").glob("*/model.json")):
+        info = json.loads(f.read_text(encoding="utf-8"))
+        if (f.parent / "model.onnx").exists() and info.get("deck") == f.parent.name:
+            decks[f.parent.name] = {"name": info["name"], "update": info.get("training", {}).get("update"),
+                                    "createdAt": info.get("createdAt"), "specHash": info.get("specHash")}
+    (WEB_MODEL_DIR / "decks.json").write_text(json.dumps({"decks": decks}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return decks
 
 
 if __name__ == "__main__":

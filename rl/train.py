@@ -5,6 +5,7 @@
     python train.py --config smoke       # essai rapide de toute la chaîne
     python train.py --run essai2 --fresh # nouvel entraînement, depuis zéro
     python train.py --set ppo.lr=0.0001 --set env.workers=6
+    python train.py --config gpu --deck META-ROBIN-2026-10   # IA spécialisée sur un deck (config/deck.yaml)
 
 Ctrl+C : un point de sauvegarde est écrit avant de quitter ; la commande à lancer pour reprendre est affichée
 (la même, sans --fresh, --level ni --resume, qui n'ont d'effet qu'une fois). Voir README.md pour le détail.
@@ -36,11 +37,12 @@ from opcg_rl.evaluation import plan_games, run_games, summarize, to_markdown  # 
 from opcg_rl.league import League, Snapshot  # noqa: E402
 from opcg_rl.logger import Logger  # noqa: E402
 from opcg_rl import migrate  # noqa: E402
+from opcg_rl import specialize as sp  # noqa: E402
 from opcg_rl.model import parameter_count  # noqa: E402
 from opcg_rl.paths import CHECKPOINTS_DIR, LOGS_DIR  # noqa: E402
 from opcg_rl.policy import Agent, build_model, vocab_from_decks  # noqa: E402
 from opcg_rl.ppo import Collector, ppo_update  # noqa: E402
-from opcg_rl.runtime import open_pool, resolve_workers  # noqa: E402
+from opcg_rl.runtime import open_pool, resolve_checkpoint, resolve_workers  # noqa: E402
 from opcg_rl.seeds import TrainSeeds  # noqa: E402
 
 EXIT_GATE_FAILED = 3
@@ -75,12 +77,19 @@ def parse_args():
     p.add_argument("--device", help="auto, cpu, cuda, mps")
     p.add_argument("--workers", help="processus Node (auto ou nombre)")
     p.add_argument("--max-updates", type=int, help="arrêt après ce nombre total de mises à jour")
+    p.add_argument("--deck", help="IA spécialisée : le modèle ne joue que ce deck (réglages config/deck.yaml, "
+                                  "entraînement deck-<deck>, départ : le modèle général specialize.base)")
     return p.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    deck = args.deck
+    if deck and "deck" not in args.config:
+        args.config.append("deck")
     cfg = load_config(args.config, args.set)
+    if deck:
+        cfg["run"] = f"deck-{deck}"
     if args.run:
         cfg["run"] = args.run
     if args.device:
@@ -127,6 +136,9 @@ def main() -> int:
             pool.close()
             raise SystemExit(f"{msg}\nLance « npm run game:cards » pour le vrai catalogue (ou allow_synthetic: true pour un test).")
         log(f"ATTENTION — {msg}")
+    if deck and deck not in spec.decks:
+        pool.close()
+        raise SystemExit(f"Deck inconnu : {deck}. Decks du registre : {', '.join(spec.decks)}")
     train_envs = [w * (n_train + n_eval) + i for w in range(workers) for i in range(n_train)]
     eval_envs = [w * (n_train + n_eval) + n_train + i for w in range(workers) for i in range(n_eval)]
     levels = cfg["curriculum"]["levels"]
@@ -150,6 +162,18 @@ def main() -> int:
             ckpt["state"].pop("forced_level", None)      # marque d'un autre lancement : ne bloque pas un --level
     elif latest:
         resume_path, ckpt = latest
+    # IA spécialisée qui commence : départ du modèle général (et de son optimiseur), état d'entraînement neuf
+    base_start = None
+    if deck and not ckpt:
+        base_path = resolve_checkpoint(str(cfg["specialize"]["base"]))
+        base_start = (base_path, ck.load(base_path))
+    was = ((ckpt or {}).get("state", {}).get("specialize") or {}).get("deck")
+    if ckpt and was != deck:
+        pool.close()
+        if was and not deck:
+            raise SystemExit(f"Cet entraînement est une IA spécialisée sur le deck {was} : ajoute --deck {was}")
+        raise SystemExit(f"Le point de sauvegarde {resume_path} n'est pas une IA spécialisée sur le deck {deck} "
+                         f"({'deck ' + was if was else 'modèle général'}) : choisis un autre nom d'entraînement (--run)")
     # point de sauvegarde de cet entraînement (sinon : d'un autre dossier, dont la ligue sera copiée ici)
     own = resume_path is not None and run_dir.resolve() in resume_path.resolve().parents
     migrated_from = None
@@ -176,6 +200,23 @@ def main() -> int:
             if aside:
                 log(f"Points de sauvegarde et versions de la ligue postérieurs à la mise à jour {state['update']} "
                     f"(histoire abandonnée) déplacés dans {aside}")
+    elif base_start:
+        base_path, base = base_start
+        try:
+            weights, model_cfg, base_migrated = migrate.adapt(base["model_state"], base["model_config"], base.get("spec_hash"),
+                                                              spec, f"Le modèle général {base_path}")
+        except migrate.EncodingMismatch as err:
+            raise SystemExit(f"{err}")
+        vocab = sp.extend_vocab(base["vocab"], spec)
+        new_rows = len(vocab) - len(base["vocab"])
+        model = build_model(spec, vocab, model_cfg)
+        model.load_state_dict(sp.extend_weights(weights, new_rows))
+        sp.save_base(run_dir, base_path, {**base, "model_state": weights, "model_config": model_cfg, "spec_hash": spec.spec_hash})
+        base_update = base.get("state", {}).get("update")
+        state["specialize"] = {"deck": deck, "base": str(base_path), "base_update": base_update}
+        log(f"IA spécialisée sur le deck {deck} ({spec.decks[deck]['name']}) : départ du modèle général {base_path} "
+            f"(mise à jour {base_update}) ; vocabulaire prolongé de {len(base['vocab'])} à {len(vocab)} cartes "
+            "(nouvelles cartes : identifiant de la carte inconnue au départ)")
     else:
         deck_ids = sorted({d for lv in levels for d in (spec.decks if lv.get("decks", "all") == "all" else lv["decks"])})
         vocab = vocab_from_decks(spec, deck_ids)
@@ -208,13 +249,30 @@ def main() -> int:
                           cleanup=own and "league" in ckpt)
         if ckpt.get("rng"):
             ck.restore_rng(ckpt["rng"], rng)
+    elif base_start and base_start[1].get("optimizer_state") and not base_migrated:
+        optimizer.load_state_dict(sp.extend_optimizer(base_start[1]["optimizer_state"], model, new_rows))
+        for g in optimizer.param_groups:
+            g["lr"] = cfg["ppo"]["lr"]
     seeds = TrainSeeds(state["seed_counter"], salt=cfg["seed"])
+
+    # IA spécialisée : le modèle général figé, adversaire d'entraînement (« base ») et référence des évaluations
+    base_agent = None
+    if deck:
+        base_agent, base_data = sp.load_base(run_dir, spec, device)
+        log(f"Deck joué : {deck} ; adversaire figé « base » : modèle général {base_data.get('source')} "
+            f"(mise à jour {base_data.get('state', {}).get('update')})")
+    elif any(o["kind"] == "base" for lv in levels for o in lv["opponents"]) or \
+            any(g.get("opponent") == "base" for lv in levels for g in lv.get("gate", [])):
+        pool.close()
+        raise SystemExit("Adversaire « base » (modèle général figé) : seulement pour une IA spécialisée (--deck)")
 
     # anciennes versions chargées : toute la ligue peut jouer en même temps (tirage PFSP), le cache la contient entière
     loaded: OrderedDict[str, Agent] = OrderedDict()
     cache_size = league.max_snapshots + len(levels) + 8
 
     def load_snapshot(sid: str) -> Agent:
+        if sid == sp.BASE_ID and base_agent is not None:
+            return base_agent
         if sid in loaded:
             loaded.move_to_end(sid)
             return loaded[sid]
@@ -239,7 +297,7 @@ def main() -> int:
         return snap
 
     model_config = model.cfg.to_dict()
-    collector = Collector(pool, train_envs, agent, league, seeds, rng, cfg["env"], load_snapshot)
+    collector = Collector(pool, train_envs, agent, league, seeds, rng, cfg["env"], load_snapshot, deck=deck)
 
     def snapshot_extra():
         return {"model_config": model_config, "vocab": vocab, "spec_hash": spec.spec_hash}
@@ -257,6 +315,8 @@ def main() -> int:
         return path
 
     def ensure_level_start():
+        if deck:                  # IA spécialisée : pas de niveaux, sa référence est le modèle général
+            return
         key = str(state["level"])
         sid = state["level_start"].get(key)
         if sid and league.find(sid) is None:
@@ -273,7 +333,8 @@ def main() -> int:
 
     def gate_eval(level: dict) -> bool:
         decks = list(spec.decks) if level.get("decks", "all") == "all" else list(level["decks"])
-        pairs = [(a, b) for a in decks for b in decks]
+        # IA spécialisée : son deck contre chacun des decks
+        pairs = [(deck, b) for b in decks] if deck else [(a, b) for a in decks for b in decks]
         t0 = time.perf_counter()
         agents = {"learner": agent}
         passed = True
@@ -294,6 +355,11 @@ def main() -> int:
                 for snap in past[-int(item.get("count", 3)):]:
                     agents[snap.id] = load_snapshot(snap.id)
                     opponents.append(f"model:{snap.id}")
+            elif opp == "base":
+                if base_agent is None:
+                    continue
+                agents[sp.BASE_ID] = base_agent
+                opponents = [f"model:{sp.BASE_ID}"]
             else:
                 opponents = [opp]
             if not opponents:
@@ -347,8 +413,17 @@ def main() -> int:
     warned = {"gpu": False}
     started = time.time() - state["elapsed"]
     exit_code = 0
+    snapshot_kinds = ("pool",) if deck else ("self", "pool")
     try:
+        if state["update"] >= int(cfg["train"]["max_updates"]):
+            log(f"Déjà {state['update']} mises à jour (maximum {cfg['train']['max_updates']}) : rien à faire "
+                "(pour continuer : --max-updates avec un nombre plus grand).")
+            return 0
         ensure_level_start()
+        if deck and state["update"] == 0 and "reference" not in state:
+            log("Évaluation de départ : le modèle général avec ce deck (référence de la spécialisation)")
+            gate_eval(levels[state["level"]])
+            state["reference"] = state["gate_history"][-1]["results"]
         while True:
             level = levels[state["level"]]
             collector.level = level
@@ -389,7 +464,7 @@ def main() -> int:
             if roll.get("error_rate", 0) > 0:
                 log(f"  ATTENTION : {roll['error_rate'] * 100:.2f} % de parties arrêtées par une erreur du moteur (voir {log_dir / 'anomalies'})")
 
-            if state["update"] % int(cfg["train"]["snapshot_every"]) == 0 and any(o["kind"] in ("self", "pool") for o in level["opponents"]):
+            if state["update"] % int(cfg["train"]["snapshot_every"]) == 0 and any(o["kind"] in snapshot_kinds for o in level["opponents"]):
                 add_snapshot()
             if state["update"] % int(level.get("eval_every", 25)) == 0:
                 passed = gate_eval(level)

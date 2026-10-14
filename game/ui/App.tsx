@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AiWorker, rlModelAvailable } from '../ai/client.ts';
+import { AiWorker, rlDeckModels, rlModelAvailable } from '../ai/client.ts';
 import { heuristicChooser } from '../ai/heuristic.ts';
 import { LEVELS, type Analysis, type Level } from '../ai/search.ts';
 import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary } from '../coach/archive.ts';
@@ -864,7 +864,8 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
   // sinon un réglage resté sur ce niveau (partie reprise, modèle retiré ou d'un ancien encodage) redevient « Débutant »,
   // pour ne pas compter sous ce nom des parties jouées par l'IA simple
   const [rlReady, setRlReady] = useState<boolean | null>(null);
-  useEffect(() => { rlModelAvailable().then(setRlReady); }, []);
+  const [deckAi, setDeckAi] = useState<Set<string>>(new Set());
+  useEffect(() => { rlModelAvailable().then(setRlReady); rlDeckModels().then(setDeckAi); }, []);
   useEffect(() => {
     if (rlReady === false && config.level === 4) onChange({ ...config, level: 1 });
   }, [rlReady, config, onChange]);
@@ -930,7 +931,9 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
             {config.level === 1 ? 'Joue le plan de son deck, sans calculer à l’avance.'
               : config.level === 2 ? 'Simule la suite de la partie avant chaque choix.'
                 : config.level === 3 ? 'Simule beaucoup plus de parties avant chaque choix (jusqu’à 2 secondes).'
-                  : 'Modèle entraîné par apprentissage par renforcement : ses choix viennent de l’expérience de ses parties, sans règle écrite à la main.'}
+                  : `Modèle entraîné par apprentissage par renforcement : ses choix viennent de l’expérience de ses parties, sans règle écrite à la main.${
+                    deckAi.has(config.aiDeck) ? ' Avec ce deck, c’est une IA spécialisée : entraînée en ne jouant que lui.'
+                      : random && deckAi.size ? ' IA spécialisée quand le deck tiré au sort en a une.' : ''}`}
           </p>
         </div>
         <div>

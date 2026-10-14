@@ -24,6 +24,20 @@ export function rlModelAvailable(): Promise<boolean> {
   return rlChecked;
 }
 
+// IA spécialisées (rl/README.md § 16) : un modèle par deck, dans rl-model/decks/<deck>/, listés dans decks.json ; seuls
+// ceux de l'encodage actuel comptent. Lu une fois.
+let deckModels: Promise<Set<string>> | null = null;
+export function rlDeckModels(): Promise<Set<string>> {
+  deckModels ??= fetch(`${rlModelUrl()}decks.json`)
+    .then(async (r) => {
+      if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return new Set<string>();
+      const decks: Record<string, { specHash?: string }> = (await r.json()).decks ?? {};
+      return new Set(Object.keys(decks).filter((id) => decks[id].specHash === SPEC_HASH));
+    })
+    .catch(() => new Set<string>());
+  return deckModels;
+}
+
 export class AiWorker {
   private worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
   private nextId = 1;
@@ -50,9 +64,12 @@ export class AiWorker {
     return (await this.send({ type: 'choose', state, level })).choice!;
   }
 
-  // IA entraînée (niveau 4) : modèle ONNX servi avec l'application (web/public/rl-model/)
+  // IA entraînée (niveau 4) : modèle ONNX servi avec l'application (web/public/rl-model/) ; celui du deck qu'elle joue
+  // quand il existe (IA spécialisée), sinon le modèle général
   async chooseRl(state: GameState): Promise<string> {
-    return (await this.send({ type: 'chooseRl', state, modelUrl: rlModelUrl() })).choice!;
+    const deck = state.players[state.decision!.player].deckId;
+    const own = (await rlDeckModels()).has(deck) ? [`${rlModelUrl()}decks/${encodeURIComponent(deck)}/`] : [];
+    return (await this.send({ type: 'chooseRl', state, modelUrls: [...own, rlModelUrl()] })).choice!;
   }
 
   // Analyse du coach (deux temps, voir coachAnalyze)
