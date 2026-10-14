@@ -9,11 +9,12 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 - **Objectif** : une IA du simulateur One Piece TCG qui apprend seule (PPO, récompense +1 victoire / −1 défaite,
   rien d'autre), avec la seule information d'un joueur, entraînable sur le PC (`python train.py`), jouable dans le
   simulateur (niveau « IA entraînée », ONNX dans le navigateur).
-- **Code** : branche `claude/awesome-hopper-nj0x4y` (commits depuis `553104f`). `main` a été avancé jusqu'à
-  `4727d53` (mise en ligne). Seul `b56c2bd` (`evaluate.py`, sans effet sur le serveur) n'est pas encore sur `main`.
+- **Code** : sur `main` (le dossier de l'entraînement, `TCGC/`, suit `main` sur la branche `claude/awesome-hopper-nj0x4y`).
 - **En ligne** : modèle u7713 (12 octobre 2026, niveau 5, commit `da638e7`), mis en ligne par l'utilisateur.
-- **Entraînement en cours** sur le PC (RTX 2070, 8 cœurs) : entraînement `rtx2070-main`, niveau 5 (ligue) depuis u7650,
-  ~7 800 mises à jour, ~1,86 million de parties, 12 decks à la prochaine reprise (Kaido ajouté), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4).
+- **Entraînement général terminé** (14 octobre 2026) : `rtx2070-main` arrêté à **u8959** (niveau 5, ligue, ~2,04 millions
+  de parties, 12 decks), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4). Il est figé et sert de
+  départ aux **IA spécialisées par deck** (décision 15, `rl/README.md` § 16) : une IA par deck, entraînée sur le PC
+  en ne jouant que ce deck.
 
 ## 2. Où en est l'IA (mesures)
 
@@ -187,13 +188,33 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    inchangé `a0664ced`.
 14. **Refusé ou reporté par l'utilisateur** : composition du deck adverse dans l'observation, masquage des coups
    inutiles (règle écrite à la main), démarrage par imitation de l'heuristique, opposants adaptatifs, modèles
-   spécialisés par deck ou par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit).
+   spécialisés par confrontation, correction du proxy Vite (le lancement par `start.bat` suffit). Modèles
+   spécialisés par deck : repris le 14 octobre 2026 (décision 15).
+15. **Entraînement général figé, une IA spécialisée par deck** (14 octobre 2026, demande de l'utilisateur). Les decks
+   ont des mécaniques trop différentes (violet : DON!! −1 ; jaune : Vie et Déclenchements) pour qu'un seul réseau les
+   joue tous bien : l'utilisateur juge l'entraînement général suffisant et veut une IA par deck, entraînée sur son PC
+   une à une ou plusieurs à la fois. Decks et cartes figés à l'état de `main` du 14 octobre 2026 (15 decks du registre :
+   6 du méta, ST-31 à ST-36, ST-21, ST-22, ST-30 ; familles 4E). Réalisation (`rl/README.md` § 16) : `python train.py
+   --config gpu --deck <deck>` part de u8959 (poids et optimiseur), vocabulaire prolongé de 90 à 225 cartes (toutes
+   celles du registre, même jeu au départ), adversaires : modèle général figé 50 %, heuristique 35 %, miroir 15 % ;
+   évaluation de départ puis toutes les 50 mises à jour (ce deck contre les 15 decks, 240 parties contre
+   l'heuristique, 240 contre le modèle général). `train_decks.py` enchaîne plusieurs decks (`--parallel 2` : deux à la
+   fois). Dans le simulateur, l'IA entraînée prend le modèle du deck qu'elle joue (`web/public/rl-model/decks/`), sinon
+   le modèle général. Vitesse sur le PC : ~13 parties/s seul, ~145 mises à jour par heure (300 en ~2 h) ; deux à la
+   fois, ~1,1 fois ce débit au total. Références mesurées par les essais (modèle général u8959 jouant le deck, avant
+   spécialisation) :
+
+   | Deck joué | Contre l'heuristique | Contre le modèle général |
+   |---|---|---|
+   | META-ROBIN-2026-10 | 72,1 % | 55,8 % |
+   | META-ENEL-2026-10 | 41,2 % | 48,3 % |
+   | META-KAIDO-2026-10 | 39,2 % | 24,6 % |
 
 ## 4. Commandes
 
 Dans `rl/`, environnement activé (`.venv\Scripts\Activate.ps1`).
 
-**Reprendre l'entraînement** : lancer la commande affichée à l'arrêt (« Pour reprendre : ... »). Attention : les
+**Reprendre l'entraînement général** (arrêté et figé à u8959 depuis le 14 octobre 2026) : lancer la commande affichée à l'arrêt (« Pour reprendre : ... »). Attention : les
 réglages `--set` ne sont pas gardés d'une reprise à l'autre ; la commande actuelle est
 ```powershell
 python train.py --config gpu --run rtx2070-main --max-updates 9000 --set ppo.lr=0.0001 --set 'curriculum.levels.2.opponents=[{kind: self, weight: 0.5}, {kind: heuristic, weight: 0.45}, {kind: random, weight: 0.05}]' --set curriculum.levels.2.eval_every=100 --set 'curriculum.levels.3.opponents=[{kind: self, weight: 0.75}, {kind: heuristic, weight: 0.2}, {kind: random, weight: 0.05}]' --set 'curriculum.levels.4.opponents=[{kind: self, weight: 0.4}, {kind: pool, weight: 0.4}, {kind: heuristic, weight: 0.15}, {kind: random, weight: 0.05}]'
@@ -211,6 +232,17 @@ Ne pas ajouter `--level` (remet le compteur du niveau à zéro) ni `--fresh` (re
 **Essayer dans le simulateur (local)** : `python export_onnx.py --checkpoint rtx2070-main --install`, puis à la racine
 `npm run build` et `start.bat` (sans `npm run build`, la page reste l'ancienne : « Le jeu vient d'être mis à jour »).
 
+**IA spécialisée par deck** (décision 15, `rl/README.md` § 16) :
+```powershell
+python train.py --config gpu --deck META-ROBIN-2026-10                   # un deck, 300 mises à jour (~2 h)
+python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600 # prolonger
+python train_decks.py --config gpu --decks meta --parallel 2             # les 6 decks du méta, deux à la fois
+python report.py --run deck-META-ROBIN-2026-10                           # suivre
+python export_onnx.py --checkpoint deck-META-ROBIN-2026-10 --install     # installer (web/public/rl-model/decks/)
+```
+Mise en ligne d'une IA spécialisée : comme le modèle général ci-dessous, en ajoutant
+`web/public/rl-model/decks.json web/public/rl-model/decks/<deck>` (et rien d'autre).
+
 **Mettre en ligne** : export avec `--install` ; `git add web/public/rl-model/model.onnx web/public/rl-model/model.json`
 (et rien d'autre) ; commit ; `git push` ; `npm test` (doit passer) ; `git push origin HEAD:main` ; sur le serveur
 `sudo bash /opt/tcgc/app/deploy/update.sh`. Chaque modèle commité ajoute ~7 Mo à l'historique : seulement aux étapes
@@ -218,17 +250,12 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
-- **Reprise avec 12 decks, niveau 5 (ligue) sans Monte-Carlo** (13 octobre 2026, depuis u7815, `main` à jour dans le
-  dossier de l'entraînement : Kaido ajouté) : commande du § 4, **lancée depuis `TCGC\rl`** (une relance lancée depuis
-  `TCGC\` ne démarre pas). Vérifier la ligne « === Entraînement « rtx2070-main » ». Les évaluations portent sur 144
-  confrontations. Vitesse observée au niveau 5 : ~4,5 parties/s (le réseau, ~90 % du temps, calcule aussi les
-  anciennes versions de la ligue) : à surveiller ; le niveau 5 n'a pas de passage (Elo).
-- À remesurer vers **u8300** comme aux § 3.9, 3.11, 3.12 et 3.13 : Kaido (11,0 % à u7815), Ener (10,1 %), Xebec
-  (45,5 %), Robin (55,0 %) et Mihawk (40,1 %) joués par le modèle.
-- Phase 4C finie (les 6 decks du méta d'octobre 2026). Suite à choisir avec l'utilisateur ; chaque nouveau deck suit
-  le même chemin : entraînement en pause, mesure de généralisation, puis inclusion.
-- Si l'IA ne progresse plus : en reparler (pistes : plus de parties par mise à jour, Monte-Carlo léger réintroduit,
-  autres pistes du § 3.14).
+- **IA spécialisées** (décision 15) : l'utilisateur les entraîne sur le PC, depuis `TCGC\rl` (commandes du § 4).
+  Suivre leurs évaluations (`report.py --run deck-<deck>`) : prolonger tant qu'elles progressent contre
+  l'heuristique et contre le modèle général ; mettre en ligne celles qui jouent nettement mieux leur deck que le
+  modèle général (référence : l'évaluation de départ).
+- L'entraînement général `rtx2070-main` ne reprend pas ; sa commande de reprise reste au § 4 au cas où. S'il reprenait,
+  les IA spécialisées déjà commencées gardent leur point de départ (`base.pt`), les nouvelles partiraient du nouveau.
 
 ## 6. Points ouverts et pièges connus
 
