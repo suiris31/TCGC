@@ -210,6 +210,20 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    | META-ENEL-2026-10 | 41,2 % | 48,3 % |
    | META-KAIDO-2026-10 | 39,2 % | 24,6 % |
 
+   Premiers résultats (300 mises à jour, deux à la fois, ~1 h 56 par paire de decks) : ST-35 70,4 → 80,4 % contre
+   l'heuristique et 66,2 → 74,2 % contre le modèle général ; ST-31 65,8 → 77,5 % et 50,0 → 67,9 % ; ST-32 65,8 → 74,6 %
+   et 60,0 → 71,7 % (palier dès ~u150) ; ST-33 65,8 → 67,5 % et 54,2 → 68,3 % (meilleur à u150, puis baisse). Lecture
+   de l'utilisateur : les decks de contrôle (Zoro épuise les cartes adverses pour un gros finisher, Kuzan contrôle le
+   terrain), à Déclenchements (jaune) ou à gestion des DON!! (violet) doivent « oublier » le jeu rouge du modèle
+   général et réapprendre leurs mécaniques : une baisse passagère n'est pas un problème, il faut leur laisser du temps.
+16. **Ligue des spécialistes** (14 octobre 2026, proposée après les premiers résultats, l'utilisateur ayant demandé des
+   idées pour améliorer l'entraînement) :
+   chaque IA de deck s'entraînait surtout contre le modèle général, qui joue tous les decks « à la rouge » ; Kuzan
+   n'apprenait pas à affronter un Zoro qui épuise vraiment ses cartes. Les autres IA spécialisées deviennent des
+   adversaires (`experts`, 35 % ; base 25 %, heuristique 30 %, miroir 10 %), quatre par mise à jour, relues à chaque
+   évaluation ; nouvelle évaluation `experts`. Prévu pour la prolongation : à installer dans `TCGC/` (avec l'accord de
+   l'utilisateur) une fois la première file (15 decks, 300 mises à jour) finie ; vitesse à mesurer au premier lancement.
+
 ## 4. Commandes
 
 Dans `rl/`, environnement activé (`.venv\Scripts\Activate.ps1`).
