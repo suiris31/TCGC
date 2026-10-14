@@ -478,6 +478,8 @@ python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600
 python train_decks.py --config gpu --decks meta                    # les 6 decks du méta (starter : ceux pour débutant)
 python train_decks.py --config gpu --decks all --parallel 2        # tous les decks du registre, deux à la fois
 python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10 --max-updates 500
+# tous les decks ensemble, par paliers : chacun avance de 100 mises à jour à son tour, jusqu'à 900
+python train_decks.py --config gpu --decks all --parallel 2 --max-updates 900 --step 100
 ```
 
 Ctrl+C : point de sauvegarde et arrêt (de tous les entraînements en cours avec `train_decks.py`) ; la même commande
@@ -488,7 +490,12 @@ les ~25 s (~145 par heure : 300 mises à jour en ~2 h, évaluations comprises) ;
 
 **Plusieurs en même temps** : chaque entraînement a ses dossiers, ils ne se gênent pas. Deux à la fois : ~7 parties/s
 chacun, soit à peine plus (~1,1 fois) que le débit d'un seul : le processeur est partagé. C'est pratique pour faire
-avancer deux decks pendant une nuit, pas plus rapide au total ; au-delà de deux, aucun gain.
+avancer deux decks pendant une nuit, pas plus rapide au total ; au-delà de deux, aucun gain. Tous les 15 à la fois
+est impossible sur le PC : chaque entraînement prend ~2 Gio du GPU (8 Gio en tout) et ~2 Gio de mémoire.
+
+**Par paliers** (`--step`) : pour que tous les decks progressent ensemble (et s'affrontent à niveau proche dans la ligue
+des spécialistes), chacun avance de quelques mises à jour à son tour, puis on recommence. Avec `--step 100` et deux à la
+fois, un palier des 15 decks prend ~5 h.
 
 **Suivre** : `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
 messages de chaque entraînement sont dans `logs/deck-<deck>/console.txt`.

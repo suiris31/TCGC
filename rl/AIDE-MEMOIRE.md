@@ -38,6 +38,7 @@ une liste séparée par des virgules.
 | Les 15 decks, deux à la fois | `python train_decks.py --config gpu --decks all --parallel 2` |
 | Quelques decks choisis | `python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10` |
 | Une file avec plus de mises à jour par deck | `python train_decks.py --config gpu --decks meta --max-updates 500` |
+| Tous les decks ensemble, par paliers de 100 (~5 h le palier) | `python train_decks.py --config gpu --decks all --parallel 2 --max-updates 900 --step 100` |
 | Arrêter proprement | **Ctrl+C** une fois (finit la mise à jour, sauvegarde) ; une 2ᵉ fois : tout de suite |
 
 Ordre conseillé (decks que le modèle général joue le moins bien d'abord) :
@@ -49,7 +50,8 @@ python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10,
 Bon à savoir :
 
 - Seul : ~13 parties/s, ~145 mises à jour par heure. Deux à la fois : à peine plus vite au total (~1,1 fois), mais les
-  deux decks avancent ensemble. Au-delà de deux : aucun gain.
+  deux decks avancent ensemble. Au-delà de deux : aucun gain, et les 15 à la fois ne tiennent pas dans le GPU.
+- Pour que tous les decks avancent ensemble : `--step` (par paliers), pas `--parallel 15`.
 - Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire ») : relancer une file la reprend là
   où elle en était.
 - Chaque deck a ses dossiers : `checkpoints\deck-<deck>\` et `logs\deck-<deck>\`.
