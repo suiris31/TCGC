@@ -455,12 +455,19 @@ du modèle général qui continue d'apprendre en ne jouant **que ce deck**, cont
   prolongé avec toutes les cartes des decks du registre (le modèle général en connaissait 90) : au départ, elles ont
   l'identifiant de la carte « inconnue », l'IA joue donc exactement comme le modèle général, puis apprend à les
   reconnaître.
-- **Adversaires** (`config/deck.yaml`) : le modèle général figé (50 %, il joue bien tous les decks), l'heuristique
-  (35 %) et l'IA elle-même en miroir (15 %, même deck des deux côtés : les deux côtés apprennent ce deck). Decks
-  adverses tirés parmi tous les decks du registre.
+- **Adversaires** (`config/deck.yaml`) : les autres IA spécialisées, qui jouent leur deck comme il faut (35 %,
+  **ligue des spécialistes**), le modèle général figé (25 %, il joue bien tous les decks, mais « à la rouge »),
+  l'heuristique (30 %) et l'IA elle-même en miroir (10 %, même deck des deux côtés : les deux côtés apprennent ce
+  deck). Decks adverses tirés parmi tous les decks du registre.
+- **Ligue des spécialistes** : l'IA spécialisée d'un deck adverse est le dernier point de sauvegarde de
+  `checkpoints/deck-<deck>/` ; elles sont relues au départ et à chaque évaluation (elles progressent aussi : deux
+  entraînements en parallèle s'affrontent au fil de leurs progrès). Un deck qui n'a pas encore la sienne est joué par
+  le modèle général. Quatre IA adverses par mise à jour (`specialize.experts_per_update`) : chaque modèle de plus à
+  faire jouer ralentit la collecte (`--set specialize.experts_per_update=2` si c'est trop lent).
 - **Évaluations** : au départ (la référence : le modèle général qui joue ce deck), puis toutes les 50 mises à jour :
-  ce deck contre chacun des decks du registre, contre l'heuristique et contre le modèle général (240 parties chacun,
-  ~30 s). Pas de niveau à valider : on arrête quand les évaluations ne progressent plus.
+  ce deck contre chacun des decks du registre, contre l'heuristique et contre le modèle général (240 parties chacun :
+  des repères fixes) et contre les autres IA spécialisées (`experts` : un repère qui monte avec leurs progrès). Pas de
+  niveau à valider : on arrête quand les évaluations ne progressent plus.
 
 ```powershell
 # un deck : entraînement « deck-META-ROBIN-2026-10 », 300 mises à jour par défaut

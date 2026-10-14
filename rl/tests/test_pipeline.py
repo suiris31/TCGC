@@ -14,7 +14,8 @@ import pytest
 from conftest import RL_DIR, needs_engine
 
 RUN = "pytest-pipeline"
-DECK_RUN = "pytest-deck"
+DECK_RUN = "pytest-ST-35"
+DECK_RUN_2 = "pytest-ST-31"
 
 
 def run(*args: str, ok: bool = True) -> str:
@@ -32,7 +33,7 @@ def run(*args: str, ok: bool = True) -> str:
 def cleanup():
     yield
     for d in ("checkpoints", "logs", "models"):
-        for name in (RUN, DECK_RUN):
+        for name in (RUN, DECK_RUN, DECK_RUN_2):
             shutil.rmtree(RL_DIR / d / name, ignore_errors=True)
 
 
@@ -54,15 +55,18 @@ def test_train_resume_evaluate_export():
 @needs_engine
 def test_specialized_deck_from_the_general_model():
     """IA spécialisée : départ du modèle de test_train_resume_evaluate_export, ne joue que ST-35, évaluation de départ,
-    reprise (refusée sans --deck), évaluation de ce deck, export ONNX vérifié en jouant ce deck."""
+    reprise (refusée sans --deck), évaluation de ce deck, export ONNX vérifié en jouant ce deck ; puis une IA de ST-31
+    qui a celle de ST-35 pour adversaire (ligue des spécialistes)."""
     if not (RL_DIR / "checkpoints" / RUN / "latest.pt").exists():
         run("train.py", "--config", "smoke", "--run", RUN, "--set", "allow_synthetic=true", "--fresh", "--max-updates", "1")
     common = ["--config", "smoke", "--deck", "ST-35", "--run", DECK_RUN, "--set", "allow_synthetic=true",
-              "--set", f"specialize.base={RUN}", "--set", "curriculum.levels.0.decks=[ST-31, ST-35]",
+              "--set", f"specialize.base={RUN}", "--set", "specialize.experts_run=pytest-{deck}",
+              "--set", "curriculum.levels.0.decks=[ST-31, ST-35]",
               "--set", "curriculum.levels.0.gate_seeds_per_pair=1", "--set", "curriculum.levels.0.eval_every=2"]
     out = run("train.py", *common, "--fresh", "--max-updates", "2")
     assert "IA spécialisée sur le deck ST-35" in out and "Évaluation de départ" in out and "[    2 |" in out
     assert "base " in out and (RL_DIR / "checkpoints" / DECK_RUN / "base.pt").exists()
+    assert "Ligue des spécialistes : 0 IA" in out and "experts " in out, "sans autre IA : le modèle général à leur place"
     out = run("train.py", *common, "--max-updates", "3")
     assert "Reprise depuis" in out and "[    3 |" in out and "Évaluation de départ" not in out
     out = run("train.py", *common, "--max-updates", "3")
@@ -76,6 +80,11 @@ def test_specialized_deck_from_the_general_model():
     assert "Vérification réussie" in out
     info = json.loads((RL_DIR / "models" / DECK_RUN / "model.json").read_text(encoding="utf-8"))
     assert info["deck"] == "ST-35" and len(info["vocab"]) > 90
+    other = [a if a != "ST-35" else "ST-31" for a in common]
+    other[other.index(DECK_RUN)] = DECK_RUN_2
+    out = run("train.py", *other, "--fresh", "--max-updates", "2")
+    assert "IA spécialisée sur le deck ST-31" in out and "Ligue des spécialistes : 1 IA spécialisée(s) adverse(s) (ST-35 u3)" in out
+    assert "victoires" in out and "experts" in out.split("[    2 |")[1]
 
 
 def test_deck_index_lists_installed_specialized_models(tmp_path, monkeypatch):

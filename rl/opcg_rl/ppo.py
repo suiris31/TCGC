@@ -49,7 +49,8 @@ class Traj:
 @dataclass
 class Game:
     opponent: OpponentChoice
-    controllers: list[str | None]   # « learner », « snap:<id> » (ancienne version, « snap:base » : modèle général) ou None (IA intégrée)
+    controllers: list[str | None]   # « learner », « snap:<id> » (ancienne version ; « snap:base » : modèle général ;
+                                    # « snap:expert:<deck> » : IA spécialisée de ce deck) ou None (IA intégrée)
     decks: list[str]
     seed: int
     record: bool
@@ -94,6 +95,7 @@ class Collector:
                  rng: np.random.Generator, cfg: dict, load_snapshot, deck: str | None = None):
         self.pool = pool
         self.deck = deck                             # IA spécialisée : le modèle ne joue que ce deck
+        self.experts: list[str] = []                 # decks dont l'IA spécialisée peut être l'adversaire (cette mise à jour)
         self.env_ids = env_ids
         self.agent = agent
         self.league = league
@@ -127,11 +129,15 @@ class Collector:
         pool = list(self.pool.spec.decks) if decks == "all" else list(decks)
         a = self.deck or pool[int(self.rng.integers(len(pool)))]
         mirror = self.level.get("mirror") or (self.deck is not None and opp.kind == "self")
+        if opp.kind == "experts":                  # un deck dont l'IA spécialisée joue (voir _new_game)
+            pool = self.experts
         b = a if mirror else pool[int(self.rng.integers(len(pool)))]
         return a, b
 
     def _new_game(self, env: int) -> dict:
         opp = choose_opponent(self.level, self.league, self.rng)
+        if opp.kind == "experts" and not self.experts:
+            opp = OpponentChoice("base", "base")    # aucune autre IA spécialisée encore : le modèle général
         learner_deck, opp_deck = self._decks(opp)
         ls = int(self.rng.integers(2))
         seats: list[dict] = [{"kind": "agent"}, {"kind": "agent"}]
@@ -140,6 +146,8 @@ class Collector:
             controllers[1 - ls] = f"snap:{opp.snapshot.id}"
         elif opp.kind == "base":
             controllers[1 - ls] = "snap:base"
+        elif opp.kind == "experts":
+            controllers[1 - ls] = f"snap:expert:{opp_deck}"
         elif opp.kind != "self":
             seats[1 - ls] = {"kind": opp.kind, **({"samples": opp.samples} if opp.samples else {}),
                              **({"noise": opp.noise} if opp.noise else {})}

@@ -1,5 +1,6 @@
 """Adversaires des parties d'entraînement : IA intégrées (aléatoire, heuristique, Monte-Carlo), le modèle lui-même
-(self-play), anciennes versions du modèle (ligue), modèle général figé (« base », IA spécialisée sur un deck).
+(self-play), anciennes versions du modèle (ligue), modèle général figé (« base », IA spécialisée sur un deck), autres
+IA spécialisées qui jouent leur deck (« experts », ligue des spécialistes).
 
 Ligue : une copie figée du modèle est ajoutée régulièrement (snapshot). Pour chaque partie contre la ligue, on tire une
 ancienne version avec une probabilité qui favorise celles contre lesquelles le modèle gagne le moins souvent
@@ -35,7 +36,7 @@ class Snapshot:
 
 @dataclass
 class OpponentChoice:
-    kind: str                     # random | heuristic | mc | self | pool | base
+    kind: str                     # random | heuristic | mc | self | pool | base | experts
     label: str                    # pour les statistiques (« heuristic », « heuristic50 », « mc4 », « self », « pool:u000120 », « base »)
     samples: int | None = None
     noise: float | None = None    # heuristic : probabilité de jouer une décision au hasard
@@ -161,6 +162,6 @@ def choose_opponent(level: dict, league: League, rng: np.random.Generator) -> Op
     if kind == "heuristic" and float(o.get("noise", 0) or 0) > 0:
         noise = float(o["noise"])
         return OpponentChoice("heuristic", f"heuristic{round(100 * noise)}", noise=noise)
-    if kind in ("random", "heuristic", "self", "base"):
+    if kind in ("random", "heuristic", "self", "base", "experts"):
         return OpponentChoice(kind, kind)
     raise ValueError(f"type d'adversaire inconnu : {kind}")

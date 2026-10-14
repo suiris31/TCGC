@@ -9,6 +9,10 @@ de ses adversaires.
 Le modèle général est copié dans le dossier de l'entraînement (base.pt) : il reste un adversaire figé (il joue bien
 tous les decks) et la référence des évaluations, même si l'entraînement général reprend et efface ses anciens points
 de sauvegarde.
+
+Ligue des spécialistes : les autres IA spécialisées (dernier point de sauvegarde de checkpoints/deck-<deck>/) jouent
+leur deck contre celle-ci, comme un joueur qui connaît son deck ; elles sont relues régulièrement, elles progressent
+aussi (deux entraînements en parallèle s'affrontent ainsi au fil de leurs progrès).
 """
 from __future__ import annotations
 
@@ -74,6 +78,32 @@ def save_base(run_dir: Path, source: Path, ckpt: dict) -> None:
         "spec_hash": ckpt.get("spec_hash"), "engine": ckpt.get("engine"), "source": str(source),
         "state": {"update": st.get("update"), "games": st.get("games")},
     })
+
+
+def load_expert(run_dir: Path, deck: str, spec: Spec, device: torch.device, warn=print) -> tuple[Agent, int] | None:
+    """IA spécialisée du deck `deck` (son dernier point de sauvegarde lisible), ou None s'il n'y en a pas d'utilisable
+    (dossier absent ou vide, autre deck, encodage différent)."""
+    if not run_dir.exists():
+        return None
+    try:
+        found = ck.load_latest(run_dir, warn=warn)
+    except SystemExit as err:            # aucun point de sauvegarde lisible
+        warn(f"IA spécialisée {deck} ignorée : {err}")
+        return None
+    if not found:
+        return None
+    path, data = found
+    if (data.get("state", {}).get("specialize") or {}).get("deck") != deck:
+        return None
+    try:
+        weights, model_cfg, _ = adapt(data["model_state"], data["model_config"], data.get("spec_hash"), spec, str(path))
+    except RuntimeError as err:
+        warn(f"IA spécialisée {deck} ignorée : {err}")
+        return None
+    model = build_model(spec, data["vocab"], model_cfg)
+    model.load_state_dict(weights)
+    model.eval()
+    return Agent(model, data["vocab"], spec, device, f"expert:{deck}"), int(data["state"].get("update", 0))
 
 
 def load_base(run_dir: Path, spec: Spec, device: torch.device) -> tuple[Agent, dict]:

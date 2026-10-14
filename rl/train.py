@@ -261,10 +261,33 @@ def main() -> int:
         base_agent, base_data = sp.load_base(run_dir, spec, device)
         log(f"Deck joué : {deck} ; adversaire figé « base » : modèle général {base_data.get('source')} "
             f"(mise à jour {base_data.get('state', {}).get('update')})")
-    elif any(o["kind"] == "base" for lv in levels for o in lv["opponents"]) or \
-            any(g.get("opponent") == "base" for lv in levels for g in lv.get("gate", [])):
+    elif any(o["kind"] in ("base", "experts") for lv in levels for o in lv["opponents"]) or \
+            any(g.get("opponent") in ("base", "experts") for lv in levels for g in lv.get("gate", [])):
         pool.close()
-        raise SystemExit("Adversaire « base » (modèle général figé) : seulement pour une IA spécialisée (--deck)")
+        raise SystemExit("Adversaires « base » et « experts » (modèle général, autres IA spécialisées) : seulement pour "
+                         "une IA spécialisée (--deck)")
+
+    # Ligue des spécialistes : les autres IA spécialisées jouent leur deck contre celle-ci (adversaire « experts ») ;
+    # relues au départ et à chaque évaluation, car elles progressent aussi. Quelques-unes par mise à jour
+    # (specialize.experts_per_update) : chaque modèle de plus à faire jouer ralentit la collecte.
+    spec_cfg = cfg.get("specialize") or {}
+    experts_run = str(spec_cfg.get("experts_run", "deck-{deck}"))
+    experts_per_update = int(spec_cfg.get("experts_per_update", 4) or 0)
+    expert_agents: dict[str, Agent] = {}
+
+    def refresh_experts() -> None:
+        if not deck:
+            return
+        expert_agents.clear()
+        found = {}
+        for d in spec.decks:
+            got = sp.load_expert(CHECKPOINTS_DIR / experts_run.format(deck=d), d, spec, device, warn=log) if d != deck else None
+            if got:
+                expert_agents[d], found[d] = got
+        log(f"Ligue des spécialistes : {len(found)} IA spécialisée(s) adverse(s)"
+            + (f" ({', '.join(f'{d} u{u}' for d, u in found.items())})" if found else " ; le modèle général joue à leur place"))
+
+    refresh_experts()
 
     # anciennes versions chargées : toute la ligue peut jouer en même temps (tirage PFSP), le cache la contient entière
     loaded: OrderedDict[str, Agent] = OrderedDict()
@@ -273,6 +296,8 @@ def main() -> int:
     def load_snapshot(sid: str) -> Agent:
         if sid == sp.BASE_ID and base_agent is not None:
             return base_agent
+        if sid.startswith("expert:") and base_agent is not None:
+            return expert_agents.get(sid.split(":", 1)[1], base_agent)   # IA retirée depuis : le modèle général
         if sid in loaded:
             loaded.move_to_end(sid)
             return loaded[sid]
@@ -332,6 +357,8 @@ def main() -> int:
                 raise
 
     def gate_eval(level: dict) -> bool:
+        if deck and state["update"] > 0:
+            refresh_experts()
         decks = list(spec.decks) if level.get("decks", "all") == "all" else list(level["decks"])
         # IA spécialisée : son deck contre chacun des decks
         pairs = [(deck, b) for b in decks] if deck else [(a, b) for a in decks for b in decks]
@@ -342,6 +369,7 @@ def main() -> int:
         for item in level.get("gate", []):
             opp = item["opponent"]
             opponents: list[str] = []
+            as_experts = False
             if opp == "level_start":
                 sid = state["level_start"].get(str(state["level"]))
                 if not sid:
@@ -360,6 +388,11 @@ def main() -> int:
                     continue
                 agents[sp.BASE_ID] = base_agent
                 opponents = [f"model:{sp.BASE_ID}"]
+            elif opp == "experts":
+                if base_agent is None:
+                    continue
+                opponents = [f"model:{sp.BASE_ID}"]   # deck par deck ci-dessous
+                as_experts = True
             else:
                 opponents = [opp]
             if not opponents:
@@ -369,6 +402,11 @@ def main() -> int:
                 order = np.random.default_rng(12345).permutation(len(pairs))[: item["pairs"]]
                 sub = [pairs[i] for i in sorted(order)]
             games = plan_games(opponents, sub, int(level.get("gate_seeds_per_pair", 1)), int(cfg["evaluation"]["seed_offset"]))
+            if as_experts:        # chaque deck adverse joué par son IA spécialisée (le modèle général s'il n'en a pas)
+                for g in games:
+                    key = f"expert:{g.decks[1]}" if g.decks[1] in expert_agents else sp.BASE_ID
+                    g.opp_agent, g.opponent = key, "experts"
+                    agents[key] = load_snapshot(key)
             outcomes = run_games(pool, eval_envs, agents, "learner", games, greedy=bool(cfg["evaluation"]["greedy"]),
                                  seed=cfg["seed"] + 1000, max_decisions=int(cfg["env"]["max_decisions"]))
             report = summarize(outcomes)
@@ -386,7 +424,8 @@ def main() -> int:
                 state["elo_results"].extend((f"u{state['update']:06d}", name, o["score"]) for o in outcomes if o["opponent"] == name)
             out = log_dir / "eval"
             out.mkdir(parents=True, exist_ok=True)
-            (out / f"u{state['update']:06d}_{opponents[0].replace(':', '-').replace('/', '-')}.md").write_text(
+            label = "experts" if as_experts else opponents[0].replace(':', '-').replace('/', '-')
+            (out / f"u{state['update']:06d}_{label}.md").write_text(
                 to_markdown(report, f"Évaluation, mise à jour {state['update']}, niveau {level['name']}"), encoding="utf-8")
         state["elo_results"] = state["elo_results"][-20000:]
         try:
@@ -428,6 +467,11 @@ def main() -> int:
             level = levels[state["level"]]
             collector.level = level
             collector.version = state["update"]
+            if deck:              # IA spécialisées adverses de cette mise à jour (parmi les decks adverses du niveau)
+                allowed = level.get("decks", "all")
+                cand = [d for d in expert_agents if allowed == "all" or d in allowed]
+                k = min(experts_per_update, len(cand))
+                collector.experts = sorted(rng.choice(cand, size=k, replace=False).tolist()) if k else []
             t0 = time.perf_counter()
             trajs = collector.collect(int(cfg["ppo"]["steps_per_update"]))
             t_collect = time.perf_counter() - t0

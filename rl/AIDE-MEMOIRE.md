@@ -54,7 +54,10 @@ Bon à savoir :
   où elle en était.
 - Chaque deck a ses dossiers : `checkpoints\deck-<deck>\` et `logs\deck-<deck>\`.
 - Au départ, une évaluation de référence (le modèle général qui joue ce deck), puis une évaluation toutes les 50 mises à
-  jour (~30 s).
+  jour (~1 à 2 min).
+- **Ligue des spécialistes** : chaque IA de deck affronte aussi les IA des autres decks déjà entraînées (dernier point
+  de sauvegarde, relu à chaque évaluation). Plus il y a de decks entraînés, plus les adversaires jouent leur deck comme
+  il faut. Si c'est trop lent : ajouter `--set specialize.experts_per_update=2`.
 
 ## Suivre
 
@@ -67,9 +70,10 @@ Bon à savoir :
 | Les courbes (puis http://localhost:6006) | `tensorboard --logdir logs` |
 | L'occupation du GPU | `nvidia-smi` |
 
-À lire dans les évaluations : la ligne « Évaluation » donne le taux de victoire de ce deck contre `heuristic` et
-contre `base` (le modèle général). Ça progresse si ces deux chiffres montent par rapport à l'évaluation de départ ;
-un écart plus petit que l'intervalle entre crochets n'est pas significatif.
+À lire dans les évaluations : la ligne « Évaluation » donne le taux de victoire de ce deck contre `heuristic`, contre
+`base` (le modèle général) et contre `experts` (les autres IA spécialisées). Les deux premiers sont des repères fixes :
+ça progresse s'ils montent par rapport à l'évaluation de départ. `experts` monte moins vite, ou baisse, quand les
+autres IA progressent : c'est normal. Un écart plus petit que l'intervalle entre crochets n'est pas significatif.
 
 ## Mesurer à part
 

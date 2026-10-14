@@ -346,3 +346,23 @@ def test_specialized_collector_always_plays_its_deck():
     c.deck = None
     pairs = [c._decks(mirror) for _ in range(200)]
     assert len({a for a, _ in pairs}) == 3 and any(a != b for a, b in pairs), "modèle général : tous les decks"
+
+
+def test_experts_play_their_own_deck_or_the_general_model():
+    from types import SimpleNamespace
+
+    from opcg_rl.ppo import Collector
+    pool = SimpleNamespace(spec=SimpleNamespace(decks={"A": {}, "B": {}, "C": {}}))
+    seeds = SimpleNamespace(next=lambda: 1)
+    c = Collector(pool, [], None, SimpleNamespace(snapshots=[]), seeds, np.random.default_rng(0), {}, None, deck="B")
+    c.level = {"decks": "all", "opponents": [{"kind": "experts", "weight": 1.0}]}
+    c.experts = ["A", "C"]
+    for env in range(40):
+        c._new_game(env)
+        g = c.games[env]
+        me = g.controllers.index("learner")
+        assert g.decks[me] == "B" and g.controllers[1 - me] == f"snap:expert:{g.decks[1 - me]}"
+    assert {c.games[e].decks[1 - c.games[e].controllers.index("learner")] for e in range(40)} == {"A", "C"}
+    c.experts = []
+    c._new_game(99)
+    assert c.games[99].opponent.kind == "base" and "snap:base" in c.games[99].controllers, "pas encore d'IA : le modèle général"
