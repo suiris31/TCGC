@@ -266,6 +266,16 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    ~2 630/s ; 5 ~2 830/s (×3,2, processeur plein ; 2 processus Node minimum par entraînement, défaut de
    `train_decks.py`). Prolongation conseillée : `train_decks.py --config gpu --decks all --parallel 5 --max-updates 900
    --step 100` (5 divise les 15 decks : 3 tours par palier, ~2 h 40 le palier, ~16 h jusqu'à 900).
+18. **Encodage 5 : coût déclaré** (15 octobre 2026, après la remarque de l'utilisateur sur Katakuri : le deck annonce
+   le coût de la carte du dessus du deck adverse, que son Leader permet de regarder). Mesuré sur 80 parties rejouées de
+   l'IA ST-34 (u400) : carte connue dans 81 déclarations sur 137 (le Leader est utilisé 37 % des fois où il est
+   proposé), mais bon coût dans 15 % des cas seulement, autant qu'à l'aveugle (14 %) : ni la mémoire (la carte reste
+   dans l'observation) ni l'ordre, mais le lien entre « Coût N » et le coût de la carte connue, que le réseau devait
+   trouver seul. Ajouté : 2 colonnes par option (`decl:topKnown`, `decl:topMatch`), encodage `4c256fa6`. Les modèles
+   de l'encodage 4 (`a0664ced`) se prolongent automatiquement à la reprise (poids nuls, même jeu au départ, vérifié
+   sur une copie de ST-34 : reprise, apprentissage, export vérifié) ; le navigateur les accepte encore (options sans les
+   nouvelles colonnes, mêmes probabilités à l'identique) : déployer ce code ne casse pas les modèles en ligne. À
+   remesurer après un palier avec l'encodage 5 (taux de bons coûts avec la carte connue).
 
 ## 4. Commandes
 

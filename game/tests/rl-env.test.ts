@@ -11,17 +11,17 @@ import { DECKS } from '../engine/decks.ts';
 import { act, actInPlace, newGame } from '../engine/engine.ts';
 import { invariantErrors } from '../engine/invariants.ts';
 import { random } from '../engine/rng.ts';
-import { attackTargets, findField, knows as knowsOf, peekTop, power } from '../engine/rules.ts';
+import { attackTargets, def, findField, knows as knowsOf, peekTop, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
 import {
-  DYN_DIM, DYN_FEATURES, encodeObservation, GLOBAL_DIM, OPTION_COMPARISONS, OPTION_DIM, PREVIOUS_SPECS, type Observation,
+  DYN_DIM, DYN_FEATURES, encodeObservation, GLOBAL_DIM, OPTION_COMPARISONS, OPTION_DECLARE, OPTION_DIM, PREVIOUS_SPECS, type Observation,
 } from '../rl/encode.ts';
 import { RlEnv, type ResetOptions } from '../rl/env.ts';
 import { STATIC_DIM, staticFeatures } from '../rl/features.ts';
 import type { SeatSpec } from '../rl/opponents.ts';
 import { makeTrajectory, narrate, replayTrajectory, toGameRecord } from '../rl/record.ts';
-import { expectTag, keepOrder, play, scenario, setDeckTop, setDon, setHand } from './helpers.ts';
+import { expectTag, keepOrder, play, scenario, setChars, setDeckTop, setDon, setHand } from './helpers.ts';
 
 const ids = Object.keys(DECKS);
 const pairs: [string, string][] = ids.flatMap((a) => ids.map((b) => [a, b] as [string, string]));
@@ -397,13 +397,40 @@ test('observation : le deck restant ne compte pas ses cartes en suspens (cartes 
   }
 });
 
-test('encodage : empreinte figée de l’encodage 3 (les modèles entraînés avec lui se prolongent vers l’actuel)', () => {
+test('encodage : empreintes figées des encodages 3 et 4 (les modèles entraînés avec eux se prolongent vers l’actuel)', () => {
   assert.equal(PREVIOUS_SPECS[0].specHash, '115b024e', 'colonnes de l’encodage 3 modifiées : les modèles existants ne se prolongent plus');
-  assert.equal(PREVIOUS_SPECS[0].optionDim + OPTION_COMPARISONS.length, OPTION_DIM, 'comparaisons ajoutées APRÈS les colonnes de l’encodage 3');
+  assert.equal(PREVIOUS_SPECS[1].specHash, 'a0664ced', 'colonnes de l’encodage 4 modifiées : les modèles existants ne se prolongent plus');
+  assert.equal(PREVIOUS_SPECS[0].optionDim + OPTION_COMPARISONS.length, PREVIOUS_SPECS[1].optionDim, 'comparaisons ajoutées APRÈS l’encodage 3');
+  assert.equal(PREVIOUS_SPECS[1].optionDim + OPTION_DECLARE.length, OPTION_DIM, 'coût déclaré ajouté APRÈS l’encodage 4');
+});
+
+test('coût déclaré : carte du dessus adverse connue et de ce coût, seulement si le joueur l’a regardée', () => {
+  const col = (k: string) => PREVIOUS_SPECS[1].optionDim + OPTION_DECLARE.indexOf(k);
+  for (const known of [true, false]) {
+    let s = scenario(['ST-34', 'ST-31'], (g) => {
+      setHand(g, 0, ['OP11-081']);
+      setDon(g, 0, 10);
+      setChars(g, 1, [{ num: 'ST31-003' }]);
+      setDeckTop(g, 1, ['ST31-004']);
+      if (known) peekTop(g, 0);
+    });
+    s = play(s, 'OP11-081');
+    expectTag(s, 'declareCost');
+    const o = encodeObservation(viewFor(s, 0), 0);
+    const cost = def('ST31-004').cost!;
+    o.options.forEach((id, a) => {
+      const n = Number(id.split(':')[1]);
+      assert.equal(o.opt[a * OPTION_DIM + col('decl:topKnown')], known ? 1 : 0, id);
+      assert.equal(o.opt[a * OPTION_DIM + col('decl:topMatch')], known && n === cost ? 1 : 0, id);
+    });
+    // l'adversaire, lui, ne connaît pas la carte du dessus de son propre deck par cet effet
+    const other = encodeObservation(viewFor(s, 1), 1);
+    assert.equal(other.options.length, 0);
+  }
 });
 
 test('comparaisons par option : conformes au moteur (puissances, Contre nécessaire, attaque déjà repoussée)', () => {
-  const col = (k: string) => OPTION_DIM - OPTION_COMPARISONS.length + OPTION_COMPARISONS.indexOf(k);
+  const col = (k: string) => PREVIOUS_SPECS[0].optionDim + OPTION_COMPARISONS.indexOf(k);
   const seen = { attack: 0, counter: 0, block: 0, don: 0 };
   for (const [k, decks] of pairs.slice(0, 12).entries()) {
     playRandom({ seed: 900 + k, decks, first: 'random', seats: [{ kind: 'agent' }, { kind: 'agent' }] }, 77 + k, (env) => {

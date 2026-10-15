@@ -437,7 +437,7 @@ joué. Ligue : anciennes versions tirées en privilégiant celles que le modèle
 | Mémoire GPU insuffisante (erreur « out of memory ») | réduis `ppo.microbatch_size` (256, 128) : l'apprentissage reste le même |
 | Temps « apprentissage » très irrégulier (10 s puis 300 s), collecte normale, GPU presque plein | Windows : le pilote NVIDIA déborde sur la mémoire de l'ordinateur au lieu de signaler le manque. Réduis `ppo.microbatch_size` ; dans le Panneau de configuration NVIDIA, « Politique de repli de la mémoire système CUDA » sur « Préférer l'absence de repli » donne une erreur claire au lieu de la lenteur |
 | Ordinateur qui rame | réduis `env.workers` |
-| `encodage différent` à la reprise | le code de `game/rl/` a changé depuis l'entraînement : nouvel entraînement (`--fresh` ou `--run`). Exception : un modèle de l'encodage 3 (avant l'ajout des comparaisons par option) est prolongé automatiquement à la reprise, sans rien perdre |
+| `encodage différent` à la reprise | le code de `game/rl/` a changé depuis l'entraînement : nouvel entraînement (`--fresh` ou `--run`). Exception : un modèle d'un encodage précédent (3 : avant les comparaisons par option ; 4 : avant le coût déclaré) est prolongé automatiquement à la reprise, sans rien perdre |
 | Le niveau « IA entraînée » a disparu du simulateur après une mise à jour du code | le modèle installé date d'un autre encodage : réexporte-le (`python export_onnx.py --checkpoint <run> --install`) |
 | `CATALOGUE SYNTHÉTIQUE` | catalogue de test (cartes inventées) : utilise le vrai (`npm run game:cards`) |
 | Niveau non validé (code 3) | voir § 7 |

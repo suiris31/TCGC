@@ -75,7 +75,12 @@ export const OPTION_COMPARISONS: string[] = [
   'blk:margin', 'blk:survives',
   'play:donLeft',
 ];
-export const OPTION_FEATURES: string[] = [...BASE_OPTION_FEATURES, ...OPTION_COMPARISONS];
+// Coût déclaré (encodage 5), ajouté APRÈS les comparaisons : « Déclarez un coût et révélez la carte du dessus du deck
+// adverse » (Katakuri, Kaido...). La carte du dessus est-elle connue du joueur (un effet la lui a fait regarder et elle
+// est encore dessus), et coûte-t-elle le coût de cette option ? Un fait de sa vue, comme les comparaisons : sans lui,
+// le modèle déclarait au hasard même en connaissant la carte (15 % de bons coûts, mesuré le 15 octobre 2026)
+export const OPTION_DECLARE: string[] = ['decl:topKnown', 'decl:topMatch'];
+export const OPTION_FEATURES: string[] = [...BASE_OPTION_FEATURES, ...OPTION_COMPARISONS, ...OPTION_DECLARE];
 export const OPTION_DIM = OPTION_FEATURES.length;
 
 // Empreinte de l'encodage : tout changement de colonnes la change (un modèle n'est utilisable qu'avec la même)
@@ -84,12 +89,24 @@ function fnvHex(s: string) {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return (h >>> 0).toString(16).padStart(8, '0');
 }
-export const ENCODING_VERSION = 4;
+export const ENCODING_VERSION = 5;
 export const SPEC_HASH = fnvHex(JSON.stringify([ENCODING_VERSION, STATIC_FEATURES, DYN_FEATURES, GLOBAL_FEATURES, OPTION_FEATURES]));
 // Encodages précédents dont un modèle se prolonge : identiques à l'actuel sauf les dernières colonnes des options
 export const PREVIOUS_SPECS: { specHash: string; encodingVersion: number; optionDim: number }[] = [
   { specHash: fnvHex(JSON.stringify([3, STATIC_FEATURES, DYN_FEATURES, GLOBAL_FEATURES, BASE_OPTION_FEATURES])), encodingVersion: 3, optionDim: BASE_OPTION_FEATURES.length },
+  {
+    specHash: fnvHex(JSON.stringify([4, STATIC_FEATURES, DYN_FEATURES, GLOBAL_FEATURES, [...BASE_OPTION_FEATURES, ...OPTION_COMPARISONS]])),
+    encodingVersion: 4, optionDim: BASE_OPTION_FEATURES.length + OPTION_COMPARISONS.length,
+  },
 ];
+
+// Colonnes d'options qu'attend un modèle : celles de l'encodage actuel, ou d'un encodage précédent dont l'actuel ne
+// fait qu'ajouter des colonnes à la fin (un modèle d'avant le coût déclaré reçoit les options sans ces colonnes, exactement
+// ce qu'il a connu) ; null : encodage incompatible
+export function modelOptionDim(specHash: string): number | null {
+  if (specHash === SPEC_HASH) return OPTION_DIM;
+  return PREVIOUS_SPECS.find((p) => p.specHash === specHash)?.optionDim ?? null;
+}
 
 export interface Observation {
   seat: PlayerId;
@@ -426,6 +443,9 @@ export function encodeObservation(v: GameState, me: PlayerId): Observation {
     battle,
     handCounter: P.hand.reduce((n, c) => n + (c.num !== HIDDEN && def(c.num).category === 'CHARACTER' ? counterValue(v, me, c.num) : 0), 0),
   };
+  // carte du dessus du deck adverse connue du joueur (regardée, encore dessus ; voir view.ts) : son coût
+  const oppTop = v.players[other(me)].deck[0];
+  const knownTopCost = v.peek?.[me] != null && oppTop?.uid === v.peek[me] && oppTop.num !== HIDDEN ? (def(oppTop.num).cost ?? -1) : undefined;
   options.forEach((o, a) => {
     let i = a * OPTION_DIM;
     const kind = optionKind(o.id);
@@ -450,6 +470,11 @@ export function encodeObservation(v: GameState, me: PlayerId): Observation {
     opt[i++] = rt?.zone === 'myHand' ? 1 : 0;
     opt[i++] = tg >= 0 && (tokens[tg].zone === 'oppLeader' || tokens[tg].zone === 'myLeader') ? 1 : 0;
     comparisons(v, me, o, kind, ctx, opt, i);
+    if (kind === 'cost:' && knownTopCost !== undefined) {
+      const at = i + OPTION_COMPARISONS.length;
+      opt[at + OPTION_DECLARE.indexOf('decl:topKnown')] = 1;
+      opt[at + OPTION_DECLARE.indexOf('decl:topMatch')] = knownTopCost === Number(arg) ? 1 : 0;
+    }
   });
   return {
     seat: me,

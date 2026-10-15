@@ -8,7 +8,7 @@
 import type * as Ort from 'onnxruntime-web';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
-import { DYN_DIM, encodeObservation, GLOBAL_DIM, OPTION_DIM, SPEC_HASH } from '../rl/encode.ts';
+import { DYN_DIM, encodeObservation, GLOBAL_DIM, modelOptionDim, OPTION_DIM, SPEC_HASH } from '../rl/encode.ts';
 import { STATIC_DIM, staticFeatures } from '../rl/features.ts';
 
 export interface RlModelInfo {
@@ -31,20 +31,23 @@ export class RlPolicy {
   private ort: typeof Ort;
   private session: Ort.InferenceSession;
   private vocab: Map<string, number>;
+  private optDim: number;
 
-  private constructor(ort: typeof Ort, session: Ort.InferenceSession, info: RlModelInfo) {
+  private constructor(ort: typeof Ort, session: Ort.InferenceSession, info: RlModelInfo, optDim: number) {
     this.ort = ort;
     this.session = session;
     this.info = info;
     this.vocab = new Map(info.vocab.map((num, i) => [num, i + 1]));
+    this.optDim = optDim;
   }
 
   static async create(ort: typeof Ort, model: Uint8Array, info: RlModelInfo): Promise<RlPolicy> {
-    if (info.specHash !== SPEC_HASH) {
+    const optDim = modelOptionDim(info.specHash);
+    if (optDim === null) {
       throw new Error(`modèle « ${info.name} » entraîné avec un autre encodage (${info.specHash}, actuel ${SPEC_HASH}) : à réentraîner`);
     }
     const session = await ort.InferenceSession.create(model, { executionProviders: ['wasm'] });
-    return new RlPolicy(ort, session, info);
+    return new RlPolicy(ort, session, info, optDim);
   }
 
   // Probabilité de chaque option de la décision en cours du joueur `seat`
@@ -88,7 +91,7 @@ export class RlPolicy {
       p_group: new T('int64', pGroup, [1, P]),
       p_mask: new T('float32', pMask, [1, P]),
       glob: new T('float32', o.global, [1, GLOBAL_DIM]),
-      opt: new T('float32', o.opt, [1, a, OPTION_DIM]),
+      opt: new T('float32', this.options(o.opt, a), [1, a, this.optDim]),
       ptr: new T('int64', ptr, [1, a, 2]),
       opt_mask: new T('float32', new Float32Array(a).fill(1), [1, a]),
     };
@@ -103,6 +106,14 @@ export class RlPolicy {
   // Libère la mémoire du modèle (fil de calcul : plusieurs modèles d'IA spécialisées chargés tour à tour)
   async release(): Promise<void> {
     await this.session.release();
+  }
+
+  // Caractéristiques des options, réduites aux colonnes que connaît le modèle (encodage précédent)
+  private options(opt: Float32Array, a: number): Float32Array {
+    if (this.optDim === OPTION_DIM) return opt;
+    const out = new Float32Array(a * this.optDim);
+    for (let k = 0; k < a; k++) out.set(opt.subarray(k * OPTION_DIM, k * OPTION_DIM + this.optDim), k * this.optDim);
+    return out;
   }
 
   // Choix : selon les probabilités du modèle (sa vraie politique), ou toujours la plus probable (greedy)

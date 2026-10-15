@@ -188,7 +188,7 @@ def main() -> int:
         model.load_state_dict(weights)
         if migrated_from:
             log(f"Modèle prolongé vers l'encodage {spec.spec_hash} : {spec.opt_dim - migrated_from} nouvelles colonnes "
-                "d'options (comparaisons), poids nuls au départ : il joue d'abord exactement comme avant")
+                "d'options, poids nuls au départ : il joue d'abord exactement comme avant")
         asked = {k: v for k, v in cfg["model"].items() if k in ckpt["model_config"] and ckpt["model_config"][k] != v}
         if asked:
             log(f"ATTENTION : la taille du modèle ne change pas à la reprise ; réglages ignorés : {json.dumps(asked)} "

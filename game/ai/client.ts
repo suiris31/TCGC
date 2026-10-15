@@ -1,6 +1,6 @@
 // Accès aux calculs du fil séparé (worker.ts) depuis l'interface
 import { cardData } from '../engine/cards/index.ts';
-import { SPEC_HASH } from '../rl/encode.ts';
+import { modelOptionDim, SPEC_HASH } from '../rl/encode.ts';
 import type { GameState } from '../engine/types.ts';
 import type { Analysis, CoachOptions, Level } from './search.ts';
 import type { WorkerRequest } from './worker.ts';
@@ -17,8 +17,9 @@ export function rlModelAvailable(): Promise<boolean> {
     .then(async (r) => {
       if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return false;
       const info = await r.json();
-      if (info.specHash !== SPEC_HASH) console.warn(`IA entraînée : modèle « ${info.name} » d'un autre encodage (${info.specHash}, actuel ${SPEC_HASH}), à réexporter`);
-      return info.specHash === SPEC_HASH;
+      const ok = modelOptionDim(info.specHash) !== null;
+      if (!ok) console.warn(`IA entraînée : modèle « ${info.name} » d'un autre encodage (${info.specHash}, actuel ${SPEC_HASH}), à réexporter`);
+      return ok;
     })
     .catch(() => false);
   return rlChecked;
@@ -32,7 +33,7 @@ export function rlDeckModels(): Promise<Set<string>> {
     .then(async (r) => {
       if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return new Set<string>();
       const decks: Record<string, { specHash?: string }> = (await r.json()).decks ?? {};
-      return new Set(Object.keys(decks).filter((id) => decks[id].specHash === SPEC_HASH));
+      return new Set(Object.keys(decks).filter((id) => modelOptionDim(decks[id].specHash ?? '') !== null));
     })
     .catch(() => new Set<string>());
   return deckModels;

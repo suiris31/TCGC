@@ -411,4 +411,17 @@ poids nuls pour les nouvelles colonnes, état d'Adam prolongé (`rl/opcg_rl/migr
 réelles, écart nul avec l'ancien modèle au départ ; export ONNX et navigateur vérifiés (écarts < 2·10⁻⁶). Le gain
 une fois combiné à PPO n'est pas encore mesuré : c'est l'objet de la reprise de l'entraînement sur RTX 2070.
 
+### 11.7 Coût déclaré (encodage 5)
+
+Le deck Katakuri (ST-34) déclare des coûts (« Déclarez un coût et révélez la carte du dessus du deck adverse ») ; son
+Leader fait regarder cette carte d'abord. La carte regardée est bien dans l'observation (jeton `oppDeckTop`, tant
+qu'elle reste dessus), mais les options « Coût 0 » à « Coût 10 » ne portaient que leur nombre : le réseau devait
+relier seul ce nombre au coût de la carte connue. Mesuré sur 80 parties rejouées de l'IA spécialisée ST-34 (u400) :
+avec la carte connue, bon coût dans 15 % des cas (probabilité moyenne du bon coût 0,14), autant qu'à l'aveugle (14 %).
+
+Ajouté : 2 colonnes par option (`OPTION_DECLARE`, après les comparaisons) : la carte du dessus adverse est connue, et
+elle coûte le coût de cette option. Un modèle de l'encodage 4 se prolonge (poids nuls, même jeu au départ) ; le
+navigateur accepte encore les modèles de l'encodage 4 en leur donnant les options sans ces colonnes (`modelOptionDim`) :
+mêmes probabilités qu'avec l'ancien code, à l'identique (161 décisions comparées).
+
 État courant de l'entraînement, décisions et reprise : `rl/SUIVI.md`.
