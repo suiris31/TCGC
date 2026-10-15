@@ -1,9 +1,9 @@
 {
  "name": "rtx2070-main",
- "createdAt": "2026-10-12 22:06:50",
+ "createdAt": "2026-10-15 10:08:13",
  "specHash": "a0664ced",
  "encodingVersion": 4,
- "engine": "ae873fd",
+ "engine": "8a819ca",
  "synthetic": false,
  "vocab": [
   "EB03-032",
@@ -133,60 +133,66 @@
  ],
  "training": {
   "checkpoint": "rl\\checkpoints\\rtx2070-main\\latest.pt",
-  "update": 7713,
-  "games": 1848385,
+  "update": 8959,
+  "games": 2041702,
   "level": 4,
   "gateHistory": [
    {
-    "update": 7600,
-    "level": "4-self-play",
-    "passed": true,
-    "results": [
-     "u007200 59.4 % [51–67] sur 128 parties (seuil 58 % OK)",
-     "heuristic 67.2 % [59–75] sur 128 parties (seuil 60 % OK)",
-     "Elo 1156 (heuristique = 1000)"
-    ]
-   },
-   {
-    "update": 7650,
-    "level": "4-self-play",
-    "passed": true,
-    "results": [
-     "u007200 61.7 % [53–70] sur 128 parties (seuil 58 % OK)",
-     "heuristic 65.6 % [57–73] sur 128 parties (seuil 60 % OK)",
-     "Elo 1154 (heuristique = 1000)"
-    ]
-   },
-   {
-    "update": 7700,
+    "update": 8700,
     "level": "5-ligue",
     "passed": true,
     "results": [
-     "heuristic 63.3 % [55–71] sur 128 parties (seuil 0 % OK)",
-     "u007650 50.0 % [41–59] sur 128 parties (seuil 0 % OK)",
-     "u007600 47.7 % [39–56] sur 128 parties (seuil 0 % OK)",
-     "u007625 48.4 % [40–57] sur 128 parties (seuil 0 % OK)",
-     "u007675 57.0 % [48–65] sur 128 parties (seuil 0 % OK)",
-     "Elo 1123 (heuristique = 1000)"
+     "heuristic 54.5 % [49–60] sur 288 parties (seuil 0 % OK)",
+     "u007650 61.8 % [56–67] sur 288 parties (seuil 0 % OK)",
+     "u008625 49.3 % [44–55] sur 288 parties (seuil 0 % OK)",
+     "u008650 51.4 % [46–57] sur 288 parties (seuil 0 % OK)",
+     "u008675 52.4 % [47–58] sur 288 parties (seuil 0 % OK)",
+     "Elo 1064 (heuristique = 1000)"
+    ]
+   },
+   {
+    "update": 8800,
+    "level": "5-ligue",
+    "passed": true,
+    "results": [
+     "heuristic 61.8 % [56–67] sur 288 parties (seuil 0 % OK)",
+     "u007650 61.5 % [56–67] sur 288 parties (seuil 0 % OK)",
+     "u008725 50.7 % [45–56] sur 288 parties (seuil 0 % OK)",
+     "u008750 54.9 % [49–61] sur 288 parties (seuil 0 % OK)",
+     "u008775 49.7 % [44–55] sur 288 parties (seuil 0 % OK)",
+     "Elo 1089 (heuristique = 1000)"
+    ]
+   },
+   {
+    "update": 8900,
+    "level": "5-ligue",
+    "passed": true,
+    "results": [
+     "heuristic 58.0 % [52–64] sur 288 parties (seuil 0 % OK)",
+     "u007650 58.3 % [53–64] sur 288 parties (seuil 0 % OK)",
+     "u008825 53.8 % [48–59] sur 288 parties (seuil 0 % OK)",
+     "u008850 51.4 % [46–57] sur 288 parties (seuil 0 % OK)",
+     "u008875 50.0 % [44–56] sur 288 parties (seuil 0 % OK)",
+     "Elo 1063 (heuristique = 1000)"
     ]
    }
   ]
  },
- "sha256": "9cb25294b7aff37ea7ac4d041bc4436e14c26c7196633b06c24acac822e4c5f5",
+ "sha256": "0745c621050779f0afe2395092830aaf1943a87e6962efb68fd2cbb1511aab66",
  "check": {
   "onnxruntime": {
    "observations": 300,
-   "max_prob_diff": 7.3909759521484375e-06,
-   "max_value_diff": 9.238719940185547e-07,
+   "max_prob_diff": 6.556510925292969e-06,
+   "max_value_diff": 3.084540367126465e-06,
    "same_best_option": 1.0
   },
   "browser": {
    "games": 3,
-   "decisions": 204,
-   "max_prob_diff": 1.0062426330892382e-05,
-   "max_value_diff": 1.6242265701293945e-06,
+   "decisions": 200,
+   "max_prob_diff": 1.8759212593089103e-05,
+   "max_value_diff": 3.2186508178710938e-06,
    "option_mismatches": 0,
-   "browser_ms_per_decision": 4.6517720588235285
+   "browser_ms_per_decision": 4.0742085
   }
  }
 }

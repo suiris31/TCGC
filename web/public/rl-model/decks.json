@@ -1,0 +1,94 @@
+{
+ "decks": {
+  "META-ENEL-2026-10": {
+   "name": "deck-META-ENEL-2026-10",
+   "update": 300,
+   "createdAt": "2026-10-15 10:13:12",
+   "specHash": "a0664ced"
+  },
+  "META-KAIDO-2026-10": {
+   "name": "deck-META-KAIDO-2026-10",
+   "update": 300,
+   "createdAt": "2026-10-15 10:13:39",
+   "specHash": "a0664ced"
+  },
+  "META-MIHAWK-2026-10": {
+   "name": "deck-META-MIHAWK-2026-10",
+   "update": 300,
+   "createdAt": "2026-10-15 10:11:50",
+   "specHash": "a0664ced"
+  },
+  "META-ROBIN-2026-10": {
+   "name": "deck-META-ROBIN-2026-10",
+   "update": 300,
+   "createdAt": "2026-10-15 10:12:19",
+   "specHash": "a0664ced"
+  },
+  "META-SABO-2026-10": {
+   "name": "deck-META-SABO-2026-10",
+   "update": 300,
+   "createdAt": "2026-10-15 10:11:23",
+   "specHash": "a0664ced"
+  },
+  "META-XEBEC-2026-10": {
+   "name": "deck-META-XEBEC-2026-10",
+   "update": 300,
+   "createdAt": "2026-10-15 10:12:46",
+   "specHash": "a0664ced"
+  },
+  "ST-21": {
+   "name": "deck-ST-21",
+   "update": 300,
+   "createdAt": "2026-10-15 10:14:06",
+   "specHash": "a0664ced"
+  },
+  "ST-22": {
+   "name": "deck-ST-22",
+   "update": 300,
+   "createdAt": "2026-10-15 10:14:33",
+   "specHash": "a0664ced"
+  },
+  "ST-30": {
+   "name": "deck-ST-30",
+   "update": 300,
+   "createdAt": "2026-10-15 10:15:00",
+   "specHash": "a0664ced"
+  },
+  "ST-31": {
+   "name": "deck-ST-31",
+   "update": 300,
+   "createdAt": "2026-10-15 10:09:09",
+   "specHash": "a0664ced"
+  },
+  "ST-32": {
+   "name": "deck-ST-32",
+   "update": 300,
+   "createdAt": "2026-10-15 10:09:35",
+   "specHash": "a0664ced"
+  },
+  "ST-33": {
+   "name": "deck-ST-33",
+   "update": 300,
+   "createdAt": "2026-10-15 10:10:00",
+   "specHash": "a0664ced"
+  },
+  "ST-34": {
+   "name": "deck-ST-34",
+   "update": 300,
+   "createdAt": "2026-10-15 10:10:29",
+   "specHash": "a0664ced"
+  },
+  "ST-35": {
+   "name": "deck-ST-35",
+   "update": 300,
+   "createdAt": "2026-10-15 10:08:43",
+   "specHash": "a0664ced"
+  },
+  "ST-36": {
+   "name": "deck-ST-36",
+   "update": 300,
+   "createdAt": "2026-10-15 10:10:56",
+   "specHash": "a0664ced"
+  }
+ }
+}
