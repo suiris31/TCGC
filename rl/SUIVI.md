@@ -10,7 +10,9 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
   rien d'autre), avec la seule information d'un joueur, entraînable sur le PC (`python train.py`), jouable dans le
   simulateur (niveau « IA entraînée », ONNX dans le navigateur).
 - **Code** : sur `main` (le dossier de l'entraînement, `TCGC/`, suit `main` sur la branche `claude/awesome-hopper-nj0x4y`).
-- **En ligne** : modèle u7713 (12 octobre 2026, niveau 5, commit `da638e7`), mis en ligne par l'utilisateur.
+- **En ligne** (15 octobre 2026, commit `ba9ebcc`, mis en ligne par l'utilisateur, vérifié dans le simulateur) :
+  modèle général u8959 et les 15 IA spécialisées par deck à u300 (`web/public/rl-model/decks/`). Avant : u7713
+  (`da638e7`).
 - **Entraînement général terminé** (14 octobre 2026) : `rtx2070-main` arrêté à **u8959** (niveau 5, ligue, ~2,04 millions
   de parties, 12 decks), vrai catalogue (2 785 cartes), encodage `a0664ced` (version 4). Il est figé et sert de
   départ aux **IA spécialisées par deck** (décision 15, `rl/README.md` § 16) : une IA par deck, entraînée sur le PC
