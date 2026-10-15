@@ -53,9 +53,11 @@ class Agent:
     @torch.no_grad()
     def act(self, obs: list[Obs], rng: np.random.Generator, greedy: bool = False, temperature: float = 1.0,
             chunk: int = 1024):
-        """Choix pour chaque observation : (rangs choisis, log-prob, valeurs, probabilités par observation)."""
-        was_training = self.model.training
-        self.model.eval()
+        """Choix pour chaque observation : (rangs choisis, log-prob, valeurs, probabilités par observation). Le réseau
+        reste en mode évaluation (il n'a aucun hasard interne : même résultat ; repasser en mode apprentissage à chaque
+        coup parcourait toutes ses couches deux fois, mesuré) ; ppo_update le remet en mode apprentissage."""
+        if self.model.training:
+            self.model.eval()
         actions, logps, values, probs = [], [], [], []
         for start in range(0, len(obs), chunk):
             part = obs[start:start + chunk]
@@ -64,8 +66,10 @@ class Agent:
             if temperature != 1.0 and not greedy:
                 logits = torch.where(batch["opt_mask"] > 0, logits / temperature, logits)
             p, logp = masked_distribution(logits, batch["opt_mask"])
-            p = p.float().cpu().numpy()
-            logp = logp.float().cpu().numpy()
+            # une seule copie vers l'ordinateur (probabilités, log-probabilités, valeurs)
+            B, A = p.shape
+            flat = torch.cat([p.float().flatten(), logp.float().flatten(), value.float()]).cpu().numpy()
+            p, logp, value = flat[:B * A].reshape(B, A), flat[B * A:2 * B * A].reshape(B, A), flat[2 * B * A:]
             for i, o in enumerate(part):
                 pi = p[i, :o.a].astype(np.float64)
                 pi /= pi.sum()
@@ -73,8 +77,7 @@ class Agent:
                 actions.append(a)
                 logps.append(float(logp[i, a]))
                 probs.append(pi)
-            values.extend(value.float().cpu().numpy().tolist())
-        self.model.train(was_training)
+            values.extend(value.tolist())
         return actions, logps, values, probs
 
     @torch.no_grad()

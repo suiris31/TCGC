@@ -40,6 +40,7 @@ ppo:
   max_grad_norm: 0.5
   target_kl: 0.03          # arrêt anticipé d'une mise à jour qui changerait trop la politique
   normalize_advantages: true
+  amp: false               # demi-précision sur GPU NVIDIA (float16, cœurs Tensor) : plus rapide, même apprentissage
 
 train:
   max_updates: 100000      # arrêt après ce nombre de mises à jour (toutes phases confondues)

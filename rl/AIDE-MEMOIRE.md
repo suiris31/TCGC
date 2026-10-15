@@ -35,10 +35,10 @@ une liste séparée par des virgules.
 | Prolonger un deck déjà entraîné | `python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600` |
 | Reprendre après un arrêt | la même commande qu'au départ |
 | Les 6 decks du méta, l'un après l'autre | `python train_decks.py --config gpu --decks meta` |
-| Les 15 decks, deux à la fois | `python train_decks.py --config gpu --decks all --parallel 2` |
+| Les 15 decks, trois à la fois (le plus rapide) | `python train_decks.py --config gpu --decks all --parallel 3` |
 | Quelques decks choisis | `python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10` |
 | Une file avec plus de mises à jour par deck | `python train_decks.py --config gpu --decks meta --max-updates 500` |
-| Tous les decks ensemble, par paliers de 100 (~5 h le palier) | `python train_decks.py --config gpu --decks all --parallel 2 --max-updates 900 --step 100` |
+| Tous les decks ensemble, par paliers de 100 (~3 h le palier) | `python train_decks.py --config gpu --decks all --parallel 3 --max-updates 900 --step 100` |
 | Arrêter proprement | **Ctrl+C** une fois (finit la mise à jour, sauvegarde) ; une 2ᵉ fois : tout de suite |
 
 Ordre conseillé (decks que le modèle général joue le moins bien d'abord) :
@@ -49,17 +49,18 @@ python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10,
 
 Bon à savoir :
 
-- Seul : ~13 s par mise à jour (~1 h 10 pour 300). Deux à la fois : ~20 % plus rapide au total, mais les messages vont
-  dans `console.txt`. Trois à la fois : pas mieux qu'à deux. Les 15 à la fois ne tiennent pas dans le GPU.
+- Le plus rapide sur le PC : **`--parallel 3`** (~20,5 s par mise à jour chacun, 3,5 fois le débit d'avant
+  l'optimisation). Seul : ~14 s par mise à jour. À 4 : pas mieux qu'à 3. Les 15 à la fois ne tiennent pas dans le
+  GPU. En parallèle, les messages vont dans `console.txt`.
 - Pour que tous les decks avancent ensemble : `--step` (par paliers), pas `--parallel 15`.
 - Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire ») : relancer une file la reprend là
   où elle en était.
 - Chaque deck a ses dossiers : `checkpoints\deck-<deck>\` et `logs\deck-<deck>\`.
-- Au départ, une évaluation de référence (le modèle général qui joue ce deck), puis une évaluation toutes les 50 mises à
-  jour (~1 à 2 min).
+- Au départ, une évaluation de référence (le modèle général qui joue ce deck), puis une évaluation toutes les 100 mises
+  à jour (~1 à 2 min).
 - **Ligue des spécialistes** : chaque IA de deck affronte aussi les IA des autres decks déjà entraînées (dernier point
   de sauvegarde, relu à chaque évaluation). Plus il y a de decks entraînés, plus les adversaires jouent leur deck comme
-  il faut. Si c'est trop lent : ajouter `--set specialize.experts_per_update=2`.
+  il faut (60 % des parties ; 2 IA adverses par mise à jour, tirées au sort à chaque fois).
 
 ## Suivre
 

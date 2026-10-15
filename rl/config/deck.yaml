@@ -5,10 +5,15 @@
 specialize:
   base: rtx2070-main         # modèle de départ : nom d'entraînement (son dernier point de sauvegarde) ou fichier .pt
   experts_run: "deck-{deck}" # ligue des spécialistes : où trouver l'IA spécialisée de chaque deck adverse
-  experts_per_update: 4      # IA spécialisées adverses qui jouent pendant une mise à jour (chacune ralentit un peu)
+  experts_per_update: 2      # IA spécialisées adverses par mise à jour (chacune ralentit : 2 au lieu de 4, +33 % mesuré)
+
+env:
+  envs_per_worker: 64        # deux fois plus de parties à la fois : deux fois moins de calculs du réseau par mise à jour
+  eval_envs_per_worker: 16   # évaluations ~4 fois plus rapides
 
 ppo:
   lr: 0.0001                 # celui de la fin de l'entraînement général
+  amp: true                  # apprentissage en demi-précision (GPU NVIDIA) : ~2 fois plus rapide, même mise à jour
 
 train:
   max_updates: 300           # à prolonger avec --max-updates tant que les évaluations progressent
@@ -16,14 +21,14 @@ train:
 curriculum:
   levels:
     - name: "deck"
-      # les autres IA spécialisées qui jouent leur deck comme il faut (« experts », ligue des spécialistes, relue à
-      # chaque évaluation ; un deck qui n'a pas encore la sienne est joué par le modèle général), le modèle général figé
-      # (« base » : il joue bien tous les decks), l'IA heuristique (autre façon de jouer), et le modèle lui-même en
-      # miroir (même deck des deux côtés : les deux côtés apprennent ce deck)
-      opponents: [{kind: experts, weight: 0.35}, {kind: base, weight: 0.25}, {kind: heuristic, weight: 0.3}, {kind: self, weight: 0.1}]
+      # surtout les autres IA spécialisées, qui jouent leur deck comme il faut (« experts », ligue des spécialistes,
+      # relue à chaque évaluation ; un deck qui n'a pas encore la sienne est joué par le modèle général) ; un peu de
+      # modèle général figé (« base ») et d'IA heuristique : des adversaires qui ne changent pas, pour ne pas tourner en
+      # rond ni oublier d'autres façons de jouer ; et le modèle lui-même en miroir (les deux côtés apprennent ce deck)
+      opponents: [{kind: experts, weight: 0.6}, {kind: heuristic, weight: 0.15}, {kind: base, weight: 0.15}, {kind: self, weight: 0.1}]
       decks: all                 # decks adverses
       max_updates: 0
-      eval_every: 50
+      eval_every: 100            # une évaluation par palier de 100 (train_decks.py --step 100)
       gate:                      # suivi, pas de passage : ce deck contre l'heuristique, le modèle général (repères
         - {opponent: heuristic, min_winrate: 0.0}     # fixes) et les autres IA spécialisées (repère qui monte avec
         - {opponent: base, min_winrate: 0.0}          # leurs progrès)

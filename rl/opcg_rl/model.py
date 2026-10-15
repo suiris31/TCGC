@@ -155,6 +155,8 @@ class PolicyValueNet(nn.Module):
         t2 = torch.gather(tokens, 1, idx[..., 1:2].expand(B, A, d))
         h = self.score_opt(self.opt(opt)) + self.score_ref(t1) + self.score_target(t2) + self.score_ctx(g).unsqueeze(1)
         logits = self.score_out(F.gelu(h)).squeeze(-1)
+        if logits.dtype != torch.float32:      # demi-précision (ppo.amp) : NEG ne tient pas en float16
+            logits = logits.float()
         logits = torch.where(opt_mask > 0, logits, torch.full_like(logits, NEG))
         value = torch.tanh(self.value(g)).squeeze(-1)
         return logits, value

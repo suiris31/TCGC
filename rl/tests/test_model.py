@@ -366,3 +366,87 @@ def test_experts_play_their_own_deck_or_the_general_model():
     c.experts = []
     c._new_game(99)
     assert c.games[99].opponent.kind == "base" and "snap:base" in c.games[99].controllers, "pas encore d'IA : le modèle général"
+
+
+def _reference_collate(static, to_vocab, items, with_options=True):
+    """Mise en lot d'avant la version vectorisée (une boucle par observation), gardée comme référence."""
+    B = len(items)
+    na_list = [int((o.group == 0).sum()) for o in items]
+    Na = max(1, max(na_list))
+    Np = max(1, max(o.n - na for o, na in zip(items, na_list)))
+    A = max(1, max(o.a for o in items)) if with_options else 1
+    D, G, O = items[0].dyn.shape[1], items[0].glob.shape[0], items[0].opt.shape[1]
+    a_keep, p_keep = np.ones((B, Na), np.int64), np.ones((B, Np), np.int64)
+    a_idx, a_dyn, a_mask = np.zeros((B, Na), np.int64), np.zeros((B, Na, D), np.float32), np.zeros((B, Na), np.float32)
+    p_idx, p_dyn = np.zeros((B, Np), np.int64), np.zeros((B, Np, D), np.float32)
+    p_group, p_mask = np.zeros((B, Np), np.int64), np.zeros((B, Np), np.float32)
+    glob, opt = np.zeros((B, G), np.float32), np.zeros((B, A, O), np.float32)
+    ptr, opt_mask = np.full((B, A, 2), -1, np.int64), np.zeros((B, A), np.float32)
+    for i, (o, na) in enumerate(zip(items, na_list)):
+        n, a = o.n, o.a
+        a_idx[i, :na] = o.card_idx[:na]
+        if o.id_keep is not None:
+            a_keep[i, :na] = o.id_keep[:na]
+            p_keep[i, :n - na] = o.id_keep[na:]
+        a_dyn[i, :na] = o.dyn[:na]
+        a_mask[i, :na] = 1
+        p_idx[i, :n - na] = o.card_idx[na:]
+        p_dyn[i, :n - na] = o.dyn[na:]
+        p_group[i, :n - na] = o.group[na:]
+        p_mask[i, :n - na] = 1
+        glob[i] = o.glob
+        if with_options and a:
+            opt[i, :a] = o.opt
+            q = o.ptr.astype(np.int64)
+            ptr[i, :a] = np.where(q < na, q, Na + (q - na))
+            opt_mask[i, :a] = 1
+    t = {k: torch.from_numpy(v) for k, v in dict(a_idx=a_idx, a_dyn=a_dyn, a_mask=a_mask, p_idx=p_idx, p_dyn=p_dyn,
+                                                p_group=p_group, p_mask=p_mask, glob=glob, opt=opt, ptr=ptr,
+                                                opt_mask=opt_mask).items()}
+    t["a_ids"] = to_vocab[t["a_idx"]] * torch.from_numpy(a_keep)
+    t["p_ids"] = to_vocab[t["p_idx"]] * torch.from_numpy(p_keep)
+    return t
+
+
+def _random_obs(rng, compact):
+    from opcg_rl.obs import Obs
+    n = int(rng.integers(1, 30))
+    na = int(rng.integers(0, n + 1))
+    a = int(rng.integers(0, 9))
+    dt = np.float16 if compact else np.float32
+    group = np.concatenate([np.zeros(na, np.int32), rng.integers(1, 4, n - na).astype(np.int32)])
+    return Obs(rng.integers(0, 50, n).astype(np.int32), group, rng.random((n, D)).astype(dt), rng.random(G).astype(np.float32),
+               rng.random((a, O)).astype(dt), rng.integers(-1, n, (a, 2)).astype(np.int32),
+               id_keep=None if rng.random() < 0.5 else rng.integers(0, 2, n).astype(np.int64))
+
+
+def test_vectorized_collate_and_packed_batches_equal_the_reference():
+    from opcg_rl.obs import Collator, Packed
+    rng = np.random.default_rng(7)
+    static, to_vocab = rng.random((50, S)).astype(np.float32), rng.integers(0, 20, 50)
+    col = Collator(static, to_vocab, torch.device("cpu"))
+    # sur GPU aussi : envoi groupé (Collator.to_device) et lots gardés sur l'appareil
+    devices = [torch.device("cpu")] + ([torch.device("cuda")] if torch.cuda.is_available() else [])
+    for dev in devices:
+        c = Collator(static, to_vocab, dev)
+        for compact in (False, True):
+            items = [_random_obs(rng, compact) for _ in range(300)]
+            packed = Packed(c, items)
+            for trial in range(20):
+                idx = rng.choice(len(items), size=int(rng.integers(1, 64)), replace=False)
+                sub = [items[i] for i in idx]
+                for with_options in (True, False):
+                    ref = _reference_collate(static, col.to_vocab, sub, with_options)
+                    for got in (c(sub, with_options), packed.batch(idx, torch.from_numpy(idx).to(dev), with_options)):
+                        assert set(got) == set(ref)
+                        for k in ref:
+                            g = got[k].cpu()
+                            assert g.dtype == ref[k].dtype and torch.equal(g, ref[k]), (k, dev, compact, with_options)
+    bad = _random_obs(rng, False)
+    bad.group[:] = 1
+    bad.group[-1] = 0
+    try:
+        col([bad])
+        raise AssertionError("cartes individuelles après les zones résumées : refusé")
+    except ValueError:
+        pass

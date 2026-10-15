@@ -83,57 +83,153 @@ class Collator:
         self.to_vocab = torch.as_tensor(table_to_vocab, dtype=torch.long, device=device)
         self.device = device
 
-    def __call__(self, items: list[Obs], with_options: bool = True) -> dict[str, torch.Tensor]:
+    def pack(self, items: list[Obs], with_options: bool = True, raw_ptr: bool = False,
+             dtype: type | None = np.float32) -> dict[str, np.ndarray]:
+        """Le lot en tableaux numpy, sans boucle Python par observation (concaténations puis affectations indexées) ;
+        aussi le nombre de cartes individuelles (na), résumées (npool) et d'options (a) de chaque observation.
+        raw_ptr : pointeurs laissés tels qu'encodés (Packed les renumérote par micro-lot) ; dtype : type des
+        caractéristiques dynamiques et des options (None : celui des observations)."""
         B = len(items)
-        na_list = [int((o.group == 0).sum()) for o in items]
-        Na = max(1, max(na_list))
-        Np = max(1, max(o.n - na for o, na in zip(items, na_list)))
-        A = max(1, max(o.a for o in items)) if with_options else 1
-        D = items[0].dyn.shape[1]
-        G = items[0].glob.shape[0]
+        n = np.fromiter((o.card_idx.shape[0] for o in items), np.int64, B)
+        a = np.fromiter((o.opt.shape[0] for o in items), np.int64, B) if with_options else np.zeros(B, np.int64)
+        group = np.concatenate([o.group for o in items]).astype(np.int64)
+        start = np.zeros(B + 1, np.int64)
+        np.cumsum(n, out=start[1:])
+        is0 = group == 0
+        c0 = np.zeros(len(group) + 1, np.int64)
+        np.cumsum(is0, out=c0[1:])
+        na = c0[start[1:]] - c0[start[:-1]]
+        row = np.repeat(np.arange(B), n)
+        pos = np.arange(len(group)) - start[:-1][row]          # rang de la carte dans son observation
+        na_r = na[row]
+        indiv = pos < na_r
+        if (~is0 & indiv).any():
+            raise ValueError("observation : cartes individuelles après les zones résumées")
+        pool = ~indiv
+        npool = n - na
+        Na = max(1, int(na.max()))
+        Np = max(1, int(npool.max()))
+        A = max(1, int(a.max())) if with_options else 1
+        card = np.concatenate([o.card_idx for o in items]).astype(np.int64)
+        dyn = np.concatenate([o.dyn for o in items])
+        dt = dyn.dtype if dtype is None else dtype
+        D = dyn.shape[1]
         O = items[0].opt.shape[1] if items[0].opt.ndim == 2 else 0
+        ri, pi = row[indiv], pos[indiv]
+        rp, pp = row[pool], (pos - na_r)[pool]
+        a_idx = np.zeros((B, Na), np.int64)
+        a_idx[ri, pi] = card[indiv]
+        a_dyn = np.zeros((B, Na, D), dt)
+        a_dyn[ri, pi] = dyn[indiv]
+        a_mask = np.zeros((B, Na), np.float32)
+        a_mask[ri, pi] = 1
+        p_idx = np.zeros((B, Np), np.int64)
+        p_idx[rp, pp] = card[pool]
+        p_dyn = np.zeros((B, Np, D), dt)
+        p_dyn[rp, pp] = dyn[pool]
+        p_group = np.zeros((B, Np), np.int64)
+        p_group[rp, pp] = group[pool]
+        p_mask = np.zeros((B, Np), np.float32)
+        p_mask[rp, pp] = 1
         a_keep = np.ones((B, Na), np.int64)
         p_keep = np.ones((B, Np), np.int64)
-        a_idx = np.zeros((B, Na), np.int64)
-        a_dyn = np.zeros((B, Na, D), np.float32)
-        a_mask = np.zeros((B, Na), np.float32)
-        p_idx = np.zeros((B, Np), np.int64)
-        p_dyn = np.zeros((B, Np, D), np.float32)
-        p_group = np.zeros((B, Np), np.int64)
-        p_mask = np.zeros((B, Np), np.float32)
-        glob = np.zeros((B, G), np.float32)
-        opt = np.zeros((B, A, O), np.float32)
+        if any(o.id_keep is not None for o in items):
+            keep = np.concatenate([o.id_keep if o.id_keep is not None else np.ones(o.card_idx.shape[0], np.int64)
+                                   for o in items]).astype(np.int64)
+            a_keep[ri, pi] = keep[indiv]
+            p_keep[rp, pp] = keep[pool]
+        glob = np.stack([o.glob for o in items]).astype(np.float32, copy=False)
+        opt = np.zeros((B, A, O), dt)
         ptr = np.full((B, A, 2), -1, np.int64)
         opt_mask = np.zeros((B, A), np.float32)
-        for i, (o, na) in enumerate(zip(items, na_list)):
-            n, a = o.n, o.a
-            if na and o.group[:na].any():
-                raise ValueError("observation : cartes individuelles après les zones résumées")
-            a_idx[i, :na] = o.card_idx[:na]
-            if o.id_keep is not None:
-                a_keep[i, :na] = o.id_keep[:na]
-                p_keep[i, :n - na] = o.id_keep[na:]
-            a_dyn[i, :na] = o.dyn[:na]
-            a_mask[i, :na] = 1
-            npool = n - na
-            p_idx[i, :npool] = o.card_idx[na:]
-            p_dyn[i, :npool] = o.dyn[na:]
-            p_group[i, :npool] = o.group[na:]
-            p_mask[i, :npool] = 1
-            glob[i] = o.glob
-            if with_options and a:
-                opt[i, :a] = o.opt
-                q = o.ptr.astype(np.int64)
-                ptr[i, :a] = np.where(q < na, q, Na + (q - na))
-                opt_mask[i, :a] = 1
-        dev = self.device
-        a_t = torch.from_numpy(a_idx).to(dev)
-        p_t = torch.from_numpy(p_idx).to(dev)
+        if with_options and a.sum():
+            astart = np.zeros(B + 1, np.int64)
+            np.cumsum(a, out=astart[1:])
+            orow = np.repeat(np.arange(B), a)
+            opos = np.arange(int(a.sum())) - astart[:-1][orow]
+            opt[orow, opos] = np.concatenate([o.opt for o in items])
+            q = np.concatenate([o.ptr for o in items]).astype(np.int64)
+            if not raw_ptr:
+                nq = na[orow][:, None]
+                q = np.where(q < nq, q, Na + (q - nq))
+            ptr[orow, opos] = q
+            opt_mask[orow, opos] = 1
+        return {"a_idx": a_idx, "a_dyn": a_dyn, "a_mask": a_mask, "a_keep": a_keep, "p_idx": p_idx, "p_dyn": p_dyn,
+                "p_group": p_group, "p_mask": p_mask, "p_keep": p_keep, "glob": glob, "opt": opt, "ptr": ptr,
+                "opt_mask": opt_mask, "na": na, "npool": npool, "a": a}
+
+    def __call__(self, items: list[Obs], with_options: bool = True) -> dict[str, torch.Tensor]:
+        x = self.pack(items, with_options)
+        t = self.to_device({k: v for k, v in x.items() if k not in ("na", "npool", "a")})
         return {
-            "a_idx": a_t, "a_dyn": torch.from_numpy(a_dyn).to(dev), "a_ids": self.to_vocab[a_t] * torch.from_numpy(a_keep).to(dev),
-            "a_mask": torch.from_numpy(a_mask).to(dev),
-            "p_idx": p_t, "p_dyn": torch.from_numpy(p_dyn).to(dev), "p_ids": self.to_vocab[p_t] * torch.from_numpy(p_keep).to(dev),
-            "p_group": torch.from_numpy(p_group).to(dev), "p_mask": torch.from_numpy(p_mask).to(dev),
-            "glob": torch.from_numpy(glob).to(dev), "opt": torch.from_numpy(opt).to(dev),
-            "ptr": torch.from_numpy(ptr).to(dev), "opt_mask": torch.from_numpy(opt_mask).to(dev),
+            "a_idx": t["a_idx"], "a_dyn": t["a_dyn"], "a_ids": self.to_vocab[t["a_idx"]] * t["a_keep"], "a_mask": t["a_mask"],
+            "p_idx": t["p_idx"], "p_dyn": t["p_dyn"], "p_ids": self.to_vocab[t["p_idx"]] * t["p_keep"],
+            "p_group": t["p_group"], "p_mask": t["p_mask"], "glob": t["glob"], "opt": t["opt"], "ptr": t["ptr"],
+            "opt_mask": t["opt_mask"],
         }
+
+
+    def to_device(self, arrays: dict[str, np.ndarray]) -> dict[str, torch.Tensor]:
+        """Tableaux envoyés sur l'appareil en deux copies (entiers, décimaux) redécoupées sur place : chaque copie vers
+        le GPU a un coût fixe (~0,3 ms sous Windows), treize par lot coûtaient plus que le calcul du réseau (mesuré)."""
+        if self.device.type == "cpu":
+            return {k: torch.from_numpy(v) for k, v in arrays.items()}
+        out: dict[str, torch.Tensor] = {}
+        for dtype in (np.int64, np.float32):
+            keys = [k for k, v in arrays.items() if v.dtype == dtype]
+            flat = torch.from_numpy(np.concatenate([arrays[k].ravel() for k in keys])).to(self.device)
+            at = 0
+            for k in keys:
+                size = arrays[k].size
+                out[k] = flat[at:at + size].view(arrays[k].shape)
+                at += size
+        for k, v in arrays.items():
+            if k not in out:
+                out[k] = torch.from_numpy(v).to(self.device)
+        return out
+
+
+class Packed:
+    """Les observations d'une mise à jour, mises en lot une seule fois et gardées sur l'appareil du modèle (GPU) :
+    chaque micro-lot en est une sélection, complétée à sa propre plus grande observation, pointeurs renumérotés en
+    conséquence — exactement le lot que ferait Collator sur ces observations, sans repasser par Python ni par la
+    mémoire de l'ordinateur à chaque passe d'apprentissage. Caractéristiques gardées dans leur type (float16 pour les
+    observations gardées, voir Obs.compact), converties en float32 par micro-lot."""
+
+    def __init__(self, collate: Collator, items: list[Obs]):
+        x = collate.pack(items, raw_ptr=True, dtype=None)
+        self.collate = collate
+        self.na, self.npool, self.n_opts = x.pop("na"), x.pop("npool"), x.pop("a")
+        dev = collate.device
+        self.t = {k: torch.from_numpy(v).to(dev) for k, v in x.items()}
+        self.t["na"] = torch.from_numpy(self.na).to(dev)
+
+    def __len__(self) -> int:
+        return len(self.na)
+
+    def batch(self, idx: np.ndarray, idx_t: torch.Tensor, with_options: bool = True) -> dict[str, torch.Tensor]:
+        """Lot des observations de rangs idx (idx_t : les mêmes rangs, déjà sur l'appareil)."""
+        Na = max(1, int(self.na[idx].max()))
+        Np = max(1, int(self.npool[idx].max()))
+        t = self.t
+        to_vocab = self.collate.to_vocab
+        a_idx = t["a_idx"][idx_t, :Na]
+        p_idx = t["p_idx"][idx_t, :Np]
+        out = {
+            "a_idx": a_idx, "a_dyn": t["a_dyn"][idx_t, :Na].float(), "a_ids": to_vocab[a_idx] * t["a_keep"][idx_t, :Na],
+            "a_mask": t["a_mask"][idx_t, :Na],
+            "p_idx": p_idx, "p_dyn": t["p_dyn"][idx_t, :Np].float(), "p_ids": to_vocab[p_idx] * t["p_keep"][idx_t, :Np],
+            "p_group": t["p_group"][idx_t, :Np], "p_mask": t["p_mask"][idx_t, :Np], "glob": t["glob"][idx_t],
+        }
+        if with_options:
+            A = max(1, int(self.n_opts[idx].max()))
+            q = t["ptr"][idx_t, :A]
+            nq = t["na"][idx_t].view(-1, 1, 1)
+            out.update(opt=t["opt"][idx_t, :A].float(), ptr=torch.where(q < nq, q, Na + (q - nq)),
+                       opt_mask=t["opt_mask"][idx_t, :A])
+        else:
+            B, O = len(idx), t["opt"].shape[2]
+            dev = idx_t.device
+            out.update(opt=torch.zeros(B, 1, O, device=dev), ptr=torch.full((B, 1, 2), -1, dtype=torch.long, device=dev),
+                       opt_mask=torch.zeros(B, 1, device=dev))
+        return out

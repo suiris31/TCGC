@@ -249,6 +249,20 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    chargent comme adversaires. Prolongation proposée : `train_decks.py --config gpu --decks all --parallel 2
    --max-updates 900 --step 100` (paliers de 100, ~5 h le palier ; l'utilisateur voulait que tous les decks évoluent
    ensemble : `--parallel 15` ne tient pas dans le GPU, d'où les paliers).
+17. **Optimisation de la vitesse** (15 octobre 2026, demande de l'utilisateur : le meilleur rapport temps/gain). Mesures
+   sur le PC avec la ligue des 15 IA (débit : décisions apprises par seconde) : la ligue (4 IA adverses par mise à jour)
+   ralentissait la collecte de 5,5 à 14,5 s par mise à jour (24 s en tout, ~670/s). Profilage : 13 copies vers le GPU
+   par coup et par réseau (~0,3 ms chacune sous Windows), mise en lot en Python refaite à chaque passe d'apprentissage,
+   attentes du GPU à chaque micro-lot, réseau repassé en mode apprentissage à chaque coup. Corrigé sans changer
+   l'apprentissage (tests : lots identiques à l'octet près à l'ancienne mise en lot, sur CPU et GPU ; mise à jour en
+   demi-précision identique à 5 % près à celle en float32) : mise en lot vectorisée (2 copies par coup), lots d'une
+   mise à jour faits une fois et gardés sur le GPU (`obs.Packed`), une attente du GPU par lot, apprentissage en
+   demi-précision (`ppo.amp` ; pas pour jouer, plus lent sur les petits lots). Réglages (`config/deck.yaml`) : 64
+   parties par processus Node, 2 IA adverses par mise à jour (au lieu de 4 : +33 %), évaluations sur 16 parties à la
+   fois par processus et toutes les 100 mises à jour, adversaires 60 % IA spécialisées / 15 % heuristique / 15 % modèle
+   général / 10 % miroir. Parallèle : 1 → ~1 160/s, 2 → ~1 520/s, 3 → ~2 390/s (réglages actuels, ×3,5), 4 → pas mieux
+   qu'à 3 (simulation à court de cœurs). Prolongation conseillée : `train_decks.py --config gpu --decks all --parallel 3
+   --max-updates 900 --step 100` (~3 h le palier, ~19 h jusqu'à 900).
 
 ## 4. Commandes
 
@@ -276,7 +290,7 @@ Ne pas ajouter `--level` (remet le compteur du niveau à zéro) ni `--fresh` (re
 ```powershell
 python train.py --config gpu --deck META-ROBIN-2026-10                   # un deck, 300 mises à jour (~1 h 10)
 python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600 # prolonger
-python train_decks.py --config gpu --decks meta --parallel 2             # les 6 decks du méta, deux à la fois
+python train_decks.py --config gpu --decks meta --parallel 3             # les 6 decks du méta, trois à la fois
 python report.py --run deck-META-ROBIN-2026-10                           # suivre
 python export_onnx.py --checkpoint deck-META-ROBIN-2026-10 --install     # installer (web/public/rl-model/decks/)
 ```

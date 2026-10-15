@@ -1,14 +1,14 @@
 """IA spécialisées de plusieurs decks, l'une après l'autre ou plusieurs en même temps (README § 16).
 
     python train_decks.py --config gpu --decks all                     # les decks du registre, un par un
-    python train_decks.py --config gpu --decks meta --parallel 2       # les decks du méta, deux à la fois
+    python train_decks.py --config gpu --decks meta --parallel 3       # les decks du méta, trois à la fois
     python train_decks.py --config gpu --decks META-ROBIN-2026-10,ST-34 --max-updates 500
-    python train_decks.py --config gpu --decks all --parallel 2 --max-updates 900 --step 100   # tous ensemble, par paliers
+    python train_decks.py --config gpu --decks all --parallel 3 --max-updates 900 --step 100   # tous ensemble, par paliers
 
 Chaque deck est un entraînement `train.py --deck <deck>` (dossiers checkpoints/deck-<deck>/ et logs/deck-<deck>/) :
 un deck déjà commencé reprend où il s'était arrêté, un deck qui a atteint son nombre de mises à jour est passé ; la
 même commande relancée reprend donc toute la file. Plusieurs à la fois (--parallel) : les cœurs du processeur sont
-partagés (processus Node répartis), le débit total monte de ~20 % à deux, pas plus à trois ; leurs messages vont dans
+partagés (processus Node répartis) ; sur le PC, 3 à la fois est le plus rapide (README § 16) ; leurs messages vont dans
 logs/deck-<deck>/console.txt, seules les étapes s'affichent ici.
 
 Par paliers (--step N) : tous les decks avancent de N mises à jour chacun leur tour, puis de N encore, jusqu'à
@@ -51,7 +51,7 @@ def main() -> int:
     p.add_argument("--decks", required=True,
                    help="all (tous les decks du registre), meta (decks du méta), starter (decks pour débutant), ou "
                         "liste séparée par des virgules (ex. META-ROBIN-2026-10,ST-34)")
-    p.add_argument("--parallel", type=int, default=1, help="entraînements en même temps (2 : ~20 %% plus rapide au total ; 3 ou plus : pas mieux)")
+    p.add_argument("--parallel", type=int, default=1, help="entraînements en même temps (3 : le plus rapide sur le PC ; 4 : pas mieux)")
     p.add_argument("--max-updates", type=int, help="mises à jour par deck (défaut : train.max_updates de config/deck.yaml)")
     p.add_argument("--step", type=int, help="par paliers : tous les decks avancent de N mises à jour chacun leur tour, "
                                             "jusqu'à --max-updates")

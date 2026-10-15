@@ -233,6 +233,14 @@ def main() -> int:
     derived = ("static_dim", "dyn_dim", "glob_dim", "opt_dim", "vocab_size", "groups", "count_index")
     cfg["model"] = {k: v for k, v in model.cfg.to_dict().items() if k not in derived}   # celle du modèle réellement chargé
     agent = Agent(model, vocab, spec, device, "learner")
+    # demi-précision (ppo.amp) : apprentissage calculé en float16 sur GPU NVIDIA (cœurs Tensor) ; poids, optimiseur et
+    # pertes restent en float32. Pas pour jouer : les petits lots de chaque coup y sont plus lents (mesuré)
+    amp = bool(cfg["ppo"].get("amp")) and device.type == "cuda"
+    scaler = torch.amp.GradScaler("cuda") if amp else None
+    if amp:
+        if ckpt and ckpt.get("scaler"):
+            scaler.load_state_dict(ckpt["scaler"])
+        log("Demi-précision (ppo.amp) : apprentissage calculé en float16")
     log(f"Modèle : {parameter_count(model) / 1e6:.2f} M paramètres, vocabulaire de {len(vocab)} cartes, {json.dumps(model.cfg.to_dict())}")
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg["ppo"]["lr"], eps=1e-5)
     league = League(run_dir / "league", pfsp_power=cfg["train"]["pfsp_power"], max_snapshots=cfg["train"]["max_snapshots"])
@@ -333,6 +341,7 @@ def main() -> int:
             "model_state": model.state_dict(), "optimizer_state": optimizer.state_dict(), "model_config": model_config,
             "vocab": vocab, "spec_hash": spec.spec_hash, "engine": spec.engine, "synthetic": spec.synthetic,
             "state": state, "league": league.state(), "rng": ck.rng_states(rng), "config": cfg, "reason": reason,
+            "scaler": scaler.state_dict() if scaler else None,
             "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         path = ck.save_with_latest(run_dir, state["update"], payload, cfg["train"]["keep_checkpoints"], warn=log)
@@ -475,7 +484,7 @@ def main() -> int:
             t0 = time.perf_counter()
             trajs = collector.collect(int(cfg["ppo"]["steps_per_update"]))
             t_collect = time.perf_counter() - t0
-            learn = ppo_update(agent, optimizer, trajs, cfg["ppo"], rng, state["update"])
+            learn = ppo_update(agent, optimizer, trajs, cfg["ppo"], rng, state["update"], scaler)
             state["update"] += 1
             state["level_updates"] += 1
             roll = collector.stats.summary()

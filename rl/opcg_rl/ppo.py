@@ -12,6 +12,7 @@ de probabilités avec la politique qui a vraiment joué) et les valeurs sont rec
 """
 from __future__ import annotations
 
+import math
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -23,7 +24,7 @@ import torch.nn.functional as F
 from .envpool import EnvPool, StepResult
 from .league import League, OpponentChoice, choose_opponent
 from .model import entropy
-from .obs import Obs
+from .obs import Obs, Packed
 from .policy import Agent
 from .seeds import TrainSeeds
 
@@ -271,75 +272,96 @@ def compute_gae(trajs: list[Traj], values: np.ndarray, gamma: float, lam: float)
 
 
 def ppo_update(agent: Agent, optimizer: torch.optim.Optimizer, trajs: list[Traj], cfg: dict,
-               rng: np.random.Generator, version: int) -> dict:
+               rng: np.random.Generator, version: int, scaler: torch.amp.GradScaler | None = None) -> dict:
+    """Mise à jour PPO. Les observations sont mises en lot une fois (Packed, gardées sur le GPU) ; chaque micro-lot en
+    est une sélection identique à ce que ferait Collator. Une seule attente du GPU par lot d'apprentissage (pour le
+    seuil de kl). scaler : demi-précision (ppo.amp, GPU NVIDIA), sinon None."""
     model = agent.model
     steps = [d for t in trajs for d in t.steps]
-    obs = [d.obs for d in steps]
     t0 = time.perf_counter()
-    values = agent.values(obs)
-    adv, ret = compute_gae(trajs, values, cfg["gamma"], cfg["gae_lambda"])
-    actions = torch.tensor([d.action for d in steps], dtype=torch.long)
-    old_logp = torch.tensor([d.logp for d in steps], dtype=torch.float32)
-    adv_t = torch.from_numpy(adv)
-    ret_t = torch.from_numpy(ret.astype(np.float32))
+    dev = agent.device
+    amp = scaler is not None and scaler.is_enabled()
+    packed = Packed(agent.collate, [d.obs for d in steps])
     n = len(steps)
+    values = packed_values(agent, packed, amp)
+    adv, ret = compute_gae(trajs, values, cfg["gamma"], cfg["gae_lambda"])
+    actions = torch.tensor([d.action for d in steps], dtype=torch.long, device=dev)
+    old_logp = torch.tensor([d.logp for d in steps], dtype=torch.float32, device=dev)
+    adv_t = torch.from_numpy(adv).to(dev)
+    ret_t = torch.from_numpy(ret.astype(np.float32)).to(dev)
     mb = int(cfg["minibatch_size"])
     # micro-lots : un lot d'apprentissage est calculé en plusieurs morceaux dont les gradients s'additionnent (même
     # résultat qu'en une fois, mémoire du GPU bornée) ; observations de tailles voisines ensemble (moins de remplissage)
     micro = max(1, int(cfg.get("microbatch_size") or mb))
-    attended = np.array([int((o.group == 0).sum()) for o in obs])
+    attended = packed.na
     clip = cfg["clip"]
+    names = ("policy_loss", "value_loss", "entropy", "approx_kl", "clip_frac", "grad_norm")
     stats = defaultdict(list)
     model.train()
-    dev = agent.device
     stop = False
     for epoch in range(int(cfg["epochs"])):
         perm = rng.permutation(n)
+        # tous les micro-lots de cette passe, envoyés en une fois sur l'appareil
+        plan = []
         for start in range(0, n, mb):
             idx = perm[start:start + mb]
-            mb_adv = adv_t[idx]
-            if cfg.get("normalize_advantages", True) and len(idx) > 1:
-                mb_adv = (mb_adv - mb_adv.mean()) / (mb_adv.std() + 1e-8)
             order = np.argsort(attended[idx], kind="stable")
+            plan.append((idx, [idx[order[c0:c0 + micro]] for c0 in range(0, len(idx), micro)]))
+        flat_t = torch.from_numpy(np.concatenate([sub for _, subs in plan for sub in subs])).to(dev)
+        offset = 0
+        for idx, subs in plan:
+            idx_t = flat_t[offset:offset + len(idx)]          # les rangs du lot (dans l'ordre des micro-lots)
+            mb_adv = adv_t[idx_t]
+            normalize = cfg.get("normalize_advantages", True) and len(idx) > 1
+            mean, std = (mb_adv.mean(), mb_adv.std() + 1e-8) if normalize else (0.0, 1.0)
             optimizer.zero_grad(set_to_none=True)
-            acc: dict[str, float] = defaultdict(float)
-            for c0 in range(0, len(idx), micro):
-                part = order[c0:c0 + micro]
-                sub = idx[part]
+            acc = torch.zeros(len(names) - 1, device=dev)
+            for sub in subs:
+                sub_t = flat_t[offset:offset + len(sub)]
+                offset += len(sub)
                 w = len(sub) / len(idx)
-                batch = agent.collate([obs[j] for j in sub])
-                logits, value = agent.forward(batch)
+                batch = packed.batch(sub, sub_t)
+                with torch.autocast(device_type=dev.type, dtype=torch.float16, enabled=amp):
+                    logits, value = agent.forward(batch)
+                logits, value = logits.float(), value.float()
                 logp_all = F.log_softmax(logits, dim=-1)
-                a = actions[sub].to(dev)
-                logp = logp_all.gather(1, a.unsqueeze(1)).squeeze(1)
-                old = old_logp[sub].to(dev)
-                adv_c = mb_adv[torch.from_numpy(part)].to(dev)
+                logp = logp_all.gather(1, actions[sub_t].unsqueeze(1)).squeeze(1)
+                old = old_logp[sub_t]
+                adv_c = (adv_t[sub_t] - mean) / std
                 ratio = torch.exp(logp - old)
                 pg_loss = -torch.min(ratio * adv_c, torch.clamp(ratio, 1 - clip, 1 + clip) * adv_c).mean()
-                v_loss = 0.5 * ((value - ret_t[sub].to(dev)) ** 2).mean()
+                v_loss = 0.5 * ((value - ret_t[sub_t]) ** 2).mean()
                 ent = entropy(logits, batch["opt_mask"]).mean()
                 loss = pg_loss + cfg["value_coef"] * v_loss - cfg["entropy_coef"] * ent
-                (loss * w).backward()
+                (scaler.scale(loss * w) if amp else loss * w).backward()
                 with torch.no_grad():
                     log_ratio = logp - old
-                    acc["policy_loss"] += w * pg_loss.item()
-                    acc["value_loss"] += w * v_loss.item()
-                    acc["entropy"] += w * ent.item()
-                    acc["approx_kl"] += w * ((ratio - 1) - log_ratio).mean().item()
-                    acc["clip_frac"] += w * ((ratio - 1).abs() > clip).float().mean().item()
+                    acc += w * torch.stack([pg_loss, v_loss, ent, ((ratio - 1) - log_ratio).mean(),
+                                            ((ratio - 1).abs() > clip).float().mean()])
+            if amp:
+                scaler.unscale_(optimizer)
             grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["max_grad_norm"])
-            optimizer.step()
-            for k, v in acc.items():
-                stats[k].append(v)
-            stats["grad_norm"].append(float(grad_norm))
-            approx_kl = acc["approx_kl"]
+            if amp:
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                optimizer.step()
+            row = torch.cat([acc, grad_norm.detach().float().reshape(1)]).tolist()   # la seule attente du GPU du lot
+            for k, v in zip(names, row):
+                if math.isfinite(v):
+                    stats[k].append(v)
+            if not math.isfinite(row[-1]):
+                # demi-précision : gradient hors de la plage du float16, pas sauté et échelle réduite (GradScaler)
+                stats["amp_skipped"].append(1.0)
             target_kl = cfg.get("target_kl")
-            if target_kl and approx_kl > 1.5 * target_kl:
+            if target_kl and row[names.index("approx_kl")] > 1.5 * target_kl:
                 stop = True
                 break
         if stop:
             break
-    out = {k: float(np.mean(v)) for k, v in stats.items()}
+    out = {k: float(np.mean(v)) for k, v in stats.items() if k != "amp_skipped"}
+    if amp:
+        out["amp_skipped"] = float(len(stats["amp_skipped"]))
     var = float(np.var(ret))
     out["explained_variance"] = float(1 - np.var(ret - values) / var) if var > 1e-8 else 0.0
     out["value_mean"] = float(np.mean(values))
@@ -350,3 +372,20 @@ def ppo_update(agent: Agent, optimizer: torch.optim.Optimizer, trajs: list[Traj]
     out["policy_lag"] = float(np.mean([version - d.version for d in steps]))
     out["learn_s"] = time.perf_counter() - t0
     return out
+
+
+@torch.no_grad()
+def packed_values(agent: Agent, packed: Packed, amp: bool = False, chunk: int = 1024) -> np.ndarray:
+    """Valeurs estimées de toutes les observations d'une mise à jour (comme Agent.values, depuis le lot déjà sur le GPU)."""
+    model = agent.model
+    was_training = model.training
+    model.eval()
+    dev = agent.device
+    out = []
+    for start in range(0, len(packed), chunk):
+        idx = np.arange(start, min(start + chunk, len(packed)))
+        batch = packed.batch(idx, torch.arange(start, start + len(idx), device=dev), with_options=False)
+        with torch.autocast(device_type=dev.type, dtype=torch.float16, enabled=amp):
+            out.append(agent.forward(batch)[1].float())
+    model.train(was_training)
+    return torch.cat(out).cpu().numpy() if out else np.zeros(0, np.float32)

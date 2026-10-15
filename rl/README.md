@@ -455,16 +455,17 @@ du modèle général qui continue d'apprendre en ne jouant **que ce deck**, cont
   prolongé avec toutes les cartes des decks du registre (le modèle général en connaissait 90) : au départ, elles ont
   l'identifiant de la carte « inconnue », l'IA joue donc exactement comme le modèle général, puis apprend à les
   reconnaître.
-- **Adversaires** (`config/deck.yaml`) : les autres IA spécialisées, qui jouent leur deck comme il faut (35 %,
-  **ligue des spécialistes**), le modèle général figé (25 %, il joue bien tous les decks, mais « à la rouge »),
-  l'heuristique (30 %) et l'IA elle-même en miroir (10 %, même deck des deux côtés : les deux côtés apprennent ce
-  deck). Decks adverses tirés parmi tous les decks du registre.
+- **Adversaires** (`config/deck.yaml`) : surtout les autres IA spécialisées, qui jouent leur deck comme il faut (60 %,
+  **ligue des spécialistes**) ; un peu d'adversaires qui ne changent pas, pour ne pas tourner en rond (A apprend à
+  battre B, B change, A oublie l'ancien B) ni oublier d'autres façons de jouer : le modèle général figé (15 %, il joue
+  bien tous les decks, mais « à la rouge ») et l'heuristique (15 %) ; et l'IA elle-même en miroir (10 %, même deck des
+  deux côtés : les deux côtés apprennent ce deck). Decks adverses tirés parmi tous les decks du registre.
 - **Ligue des spécialistes** : l'IA spécialisée d'un deck adverse est le dernier point de sauvegarde de
   `checkpoints/deck-<deck>/` ; elles sont relues au départ et à chaque évaluation (elles progressent aussi : deux
   entraînements en parallèle s'affrontent au fil de leurs progrès). Un deck qui n'a pas encore la sienne est joué par
-  le modèle général. Quatre IA adverses par mise à jour (`specialize.experts_per_update`) : chaque modèle de plus à
-  faire jouer ralentit la collecte (`--set specialize.experts_per_update=2` si c'est trop lent).
-- **Évaluations** : au départ (la référence : le modèle général qui joue ce deck), puis toutes les 50 mises à jour :
+  le modèle général. Deux IA adverses par mise à jour, tirées au sort à chaque fois (`specialize.experts_per_update`) :
+  chaque modèle de plus à faire jouer ralentit la collecte (4 au lieu de 2 : −25 % de débit, mesuré).
+- **Évaluations** : au départ (la référence : le modèle général qui joue ce deck), puis toutes les 100 mises à jour :
   ce deck contre chacun des decks du registre, contre l'heuristique et contre le modèle général (240 parties chacun :
   des repères fixes) et contre les autres IA spécialisées (`experts` : un repère qui monte avec leurs progrès). Pas de
   niveau à valider : on arrête quand les évaluations ne progressent plus.
@@ -476,31 +477,42 @@ python train.py --config gpu --deck META-ROBIN-2026-10
 python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600
 # plusieurs decks : l'un après l'autre, ou deux à la fois
 python train_decks.py --config gpu --decks meta                    # les 6 decks du méta (starter : ceux pour débutant)
-python train_decks.py --config gpu --decks all --parallel 2        # tous les decks du registre, deux à la fois
+python train_decks.py --config gpu --decks all --parallel 3        # tous les decks du registre, trois à la fois
 python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10 --max-updates 500
-# tous les decks ensemble, par paliers : chacun avance de 100 mises à jour à son tour, jusqu'à 900
-python train_decks.py --config gpu --decks all --parallel 2 --max-updates 900 --step 100
+# tous les decks ensemble, par paliers : chacun avance de 100 mises à jour à son tour, jusqu'à 900 (3 à la fois : le
+# plus rapide sur le PC)
+python train_decks.py --config gpu --decks all --parallel 3 --max-updates 900 --step 100
 ```
 
 Ctrl+C : point de sauvegarde et arrêt (de tous les entraînements en cours avec `train_decks.py`) ; la même commande
 reprend. Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire »).
 
-**Vitesse mesurée sur le PC** (RTX 2070, 8 cœurs, 15 octobre 2026, 12 mises à jour par mesure, sans la ligue des
-spécialistes) :
+**Vitesse** (mesurée sur le PC, RTX 2070, 8 cœurs, 15 octobre 2026, avec la ligue des 15 IA ; débit : décisions
+apprises par seconde, tous entraînements confondus) :
 
-| Entraînements à la fois | Une mise à jour (chacun) | Débit total | 300 mises à jour |
-|---|---|---|---|
-| 1 | ~13 s | 1 | ~1 h 10 par deck |
-| 2 | ~21,5 s | ~1,2 fois | ~1 h 55 pour deux decks (mesuré sur la première file) |
-| 3 | ~32 s | ~1,2 fois (pas mieux qu'à deux) | — |
+| Réglages | Une mise à jour (chacun) | Débit total |
+|---|---|---|
+| Avant optimisation, 1 à la fois (32 parties par processus, 4 IA adverses) | ~24 s | ~670/s |
+| Optimisé, 1 à la fois | ~14 s | ~1 160/s |
+| Optimisé, 2 à la fois | ~21,5 s | ~1 520/s |
+| Optimisé, 3 à la fois, 4 IA adverses | ~27 s | ~1 800/s |
+| Optimisé, **3 à la fois, 2 IA adverses (réglages actuels)** | **~20,5 s** | **~2 390/s (×3,5)** |
+| Optimisé, 4 à la fois | ~37 s | ~1 790/s (pas mieux qu'à 3) |
 
-Deux à la fois fait donc gagner ~20 % ; au-delà, rien (le GPU et le processeur sont pleins). Chaque entraînement a ses
-dossiers, ils ne se gênent pas ; leurs messages vont dans `logs/deck-<deck>/console.txt`. Tous les 15 à la fois est
-impossible sur le PC : chaque entraînement prend ~1,1 à 1,8 Gio du GPU (8 Gio en tout) et ~2 Gio de mémoire.
+**`--parallel 3` est le plus rapide sur le PC** : pendant qu'un entraînement apprend sur le GPU, les autres font jouer
+leurs parties ; à 4, la simulation (processus Node) manque de cœurs. Chaque entraînement a ses dossiers, ils ne se gênent
+pas ; leurs messages vont dans `logs/deck-<deck>/console.txt`. Tous les 15 à la fois est impossible sur le PC : chaque
+entraînement prend ~1 à 1,5 Gio du GPU (8 Gio en tout) et ~2 Gio de mémoire.
+
+Optimisations (15 octobre 2026, même apprentissage, vérifié par des tests) : mise en lot vectorisée (une copie vers le
+GPU au lieu de treize par coup ; les lots d'une mise à jour faits une seule fois et gardés sur le GPU pour les 4 passes,
+`obs.Packed`), une seule attente du GPU par lot d'apprentissage, apprentissage en demi-précision (`ppo.amp`, float16
+sur les cœurs Tensor ; pas pour jouer : plus lent sur les petits lots de chaque coup), réseau laissé en mode
+évaluation pendant la collecte, 64 parties par processus Node, évaluations sur 16 parties à la fois par processus.
 
 **Par paliers** (`--step`) : pour que tous les decks progressent ensemble (et s'affrontent à niveau proche dans la ligue
-des spécialistes), chacun avance de quelques mises à jour à son tour, puis on recommence. Avec `--step 100` et deux à la
-fois, un palier des 15 decks prend ~5 h.
+des spécialistes), chacun avance de quelques mises à jour à son tour, puis on recommence. Avec `--step 100` et trois à la
+fois, un palier des 15 decks prend ~3 h.
 
 **Suivre** : `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
 messages de chaque entraînement sont dans `logs/deck-<deck>/console.txt`.

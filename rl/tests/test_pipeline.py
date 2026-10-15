@@ -61,7 +61,8 @@ def test_specialized_deck_from_the_general_model():
         run("train.py", "--config", "smoke", "--run", RUN, "--set", "allow_synthetic=true", "--fresh", "--max-updates", "1")
     common = ["--config", "smoke", "--deck", "ST-35", "--run", DECK_RUN, "--set", "allow_synthetic=true",
               "--set", f"specialize.base={RUN}", "--set", "specialize.experts_run=pytest-{deck}",
-              "--set", "curriculum.levels.0.decks=[ST-31, ST-35]",
+              "--set", "curriculum.levels.0.decks=[ST-31, ST-35]", "--set", "env.envs_per_worker=8",
+              "--set", "env.eval_envs_per_worker=4",
               "--set", "curriculum.levels.0.gate_seeds_per_pair=1", "--set", "curriculum.levels.0.eval_every=2"]
     out = run("train.py", *common, "--fresh", "--max-updates", "2")
     assert "IA spécialisée sur le deck ST-35" in out and "Évaluation de départ" in out and "[    2 |" in out
