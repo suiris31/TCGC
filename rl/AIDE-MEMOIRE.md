@@ -31,7 +31,7 @@ une liste séparée par des virgules.
 
 | Je veux... | Commande |
 |---|---|
-| Entraîner un deck (300 mises à jour, ~2 h) | `python train.py --config gpu --deck META-ROBIN-2026-10` |
+| Entraîner un deck (300 mises à jour, ~1 h 10) | `python train.py --config gpu --deck META-ROBIN-2026-10` |
 | Prolonger un deck déjà entraîné | `python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600` |
 | Reprendre après un arrêt | la même commande qu'au départ |
 | Les 6 decks du méta, l'un après l'autre | `python train_decks.py --config gpu --decks meta` |
@@ -49,8 +49,8 @@ python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10,
 
 Bon à savoir :
 
-- Seul : ~13 parties/s, ~145 mises à jour par heure. Deux à la fois : à peine plus vite au total (~1,1 fois), mais les
-  deux decks avancent ensemble. Au-delà de deux : aucun gain, et les 15 à la fois ne tiennent pas dans le GPU.
+- Seul : ~13 s par mise à jour (~1 h 10 pour 300). Deux à la fois : ~20 % plus rapide au total, mais les messages vont
+  dans `console.txt`. Trois à la fois : pas mieux qu'à deux. Les 15 à la fois ne tiennent pas dans le GPU.
 - Pour que tous les decks avancent ensemble : `--step` (par paliers), pas `--parallel 15`.
 - Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire ») : relancer une file la reprend là
   où elle en était.

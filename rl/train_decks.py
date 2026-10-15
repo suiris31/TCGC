@@ -8,7 +8,7 @@
 Chaque deck est un entraînement `train.py --deck <deck>` (dossiers checkpoints/deck-<deck>/ et logs/deck-<deck>/) :
 un deck déjà commencé reprend où il s'était arrêté, un deck qui a atteint son nombre de mises à jour est passé ; la
 même commande relancée reprend donc toute la file. Plusieurs à la fois (--parallel) : les cœurs du processeur sont
-partagés (processus Node répartis), le débit total ne monte presque pas (~1,1 fois à deux) ; leurs messages vont dans
+partagés (processus Node répartis), le débit total monte de ~20 % à deux, pas plus à trois ; leurs messages vont dans
 logs/deck-<deck>/console.txt, seules les étapes s'affichent ici.
 
 Par paliers (--step N) : tous les decks avancent de N mises à jour chacun leur tour, puis de N encore, jusqu'à
@@ -51,7 +51,7 @@ def main() -> int:
     p.add_argument("--decks", required=True,
                    help="all (tous les decks du registre), meta (decks du méta), starter (decks pour débutant), ou "
                         "liste séparée par des virgules (ex. META-ROBIN-2026-10,ST-34)")
-    p.add_argument("--parallel", type=int, default=1, help="entraînements en même temps (2 au plus : au-delà, le processeur est partagé sans gain)")
+    p.add_argument("--parallel", type=int, default=1, help="entraînements en même temps (2 : ~20 %% plus rapide au total ; 3 ou plus : pas mieux)")
     p.add_argument("--max-updates", type=int, help="mises à jour par deck (défaut : train.max_updates de config/deck.yaml)")
     p.add_argument("--step", type=int, help="par paliers : tous les decks avancent de N mises à jour chacun leur tour, "
                                             "jusqu'à --max-updates")

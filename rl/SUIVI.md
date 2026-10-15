@@ -202,8 +202,8 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    évaluation de départ puis toutes les 50 mises à jour (ce deck contre les 15 decks, 240 parties contre
    l'heuristique, 240 contre le modèle général). `train_decks.py` enchaîne plusieurs decks (`--parallel 2` : deux à la
    fois). Dans le simulateur, l'IA entraînée prend le modèle du deck qu'elle joue (`web/public/rl-model/decks/`), sinon
-   le modèle général. Vitesse sur le PC : ~13 parties/s seul, ~145 mises à jour par heure (300 en ~2 h) ; deux à la
-   fois, ~1,1 fois ce débit au total. Références mesurées par les essais (modèle général u8959 jouant le deck, avant
+   le modèle général. Vitesse sur le PC (mesurée le 15 octobre 2026) : seul, ~13 s par mise à jour (300 en ~1 h 10) ;
+   deux à la fois, ~21,5 s chacun, ~1,2 fois le débit total d'un seul ; trois à la fois, pas mieux qu'à deux. Références mesurées par les essais (modèle général u8959 jouant le deck, avant
    spécialisation) :
 
    | Deck joué | Contre l'heuristique | Contre le modèle général |
@@ -274,7 +274,7 @@ Ne pas ajouter `--level` (remet le compteur du niveau à zéro) ni `--fresh` (re
 
 **IA spécialisée par deck** (décision 15, `rl/README.md` § 16) :
 ```powershell
-python train.py --config gpu --deck META-ROBIN-2026-10                   # un deck, 300 mises à jour (~2 h)
+python train.py --config gpu --deck META-ROBIN-2026-10                   # un deck, 300 mises à jour (~1 h 10)
 python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600 # prolonger
 python train_decks.py --config gpu --decks meta --parallel 2             # les 6 decks du méta, deux à la fois
 python report.py --run deck-META-ROBIN-2026-10                           # suivre

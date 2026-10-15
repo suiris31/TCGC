@@ -485,13 +485,18 @@ python train_decks.py --config gpu --decks all --parallel 2 --max-updates 900 --
 Ctrl+C : point de sauvegarde et arrêt (de tous les entraînements en cours avec `train_decks.py`) ; la même commande
 reprend. Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire »).
 
-**Vitesse mesurée sur le PC** (RTX 2070, 8 cœurs, 14 octobre 2026) : seul, ~13 parties/s, une mise à jour toutes
-les ~25 s (~145 par heure : 300 mises à jour en ~2 h, évaluations comprises) ; GPU ~1,3 Gio.
+**Vitesse mesurée sur le PC** (RTX 2070, 8 cœurs, 15 octobre 2026, 12 mises à jour par mesure, sans la ligue des
+spécialistes) :
 
-**Plusieurs en même temps** : chaque entraînement a ses dossiers, ils ne se gênent pas. Deux à la fois : ~7 parties/s
-chacun, soit à peine plus (~1,1 fois) que le débit d'un seul : le processeur est partagé. C'est pratique pour faire
-avancer deux decks pendant une nuit, pas plus rapide au total ; au-delà de deux, aucun gain. Tous les 15 à la fois
-est impossible sur le PC : chaque entraînement prend ~2 Gio du GPU (8 Gio en tout) et ~2 Gio de mémoire.
+| Entraînements à la fois | Une mise à jour (chacun) | Débit total | 300 mises à jour |
+|---|---|---|---|
+| 1 | ~13 s | 1 | ~1 h 10 par deck |
+| 2 | ~21,5 s | ~1,2 fois | ~1 h 55 pour deux decks (mesuré sur la première file) |
+| 3 | ~32 s | ~1,2 fois (pas mieux qu'à deux) | — |
+
+Deux à la fois fait donc gagner ~20 % ; au-delà, rien (le GPU et le processeur sont pleins). Chaque entraînement a ses
+dossiers, ils ne se gênent pas ; leurs messages vont dans `logs/deck-<deck>/console.txt`. Tous les 15 à la fois est
+impossible sur le PC : chaque entraînement prend ~1,1 à 1,8 Gio du GPU (8 Gio en tout) et ~2 Gio de mémoire.
 
 **Par paliers** (`--step`) : pour que tous les decks progressent ensemble (et s'affrontent à niveau proche dans la ligue
 des spécialistes), chacun avance de quelques mises à jour à son tour, puis on recommence. Avec `--step 100` et deux à la
