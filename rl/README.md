@@ -477,32 +477,35 @@ python train.py --config gpu --deck META-ROBIN-2026-10
 python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600
 # plusieurs decks : l'un après l'autre, ou deux à la fois
 python train_decks.py --config gpu --decks meta                    # les 6 decks du méta (starter : ceux pour débutant)
-python train_decks.py --config gpu --decks all --parallel 3        # tous les decks du registre, trois à la fois
+python train_decks.py --config gpu --decks all --parallel 5        # tous les decks du registre, cinq à la fois
 python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10 --max-updates 500
-# tous les decks ensemble, par paliers : chacun avance de 100 mises à jour à son tour, jusqu'à 900 (3 à la fois : le
+# tous les decks ensemble, par paliers : chacun avance de 100 mises à jour à son tour, jusqu'à 900 (5 à la fois : le
 # plus rapide sur le PC)
-python train_decks.py --config gpu --decks all --parallel 3 --max-updates 900 --step 100
+python train_decks.py --config gpu --decks all --parallel 5 --max-updates 900 --step 100
 ```
 
 Ctrl+C : point de sauvegarde et arrêt (de tous les entraînements en cours avec `train_decks.py`) ; la même commande
 reprend. Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire »).
 
-**Vitesse** (mesurée sur le PC, RTX 2070, 8 cœurs, 15 octobre 2026, avec la ligue des 15 IA ; débit : décisions
-apprises par seconde, tous entraînements confondus) :
+**Vitesse** (mesurée sur le PC inoccupé, RTX 2070, 8 cœurs, 15 octobre 2026, avec la ligue des 15 IA ; débit :
+décisions apprises par seconde, tous entraînements confondus) :
 
 | Réglages | Une mise à jour (chacun) | Débit total |
 |---|---|---|
-| Avant optimisation, 1 à la fois (32 parties par processus, 4 IA adverses) | ~24 s | ~670/s |
-| Optimisé, 1 à la fois | ~14 s | ~1 160/s |
-| Optimisé, 2 à la fois | ~21,5 s | ~1 520/s |
-| Optimisé, 3 à la fois, 4 IA adverses | ~27 s | ~1 800/s |
-| Optimisé, **3 à la fois, 2 IA adverses (réglages actuels)** | **~20,5 s** | **~2 390/s (×3,5)** |
-| Optimisé, 4 à la fois | ~37 s | ~1 790/s (pas mieux qu'à 3) |
+| Avant optimisation, 1 à la fois (32 parties par processus, 4 IA adverses) | ~18,6 s | ~890/s |
+| Optimisé, 1 à la fois | ~9,6 s | ~1 720/s (×1,9) |
+| Optimisé, 2 à la fois | ~15,6 s | ~2 120/s (×2,4) |
+| Optimisé, 3 à la fois | ~20,5 s | ~2 410/s (×2,7) |
+| Optimisé, 3 à la fois, 4 IA adverses au lieu de 2 | ~24,9 s | ~1 980/s |
+| Optimisé, 4 à la fois | ~25 s | ~2 630/s (×3,0) |
+| Optimisé, **5 à la fois** | **~29 s** | **~2 830/s (×3,2)** |
 
-**`--parallel 3` est le plus rapide sur le PC** : pendant qu'un entraînement apprend sur le GPU, les autres font jouer
-leurs parties ; à 4, la simulation (processus Node) manque de cœurs. Chaque entraînement a ses dossiers, ils ne se gênent
-pas ; leurs messages vont dans `logs/deck-<deck>/console.txt`. Tous les 15 à la fois est impossible sur le PC : chaque
-entraînement prend ~1 à 1,5 Gio du GPU (8 Gio en tout) et ~2 Gio de mémoire.
+**`--parallel 5` est le plus rapide sur le PC** (le processeur est alors occupé à fond ; au-delà, presque plus de gain)
+et divise exactement les 15 decks (3 tours pleins par palier). Pendant qu'un entraînement apprend sur le GPU, les
+autres font jouer leurs parties. Chaque entraînement a au moins 2 processus Node (avec un seul, la simulation devient
+trop lente : mesuré). Chaque entraînement a ses dossiers, ils ne se gênent pas ; leurs messages vont dans
+`logs/deck-<deck>/console.txt`. Tous les 15 à la fois est impossible sur le PC : chaque entraînement prend ~1 à
+1,5 Gio du GPU (8 Gio en tout) et ~2 Gio de mémoire.
 
 Optimisations (15 octobre 2026, même apprentissage, vérifié par des tests) : mise en lot vectorisée (une copie vers le
 GPU au lieu de treize par coup ; les lots d'une mise à jour faits une seule fois et gardés sur le GPU pour les 4 passes,
@@ -511,8 +514,8 @@ sur les cœurs Tensor ; pas pour jouer : plus lent sur les petits lots de chaque
 évaluation pendant la collecte, 64 parties par processus Node, évaluations sur 16 parties à la fois par processus.
 
 **Par paliers** (`--step`) : pour que tous les decks progressent ensemble (et s'affrontent à niveau proche dans la ligue
-des spécialistes), chacun avance de quelques mises à jour à son tour, puis on recommence. Avec `--step 100` et trois à la
-fois, un palier des 15 decks prend ~3 h.
+des spécialistes), chacun avance de quelques mises à jour à son tour, puis on recommence. Avec `--step 100` et cinq à la
+fois, un palier des 15 decks prend ~2 h 40.
 
 **Suivre** : `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
 messages de chaque entraînement sont dans `logs/deck-<deck>/console.txt`.

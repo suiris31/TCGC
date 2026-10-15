@@ -35,10 +35,10 @@ une liste séparée par des virgules.
 | Prolonger un deck déjà entraîné | `python train.py --config gpu --deck META-ROBIN-2026-10 --max-updates 600` |
 | Reprendre après un arrêt | la même commande qu'au départ |
 | Les 6 decks du méta, l'un après l'autre | `python train_decks.py --config gpu --decks meta` |
-| Les 15 decks, trois à la fois (le plus rapide) | `python train_decks.py --config gpu --decks all --parallel 3` |
+| Les 15 decks, cinq à la fois (le plus rapide) | `python train_decks.py --config gpu --decks all --parallel 5` |
 | Quelques decks choisis | `python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10` |
 | Une file avec plus de mises à jour par deck | `python train_decks.py --config gpu --decks meta --max-updates 500` |
-| Tous les decks ensemble, par paliers de 100 (~3 h le palier) | `python train_decks.py --config gpu --decks all --parallel 3 --max-updates 900 --step 100` |
+| Tous les decks ensemble, par paliers de 100 (~2 h 40 le palier) | `python train_decks.py --config gpu --decks all --parallel 5 --max-updates 900 --step 100` |
 | Arrêter proprement | **Ctrl+C** une fois (finit la mise à jour, sauvegarde) ; une 2ᵉ fois : tout de suite |
 
 Ordre conseillé (decks que le modèle général joue le moins bien d'abord) :
@@ -49,9 +49,10 @@ python train_decks.py --config gpu --decks META-KAIDO-2026-10,META-ENEL-2026-10,
 
 Bon à savoir :
 
-- Le plus rapide sur le PC : **`--parallel 3`** (~20,5 s par mise à jour chacun, 3,5 fois le débit d'avant
-  l'optimisation). Seul : ~14 s par mise à jour. À 4 : pas mieux qu'à 3. Les 15 à la fois ne tiennent pas dans le
-  GPU. En parallèle, les messages vont dans `console.txt`.
+- Le plus rapide sur le PC : **`--parallel 5`** (~29 s par mise à jour chacun, 3,2 fois le débit d'avant
+  l'optimisation ; le PC est alors occupé à fond). `--parallel 3` : ~15 % plus lent, laisse un peu de place pour
+  autre chose. Seul : ~9,6 s par mise à jour. Les 15 à la fois ne tiennent pas dans le GPU. En parallèle, les messages
+  vont dans `console.txt`.
 - Pour que tous les decks avancent ensemble : `--step` (par paliers), pas `--parallel 15`.
 - Un deck qui a déjà fait son nombre de mises à jour est passé (« rien à faire ») : relancer une file la reprend là
   où elle en était.

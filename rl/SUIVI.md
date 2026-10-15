@@ -260,9 +260,12 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    demi-précision (`ppo.amp` ; pas pour jouer, plus lent sur les petits lots). Réglages (`config/deck.yaml`) : 64
    parties par processus Node, 2 IA adverses par mise à jour (au lieu de 4 : +33 %), évaluations sur 16 parties à la
    fois par processus et toutes les 100 mises à jour, adversaires 60 % IA spécialisées / 15 % heuristique / 15 % modèle
-   général / 10 % miroir. Parallèle : 1 → ~1 160/s, 2 → ~1 520/s, 3 → ~2 390/s (réglages actuels, ×3,5), 4 → pas mieux
-   qu'à 3 (simulation à court de cœurs). Prolongation conseillée : `train_decks.py --config gpu --decks all --parallel 3
-   --max-updates 900 --step 100` (~3 h le palier, ~19 h jusqu'à 900).
+   général / 10 % miroir. Mesures refaites sur le PC inoccupé (les premières avaient tourné en même temps que la
+   prolongation lancée par l'utilisateur à 10 h 57, arrêtée à 12 h 18 : ST-35 à u400, ST-31 à u372) : ancien code seul
+   ~890/s ; nouveau code seul ~1 720/s (×1,9) ; 2 à la fois ~2 120/s ; 3 ~2 410/s ; 3 avec 4 IA adverses ~1 980/s ; 4
+   ~2 630/s ; 5 ~2 830/s (×3,2, processeur plein ; 2 processus Node minimum par entraînement, défaut de
+   `train_decks.py`). Prolongation conseillée : `train_decks.py --config gpu --decks all --parallel 5 --max-updates 900
+   --step 100` (5 divise les 15 decks : 3 tours par palier, ~2 h 40 le palier, ~16 h jusqu'à 900).
 
 ## 4. Commandes
 

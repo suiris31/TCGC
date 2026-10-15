@@ -1,15 +1,15 @@
 """IA spécialisées de plusieurs decks, l'une après l'autre ou plusieurs en même temps (README § 16).
 
     python train_decks.py --config gpu --decks all                     # les decks du registre, un par un
-    python train_decks.py --config gpu --decks meta --parallel 3       # les decks du méta, trois à la fois
+    python train_decks.py --config gpu --decks meta --parallel 3       # les 6 decks du méta, trois à la fois
     python train_decks.py --config gpu --decks META-ROBIN-2026-10,ST-34 --max-updates 500
-    python train_decks.py --config gpu --decks all --parallel 3 --max-updates 900 --step 100   # tous ensemble, par paliers
+    python train_decks.py --config gpu --decks all --parallel 5 --max-updates 900 --step 100   # tous ensemble, par paliers
 
 Chaque deck est un entraînement `train.py --deck <deck>` (dossiers checkpoints/deck-<deck>/ et logs/deck-<deck>/) :
 un deck déjà commencé reprend où il s'était arrêté, un deck qui a atteint son nombre de mises à jour est passé ; la
 même commande relancée reprend donc toute la file. Plusieurs à la fois (--parallel) : les cœurs du processeur sont
-partagés (processus Node répartis) ; sur le PC, 3 à la fois est le plus rapide (README § 16) ; leurs messages vont dans
-logs/deck-<deck>/console.txt, seules les étapes s'affichent ici.
+partagés (processus Node répartis, au moins 2 chacun) ; sur le PC, 5 à la fois est le plus rapide (README § 16) ; leurs
+messages vont dans logs/deck-<deck>/console.txt, seules les étapes s'affichent ici.
 
 Par paliers (--step N) : tous les decks avancent de N mises à jour chacun leur tour, puis de N encore, jusqu'à
 --max-updates. Ils progressent ainsi ensemble, et dans la ligue des spécialistes chacun affronte des adversaires
@@ -51,11 +51,11 @@ def main() -> int:
     p.add_argument("--decks", required=True,
                    help="all (tous les decks du registre), meta (decks du méta), starter (decks pour débutant), ou "
                         "liste séparée par des virgules (ex. META-ROBIN-2026-10,ST-34)")
-    p.add_argument("--parallel", type=int, default=1, help="entraînements en même temps (3 : le plus rapide sur le PC ; 4 : pas mieux)")
+    p.add_argument("--parallel", type=int, default=1, help="entraînements en même temps (5 : le plus rapide sur le PC, occupé à fond ; 3 : ~15 %% plus lent)")
     p.add_argument("--max-updates", type=int, help="mises à jour par deck (défaut : train.max_updates de config/deck.yaml)")
     p.add_argument("--step", type=int, help="par paliers : tous les decks avancent de N mises à jour chacun leur tour, "
                                             "jusqu'à --max-updates")
-    p.add_argument("--workers", help="processus Node par entraînement (défaut : cœurs - 1, répartis entre eux)")
+    p.add_argument("--workers", help="processus Node par entraînement (défaut : cœurs - 1 répartis entre eux, au moins 2)")
     p.add_argument("--config", action="append", default=[], help="réglages passés à train.py (ex. gpu)")
     p.add_argument("--set", action="append", default=[], metavar="CLÉ=VALEUR", help="réglage passé à train.py")
     args = p.parse_args()
@@ -74,7 +74,8 @@ def main() -> int:
         if unknown:
             p.error(f"deck(s) inconnu(s) : {', '.join(unknown)} ; decks du registre : {', '.join(registry)}")
     parallel = max(1, min(args.parallel, len(decks)))
-    workers = args.workers or str(max(1, ((os.cpu_count() or 2) - 1) // parallel))
+    # au moins 2 processus Node par entraînement : avec un seul, la simulation freine tout (mesuré à 4 en parallèle)
+    workers = args.workers or str(max(2, ((os.cpu_count() or 2) - 1) // parallel))
     common = [a for c in args.config for a in ("--config", c)] + [a for s in args.set for a in ("--set", s)]
     print(f"{len(decks)} deck(s) : {', '.join(decks)} ; {parallel} à la fois, {workers} processus Node chacun")
 
