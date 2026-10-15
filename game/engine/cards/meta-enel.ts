@@ -146,7 +146,7 @@ export const META_ENEL: Record<string, CardBehavior> = {
       counterBoost(ctx, 1000, 'Mamaragan');
       if (sixOrLess(ctx.s, ctx.me, -1)) drawCards(1).run(ctx);
     }),
-  }),
+  }, { counterExtra: (s, p) => sixOrLess(s, p, -1) }),
 
   // Trafalgar Law (ST10-010) : [Bloqueur] ; [Jouée] DON!! −1 : si l'adversaire a 7 cartes ou plus en main, en défausser 2
   // au hasard

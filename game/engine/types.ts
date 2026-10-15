@@ -347,6 +347,9 @@ export interface CardBehavior {
   attackUseful?: (s: GameState, owner: PlayerId, card: FieldCard, target: number) => boolean;
   // l'effet [Contre] protège-t-il la carte attaquée ?
   counterUseful?: (s: GameState, owner: PlayerId, target: number) => boolean;
+  // l'effet [Contre] fait-il maintenant autre chose que donner de la puissance (épuiser, piocher) ? Il sert alors même
+  // si l'attaque est déjà repoussée ou si la carte attaquée n'en profite pas
+  counterExtra?: (s: GameState, owner: PlayerId) => boolean;
   onTrigger?: (ctx: EffectCtx) => void; // [Déclenchement] (le texte officiel est dans CardData.trigger)
   // Effet de remplacement quand un Personnage du même joueur va quitter le terrain à cause d'un effet adverse
   replaceRemoval?: {

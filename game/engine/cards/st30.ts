@@ -16,6 +16,8 @@ const LUFFY = 'Monkey.D.Luffy';
 // « carte Personnage ayant 6000 de puissance » (main, deck) ; « Personnage ayant 6000 de puissance de base » (terrain)
 const SIX = { category: 'CHARACTER' as const, powerMin: 6000, powerMax: 6000 };
 const six = (s: GameState, uid: number) => basePower(s, uid) === 6000;
+// un Personnage [Portgas D. Ace] et un Personnage [Monkey D. Luffy] de 6000 de puissance de base
+const aceAndLuffy = (s: GameState, p: PlayerId) => [ACE, LUFFY].every((n) => s.players[p].chars.some((c) => isNamed(c.num, n) && six(s, c.uid)));
 const ownChar = (s: GameState, p: PlayerId, c: FieldCard) => s.players[p].chars.some((x) => x.uid === c.uid);
 
 // « Regardez 5 cartes du dessus de votre deck, révélez jusqu'à 1 carte Personnage ayant 6000 de puissance »
@@ -142,11 +144,8 @@ export const ST30: Record<string, CardBehavior> = {
   // « Prêt à te battre, Luffy ?! Moi ? Toujours ! » : [Contre] +3000 pour le combat, puis piocher 1 carte avec un
   // Personnage [Portgas D. Ace] et un Personnage [Monkey D. Luffy] de 6000 de puissance de base
   'ST30-016': card({
-    onCounter: seq(
-      effect((ctx) => counterBoost(ctx, 3000, 'Prêt à te battre, Luffy ?!')),
-      when((s, p) => [ACE, LUFFY].every((n) => s.players[p].chars.some((c) => isNamed(c.num, n) && six(s, c.uid))), drawCards(1)),
-    ),
-  }),
+    onCounter: seq(effect((ctx) => counterBoost(ctx, 3000, 'Prêt à te battre, Luffy ?!')), when(aceAndLuffy, drawCards(1))),
+  }, { counterExtra: aceAndLuffy }),
 
   // « Tu fonces toujours tête baissée vers le danger !! » : [Principale] et [Déclenchement] 5 cartes du dessus, 1
   // Personnage de 6000 de puissance

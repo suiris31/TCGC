@@ -26,6 +26,8 @@ const leaderBattleBoost = (amount: number, source: string): Effect => effect((ct
 
 // Leader Kaido : [En attaquant] / [Attaque adverse], une seule fois par tour pour les deux
 const kaidoLeader = onceWithCost('kaidoLeader', donMinus(1), powerMod(oppChar(), -2000, 'turn', 'Kaido'), 'Kaido');
+// Ramollo Beam Sword : épuiser un Personnage adverse (utile même si l'attaque est déjà repoussée)
+const ramolloRest = rest(oppChar(), 'Ramollo Beam Sword');
 
 // Kaido (OP17-063) : « annulez les effets de jusqu'à 1 Personnage adverse ayant un coût de 6 ou moins pour tout le tour
 // et mettez-le KO »
@@ -87,10 +89,9 @@ export const META_KAIDO: Record<string, CardBehavior> = {
   // Ramollo Beam Sword : [Contre] DON!! −1 : +2000 à la carte attaquée, puis épuiser un Personnage adverse ;
   // [Déclenchement] 1 DON!! redressée du deck DON!!
   'OP07-076': card({
-    onCounter: withCost(donMinus(1), seq(effect((ctx) => counterBoost(ctx, 2000, 'Ramollo Beam Sword')), rest(oppChar(), 'Ramollo Beam Sword')),
-      'Ramollo Beam Sword'),
+    onCounter: withCost(donMinus(1), seq(effect((ctx) => counterBoost(ctx, 2000, 'Ramollo Beam Sword')), ramolloRest), 'Ramollo Beam Sword'),
     onTrigger: addDon(1, 'active'),
-  }),
+  }, { counterExtra: (s, p) => donOnField(s, p) >= 1 && ramolloRest.useful(s, p, -1) }),
 
   // We're Going to Claim the One Piece!!! : [Principale] avec un Leader {Équipage des cent bêtes} ou {Équipage de Big
   // Mom}, 5 cartes du dessus, 1 carte de l'un de ces types ; [Déclenchement] activer son [Principale]

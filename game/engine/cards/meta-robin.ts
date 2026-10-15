@@ -98,5 +98,8 @@ export const META_ROBIN: Record<string, CardBehavior> = {
       when(leaderType(SH), effect((ctx) => counterBoost(ctx, 4000, 'Gum Gum Gigant'))),
       drawCards(2),
     ), 'Gum Gum Gigant'),
-  }, { counterUseful: (s, p) => donOnField(s, p) >= 2 && s.players[p].hand.length >= 2 && leaderType(SH)(s, p, -1) }),
+  }, {
+    counterUseful: (s, p) => donOnField(s, p) >= 2 && s.players[p].hand.length >= 2 && leaderType(SH)(s, p, -1),
+    counterExtra: (s, p) => donOnField(s, p) >= 2 && s.players[p].hand.length >= 2,
+  }),
 };
