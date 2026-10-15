@@ -281,6 +281,11 @@ d'évaluation.
 - Inférence dans le navigateur, dans le Worker existant, via onnxruntime-web (WebAssembly) : nouveau niveau « IA
   entraînée » à côté des niveaux 1-3, qui restent inchangés. Pas de service serveur nécessaire au départ ; une route
   d'API reste possible ensuite.
+- Le simulateur joue toujours le choix le plus probable du modèle (`game/ai/worker.ts`). L'entraînement, lui, tire au
+  sort selon les probabilités (il doit essayer d'autres coups) ; jouer ainsi face à un humain fait de temps en temps un
+  coup que le modèle juge mauvais. Mesuré le 15 octobre 2026, IA spécialisées (u300) contre l'heuristique, mêmes 450
+  parties : 71,3 % de victoires en tirant au sort, 81,3 % avec le meilleur choix ; coups inutiles (`game/ai/prune.ts`)
+  3,95 par partie contre 2,46.
 
 ## 9. Modifications prévues du moteur
 

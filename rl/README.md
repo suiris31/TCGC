@@ -355,7 +355,9 @@ Le simulateur propose alors un 4ᵉ niveau d'IA, **« IA entraînée »**, à c�
 Le modèle tourne dans le navigateur, dans le fil de calcul de l'IA (onnxruntime-web, WebAssembly, chargé seulement
 quand ce niveau est choisi : ~14 Mo de WebAssembly + le modèle, ou ~3,7 Mo si le serveur compresse ses fichiers ;
 avec nginx : `gzip on; gzip_types application/wasm application/octet-stream;`). Il reçoit la même vue du joueur que pendant
-l'entraînement et choisit selon ses probabilités. Si le modèle manque ou ne correspond plus au code (encodage
+l'entraînement et joue toujours son choix le plus probable (tirer au sort selon ses probabilités, comme à
+l'entraînement, jouait de temps en temps un coup qu'il juge mauvais : 71 % de victoires des IA spécialisées contre
+l'heuristique en tirant au sort, 81 % avec le meilleur choix, sur 450 parties). Si le modèle manque ou ne correspond plus au code (encodage
 modifié), le niveau n'est pas proposé (un réglage resté sur ce niveau redevient « Débutant ») ; si le chargement
 échoue en cours de partie, l'IA simple joue à sa place et la console du navigateur l'explique. Les niveaux existants
 ne changent pas.
