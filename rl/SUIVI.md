@@ -210,9 +210,29 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    | META-ENEL-2026-10 | 41,2 % | 48,3 % |
    | META-KAIDO-2026-10 | 39,2 % | 24,6 % |
 
-   Premiers résultats (300 mises à jour, deux à la fois, ~1 h 56 par paire de decks) : ST-35 70,4 → 80,4 % contre
-   l'heuristique et 66,2 → 74,2 % contre le modèle général ; ST-31 65,8 → 77,5 % et 50,0 → 67,9 % ; ST-32 65,8 → 74,6 %
-   et 60,0 → 71,7 % (palier dès ~u150) ; ST-33 65,8 → 67,5 % et 54,2 → 68,3 % (meilleur à u150, puis baisse). Lecture
+   Première file finie le 15 octobre 2026 à 1 h 38 (15 decks × 300 mises à jour, deux à la fois, ~1 h 56 par paire,
+   aucune erreur). Évaluation de départ (modèle général u8959 jouant le deck) → évaluation à u300, 240 parties chacune :
+
+   | Deck | Contre l'heuristique | Contre le modèle général |
+   |---|---|---|
+   | META-KAIDO-2026-10 | 39,2 → 70,0 % | 24,6 → 62,1 % |
+   | META-MIHAWK-2026-10 | 56,7 → 77,9 % | 38,3 → 63,3 % |
+   | META-ENEL-2026-10 | 41,2 → 65,8 % | 48,3 → 66,7 % |
+   | META-ROBIN-2026-10 | 77,9 → 85,4 % | 55,8 → 78,8 % |
+   | META-XEBEC-2026-10 | 69,6 → 82,9 % | 60,8 → 78,3 % |
+   | META-SABO-2026-10 | 89,2 → 94,6 % | 80,4 → 88,3 % |
+   | ST-21 (jamais vu par le modèle général) | 28,7 → 57,1 % | 24,2 → 43,8 % |
+   | ST-22 (jamais vu) | 40,0 → 57,9 % | 28,3 → 42,1 % |
+   | ST-30 (jamais vu) | 63,7 → 75,8 % | 45,0 → 71,2 % |
+   | ST-31 | 65,8 → 77,5 % | 50,0 → 67,9 % |
+   | ST-32 | 65,8 → 74,6 % (palier dès ~u150) | 60,0 → 71,7 % |
+   | ST-33 | 65,8 → 67,5 % (meilleur à u150 : 75,4 %) | 54,2 → 68,3 % |
+   | ST-34 | 37,9 → 46,2 % | 27,1 → 40,0 % |
+   | ST-35 | 70,4 → 80,4 % | 66,2 → 74,2 % |
+   | ST-36 | 66,2 → 83,3 % | 66,7 → 72,5 % |
+
+   Tous progressent contre le modèle général ; les plus grands gains sur les decks qu'il jouait le moins bien (Kaido,
+   Mihawk, Ener, ST-21, ST-22). Plus faible : ST-34 (Katakuri, gestion des DON!!), déjà le point faible de l'IA. Lecture
    de l'utilisateur : les decks de contrôle (Zoro épuise les cartes adverses pour un gros finisher, Kuzan contrôle le
    terrain), à Déclenchements (jaune) ou à gestion des DON!! (violet) doivent « oublier » le jeu rouge du modèle
    général et réapprendre leurs mécaniques : une baisse passagère n'est pas un problème, il faut leur laisser du temps.
@@ -223,6 +243,10 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    adversaires (`experts`, 35 % ; base 25 %, heuristique 30 %, miroir 10 %), quatre par mise à jour, relues à chaque
    évaluation ; nouvelle évaluation `experts`. Prévu pour la prolongation : à installer dans `TCGC/` (avec l'accord de
    l'utilisateur) une fois la première file (15 decks, 300 mises à jour) finie ; vitesse à mesurer au premier lancement.
+   `TCGC/` avancé à `main` (1ed63a7, ligue et paliers) le 15 octobre 2026 au matin, file finie : les 15 IA (u300) se
+   chargent comme adversaires. Prolongation proposée : `train_decks.py --config gpu --decks all --parallel 2
+   --max-updates 900 --step 100` (paliers de 100, ~5 h le palier ; l'utilisateur voulait que tous les decks évoluent
+   ensemble : `--parallel 15` ne tient pas dans le GPU, d'où les paliers).
 
 ## 4. Commandes
 
