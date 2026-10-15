@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { useless } from '../ai/prune.ts';
 import { determinize } from '../ai/search.ts';
 import { replayRecord } from '../coach/archive.ts';
 import { DECKS } from '../engine/decks.ts';
@@ -116,6 +117,23 @@ test('parties complètes au hasard sur toutes les confrontations : cohérentes, 
     }
   }
   assert.ok(observed > 1000);
+});
+
+test('choix inutiles signalés à l’entraînement (malus) : ceux de game/ai/prune.ts, avec le siège qui décide', () => {
+  const kinds: Record<string, number> = {};
+  for (const [k, decks] of pairs.slice(0, 40).entries()) {
+    playRandom({ seed: 7000 + k, decks, first: 'random', seats: AGENTS }, 53 + k, (e) => {
+      const s = e.state;
+      const d = s.decision!;
+      d.options.forEach((o, i) => {
+        const f = e.flaw(i);
+        const u = useless(s, d, o);
+        assert.deepEqual(f, u ? { seat: d.player, kind: u.kind } : null);
+        if (f) kinds[f.kind] = (kinds[f.kind] ?? 0) + 1;
+      });
+    });
+  }
+  assert.ok(kinds.weakAttack > 0 && kinds.repelled > 0 && kinds.idleDon > 0, JSON.stringify(kinds));
 });
 
 // Étanchéité : redistribuer au hasard tout ce que le joueur ne peut pas connaître (main adverse, decks, Vies face
@@ -277,6 +295,11 @@ test('serveur : init, reset et step par lots, réponses binaires cohérentes', a
       const live = header.results.filter((r: any) => !r.done);
       if (!live.length) break;
       res = await call({ op: 'step', actions: live.map((r: any) => ({ env: r.env, index: 0 })) });
+      // choix inutile éventuel de chaque choix appliqué (malus de l'entraînement)
+      for (const r of res.header.results) {
+        assert.ok('flaw' in r);
+        assert.ok(r.flaw === null || ((r.flaw.seat === 0 || r.flaw.seat === 1) && typeof r.flaw.kind === 'string'), JSON.stringify(r.flaw));
+      }
       steps++;
     }
     assert.ok(steps > 10);

@@ -192,6 +192,7 @@ class StepResult:
     record: str | None
     obs: list[Obs]
     first: int | None = None
+    flaw: tuple[int, str] | None = None     # le choix appliqué était inutile (game/ai/prune.ts) : (siège, sorte)
 
 
 class EnvPool:
@@ -270,6 +271,7 @@ class EnvPool:
                     env=r["env"] + base, done=r["done"], to_act=r["toAct"], winner=r["winner"], truncated=r["truncated"],
                     error=r["error"], reason=r["reason"], turns=r["turns"], decisions=r["decisions"], record=r.get("record"),
                     obs=[obs[k] for k in r["obs"]], first=r.get("first"),
+                    flaw=(r["flaw"]["seat"], r["flaw"]["kind"]) if r.get("flaw") else None,
                 ))
         return results
 

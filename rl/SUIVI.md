@@ -6,8 +6,8 @@ continuer. Le détail technique est dans `game/docs/ia-rl.md` (analyse, architec
 
 ## 1. En bref
 
-- **Objectif** : une IA du simulateur One Piece TCG qui apprend seule (PPO, récompense +1 victoire / −1 défaite,
-  rien d'autre), avec la seule information d'un joueur, entraînable sur le PC (`python train.py`), jouable dans le
+- **Objectif** : une IA du simulateur One Piece TCG qui apprend seule (PPO, récompense +1 victoire / −1 défaite ;
+  IA spécialisées : léger malus pour deux sortes de choix inutiles, décision 20), avec la seule information d'un joueur, entraînable sur le PC (`python train.py`), jouable dans le
   simulateur (niveau « IA entraînée », ONNX dans le navigateur).
 - **Code** : sur `main` (le dossier de l'entraînement, `TCGC/`, suit `main` sur la branche `claude/awesome-hopper-nj0x4y`).
 - **En ligne** (15 octobre 2026, commit `ba9ebcc`, mis en ligne par l'utilisateur, vérifié dans le simulateur) :
@@ -276,6 +276,31 @@ simulateur, Confirmé et Expert sont limités en temps (0,5 s / 1,8 s, ~4 à 10 
    sur une copie de ST-34 : reprise, apprentissage, export vérifié) ; le navigateur les accepte encore (options sans les
    nouvelles colonnes, mêmes probabilités à l'identique) : déployer ce code ne casse pas les modèles en ligne. À
    remesurer après un palier avec l'encodage 5 (taux de bons coûts avec la carte connue).
+19. **Le simulateur joue le meilleur choix du modèle** (15 octobre 2026, après la remarque de l'utilisateur : en
+   jouant contre l'IA, il la voit faire des coups inutiles qui la font perdre). Mesuré sur les 15 IA spécialisées en
+   ligne (u300) contre l'heuristique, mêmes 450 parties : en tirant au sort selon ses probabilités (ce que faisait le
+   simulateur) 71,3 % de victoires et 3,95 coups inutiles par partie ; avec toujours le choix le plus probable 81,3 %
+   et 2,46 (Katakuri 8 → 16 victoires sur 30, ST-21 14 → 21, aucun deck en baisse nette). `game/ai/worker.ts`.
+   L'entraînement tire toujours au sort (il doit essayer d'autres coups) ; les évaluations aussi (comparables d'un
+   palier à l'autre).
+20. **Malus des choix inutiles ; pas de bonus pour le pouvoir du Leader** (15 octobre 2026, questions de
+   l'utilisateur : récompenser le bon usage du Leader ? pénaliser les coups inutiles, comme attaquer à 1000 contre 5000
+   avec un Bloqueur, ou donner ses DON!! après les attaques ?). Bonus refusé : « bien utiliser son Leader » est une
+   stratégie écrite à la main (Mihawk : l'utiliser au tour 1 était un piège), l'IA chercherait le bonus pour lui-même,
+   et le défaut de Katakuri était une information manquante (décision 18 ; il utilise son Leader 37 % des fois où il
+   le peut). Malus accepté là où la règle est sûre. En relisant les cartes des 15 decks, la règle des choix inutiles
+   (`game/ai/prune.ts`) avait des exceptions, corrigées : DON!! utiles au tour adverse (Usopp, Bonney, Franky de
+   ST-21 ; Chopper, Bartolomeo, Jinbe, Sabo, Tokikake, Caribou, Garp hors decks), [Initiative] avec des DON!! (Zoro
+   ST21-015, Fransuké, Burgess), attaques qui déclenchent un effet « quand ... » (Mihawk ST32-003 pioche en
+   s'épuisant, Newgate donne +3000 au Leader Xebec), Événements [Contre] qui font autre chose que donner de la
+   puissance (`counterExtra` : Ramollo Beam Sword, Gum Gum Gigant, Mamaragan, ST30-016). Heuristique inchangée
+   (empreinte identique sur 2 250 parties) ; le coach, l'interface et l'IA Monte-Carlo profitent de la correction.
+   Malus de 0,05 (contre ±1 pour la partie), à la décision même, pour `weakAttack` (attaque vouée à l'échec) et
+   `repelled` (Contre ou Bloqueur sur une attaque déjà repoussée) : `ppo.flaw_penalty`, `ppo.flaw_kinds`, IA
+   spécialisées seulement (`config/deck.yaml`). Pas encore sur les DON!! données à une carte qui ne peut plus attaquer
+   (`idleDon`) : à ajouter si elles persistent. Choix inutiles comptés à chaque mise à jour et à chaque évaluation
+   (`bilan_decks.py`) ; coût mesuré : +0,9 % de temps de simulation. Mesure avant / après (pas d'A/B strict) : à
+   retirer si les victoires baissent.
 
 ## 4. Commandes
 
@@ -317,6 +342,12 @@ marquantes. Facultatif : gzip pour `application/wasm` dans nginx (14 Mo → 3,7 
 
 ## 5. Prochaine étape
 
+- **Reprise avec l'encodage 5 et le malus** (décisions 18 et 20) : entraînement mis en pause par l'utilisateur le 15
+  octobre 2026 ; dans `TCGC\` : `git pull --ff-only origin main`, puis dans `TCGC\rl` la même commande
+  (`python train_decks.py --config gpu --decks all --parallel 5 --max-updates 900 --step 100`). Au démarrage de chaque
+  deck : « Modèle prolongé vers l'encodage 4c256fa6 » et « Malus de 0.05 par choix inutile ». Après le palier suivant :
+  `python bilan_decks.py` (victoires et choix inutiles par partie) et taux de bons coûts déclarés de Katakuri (ST-34,
+  15 % avant).
 - **IA spécialisées** (décision 15) : l'utilisateur les entraîne sur le PC, depuis `TCGC\rl` (commandes du § 4).
   Suivre leurs évaluations (`report.py --run deck-<deck>`) : prolonger tant qu'elles progressent contre
   l'heuristique et contre le modèle général ; mettre en ligne celles qui jouent nettement mieux leur deck que le

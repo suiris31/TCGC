@@ -10,7 +10,8 @@
 //   {"op":"close"}
 // Node -> Python : une réponse binaire par commande : [u32 taille][u32 taille de l'en-tête][en-tête JSON][tableaux]
 // (petit-boutiste, chaque tableau aligné sur 4 octets). L'en-tête décrit les résultats, les observations et les
-// tableaux : cardIdx (i32), group (i32), dyn (f32), glob (f32), opt (f32), ptr (i32).
+// tableaux : cardIdx (i32), group (i32), dyn (f32), glob (f32), opt (f32), ptr (i32). Résultat d'un choix appliqué :
+// flaw, {"seat":0,"kind":"weakAttack"} si c'était un choix inutile (game/ai/prune.ts), sinon null.
 //
 // Rien d'autre que les réponses n'est écrit sur la sortie standard (messages sur la sortie d'erreur).
 //   node --no-warnings game/rl/server.ts [--catalog fichier]
@@ -157,8 +158,9 @@ function run(cmd: { actions?: ActionCmd[]; resets?: ResetCmd[]; envs?: ResetCmd[
   for (const x of cmd.actions ?? []) {
     const slot = envs.get(x.env);
     if (!slot) throw new Error(`environnement inconnu : ${x.env}`);
+    const flaw = slot.env.flaw(x.index);
     slot.env.step(x.index, { probs: x.probs, value: x.value });
-    results.push(report(x.env, batch));
+    results.push({ ...report(x.env, batch), flaw });
   }
   for (const x of [...(cmd.resets ?? []), ...(cmd.envs ?? [])]) {
     const slot: EnvSlot = { env: envs.get(x.env)?.env ?? new RlEnv(), record: Boolean(x.record), models: x.models };

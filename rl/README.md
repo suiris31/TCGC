@@ -417,7 +417,8 @@ DON!! encore nécessaires, DON!! qui permet ou non d'atteindre le Leader adverse
 qui manque, attaque déjà repoussée, Bloqueur qui survit ou non, DON!! restantes après avoir joué une carte. Ce sont des
 faits, pas des règles : le modèle décide toujours seul quoi en faire.
 
-**Récompense.** +1 victoire, −1 défaite, rien d'autre (ni dégâts, ni cartes, ni board). **Plafond de sécurité**
+**Récompense.** +1 victoire, −1 défaite, rien d'autre (ni dégâts, ni cartes, ni board) ; seule exception, pour les IA
+spécialisées : un léger malus pour deux sortes de choix inutiles (§ 16). **Plafond de sécurité**
 (`env.max_decisions`, 3000 décisions ; une partie normale en compte 120 à 300) : une partie qui l'atteint est
 **tronquée**, sans récompense ; l'apprentissage complète avec sa propre estimation de la valeur de la dernière
 position où l'IA a décidé. Ainsi, faire durer la partie jusqu'au plafond ne rapporte ni ne coûte rien de plus que de continuer à
@@ -471,6 +472,18 @@ du modèle général qui continue d'apprendre en ne jouant **que ce deck**, cont
   ce deck contre chacun des decks du registre, contre l'heuristique et contre le modèle général (240 parties chacun :
   des repères fixes) et contre les autres IA spécialisées (`experts` : un repère qui monte avec leurs progrès). Pas de
   niveau à valider : on arrête quand les évaluations ne progressent plus.
+- **Malus des choix inutiles** (`ppo.flaw_penalty: 0.05` et `ppo.flaw_kinds` dans `config/deck.yaml`) : en plus de ±1
+  pour la partie, −0,05 à la décision même quand l'IA attaque avec une puissance trop faible sans effet qui en profite
+  (`weakAttack` : son Personnage s'épuise pour rien et ne pourra pas bloquer) ou contre / bloque une attaque déjà
+  repoussée (`repelled`). Ce sont les choix inutiles de `game/ai/prune.ts` sans exception connue. Léger exprès : un
+  choix réellement utile dans un cas que la règle ne connaît pas reste payant s'il fait gagner. Pas de malus (pour
+  l'instant) sur les DON!! données à une carte qui ne peut plus attaquer : la règle vient d'être corrigée pour les
+  cartes qui en profitent au tour adverse (Usopp, Bonney, Franky de ST-21...) ; à ajouter
+  (`--set 'ppo.flaw_kinds=[weakAttack, repelled, idleDon]'`) si les mesures montrent que l'IA continue. Les choix
+  inutiles sont comptés à chaque mise à jour (« inutiles 1.23/partie ») et à chaque évaluation (« choix inutiles ... par
+  partie », `bilan_decks.py`). Sans malus : `--set ppo.flaw_penalty=0`. Pas de bonus pour l'usage du Leader : « bien
+  l'utiliser » serait une stratégie écrite à la main, et l'IA chercherait le bonus pour lui-même (`rl/SUIVI.md`,
+  décision 20).
 
 ```powershell
 # un deck : entraînement « deck-META-ROBIN-2026-10 », 300 mises à jour par défaut
@@ -520,7 +533,7 @@ des spécialistes), chacun avance de quelques mises à jour à son tour, puis on
 fois, un palier des 15 decks prend ~2 h 40.
 
 **Suivre** : `python bilan_decks.py` (toutes les IA spécialisées d'un coup : départ, avant-dernière et dernière
-évaluation contre chaque adversaire ; `--all` : toutes) ; `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
+évaluation contre chaque adversaire, et choix inutiles par partie ; `--all` : toutes) ; `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
 messages de chaque entraînement sont dans `logs/deck-<deck>/console.txt`.
 
 **Mesurer à part** (graines d'évaluation, rien n'est appris) :

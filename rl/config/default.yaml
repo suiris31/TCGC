@@ -41,6 +41,9 @@ ppo:
   target_kl: 0.03          # arrêt anticipé d'une mise à jour qui changerait trop la politique
   normalize_advantages: true
   amp: false               # demi-précision sur GPU NVIDIA (float16, cœurs Tensor) : plus rapide, même apprentissage
+  flaw_penalty: 0.0        # malus par choix inutile du modèle (game/ai/prune.ts), à la décision même ; 0 : aucun
+  flaw_kinds: [weakAttack, repelled]   # sortes pénalisées : attaque vouée à l'échec, Contre ou Bloqueur sur une
+                                       # attaque déjà repoussée (les seules sans exception connue)
 
 train:
   max_updates: 100000      # arrêt après ce nombre de mises à jour (toutes phases confondues)

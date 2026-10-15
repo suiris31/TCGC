@@ -4,7 +4,8 @@
 - parties dupliquées : chaque graine est jouée deux fois, le modèle à chaque siège (mêmes mélanges ; le premier joueur
   est tiré de la graine, donc le modèle commence dans l'une et joue second dans l'autre) ;
 - adversaires : aléatoire, heuristique, Monte-Carlo (tirages fixés), autres modèles (anciennes versions) ;
-- résultats par adversaire, par deck du modèle, par confrontation, premier/second joueur, avec intervalles de confiance.
+- résultats par adversaire, par deck du modèle, par confrontation, premier/second joueur, avec intervalles de confiance ;
+  choix inutiles du modèle évalué par partie (game/ai/prune.ts), par sorte.
 """
 from __future__ import annotations
 
@@ -91,6 +92,7 @@ def run_games(pool: EnvPool, env_ids: list[int], agents: dict[str, Agent], evalu
     running: dict[int, tuple[int, EvalGame, list[str | None]]] = {}
     pending: dict[int, object] = {}
     outcomes: list[dict | None] = [None] * len(games)
+    flaws: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))   # choix inutiles du modèle évalué
     free = list(env_ids)
 
     def start(env: int) -> dict:
@@ -113,6 +115,8 @@ def run_games(pool: EnvPool, env_ids: list[int], agents: dict[str, Agent], evalu
         results = pool.run(actions=actions, resets=resets)
         resets, actions = [], []
         for r in results:
+            if r.flaw and r.env in running and r.flaw[0] == running[r.env][1].agent_seat:
+                flaws[r.env][r.flaw[1]] += 1
             if r.done:
                 i, g, _ = running.pop(r.env)
                 score = 0.5 if (r.truncated or r.error) else (1.0 if r.winner == g.agent_seat else 0.0)
@@ -121,6 +125,7 @@ def run_games(pool: EnvPool, env_ids: list[int], agents: dict[str, Agent], evalu
                     "seed": g.seed, "score": score, "winner": r.winner, "turns": r.turns, "decisions": r.decisions,
                     "truncated": r.truncated, "error": r.error, "record": r.record,
                     "agent_first": (r.first == g.agent_seat) if r.first is not None else None,
+                    "flaws": dict(flaws.pop(r.env, {})),
                 }
                 if queue:
                     resets.append(start(r.env))
@@ -156,8 +161,15 @@ def summarize(outcomes: list[dict]) -> dict:
             "mean_turns": float(np.mean([r["turns"] for r in rows])),
             "mean_decisions": float(np.mean([r["decisions"] for r in rows])),
             "truncated": sum(r["truncated"] for r in rows), "errors": sum(bool(r["error"]) for r in rows),
+            "flaws_per_game": sum(sum(r.get("flaws", {}).values()) for r in rows) / n,
+            "flaws_by_kind": {},
             "by_agent_deck": {}, "by_opp_deck": {}, "by_matchup": {}, "first": None, "second": None,
         }
+        kinds: dict[str, int] = defaultdict(int)
+        for r in rows:
+            for k, v in r.get("flaws", {}).items():
+                kinds[k] += v
+        entry["flaws_by_kind"] = {k: v / n for k, v in sorted(kinds.items())}
         for key, field in (("by_agent_deck", "agent_deck"), ("by_opp_deck", "opp_deck")):
             groups: dict[str, list[float]] = defaultdict(list)
             for r in rows:
@@ -175,12 +187,14 @@ def summarize(outcomes: list[dict]) -> dict:
 
 
 def to_markdown(report: dict, title: str) -> str:
-    lines = [f"# {title}", "", "| Adversaire | Parties | Victoires | IC 95 % | 1er joueur | 2e joueur | Tours moyens | Tronquées | Erreurs |",
-             "|---|---|---|---|---|---|---|---|---|"]
+    lines = [f"# {title}", "", "| Adversaire | Parties | Victoires | IC 95 % | 1er joueur | 2e joueur | Tours moyens | "
+             "Choix inutiles par partie | Tronquées | Erreurs |", "|---|---|---|---|---|---|---|---|---|---|"]
     pct = lambda x: "—" if x is None else f"{100 * x:.1f} %"
     for opp, e in report.items():
+        kinds = ", ".join(f"{k} {v:.2f}" for k, v in e.get("flaws_by_kind", {}).items())
         lines.append(f"| {opp} | {e['games']} | {pct(e['winrate'])} | {pct(e['ci95'][0])} – {pct(e['ci95'][1])} | "
-                     f"{pct(e['first']['winrate'])} | {pct(e['second']['winrate'])} | {e['mean_turns']:.1f} | {e['truncated']} | {e['errors']} |")
+                     f"{pct(e['first']['winrate'])} | {pct(e['second']['winrate'])} | {e['mean_turns']:.1f} | "
+                     f"{e.get('flaws_per_game', 0):.2f}{f' ({kinds})' if kinds else ''} | {e['truncated']} | {e['errors']} |")
     for opp, e in report.items():
         lines += ["", f"## Contre {opp} : par deck du modèle", "", "| Deck | Parties | Victoires |", "|---|---|---|"]
         for deck, v in e["by_agent_deck"].items():

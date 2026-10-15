@@ -18,6 +18,7 @@ def test_random_games_complete(pool):
     results = pool.run(resets=[{"env": e, "seed": 100 + e, "decks": ["ST-31", "ST-35"], "first": "random", "seats": seats}
                                for e in range(pool.size)])
     finished = 0
+    flaws: dict[str, int] = {}
     for _ in range(3000):
         live = [r for r in results if not r.done]
         finished += sum(r.done for r in results)
@@ -32,8 +33,13 @@ def test_random_games_complete(pool):
             assert (o.ptr < o.n).all()
             actions.append({"env": r.env, "index": int(rng.integers(o.a))})
         results = pool.run(actions=actions)
+        for r in results:
+            if r.flaw:                         # choix inutile du modèle (siège 0, seul piloté)
+                assert r.flaw[0] == 0
+                flaws[r.flaw[1]] = flaws.get(r.flaw[1], 0) + 1
     assert finished == pool.size
     assert all(r.winner in (0, 1) and not r.truncated and r.error is None for r in results if r.done)
+    assert flaws.get("weakAttack", 0) > 0, f"des choix au hasard font des attaques vouées à l'échec : {flaws}"
 
 
 @needs_engine

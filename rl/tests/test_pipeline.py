@@ -68,6 +68,11 @@ def test_specialized_deck_from_the_general_model():
     assert "IA spécialisée sur le deck ST-35" in out and "Évaluation de départ" in out and "[    2 |" in out
     assert "base " in out and (RL_DIR / "checkpoints" / DECK_RUN / "base.pt").exists()
     assert "Ligue des spécialistes : 0 IA" in out and "experts " in out, "sans autre IA : le modèle général à leur place"
+    # malus des choix inutiles (deck.yaml) ; comptés à l'entraînement et aux évaluations
+    assert "Malus de 0.05 par choix inutile (weakAttack, repelled)" in out and "inutiles " in out and "choix inutiles " in out
+    rows = [json.loads(x) for x in (RL_DIR / "logs" / DECK_RUN / "metrics.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert any("flaws_per_game" in r for r in rows if r["kind"] == "train")
+    assert any("heuristic/flaws" in r for r in rows if r["kind"] == "eval")
     out = run("train.py", *common, "--max-updates", "3")
     assert "Reprise depuis" in out and "[    3 |" in out and "Évaluation de départ" not in out
     out = run("train.py", *common, "--max-updates", "3")

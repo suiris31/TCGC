@@ -12,7 +12,9 @@
 // Les règles sont entièrement celles du moteur (act) : rien n'est dupliqué ici. Une partie se rejoue exactement à partir
 // de sa graine et de la liste des choix (trajectoire, voir record.ts).
 //
-// Récompense : +1 pour le gagnant, −1 pour le perdant, rien d'autre (calculée côté entraînement à partir de `winner`).
+// Récompense : +1 pour le gagnant, −1 pour le perdant (calculée côté entraînement à partir de `winner`). En option, un
+// léger malus pour certains choix inutiles du modèle (flaw : attaque vouée à l'échec, Contre ou Bloqueur sur une
+// attaque déjà repoussée ; rl/README.md § 16).
 //
 // Plafond de sécurité (maxDecisions) : une partie s'arrête toujours d'elle-même (deck vide au plus tard, voir
 // game/docs/ia-rl.md § Plafond). Le plafond ne sert qu'à rattraper un bogue du moteur. Une partie qui l'atteint est
@@ -20,6 +22,7 @@
 // propre estimation de la valeur de la dernière position où le joueur a décidé (troncature par limite de temps), si
 // bien qu'atteindre le plafond ne rapporte rien de plus que de continuer à jouer ; l'agent n'a aucun intérêt à faire
 // traîner la partie. Ces parties sont comptées et enregistrées pour analyse.
+import { useless, type UselessKind } from '../ai/prune.ts';
 import { DECKS } from '../engine/decks.ts';
 import { actInPlace, newGame } from '../engine/engine.ts';
 import type { GameState, Option, PlayerId } from '../engine/types.ts';
@@ -113,6 +116,20 @@ export class RlEnv {
       this.fail(err);
     }
     return this;
+  }
+
+  // Choix inutile (game/ai/prune.ts) que serait l'option `choice` de la décision en cours : sa sorte et le siège qui
+  // décide. Une erreur ici n'arrête pas la partie (le choix est joué normalement, sans malus).
+  flaw(choice: number): { seat: PlayerId; kind: UselessKind } | null {
+    const d = this.done ? null : this.state.decision;
+    const o = d?.options[choice];
+    if (!d || !o) return null;
+    try {
+      const u = useless(this.state, d, o);
+      return u ? { seat: d.player, kind: u.kind } : null;
+    } catch {
+      return null;
+    }
   }
 
   result(): Result {

@@ -130,6 +130,9 @@ def main() -> int:
                      anomaly_dir=log_dir / "anomalies")
     spec = pool.spec
     log(f"Moteur {spec.engine}, encodage {spec.spec_hash}, catalogue {spec.catalog} ({len(spec.cards) - 1} cartes)")
+    if float(cfg["ppo"].get("flaw_penalty") or 0) > 0:
+        log(f"Malus de {cfg['ppo']['flaw_penalty']} par choix inutile ({', '.join(cfg['ppo'].get('flaw_kinds') or [])}), "
+            "contre ±1 pour la partie")
     if spec.synthetic:
         msg = "CATALOGUE SYNTHÉTIQUE (cartes inventées) : un modèle entraîné ainsi ne vaut rien pour le vrai jeu."
         if not cfg.get("allow_synthetic"):
@@ -427,9 +430,11 @@ def main() -> int:
                 ok = e["winrate"] >= item.get("min_winrate", 0.0)
                 passed = passed and ok
                 lines.append(f"{name} {100 * e['winrate']:.1f} % [{100 * e['ci95'][0]:.0f}–{100 * e['ci95'][1]:.0f}] "
-                             f"sur {e['games']} parties (seuil {100 * item.get('min_winrate', 0):.0f} % {'OK' if ok else 'non atteint'})")
+                             f"sur {e['games']} parties (seuil {100 * item.get('min_winrate', 0):.0f} % {'OK' if ok else 'non atteint'}, "
+                             f"choix inutiles {e['flaws_per_game']:.2f} par partie)")
                 logger.log(state["update"], "eval", {f"{name}/winrate": e["winrate"], f"{name}/ci_low": e["ci95"][0],
-                                                     f"{name}/turns": e["mean_turns"]})
+                                                     f"{name}/turns": e["mean_turns"], f"{name}/flaws": e["flaws_per_game"],
+                                                     **{f"{name}/flaws/{k}": v for k, v in e["flaws_by_kind"].items()}})
                 state["elo_results"].extend((f"u{state['update']:06d}", name, o["score"]) for o in outcomes if o["opponent"] == name)
             out = log_dir / "eval"
             out.mkdir(parents=True, exist_ok=True)
@@ -502,7 +507,8 @@ def main() -> int:
                                                    "total_games": state["games"], "lr": cfg["ppo"]["lr"]})
             per_opp = ", ".join(f"{k.split('/')[1]} {100 * v:.0f} %" for k, v in roll.items() if k.startswith("winrate/"))
             log(f"[{state['update']:5d} | {level['name']}] parties {state['games']} (+{roll['games']}) | victoires {per_opp or '—'} "
-                f"| tours {roll['mean_turns']:.1f} | tronquées {100 * roll['truncated_rate']:.1f} % | entropie {learn.get('entropy', 0):.2f} "
+                f"| tours {roll['mean_turns']:.1f} | inutiles {roll['flaws_per_game']:.2f}/partie "
+                f"| tronquées {100 * roll['truncated_rate']:.1f} % | entropie {learn.get('entropy', 0):.2f} "
                 f"| valeur {learn['value_mean']:+.2f} (var. expl. {learn['explained_variance']:.2f}) | π {learn.get('policy_loss', 0):+.3f} "
                 f"v {learn.get('value_loss', 0):.3f} kl {learn.get('approx_kl', 0):.4f} | {dps:.0f} décisions/s, "
                 f"{perf['games_per_s']:.1f} parties/s (Node {100 * perf['env_share']:.0f} %, réseau {100 * perf['infer_share']:.0f} %, "

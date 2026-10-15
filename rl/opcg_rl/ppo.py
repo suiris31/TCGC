@@ -1,6 +1,8 @@
 """Collecte des parties d'entraînement et apprentissage PPO (acteur-critique, avantages GAE).
 
-Récompense : +1 victoire, −1 défaite, à la dernière décision du joueur ; aucune récompense intermédiaire ; γ = 1.
+Récompense : +1 victoire, −1 défaite, à la dernière décision du joueur ; γ = 1. En option (ppo.flaw_penalty, IA
+spécialisées : 0,05), un léger malus à la décision même pour certains choix inutiles (ppo.flaw_kinds, game/ai/prune.ts :
+attaque vouée à l'échec, Contre ou Bloqueur sur une attaque déjà repoussée) ; aucune autre récompense intermédiaire.
 Partie tronquée par le plafond de sécurité : aucune récompense, la valeur de la dernière position où le joueur a
 décidé (estimée par le réseau) complète l'avantage — atteindre le plafond ne rapporte ni ne coûte rien de plus que de
 continuer à jouer.
@@ -36,6 +38,7 @@ class Decision:
     logp: float
     value: float
     version: int
+    flaw: str | None = None          # choix inutile (game/ai/prune.ts) : sa sorte
 
 
 @dataclass
@@ -71,6 +74,8 @@ class Stats:
         self.truncated = 0
         self.errors = 0
         self.records: list[str] = []
+        self.learner_games = 0                       # parties finies du modèle qui apprend (une par siège)
+        self.flaws: dict[str, int] = defaultdict(int)   # ses choix inutiles, par sorte
 
     def summary(self) -> dict:
         out = {
@@ -78,7 +83,10 @@ class Stats:
             "error_rate": self.errors / max(1, self.games),
             "mean_turns": float(np.mean(self.turns)) if self.turns else 0.0,
             "mean_decisions": float(np.mean(self.decisions)) if self.decisions else 0.0,
+            "flaws_per_game": sum(self.flaws.values()) / max(1, self.learner_games),
         }
+        for k, v in sorted(self.flaws.items()):
+            out[f"flaws_per_game/{k}"] = v / max(1, self.learner_games)
         all_scores = [s for v in self.by_opp.values() for s in v]
         out["winrate"] = float(np.mean(all_scores)) if all_scores else 0.0
         out["mean_reward"] = float(np.mean([2 * s - 1 for s in all_scores])) if all_scores else 0.0
@@ -206,6 +214,10 @@ class Collector:
 
     def _ingest(self, results: list[StepResult]) -> None:
         for r in results:
+            if r.flaw:                   # choix inutile : la dernière décision de ce siège (s'il apprend)
+                traj = self.open.get((r.env, r.flaw[0]))
+                if traj and traj.steps:
+                    traj.steps[-1].flaw = r.flaw[1]
             if r.done:
                 self._finish(r)
                 self.to_reset.append(self._new_game(r.env))
@@ -229,6 +241,10 @@ class Collector:
             traj = self.open.pop((r.env, s), None) or Traj(g.opponent.label, self.version)
             if r.error:
                 continue                       # erreur du moteur : rien n'est appris de cette partie
+            st.learner_games += 1
+            for d in traj.steps:
+                if d.flaw:
+                    st.flaws[d.flaw] += 1
             if r.truncated:
                 traj.truncated = True
                 score = 0.5
@@ -248,9 +264,11 @@ class Collector:
 
 # ---------- apprentissage ----------
 
-def compute_gae(trajs: list[Traj], values: np.ndarray, gamma: float, lam: float):
-    """Avantages GAE(λ) et cibles de valeur, partie par partie (récompense seulement à la fin). Partie tronquée : la
-    valeur de la dernière décision du joueur tient lieu de suite (pas de récompense)."""
+def compute_gae(trajs: list[Traj], values: np.ndarray, gamma: float, lam: float,
+                flaw_penalty: dict[str, float] | None = None):
+    """Avantages GAE(λ) et cibles de valeur, partie par partie (récompense à la fin ; flaw_penalty : malus à la
+    décision même pour ces sortes de choix inutiles). Partie tronquée : la valeur de la dernière décision du joueur
+    tient lieu de suite (pas de récompense finale)."""
     n = sum(len(t.steps) for t in trajs)
     adv = np.zeros(n, np.float32)
     i = 0
@@ -260,8 +278,12 @@ def compute_gae(trajs: list[Traj], values: np.ndarray, gamma: float, lam: float)
         last = float(v[-1]) if t.truncated else 0.0
         next_v = np.append(v[1:], last)
         rewards = np.zeros(T, np.float32)
+        if flaw_penalty:
+            for j, d in enumerate(t.steps):
+                if d.flaw:
+                    rewards[j] -= flaw_penalty.get(d.flaw, 0.0)
         if not t.truncated:
-            rewards[-1] = t.reward
+            rewards[-1] += t.reward
         delta = rewards + gamma * next_v - v
         gae = 0.0
         for j in range(T - 1, -1, -1):
@@ -284,7 +306,9 @@ def ppo_update(agent: Agent, optimizer: torch.optim.Optimizer, trajs: list[Traj]
     packed = Packed(agent.collate, [d.obs for d in steps])
     n = len(steps)
     values = packed_values(agent, packed, amp)
-    adv, ret = compute_gae(trajs, values, cfg["gamma"], cfg["gae_lambda"])
+    penalty = float(cfg.get("flaw_penalty") or 0.0)
+    flaw_penalty = {k: penalty for k in cfg.get("flaw_kinds") or []} if penalty > 0 else None
+    adv, ret = compute_gae(trajs, values, cfg["gamma"], cfg["gae_lambda"], flaw_penalty)
     actions = torch.tensor([d.action for d in steps], dtype=torch.long, device=dev)
     old_logp = torch.tensor([d.logp for d in steps], dtype=torch.float32, device=dev)
     adv_t = torch.from_numpy(adv).to(dev)

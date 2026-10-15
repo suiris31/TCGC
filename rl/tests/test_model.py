@@ -159,6 +159,18 @@ def test_gae_terminal_reward_only():
     assert np.allclose(adv, ret - values)
 
 
+def test_gae_flaw_penalty_at_the_decision():
+    t = _traj(3, 1.0)
+    t.steps[1].flaw = "weakAttack"
+    t.steps[2].flaw = "idleDon"                  # sorte non pénalisée
+    values = np.zeros(3, np.float32)
+    adv, ret = compute_gae([t], values, gamma=1.0, lam=1.0, flaw_penalty={"weakAttack": 0.05})
+    # le malus compte à partir de la décision fautive ; les décisions d'avant le voient aussi (γ = λ = 1)
+    assert np.allclose(ret, [0.95, 0.95, 1.0])
+    adv0, ret0 = compute_gae([t], values, gamma=1.0, lam=1.0)
+    assert np.allclose(ret0, [1, 1, 1]), "sans malus configuré : rien ne change"
+
+
 def test_gae_truncated_bootstraps_without_reward():
     trajs = [_traj(2, 0.0, truncated=True)]
     values = np.array([0.1, 0.3], np.float32)

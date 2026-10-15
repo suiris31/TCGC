@@ -206,6 +206,10 @@ taille variable, sans ordre, cartes en interaction (attaquant / bloqueurs / aura
   un joueur en train de perdre aurait intérêt à faire traîner).
 - Toute récompense auxiliaire éventuelle : justifiée par écrit, mesurée par comparaison A/B, retirée si elle n'apporte
   rien.
+- Seule exception (15 octobre 2026, IA spécialisées par deck, `rl/SUIVI.md` décision 20) : −0,05 à la décision même
+  pour une attaque vouée à l'échec ou un Contre / Bloqueur sur une attaque déjà repoussée (`game/ai/prune.ts`, les
+  seuls choix inutiles sans exception connue ; `ppo.flaw_penalty`). Mesurée avant / après aux évaluations (victoires,
+  choix inutiles par partie), pas en A/B strict ; à retirer (`ppo.flaw_penalty: 0`) si les victoires baissent.
 
 ## 4. Choix de l'algorithme
 

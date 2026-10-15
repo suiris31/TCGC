@@ -62,12 +62,16 @@ Bon à savoir :
 - **Ligue des spécialistes** : chaque IA de deck affronte aussi les IA des autres decks déjà entraînées (dernier point
   de sauvegarde, relu à chaque évaluation). Plus il y a de decks entraînés, plus les adversaires jouent leur deck comme
   il faut (60 % des parties ; 2 IA adverses par mise à jour, tirées au sort à chaque fois).
+- **Malus des choix inutiles** : −0,05 (contre ±1 pour la partie) quand l'IA attaque avec une puissance trop faible ou
+  contre / bloque une attaque déjà repoussée. Sur chaque ligne de mise à jour : « inutiles 1.23/partie » (doit baisser).
+  Ajouter les DON!! données à une carte qui ne peut plus attaquer : `--set 'ppo.flaw_kinds=[weakAttack, repelled, idleDon]'` ;
+  sans malus : `--set ppo.flaw_penalty=0` (à remettre à chaque relance, les `--set` ne sont pas gardés).
 
 ## Suivre
 
 | Je veux... | Commande |
 |---|---|
-| **Le bilan de tous les decks d'un coup** (évaluations de chaque palier) | `python bilan_decks.py` (toutes les évaluations : `--all`) |
+| **Le bilan de tous les decks d'un coup** (victoires et choix inutiles à chaque palier) | `python bilan_decks.py` (toutes les évaluations : `--all`) |
 | Le résumé d'un deck (évaluations, tendances) | `python report.py --run deck-META-ROBIN-2026-10` |
 | Les 10 dernières évaluations seulement | `python report.py --run deck-META-ROBIN-2026-10 --evals 10` |
 | Voir le journal défiler (autre fenêtre) | `Get-Content logs\deck-META-ROBIN-2026-10\train.log -Wait -Tail 20` |
@@ -79,6 +83,7 @@ Bon à savoir :
 `base` (le modèle général) et contre `experts` (les autres IA spécialisées). Les deux premiers sont des repères fixes :
 ça progresse s'ils montent par rapport à l'évaluation de départ. `experts` monte moins vite, ou baisse, quand les
 autres IA progressent : c'est normal. Un écart plus petit que l'intervalle entre crochets n'est pas significatif.
+Chaque adversaire a aussi ses « choix inutiles ... par partie » : ils doivent baisser d'un palier à l'autre.
 
 ## Mesurer à part
 
