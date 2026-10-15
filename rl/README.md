@@ -517,7 +517,8 @@ sur les cœurs Tensor ; pas pour jouer : plus lent sur les petits lots de chaque
 des spécialistes), chacun avance de quelques mises à jour à son tour, puis on recommence. Avec `--step 100` et cinq à la
 fois, un palier des 15 decks prend ~2 h 40.
 
-**Suivre** : `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
+**Suivre** : `python bilan_decks.py` (toutes les IA spécialisées d'un coup : départ, avant-dernière et dernière
+évaluation contre chaque adversaire ; `--all` : toutes) ; `python report.py --run deck-META-ROBIN-2026-10` ; `tensorboard --logdir logs` ; avec `--parallel`, les
 messages de chaque entraînement sont dans `logs/deck-<deck>/console.txt`.
 
 **Mesurer à part** (graines d'évaluation, rien n'est appris) :

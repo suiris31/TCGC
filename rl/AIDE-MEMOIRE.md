@@ -67,6 +67,7 @@ Bon à savoir :
 
 | Je veux... | Commande |
 |---|---|
+| **Le bilan de tous les decks d'un coup** (évaluations de chaque palier) | `python bilan_decks.py` (toutes les évaluations : `--all`) |
 | Le résumé d'un deck (évaluations, tendances) | `python report.py --run deck-META-ROBIN-2026-10` |
 | Les 10 dernières évaluations seulement | `python report.py --run deck-META-ROBIN-2026-10 --evals 10` |
 | Voir le journal défiler (autre fenêtre) | `Get-Content logs\deck-META-ROBIN-2026-10\train.log -Wait -Tail 20` |
