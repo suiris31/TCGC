@@ -428,6 +428,15 @@ questions-réponses Bandai, tournois).
      KO par un effet adverse. **Kingdew (ST15-003)** : mis KO par un effet (de l'un ou l'autre joueur) pendant le tour
      adverse. **Gra ha ha ha ha !!** : le +2000 va à la carte attaquée si elle est « Équipage de Barbe Blanche ».
 
+## Cartes {Erbaf} ajoutées pour le deck de l'utilisateur (16 octobre 2026), choix faits sans validation
+
+165. **Gerd (OP17-081)** : le +12 de coût (Leader {Erbaf}) ne vaut qu'en jeu (choix 13). « Coût de 8 ou moins » : coût
+     imprimé de la carte dans la Défausse ; la carte défaussée pour payer peut être reprise. La question est posée dès
+     que le joueur a une carte en main, même sans Personnage à reprendre (l'IA refuse alors).
+166. **« Je suis Luffy ! Le futur roi des pirates ! » (OP17-096)** : le +4000 va à la carte attaquée (choix 20) ; le
+     Personnage de coût 12 ou plus peut être à l'un ou l'autre joueur (choix 12). [Déclenchement] : n'importe quelle carte
+     {Erbaf} (Personnage, Événement...).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

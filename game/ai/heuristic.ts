@@ -536,6 +536,7 @@ function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: nu
     case 'OP17-077': return findField(s, targetUid)?.leader && donOnField(s, p) >= 1 ? 4000 : 0;
     case 'OP10-117': return s.players[p].life.length <= 1 ? 3000 : 0;
     case 'OP17-076': return s.players[p].hand.length >= 2 ? 3000 : 0;
+    case 'OP17-096': return s.players.some((P) => P.chars.some((c) => fieldCost(s, c.uid) >= 12)) ? 4000 : 0;
     // −3000 à l'attaquant, ou KO de l'attaquant (qui arrête l'attaque) : seulement contre un Personnage
     case 'OP15-021':
     case 'OP10-040':
@@ -683,6 +684,10 @@ function chooseEffect(s: GameState, d: Decision): string {
   }
   // Whitey Bay (ST-22) : révéler 2 cartes pour +2000 au Leader seulement s'il peut encore attaquer ce tour-ci
   if (d.tag === 'may' && sourceNum === 'ST22-011') return yesNo(canAttack(s, p, P.leader));
+  // Gerd (OP17-081) : défausser 1 carte seulement s'il y a un Personnage à reprendre dans la Défausse
+  if (d.tag === 'may' && sourceNum === 'OP17-081') {
+    return yesNo(P.trash.some((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 8 && !def(c.num).names.includes('Gerd')));
+  }
   // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus
   if (d.tag === 'may' && sourceNum === 'ST10-010') return yesNo(O.hand.length >= 7);
   // Kyo : défausser 2 cartes pour garder un Personnage seulement avec une main fournie

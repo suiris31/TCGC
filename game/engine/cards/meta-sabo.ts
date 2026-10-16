@@ -1,12 +1,15 @@
 // SABO DU MÉTA (octobre 2026, variante « Équipage de Chapeau de paille / Erbaf ») : cartes codées pour ce deck, d'après
 // leur texte officiel (VF et VO). Le Leader Sabo (OP13-004), Nami (OP01-016) et Menu « Bonnes manières » (OP04-016) sont
-// déjà dans st35.ts et st31.ts. Les choix d'interprétation sont dans game/docs/interpretations.md.
+// déjà dans st35.ts et st31.ts. Gerd (OP17-081) et « Je suis Luffy ! » (OP17-096), absents de la liste du méta, ont été
+// ajoutés à la demande de l'utilisateur (16 octobre 2026) pour son propre deck. Les choix d'interprétation sont dans
+// game/docs/interpretations.md.
 import { def, drawAndDiscard, log, reveal, uniqueByNum } from '../rules.ts';
 import type { CardBehavior, GameState } from '../types.ts';
 import {
-  bothCosts, card, characterCostAtLeast, discardCost, drawCards, effect, giveActiveDon, giveDon, grant, koTotalCost, oppChar,
-  ownChar, ownLeaderOrChar, playFromTrash, powerMod, searchTop, seq, trashSelf, trashTopCost, when, withCost,
+  bothCosts, card, characterCostAtLeast, discardCost, drawCards, effect, giveActiveDon, giveDon, grant, koTotalCost, leaderType,
+  oppChar, ownChar, ownLeaderOrChar, playFromTrash, powerMod, searchTop, seq, trashSelf, trashToHand, trashTopCost, when, withCost,
 } from './bricks.ts';
+import { counterBoost } from './common.ts';
 
 const SH = 'Straw Hat Crew';  // {Équipage de Chapeau de paille}
 const ELBAPH = 'Elbaph';      // {Erbaf}
@@ -14,6 +17,8 @@ const ELBAPH = 'Elbaph';      // {Erbaf}
 // « S'il y a un Personnage ayant un coût de 12 ou plus » (sur l'un ou l'autre terrain)
 const big = characterCostAtLeast(12);
 const bigBonus = (s: GameState) => (big(s, 0, -1) ? 3000 : 0);
+const elbaphLeader = leaderType(ELBAPH);
+const LUFFY_KING = 'Je suis Luffy ! Le futur roi des pirates !';
 
 export const META_SABO: Record<string, CardBehavior> = {
   // Ace, Sabo et Luffy : [Activation : Principale] donner 1 DON!! redressée à son Leader ou un Personnage et placer cette
@@ -52,6 +57,12 @@ export const META_SABO: Record<string, CardBehavior> = {
   // Nico Robin : +3000 avec un coût 12 ou plus en jeu ; [Jouée] dans ce cas, −3000 à un Personnage adverse pour le tour
   'OP17-087': card({ onPlay: when(big, powerMod(oppChar(), -3000, 'turn', 'Nico Robin')) }, { selfPower: bigBonus }),
 
+  // Gerd : +12 de coût avec un Leader {Erbaf} ; [Jouée] défausser 1 carte : reprendre de sa Défausse un Personnage de
+  // coût 8 ou moins autre que [Gerd]
+  'OP17-081': card({
+    onPlay: withCost(discardCost(1), trashToHand({ category: 'CHARACTER', costMax: 8, notName: 'Gerd' }, 'Gerd'), 'Gerd'),
+  }, { selfCost: (s, p) => (elbaphLeader(s, p, -1) ? 12 : 0) }),
+
   // Haguar D. Sauro : +12 de coût ; [Jouée] 3 cartes du dessus, 1 carte {Erbaf}, le reste en Défausse
   'OP17-089': card({ onPlay: searchTop(3, 1, { type: ELBAPH }, 'une carte {Erbaf}', 'trash') }, { selfCost: () => 12 }),
 
@@ -87,6 +98,13 @@ export const META_SABO: Record<string, CardBehavior> = {
       },
     },
   },
+
+  // Je suis Luffy ! Le futur roi des pirates ! : [Contre] avec un coût 12 ou plus en jeu, +4000 pour le combat ;
+  // [Déclenchement] reprendre une carte {Erbaf} de sa Défausse
+  'OP17-096': card({
+    onCounter: when(big, effect((ctx) => counterBoost(ctx, 4000, LUFFY_KING))),
+    onTrigger: trashToHand({ type: ELBAPH }, LUFFY_KING),
+  }, { counterUseful: (s) => big(s, 0, -1) }),
 
   // Loki : +12 de coût, +3000 pendant le tour adverse ; [Jouée] mettre KO des Personnages adverses de coût total 4 ou moins
   'OP17-119': card({ onPlay: koTotalCost(oppChar(), 4, 'Loki') }, { selfCost: () => 12, selfPower: (s, p) => (s.active !== p ? 3000 : 0) }),
