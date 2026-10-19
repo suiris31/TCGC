@@ -231,6 +231,66 @@ db.exec(`
     updated_at TEXT NOT NULL,
     PRIMARY KEY (user_id, id)
   );
+
+  -- Mode Aventure (onglet Jouer, voir game-adventure.js). La Cale : cartes gagnées (deck de départ, boosters,
+  -- récompenses), par numéro et par version
+  CREATE TABLE IF NOT EXISTS game_inventory (
+    user_id INTEGER NOT NULL,
+    number  TEXT NOT NULL,                 -- "OP03-001"
+    variant TEXT NOT NULL DEFAULT 'base',  -- 'base', ou version (parallèle...) définie par le générateur de boosters
+    count   INTEGER NOT NULL CHECK (count > 0),
+    PRIMARY KEY (user_id, number, variant)
+  );
+
+  -- Boosters gagnés : tirés à l'ouverture seulement (aléatoire du serveur), contenu gardé ensuite
+  CREATE TABLE IF NOT EXISTS game_boosters (
+    id         TEXT PRIMARY KEY,           -- aléatoire
+    user_id    INTEGER NOT NULL,
+    set_code   TEXT NOT NULL,              -- "OP03"
+    source     TEXT NOT NULL,              -- "chapitre eb-2-orange-town" : ce qui l'a rapporté
+    created_at TEXT NOT NULL,
+    opened_at  TEXT,                       -- NULL tant qu'il n'est pas ouvert
+    content    TEXT                        -- JSON (BoosterContent), une fois ouvert
+  );
+  CREATE INDEX IF NOT EXISTS game_boosters_user ON game_boosters(user_id);
+
+  -- Victoires par chapitre (la première donne les récompenses)
+  CREATE TABLE IF NOT EXISTS game_progress (
+    user_id      INTEGER NOT NULL,
+    chapter      TEXT NOT NULL,            -- "eb-2-orange-town"
+    wins         INTEGER NOT NULL DEFAULT 0,
+    first_win_at TEXT,
+    PRIMARY KEY (user_id, chapter)
+  );
+
+  -- Arcs commencés, et deck d'aventure choisi (le même pour tous les arcs du compte)
+  CREATE TABLE IF NOT EXISTS game_adventure (
+    user_id    INTEGER NOT NULL,
+    arc        TEXT NOT NULL,              -- "east-blue"
+    started_at TEXT NOT NULL,
+    deck_id    TEXT,                       -- "PERSO-..." : deck de game_decks en mode 'aventure'
+    PRIMARY KEY (user_id, arc)
+  );
+
+  -- Parties déjà comptées comme victoires d'un chapitre : une partie ne compte qu'une fois
+  CREATE TABLE IF NOT EXISTS game_adventure_results (
+    user_id   INTEGER NOT NULL,
+    record_id TEXT NOT NULL,               -- partie de game_records
+    chapter   TEXT NOT NULL,
+    at        TEXT NOT NULL,
+    PRIMARY KEY (user_id, record_id)
+  );
+
+  -- Suppression d'un compte (auth.js) : ses données de l'aventure partent avec lui, dans la même transaction.
+  -- Recréé à chaque démarrage pour suivre les tables ajoutées.
+  DROP TRIGGER IF EXISTS game_adventure_forget;
+  CREATE TRIGGER game_adventure_forget AFTER DELETE ON users BEGIN
+    DELETE FROM game_inventory WHERE user_id = OLD.id;
+    DELETE FROM game_boosters WHERE user_id = OLD.id;
+    DELETE FROM game_progress WHERE user_id = OLD.id;
+    DELETE FROM game_adventure WHERE user_id = OLD.id;
+    DELETE FROM game_adventure_results WHERE user_id = OLD.id;
+  END;
 `);
 
 // Migrations des bases créées par une version précédente
@@ -262,6 +322,8 @@ addColumn('wishlist', 'notified_at', 'TEXT');
 addColumn('users', 'trade_enabled', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'trade_contact', 'TEXT');
 addColumn('users', 'trade_region', 'TEXT');
+// decks personnalisés : 'libre' (toutes les cartes, les decks d'avant l'aventure) ou 'aventure' (cartes de la Cale)
+addColumn('game_decks', 'mode', "TEXT NOT NULL DEFAULT 'libre'");
 db.exec('CREATE INDEX IF NOT EXISTS fr_cards_product ON fr_cards(product_id)');
 
 // Collection sans langue (avant la gestion VF/VO) : les cartes déjà saisies sont considérées en VF

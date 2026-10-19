@@ -480,6 +480,9 @@ function chooseBlocker(s: GameState, d: Decision): string {
 }
 
 function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: number): number {
+  // valeur donnée par la carte elle-même (briques qui la connaissent : defenderPower, bricks.ts)
+  const own = def(num).counterPower;
+  if (own) return own(s, p, targetUid);
   switch (num) {
     case 'OP13-019': return findField(s, targetUid)?.leader ? 3000 : 0;
     case 'OP12-098': return s.players[p].chars.some((c) => hasType(c.num, 'Revolutionary Army') && fieldCost(s, c.uid) >= 8) ? 4000 : 2000;
@@ -757,9 +760,28 @@ function chooseEffect(s: GameState, d: Decision): string {
       return (opp[0] ?? d.options.find((o) => o.id === 'none') ?? d.options[0]).id;
     }
     case 'oppToLife': {
-      const top = byValue(true)[0];
+      // les cartes adverses (Charlotte Katakuri OP03-123 peut aussi viser les siennes)
+      const top = byValue(true).filter((o) => findField(s, uidOf(o))?.player !== p)[0];
       return top && fieldValue(s, uidOf(top)) >= 5 ? top.id : 'none';
     }
+    case 'mayMill':
+      // placer des cartes de son deck dans sa Défausse : seulement si son Leader gagne à deck vide (Nami OP03-040)
+      return yesNo(def(P.leader.num).rules?.deckOut === 'win');
+    case 'lifeLook':
+      // regarder la Vie adverse d'abord (écarter un [Déclenchement] qu'on allait révéler), sinon la sienne
+      return (d.options.find((o) => o.id === 'opp') ?? d.options.find((o) => o.id === 'mine') ?? d.options[0]).id;
+    case 'lifeArrange': {
+      // sa Vie : garder au-dessus une carte à [Déclenchement] ; Vie adverse : envoyer dessous une carte à [Déclenchement]
+      const c = d.cards?.[0];
+      if (!c) return 'top';
+      const trigger = Boolean(triggerEffect(c.num));
+      return (c.owner === p ? trigger : !trigger) ? 'top' : 'bottom';
+    }
+    case 'trashOwn':
+      return (byValue(false)[0] ?? d.options[0]).id;
+    case 'oppDonTarget':
+      // DON!! données à une carte adverse (Krieg OP15-008) : la plus précieuse
+      return (byValue(true).filter((o) => findField(s, uidOf(o))?.player !== p)[0] ?? d.options[0]).id;
     case 'lifeSideOpp':
       return 'lifeBottom';
     case 'playFree': {

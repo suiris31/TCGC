@@ -30,6 +30,16 @@ function modText(s: GameState, m: Modifier): string {
     case 'noRefresh': return `ne sera pas redressé lors de la prochaine phase de Recharge de son propriétaire (${m.source})`;
     case 'noBlocker': return `ne peut pas activer [Bloqueur] ${until} (${m.source})`;
     case 'attackTax': return `ne peut attaquer qu’en défaussant ${m.amount} cartes ${until} (${m.source})`;
+    case 'attackActive': return `peut aussi attaquer les Personnages redressés ${until} (${m.source})`;
+    case 'blockerBan': {
+      const l = m.limit ?? {};
+      const which = [
+        l.powerMax !== undefined ? `de ${l.powerMax} de puissance ou moins` : '',
+        l.powerMin !== undefined ? `de ${l.powerMin} de puissance ou plus` : '',
+        l.costMax !== undefined ? `de coût ${l.costMax} ou moins` : '',
+      ].filter(Boolean).join(' ');
+      return `l’adversaire ne peut pas activer le [Bloqueur] ${which ? `des Personnages ${which}` : 'de ses Personnages'} ${until} (${m.source})`;
+    }
   }
 }
 
