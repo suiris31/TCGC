@@ -437,6 +437,47 @@ questions-réponses Bandai, tournois).
      Personnage de coût 12 ou plus peut être à l'un ou l'autre joueur (choix 12). [Déclenchement] : n'importe quelle carte
      {Erbaf} (Personnage, Événement...).
 
+## OP03 et ST-01 : mécanismes (tâche 1.1), choix faits sans validation
+
+200. **Dégâts infligés** (« quand l'attaque de ... inflige des dégâts à la Vie adverse », Nami OP03-040) : un seul
+     déclenchement par attaque qui touche, même avec [Double attaque] (2 dégâts traités ensemble, règles 4-6-2-2 et
+     10-1-2) ; les cartes de Vie défaussées par [Exil] comptent. « Quand vous infligez des dégâts » (Gaimon OP03-043) :
+     aussi les dégâts d'un effet ; une carte de Vie placée dans la Défausse par un effet (Charlotte Linlin OP03-114) n'est
+     pas un dégât.
+201. **« L'adversaire ne peut pas activer le [Bloqueur] d'un Personnage de 2000 de puissance ou moins pendant ce
+     combat »** (Adio OP03-002, Usopp ST01-002) : la puissance est lue au moment où l'adversaire choisit son Bloqueur.
+202. **« Placez ce Personnage dans votre Défausse à la fin de ce tour »** (Thatch OP03-005) : ce n'est pas une mise KO
+     ([En cas de KO] non déclenché) ; si le Personnage a quitté le terrain avant, rien ne se passe, même s'il revient.
+203. **« Vous pouvez placer N cartes du dessus de votre deck dans votre Défausse »** (cartes bleues) : s'il en reste
+     moins, toutes celles qui restent. Quand il faut les placer pour payer (« ... Si vous le faites », Gaimon), il faut
+     en avoir au moins N.
+204. **« Sans effet de base »** (Helmeppo OP03-091) : aucun texte de carte, [Déclenchement] compris (règles 2-8-5 et
+     2-11-2) ; un mot-clé comme [Bloqueur] est un texte ; une carte dont l'effet est annulé n'en devient pas une (8-2-2).
+205. **« Le coût de ... devient 0 »** : le coût baisse de sa valeur du moment (comme « la puissance devient 0 », 4-12) ;
+     un bonus de coût reçu ensuite s'ajoute ; un coût déjà nul ne change pas.
+206. **Marshall D. Teach (OP03-012)** : le Personnage rouge de 4000 ou plus à placer dans la Défausse peut être Teach
+     lui-même (le texte ne dit pas « autre que ») ; il pioche alors, mais le +1000 ne s'applique pas.
+207. **Sham (OP03-027)** : « si vous n'avez pas de [Buchi] » : aucun Personnage [Buchi] sur son terrain ; tout l'effet
+     dépend du Leader {East Blue} (4-10-1).
+208. **Jango (OP03-028)** : le Leader {East Blue}, qui n'a pas de coût, peut être redressé (sinon le mot « Leader » du texte
+     ne servirait à rien) ; le coût de 6 ou moins ne vise que les Personnages.
+209. **Gaimon (OP03-043)** : « si vous le faites, placez ce Personnage dans votre Défausse » : seulement si les 3 cartes
+     ont été placées.
+210. **Gum Gum Super Marteau (OP03-055)** : le « Puis, vous pouvez placer 2 cartes » fait partie de l'effet payé par la
+     défausse : sans défausse, rien.
+211. **Zambai (OP03-063)** : le DON!! −1 se paie même sans Leader {Water Seven} (rien ne se passe alors) ; l'IA ne paie pas
+     dans ce cas.
+212. **Issho (OP03-078)** : les 2 cartes défaussées de la main adverse sont tirées au hasard (le joueur ne voit pas cette
+     main), comme les autres cartes de ce genre.
+213. **Kingbaum (OP03-100), Charlotte Chiffon (OP03-109)** : le joueur choisit la carte du dessus ou du dessous de sa
+     Vie ; elle devient publique dans la Défausse.
+214. **Charlotte Linlin (OP03-114)** : sans Leader {Équipage de Big Mom}, ni Vie ajoutée ni Vie adverse défaussée (4-10-1).
+215. **Diable Jambe (ST01-016), Monkey D. Luffy (ST01-012)** : « l'adversaire ne peut pas activer [Bloqueur] » quand la
+     carte attaque = [Imblocable] (même rappel de règle), pour le tour ou pour le combat.
+216. **Regarder la carte du dessus d'une Vie** (Charlotte Katakuri OP03-099, Shirley OP03-104) : le joueur choisit quelle
+     Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
+     regardée la connaît (tant qu'elle reste dans la Vie).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
