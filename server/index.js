@@ -10,6 +10,7 @@ import { frImagePath, frLargeImage } from './bandai-fr.js';
 import { config } from './config.js';
 import { getMeta } from './db.js';
 import { addDeck, deckContents, starterDecks } from './decks.js';
+import { adventureRoutes } from './game-adventure.js';
 import { enLargeImage, ensureGameCards, gameCards } from './game-cards.js';
 import { deckRoutes } from './game-decks.js';
 import { expireRooms, forgetUser, onlineRoutes } from './game-online.js';
@@ -473,6 +474,9 @@ deckRoutes(app);
 
 // Parties en ligne entre deux joueurs (salles, arbitrage, temps réel)
 onlineRoutes(app, { log });
+
+// Mode Aventure : progression, Cale, boosters gagnés
+adventureRoutes(app);
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
