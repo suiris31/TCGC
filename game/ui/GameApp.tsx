@@ -1,6 +1,6 @@
 // Point d'entrée du jeu dans l'appli TCGC (onglet Jouer), chargé seulement quand on ouvre l'onglet : informations des
 // cartes demandées au serveur, parties enregistrées sur le compte connecté, style isolé du reste de l'appli.
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { loadCardData } from '../engine/cards/index.ts';
 import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
@@ -9,6 +9,9 @@ import { currentMatches, type CurrentMatch } from './online/api.ts';
 import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
 import './styles.css';
+
+// Atelier des écrans de l'aventure (#play/atelier) : chargé seulement quand on l'ouvre
+const Atelier = lazy(() => import('./adventure/Atelier.tsx').then((m) => ({ default: m.Atelier })));
 
 // Version du programme de cette page ; celle du serveur arrive avec les cartes
 const ENGINE = typeof __ENGINE__ === 'string' ? __ENGINE__ : 'inconnue';
@@ -34,10 +37,13 @@ async function fetchCards(): Promise<void> {
   }
 }
 
-type Mode = { kind: 'solo' } | { kind: 'lobby'; code?: string } | { kind: 'match'; id: string };
+type Mode = { kind: 'solo' } | { kind: 'lobby'; code?: string } | { kind: 'match'; id: string } | { kind: 'atelier'; page?: string };
 
-// Adresse de l'onglet : #play/salle/<code> (lien envoyé par un ami) ou #play/partie/<id> (partie en ligne ouverte)
+// Adresse de l'onglet : #play/salle/<code> (lien envoyé par un ami), #play/partie/<id> (partie en ligne ouverte) ou
+// #play/atelier[/<page>] (essais des écrans de l'aventure, sans lien visible)
 function modeFromHash(): Mode {
+  const atelier = window.location.hash.match(/^#play\/atelier(?:\/([\w-]+))?$/);
+  if (atelier) return { kind: 'atelier', page: atelier[1] };
   const room = window.location.hash.match(/^#play\/salle\/([A-Za-z0-9-]+)/);
   if (room) return { kind: 'lobby', code: room[1].toUpperCase() };
   const match = window.location.hash.match(/^#play\/partie\/([\w-]+)/);
@@ -46,6 +52,7 @@ function modeFromHash(): Mode {
 }
 
 function hashOf(mode: Mode): string {
+  if (mode.kind === 'atelier') return mode.page ? `#play/atelier/${mode.page}` : '#play/atelier';
   return mode.kind === 'match' ? `#play/partie/${mode.id}` : '#play';
 }
 
@@ -81,6 +88,13 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
 
   useEffect(() => () => onImmersive(false), [onImmersive]);
 
+  // #play/atelier tapé dans la barre d'adresse alors que l'onglet est ouvert (la page n'est pas rechargée)
+  useEffect(() => {
+    const onHash = () => { if (window.location.hash.startsWith('#play/atelier')) setModeState(modeFromHash()); };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   // partie en ligne ou salle en cours : proposée sur l'écran de départ
   useEffect(() => {
     if (mode.kind !== 'solo') return;
@@ -107,6 +121,10 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
           <Lobby initialCode={mode.code} onOpen={(id) => setMode({ kind: 'match', id })} onBack={() => setMode({ kind: 'solo' })} />
         ) : mode.kind === 'match' ? (
           <OnlineMatch key={mode.id} id={mode.id} onLeave={() => setMode({ kind: 'solo' })} />
+        ) : mode.kind === 'atelier' ? (
+          <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de l’atelier…</div>}>
+            <Atelier page={mode.page} onPage={(page) => setMode({ kind: 'atelier', page })} onBack={() => setMode({ kind: 'solo' })} />
+          </Suspense>
         ) : (
           <App notice={notice} onImmersive={immersive} online={{
             onOpen: () => setMode({ kind: 'lobby' }),

@@ -1,0 +1,103 @@
+// Arc East Blue : VERSION PROVISOIRE (tâche 0), pour que les écrans et le serveur aient des données dès la vague 1A.
+// La tâche 1.2 la remplace (vrais dialogues, récompenses, positions) en gardant l'export EAST_BLUE ; garde aussi les
+// identifiants des chapitres si tu peux (ils servent de clé en base).
+// Les adversaires jouent des decks du registre déjà jouables ; leurs vrais decks (ADVENTURE_DECKS, decks.ts) sont
+// branchés par la tâche 1.19.
+import type { Arc, Reward } from './types.ts';
+
+const boosters = (count: number): Reward[] => [{ kind: 'booster', set: 'OP03', count }];
+
+export const EAST_BLUE: Arc = {
+  id: 'east-blue',
+  title: 'East Blue',
+  region: 'east-blue',
+  boosterSet: 'OP03',
+  starterDeck: 'ST-21',
+  chapters: [
+    {
+      id: 'eb-1-shells-town',
+      order: 1,
+      title: 'Le chasseur de pirates',
+      place: 'Shells Town',
+      map: { x: 0.12, y: 0.62 },
+      opponent: { name: 'Capitaine Morgan', deck: 'ST-33', level: 1 },
+      intro: [{ who: 'Luffy', text: 'Une base de la Marine, et un épéiste ligoté dans la cour ? Allons voir ! (texte provisoire)' }],
+      victory: [{ who: 'Luffy', text: 'Morgan est battu ! Zoro, tu montes à bord ? (texte provisoire)' }],
+      defeat: [{ who: 'Luffy', text: 'Aïe… On recommence, je ne lâche rien ! (texte provisoire)' }],
+      rewards: boosters(2),
+    },
+    {
+      id: 'eb-2-orange-town',
+      order: 2,
+      title: 'Le clown d’Orange Town',
+      place: 'Orange Town',
+      map: { x: 0.27, y: 0.38 },
+      opponent: { name: 'Baggy le clown', deck: 'ST-36', level: 1 },
+      intro: [{ who: 'Nami', text: 'Toute la ville se cache : un pirate au nez rouge y fait la loi. (texte provisoire)' }],
+      victory: [{ who: 'Luffy', text: 'Il s’est envolé en morceaux ! On repart ? (texte provisoire)' }],
+      defeat: [{ who: 'Baggy', text: 'Personne ne se moque de mon nez ! (texte provisoire)' }],
+      rewards: boosters(2),
+    },
+    {
+      id: 'eb-3-sirop',
+      order: 3,
+      title: 'Le majordome du village',
+      place: 'Village de Sirop',
+      map: { x: 0.42, y: 0.68 },
+      opponent: { name: 'Kuro', deck: 'ST-32', level: 2 },
+      intro: [{ who: 'Usopp', text: 'Les pirates arrivent à l’aube ! Personne ne me croit… sauf vous ? (texte provisoire)' }],
+      victory: [{ who: 'Usopp', text: 'Le village est sauvé ! Et si je partais en mer avec vous ? (texte provisoire)' }],
+      defeat: [{ who: 'Kuro', text: 'Tout se passe exactement comme prévu. (texte provisoire)' }],
+      rewards: boosters(2),
+    },
+    {
+      id: 'eb-4-baratie',
+      order: 4,
+      title: 'Le restaurant sur la mer',
+      place: 'Baratie',
+      map: { x: 0.57, y: 0.42 },
+      opponent: { name: 'Don Krieg', deck: 'ST-34', level: 2 },
+      intro: [{ who: 'Sanji', text: 'On ne se bat pas dans ma cuisine… sauf contre ce pirate affamé. (texte provisoire)' }],
+      victory: [{ who: 'Sanji', text: 'Il me faut un cuisinier pour ce bateau, c’est ça ? (texte provisoire)' }],
+      defeat: [{ who: 'Don Krieg', text: 'Mon armada ne connaît pas la défaite ! (texte provisoire)' }],
+      rewards: boosters(2),
+    },
+    {
+      id: 'eb-defi-mihawk',
+      order: 5,
+      title: 'Défi : le plus grand épéiste',
+      place: 'Baratie',
+      map: { x: 0.63, y: 0.18 },
+      opponent: { name: 'Mihawk', deck: 'META-MIHAWK-2026-10', level: 4 },
+      intro: [{ who: 'Zoro', text: 'C’est lui que je dois battre un jour. Pourquoi pas aujourd’hui ? (texte provisoire)' }],
+      victory: [{ who: 'Zoro', text: 'Battu à la loyale ! J’ai encore du mal à y croire. (texte provisoire)' }],
+      defeat: [{ who: 'Mihawk', text: 'Reviens quand tu seras plus fort. (texte provisoire)' }],
+      rewards: boosters(2),
+      optional: true,
+    },
+    {
+      id: 'eb-5-arlong-park',
+      order: 6,
+      title: 'Le parc des hommes-poissons',
+      place: 'Arlong Park',
+      map: { x: 0.74, y: 0.66 },
+      opponent: { name: 'Arlong', deck: 'ST-31', level: 3 },
+      intro: [{ who: 'Luffy', text: 'Nami est notre amie. On vient la chercher ! (texte provisoire)' }],
+      victory: [{ who: 'Nami', text: 'Merci… Je viens avec vous, pour de bon. (texte provisoire)' }],
+      defeat: [{ who: 'Arlong', text: 'Les humains ne font pas le poids ici ! (texte provisoire)' }],
+      rewards: boosters(2),
+    },
+    {
+      id: 'eb-6-loguetown',
+      order: 7,
+      title: 'Dernière escale avant Grand Line',
+      place: 'Loguetown',
+      map: { x: 0.9, y: 0.35 },
+      opponent: { name: 'Smoker', deck: 'META-SABO-2026-10', level: 3 },
+      intro: [{ who: 'Smoker', text: 'Aucun pirate ne quittera cette ville. Surtout pas toi. (texte provisoire)' }],
+      victory: [{ who: 'Luffy', text: 'Cap sur Grand Line ! (texte provisoire)' }],
+      defeat: [{ who: 'Smoker', text: 'Ton voyage s’arrête ici. (texte provisoire)' }],
+      rewards: boosters(4),
+    },
+  ],
+};
