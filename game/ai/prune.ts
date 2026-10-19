@@ -17,6 +17,10 @@ const DON_NEEDS: Record<string, { n: number; when: (s: GameState, card: FieldCar
   'ST21-015': { n: 2, when: playedNow },
   'OP05-070': { n: 1, when: (s, card) => playedNow(s, card) && donOnField(s, ownerOf(s, card)) >= 8 },
   'OP10-085': { n: 1, when: (s, card) => playedNow(s, card) && s.players[ownerOf(s, card)].trash.length >= 8 },
+  // OP03 et ST-01 (tâche 1.1) : Curiel et Sanji, [Initiative] avec des DON!! ; Issho, −3 de coût aux Personnages adverses
+  'OP03-004': { n: 1, when: playedNow },
+  'ST01-004': { n: 2, when: playedNow },
+  'OP03-078': { n: 1, when: (s, card) => s.players[ownerOf(s, card) === 0 ? 1 : 0].chars.length > 0 },
 };
 // Cartes dont les DON!! données servent aussi pendant le tour adverse (elles restent données jusqu'à la phase de
 // Recharge suivante) : nombre de DON!! dont leur effet a besoin
@@ -31,6 +35,8 @@ const DON_DEFENSE: Record<string, number> = {
   'OP06-052': 1,   // Tokikake, Caribou, Garp : pas mis KO en combat (sous conditions)
   'OP10-104': 1,
   'P-054': 1,
+  'OP03-079': 1,  // Vergo : pas mis KO en combat
+  'OP03-090': 1,  // Blueno : [Bloqueur]
 };
 // Cartes qui comptent toutes les DON!! données de leur joueur (3 ou plus) : Brook (Bloqueur +3000), Luffy (Initiative)
 const COUNTS_ALL_DON = ['ST31-003', 'ST31-004'];

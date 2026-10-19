@@ -8,12 +8,16 @@
 // Les conditions sont lues dans la partie au moment de l'effet, jamais supposées : une carte marche ou non selon son
 // deck, comme à une vraie table.
 import {
-  addDonFromDeck, addMod, addTopDeckToLife, allField, basePower, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, chooseUpTo1,
-  bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon, hasKeyword, knownFirst,
-  lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect, removeFromField, restByEffect,
-  canTakeLife, playableByEffect, returnDon, reveal, setActive, trashTopDeck, uniqueByNum, untilOpponentsNextEnd, untapDon,
+  addDelayed, addDonFromDeck, addMod, addTopDeckToLife, allField, basePower, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters,
+  chooseUpTo1, bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon,
+  hasBlocker, hasKeyword, knownFirst, lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect,
+  removeFromField, restByEffect, canTakeLife, playableByEffect, returnDon, reveal, setActive, trashTopDeck, uniqueByNum,
+  untilOpponentsNextEnd, untapDon,
 } from '../rules.ts';
-import type { Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Keyword, Modifier, PlayerId } from '../types.ts';
+import { withoutReminders } from '../keywords.ts';
+import type {
+  BlockerLimit, Card, CardBehavior, CardData, Color, EffectCtx, FieldCard, GameState, Keyword, Modifier, PlayerId, WhenEffect,
+} from '../types.ts';
 import { random } from '../rng.ts';
 import { CARDS } from './index.ts';
 
@@ -23,6 +27,9 @@ export interface Effect {
   run(ctx: EffectCtx): void;
   // peut-il faire quelque chose maintenant ? (`self` : la carte qui porte l'effet)
   useful(s: GameState, p: PlayerId, self: number): boolean;
+  // [Contre] : puissance apportée à la carte attaquée `target` (aide à l'IA, voir CardBehavior.counterPower) ; seules
+  // quelques briques la connaissent (defenderPower), seq, when et withCost la transmettent
+  power?(s: GameState, p: PlayerId, target: number): number;
 }
 
 export type Condition = (s: GameState, p: PlayerId, self: number) => boolean;
@@ -40,6 +47,7 @@ export const effect = (run: Effect['run'], useful: Effect['useful'] = () => true
 export const seq = (...parts: Effect[]): Effect => ({
   run: (ctx) => { for (const e of parts) e.run(ctx); },
   useful: (s, p, self) => parts.some((e) => e.useful(s, p, self)),
+  ...(parts.some((e) => e.power) ? { power: (s: GameState, p: PlayerId, t: number) => parts.reduce((sum, e) => sum + (e.power?.(s, p, t) ?? 0), 0) } : {}),
 });
 
 // « Si ..., ... » : condition vérifiée au moment où l'effet se résout
@@ -49,6 +57,8 @@ export const when = (cond: Condition, then: Effect, otherwise?: Effect): Effect 
     else otherwise?.run(ctx);
   },
   useful: (s, p, self) => (cond(s, p, self) ? then.useful(s, p, self) : otherwise?.useful(s, p, self) ?? false),
+  ...(then.power || otherwise?.power
+    ? { power: (s: GameState, p: PlayerId, t: number) => (cond(s, p, -1) ? then.power?.(s, p, t) ?? 0 : otherwise?.power?.(s, p, t) ?? 0) } : {}),
 });
 
 // « Vous pouvez [coût] : [effet] » : le joueur choisit de payer ou non (si le coût est payable)
@@ -59,6 +69,7 @@ export const withCost = (cost: Cost, then: Effect, source: string): Effect => ({
     if (cost.pay(ctx)) then.run(ctx);
   },
   useful: (s, p, self) => cost.can(s, p, self) && then.useful(s, p, self),
+  ...(then.power ? { power: (s: GameState, p: PlayerId, t: number) => (cost.can(s, p, -1) ? then.power!(s, p, t) : 0) } : {}),
 });
 
 // [Une fois par tour] « Vous pouvez [coût] : [effet] » : l'effet compte comme utilisé quand le joueur paie (s'il refuse,
@@ -113,6 +124,16 @@ export const myTurn: Condition = (s, p) => s.active === p;
 export const oppTurn: Condition = (s, p) => s.active !== p;
 // [DON!! xN] : la carte qui porte l'effet a au moins N DON!! données
 export const selfDon = (n: number): Condition => (s, _p, self) => (findField(s, self)?.card.don ?? 0) >= n;
+// « Si vous avez 20 cartes ou moins dans votre deck » (Carne OP03-045)
+export const deckAtMost = (n: number): Condition => (s, p) => s.players[p].deck.length <= n;
+export const deckAtLeast = (n: number): Condition => (s, p) => s.players[p].deck.length >= n;
+// « Si votre adversaire a 4 cartes de Vie ou plus » (Tropical Torment OP03-120)
+export const oppLifeAtLeast = (n: number): Condition => (s, p) => s.players[other(p)].life.length >= n;
+// « Si vous avez moins de cartes de Vie que votre adversaire » (Buzz Cut Mochi OP03-119)
+export const lessLifeThanOpp: Condition = (s, p) => s.players[p].life.length < s.players[other(p)].life.length;
+// « S'il y a un Personnage ayant un coût de 0 » : sur le terrain de l'un ou l'autre joueur (un coût négatif vaut 0,
+// 1-3-6-2)
+export const characterCostAtMost = (n: number): Condition => (s) => s.players.some((P) => P.chars.some((c) => fieldCost(s, c.uid) <= n));
 
 // ---------- Cibles ----------
 
@@ -134,7 +155,14 @@ export interface CharSpec {
   rested?: boolean;        // true : épuisé ; false : redressé
   trigger?: boolean;       // « ayant [Déclenchement] » (d'après le texte VO)
   keyword?: Keyword;       // « ayant [Bloqueur] » (sur le terrain : mot-clé actif, même donné par un effet)
+  // « sans effet de base » : aucun texte de carte (2-8-5), [Déclenchement] compris (2-11-2) ; un effet annulé ne compte
+  // pas comme absent (8-2-2) : seul le texte imprimé est lu
+  vanilla?: boolean;
+  donMin?: number;         // « ayant N cartes DON!! données ou plus » (sur le terrain ; hors du terrain : aucune)
 }
+
+// Carte sans effet de base (Helmeppo OP03-091)
+export const noBaseEffect = (d: Pick<CardData, 'effectEn' | 'triggerEn'>) => !withoutReminders(d.effectEn).trim() && !d.triggerEn;
 
 // La carte correspond-elle au texte ? Sur le terrain : coût et puissance actuels ; ailleurs : ceux imprimés
 function fits(d: CardData, cost: number, pw: number, base: number, rested: boolean | undefined, spec: CharSpec): boolean {
@@ -152,7 +180,8 @@ function fits(d: CardData, cost: number, pw: number, base: number, rested: boole
     && (spec.color === undefined || d.colors.includes(spec.color))
     && (spec.attribute === undefined || d.attributes.includes(spec.attribute))
     && (spec.rested === undefined || rested === spec.rested)
-    && (spec.trigger === undefined || Boolean(d.triggerEn) === spec.trigger);
+    && (spec.trigger === undefined || Boolean(d.triggerEn) === spec.trigger)
+    && (spec.vanilla === undefined || noBaseEffect(d) === spec.vanilla);
 }
 
 export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
@@ -160,14 +189,16 @@ export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
   const f = findField(s, c.uid);
   const cost = f && !f.leader ? fieldCost(s, c.uid) : d.cost ?? 0;
   return fits(d, cost, f ? power(s, c.uid) : d.power ?? 0, f ? basePower(s, c.uid) : d.power ?? 0, c.rested, spec)
-    && (spec.keyword === undefined || (f ? hasKeyword(s, f.player, c, spec.keyword) : d.keywords.includes(spec.keyword)));
+    && (spec.keyword === undefined || (f ? hasKeyword(s, f.player, c, spec.keyword) : d.keywords.includes(spec.keyword)))
+    && (spec.donMin === undefined || (f ? c.don : 0) >= spec.donMin);
 }
 
 // Même chose pour une carte hors du terrain (main, deck, Défausse)
 export function cardMatches(num: string, spec: CharSpec & { category?: CardData['category'] }): boolean {
   const d = def(num);
   return (spec.category === undefined || d.category === spec.category) && fits(d, d.cost ?? 0, d.power ?? 0, d.power ?? 0, undefined, { ...spec, rested: undefined })
-    && (spec.keyword === undefined || d.keywords.includes(spec.keyword));
+    && (spec.keyword === undefined || d.keywords.includes(spec.keyword))
+    && (spec.donMin === undefined || spec.donMin <= 0);
 }
 
 // Libellé VF d'un type de la VO, d'après les cartes chargées (« Navy » -> « Marine »)
@@ -229,16 +260,20 @@ export function describeSpec(what: string, spec: CharSpec): string {
   }
   if (spec.trigger) parts.push('ayant [Déclenchement]');
   if (spec.keyword) parts.push(`ayant [${KEYWORD_FR[spec.keyword]}]`);
+  if (spec.vanilla) parts.push('sans effet de base');
+  if (spec.donMin !== undefined) parts.push(spec.donMin === 1 ? 'ayant au moins 1 DON!! donnée' : `ayant ${spec.donMin} DON!! données ou plus`);
   return parts.join(' ');
 }
 
 // Ensemble de cartes visées : de quel côté, Leader et/ou Personnages, et ce que dit le texte
+// notSelf : « autre que cette carte » (voir otherThanSelf)
 export interface Targets {
   side: 'own' | 'opp' | 'any';
   leader: boolean;
   characters: boolean;
   spec: CharSpec;
   label: string;
+  notSelf?: boolean;
 }
 
 // Libellé écrit à la première lecture : les cartes sont décrites au chargement du module, avant les données des cartes
@@ -254,11 +289,18 @@ export const oppLeaderOrChar = (spec: CharSpec = {}): Targets => targets('opp', 
 export const ownLeaderOrChar = (spec: CharSpec = {}): Targets => targets('own', true, 'Leader ou Personnage', spec);
 export const ownLeader = (): Targets => ({ side: 'own', leader: true, characters: false, spec: {}, label: 'ton Leader' });
 export const oppLeader = (): Targets => ({ side: 'opp', leader: true, characters: false, spec: {}, label: 'Leader adverse' });
+// « ... autre que cette carte » (Jinbe ST01-005 : « jusqu'à 1 de vos Leader ou Personnages autre que celui-ci ») : les
+// briques d'action passent la carte qui porte l'effet à candidates
+export const otherThanSelf = (t: Targets): Targets => {
+  let label: string | undefined;
+  return { ...t, notSelf: true, get label() { return (label ??= `${t.label} autre que celui-ci`); } };
+};
 
-export function candidates(s: GameState, p: PlayerId, t: Targets, extra: (c: FieldCard) => boolean = () => true): number[] {
+// self : la carte qui porte l'effet (exclue si t.notSelf)
+export function candidates(s: GameState, p: PlayerId, t: Targets, extra: (c: FieldCard) => boolean = () => true, self?: number): number[] {
   const sides = t.side === 'own' ? [p] : t.side === 'opp' ? [other(p)] : [other(p), p];
   return sides.flatMap((q) => [...(t.leader ? [s.players[q].leader] : []), ...(t.characters ? s.players[q].chars : [])])
-    .filter((c) => matches(s, c, t.spec) && extra(c)).map((c) => c.uid);
+    .filter((c) => !(t.notSelf && c.uid === self) && matches(s, c, t.spec) && extra(c)).map((c) => c.uid);
 }
 
 const nameOf = (s: GameState, uid: number) => def(findField(s, uid)!.card.num).name;
@@ -270,13 +312,13 @@ const nameOf = (s: GameState, uid: number) => def(findField(s, uid)!.card.num).n
 // KO ensemble
 export const koTotalCost = (t: Targets, total: number, source: string): Effect => {
   const cost = (s: GameState, uid: number) => Math.max(0, fieldCost(s, uid));
-  const list = (s: GameState, p: PlayerId, left: number, chosen: number[]) =>
-    candidates(s, p, t, (c) => !chosen.includes(c.uid) && cost(s, c.uid) <= left && canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p));
+  const list = (s: GameState, p: PlayerId, left: number, chosen: number[], self?: number) =>
+    candidates(s, p, t, (c) => !chosen.includes(c.uid) && cost(s, c.uid) <= left && canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p), self);
   return {
     run: (ctx) => {
       const chosen: number[] = [];
       let left = total;
-      for (let options = list(ctx.s, ctx.me, left, chosen); options.length; options = list(ctx.s, ctx.me, left, chosen)) {
+      for (let options = list(ctx.s, ctx.me, left, chosen, ctx.source); options.length; options = list(ctx.s, ctx.me, left, chosen, ctx.source)) {
         const answer = ctx.ask({
           prompt: `${source} : ${t.label} à mettre KO (coût total restant : ${left}) :`,
           options: options.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })),
@@ -288,20 +330,20 @@ export const koTotalCost = (t: Targets, total: number, source: string): Effect =
       }
       for (const uid of chosen) removeByEffect(ctx, uid, 'ko');
     },
-    useful: (s, p) => list(s, p, total, []).length > 0,
+    useful: (s, p, self) => list(s, p, total, [], self).length > 0,
   };
 };
 
 // « Mettez KO jusqu'à N ... »
 // « Mettez KO jusqu'à N Personnages adverses ayant une puissance totale de X ou moins »
 export const koTotalPower = (t: Targets, total: number, max: number, source: string): Effect => {
-  const list = (s: GameState, p: PlayerId, left: number, chosen: number[]) =>
-    candidates(s, p, t, (c) => !chosen.includes(c.uid) && power(s, c.uid) <= left && canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p));
+  const list = (s: GameState, p: PlayerId, left: number, chosen: number[], self?: number) =>
+    candidates(s, p, t, (c) => !chosen.includes(c.uid) && power(s, c.uid) <= left && canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p), self);
   return {
     run: (ctx) => {
       const chosen: number[] = [];
       let left = total;
-      for (let options = list(ctx.s, ctx.me, left, chosen); options.length && chosen.length < max; options = list(ctx.s, ctx.me, left, chosen)) {
+      for (let options = list(ctx.s, ctx.me, left, chosen, ctx.source); options.length && chosen.length < max; options = list(ctx.s, ctx.me, left, chosen, ctx.source)) {
         const answer = ctx.ask({
           prompt: `${source} : ${t.label} à mettre KO (puissance totale restante : ${left}) :`,
           options: [...options.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })), { id: 'none', label: 'Aucun autre' }],
@@ -314,7 +356,7 @@ export const koTotalPower = (t: Targets, total: number, max: number, source: str
       }
       for (const uid of chosen) removeByEffect(ctx, uid, 'ko');
     },
-    useful: (s, p) => list(s, p, total, []).length > 0,
+    useful: (s, p, self) => list(s, p, total, [], self).length > 0,
   };
 };
 
@@ -335,32 +377,32 @@ export const koOppStage = (costMax: number, source: string): Effect => effect((c
 export const untilMyNextEnd = (s: GameState, me: PlayerId) => s.turn + (s.active === me ? 2 : 1);
 
 export const ko = (t: Targets, source: string, n = 1): Effect => {
-  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p));
+  const list = (s: GameState, p: PlayerId, self?: number) => candidates(s, p, t, (c) => canBeKO(s, c.uid, 'effect', p) && canLeaveByEffect(s, c.uid, p), self);
   return {
     run: (ctx) => {
-      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me), n, `${source} : ${t.label} à mettre KO :`, t.side === 'opp' ? 'oppKo' : 'ko')) removeByEffect(ctx, uid, 'ko');
+      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me, ctx.source), n, `${source} : ${t.label} à mettre KO :`, t.side === 'opp' ? 'oppKo' : 'ko')) removeByEffect(ctx, uid, 'ko');
     },
-    useful: (s, p) => list(s, p).length > 0,
+    useful: (s, p, self) => list(s, p, self).length > 0,
   };
 };
 
 // « Épuisez jusqu'à N ... »
 export const rest = (t: Targets, source: string, n = 1): Effect => {
-  const list = (s: GameState, p: PlayerId, num?: string) => candidates(s, p, t, (c) => !c.rested && canBeRested(s, c.uid, num ? { player: p, num } : undefined));
+  const list = (s: GameState, p: PlayerId, num?: string, self?: number) => candidates(s, p, t, (c) => !c.rested && canBeRested(s, c.uid, num ? { player: p, num } : undefined), self);
   return {
     run: (ctx) => {
-      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me, ctx.num), n, `${source} : ${t.label} à épuiser :`, t.side === 'opp' ? 'oppRest' : 'rest')) restByEffect(ctx, uid);
+      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me, ctx.num, ctx.source), n, `${source} : ${t.label} à épuiser :`, t.side === 'opp' ? 'oppRest' : 'rest')) restByEffect(ctx, uid);
     },
-    useful: (s, p) => list(s, p).length > 0,
+    useful: (s, p, self) => list(s, p, undefined, self).length > 0,
   };
 };
 
 // « Épuisez tous les ... »
 export const restAll = (t: Targets): Effect => {
-  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => !c.rested && canBeRested(s, c.uid));
+  const list = (s: GameState, p: PlayerId, self?: number) => candidates(s, p, t, (c) => !c.rested && canBeRested(s, c.uid), self);
   return {
-    run: (ctx) => { for (const uid of list(ctx.s, ctx.me)) restByEffect(ctx, uid); },
-    useful: (s, p) => list(s, p).length > 0,
+    run: (ctx) => { for (const uid of list(ctx.s, ctx.me, ctx.source)) restByEffect(ctx, uid); },
+    useful: (s, p, self) => list(s, p, self).length > 0,
   };
 };
 
@@ -368,30 +410,30 @@ export const restAll = (t: Targets): Effect => {
 // (les cartes visées sont celles du moment : un Personnage épuisé ensuite sera redressé normalement) ; n : « jusqu'à N »
 // au choix du joueur au lieu de « tous »
 export const keepRested = (t: Targets, source: string, n?: number): Effect => {
-  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => c.rested);
+  const list = (s: GameState, p: PlayerId, self?: number) => candidates(s, p, t, (c) => c.rested, self);
   return {
     run: (ctx) => {
       // tour de la prochaine phase de Recharge adverse : le prochain tour si c'est le sien, sinon celui d'après
       const turn = ctx.s.turn + (ctx.s.active === ctx.me ? 1 : 2);
-      const chosen = n === undefined ? list(ctx.s, ctx.me)
-        : chooseUpToN(ctx, list(ctx.s, ctx.me), n, `${source} : ${t.label} qui ne pourra pas être redressé :`, 'oppLock');
+      const chosen = n === undefined ? list(ctx.s, ctx.me, ctx.source)
+        : chooseUpToN(ctx, list(ctx.s, ctx.me, ctx.source), n, `${source} : ${t.label} qui ne pourra pas être redressé :`, 'oppLock');
       for (const uid of chosen) {
         addMod(ctx.s, { uid, stat: 'noRefresh', amount: 0, until: turn, source });
         log(ctx.s, ctx.me, `${nameOf(ctx.s, uid)} ne pourra pas être redressé lors de la prochaine phase de Recharge adverse (${source})`);
       }
     },
-    useful: (s, p) => list(s, p).length > 0,
+    useful: (s, p, self) => list(s, p, self).length > 0,
   };
 };
 
 // « Renvoyez jusqu'à N ... à la main de leur propriétaire » ; « placez ... au-dessous du deck de leur propriétaire »
 const removal = (to: 'hand' | 'deckBottom', verb: string, tag: string) => (t: Targets, source: string, n = 1): Effect => {
-  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => canLeaveByEffect(s, c.uid, p));
+  const list = (s: GameState, p: PlayerId, self?: number) => candidates(s, p, t, (c) => canLeaveByEffect(s, c.uid, p), self);
   return {
     run: (ctx) => {
-      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me), n, `${source} : ${t.label} à ${verb} :`, tag)) removeByEffect(ctx, uid, to);
+      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me, ctx.source), n, `${source} : ${t.label} à ${verb} :`, tag)) removeByEffect(ctx, uid, to);
     },
-    useful: (s, p) => list(s, p).length > 0,
+    useful: (s, p, self) => list(s, p, self).length > 0,
   };
 };
 export const bounce = removal('hand', 'renvoyer dans la main de son propriétaire', 'bounce');
@@ -405,50 +447,50 @@ export const powerMod = (t: Targets, amount: number, until: 'battle' | 'turn' | 
   run: (ctx) => {
     const verb = amount >= 0 ? `gagne +${amount}` : `reçoit −${-amount}`;
     const tag = t.side === 'opp' ? 'oppPower' : 'ownPower';
-    for (const uid of chooseUpToN(ctx, candidates(ctx.s, ctx.me, t), n, `${source} : ${t.label} qui ${verb} de puissance :`, tag)) {
+    for (const uid of chooseUpToN(ctx, candidates(ctx.s, ctx.me, t, undefined, ctx.source), n, `${source} : ${t.label} qui ${verb} de puissance :`, tag)) {
       const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
       addMod(ctx.s, { uid, stat: 'power', amount, until: u, source });
       log(ctx.s, ctx.me, `${nameOf(ctx.s, uid)} ${verb} de puissance ${UNTIL_TEXT(ctx.s, u)} (${source})`);
     }
   },
-  useful: (s, p) => candidates(s, p, t).length > 0,
+  useful: (s, p, self) => candidates(s, p, t, undefined, self).length > 0,
 });
 
 // « ... reçoit −X de coût » / « +X de coût »
 export const costMod = (t: Targets, amount: number, until: 'turn' | 'oppNextEnd', source: string, n = 1): Effect => ({
   run: (ctx) => {
     const verb = amount >= 0 ? `gagne +${amount}` : `reçoit −${-amount}`;
-    for (const uid of chooseUpToN(ctx, candidates(ctx.s, ctx.me, t), n, `${source} : ${t.label} qui ${verb} de coût :`, t.side === 'opp' ? 'oppCost' : 'ownCost')) {
+    for (const uid of chooseUpToN(ctx, candidates(ctx.s, ctx.me, t, undefined, ctx.source), n, `${source} : ${t.label} qui ${verb} de coût :`, t.side === 'opp' ? 'oppCost' : 'ownCost')) {
       const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
       addMod(ctx.s, { uid, stat: 'cost', amount, until: u, source });
       log(ctx.s, ctx.me, `${nameOf(ctx.s, uid)} ${verb} de coût ${UNTIL_TEXT(ctx.s, u)} (${source})`);
     }
   },
-  useful: (s, p) => candidates(s, p, t).length > 0,
+  useful: (s, p, self) => candidates(s, p, t, undefined, self).length > 0,
 });
 
 // « La puissance de ... devient 0 » (4-12 : une baisse égale à sa puissance du moment)
 export const powerToZero = (t: Targets, until: 'turn' | 'oppNextEnd', source: string): Effect => ({
   run: (ctx) => {
-    const uid = chooseUpTo1(ctx, candidates(ctx.s, ctx.me, t), `${source} : ${t.label} dont la puissance devient 0 :`, 'oppBase0');
+    const uid = chooseUpTo1(ctx, candidates(ctx.s, ctx.me, t, undefined, ctx.source), `${source} : ${t.label} dont la puissance devient 0 :`, 'oppBase0');
     if (uid === null) return;
     const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
     addMod(ctx.s, { uid, stat: 'power', amount: -Math.max(0, power(ctx.s, uid)), until: u, source });
     log(ctx.s, ctx.me, `la puissance de ${nameOf(ctx.s, uid)} devient 0 ${UNTIL_TEXT(ctx.s, u)} (${source})`);
   },
-  useful: (s, p) => candidates(s, p, t).length > 0,
+  useful: (s, p, self) => candidates(s, p, t, undefined, self).length > 0,
 });
 
 // « ... ne peut pas attaquer / être épuisé / être mis KO ... », « gagne [Bloqueur] »...
 export const grant = (t: Targets, mod: Pick<Modifier, 'stat' | 'keyword' | 'scope'>, until: 'battle' | 'turn' | 'oppNextEnd', source: string, text: string, n = 1): Effect => ({
   run: (ctx) => {
-    for (const uid of chooseUpToN(ctx, candidates(ctx.s, ctx.me, t), n, `${source} : ${t.label} qui ${text} :`, t.side === 'opp' ? 'oppLock' : 'ownGrant')) {
+    for (const uid of chooseUpToN(ctx, candidates(ctx.s, ctx.me, t, undefined, ctx.source), n, `${source} : ${t.label} qui ${text} :`, t.side === 'opp' ? 'oppLock' : 'ownGrant')) {
       const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
       addMod(ctx.s, { uid, amount: 0, until: u, source, ...mod });
       log(ctx.s, ctx.me, `${nameOf(ctx.s, uid)} ${text} ${UNTIL_TEXT(ctx.s, u)} (${source})`);
     }
   },
-  useful: (s, p) => candidates(s, p, t).length > 0,
+  useful: (s, p, self) => candidates(s, p, t, undefined, self).length > 0,
 });
 
 // « Votre Leader gagne +X de puissance ... » (sans choix, contrairement à « jusqu'à 1 de vos Leader ou Personnages »)
@@ -456,6 +498,26 @@ export const leaderPower = (amount: number, until: 'battle' | 'turn' | 'oppNextE
   const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
   addMod(ctx.s, { uid: ctx.s.players[ctx.me].leader.uid, stat: 'power', amount, until: u, source });
   log(ctx.s, ctx.me, `son Leader gagne ${amount > 0 ? '+' : '−'}${Math.abs(amount)} de puissance ${UNTIL_TEXT(ctx.s, u)} (${source})`);
+});
+
+// « Votre Leader gagne [Double attaque] pour tout le tour » (sans choix ; Flame Emperor OP03-016)
+export const leaderKeyword = (keyword: Keyword, until: 'battle' | 'turn', source: string): Effect => effect((ctx) => {
+  addMod(ctx.s, { uid: ctx.s.players[ctx.me].leader.uid, stat: 'keyword', keyword, amount: 0, until, source });
+  log(ctx.s, ctx.me, `son Leader gagne [${KEYWORD_FR[keyword]}] ${until === 'battle' ? 'pour le combat' : 'pour le tour'} (${source})`);
+});
+
+// [Contre] « Jusqu'à 1 de vos Leader ou Personnages gagne +X de puissance pendant ce combat » : la carte attaquée, sans
+// question (comme counterBoost de common.ts) ; l'IA connaît d'office la valeur de l'Événement (Effect.power)
+export const defenderPower = (amount: number, source: string): Effect => ({
+  run: (ctx) => {
+    const target = ctx.s.battle?.target ?? Number(ctx.pending.data?.target);
+    const f = findField(ctx.s, target);
+    if (!f || f.player !== ctx.me) return;
+    addMod(ctx.s, { uid: target, stat: 'power', amount, until: 'battle', source });
+    log(ctx.s, ctx.me, `${def(f.card.num).name} gagne +${amount} de puissance pour le combat (${source})`);
+  },
+  useful: (s, p) => Boolean(s.battle && findField(s, s.battle.target)?.player === p),
+  power: () => amount,
 });
 
 // « Épuisez jusqu'à N des cartes de votre adversaire » : son Leader, ses Personnages (spec), son Lieu et/ou ses DON!!
@@ -492,12 +554,12 @@ export const restOppCards = (n: number, source: string, what: { leader?: boolean
 
 // « Redressez jusqu'à N ... »
 export const setActiveTargets = (t: Targets, source: string, n = 1): Effect => {
-  const list = (s: GameState, p: PlayerId) => candidates(s, p, t, (c) => c.rested);
+  const list = (s: GameState, p: PlayerId, self?: number) => candidates(s, p, t, (c) => c.rested, self);
   return {
     run: (ctx) => {
-      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me), n, `${source} : ${t.label} à redresser :`, 'ownReady')) setActive(ctx.s, ctx.me, uid);
+      for (const uid of chooseUpToN(ctx, list(ctx.s, ctx.me, ctx.source), n, `${source} : ${t.label} à redresser :`, 'ownReady')) setActive(ctx.s, ctx.me, uid);
     },
-    useful: (s, p) => list(s, p).length > 0,
+    useful: (s, p, self) => list(s, p, self).length > 0,
   };
 };
 
@@ -505,12 +567,34 @@ export const setActiveTargets = (t: Targets, source: string, n = 1): Effect => {
 export const giveDon = (t: Targets, n: number, source: string): Effect => ({
   run: (ctx) => {
     if (ctx.s.players[ctx.me].donRested <= 0) return;
-    const list = candidates(ctx.s, ctx.me, t);
+    const list = candidates(ctx.s, ctx.me, t, undefined, ctx.source);
     const uid = list.length === 1 ? list[0] : chooseUpTo1(ctx, list, `${source} : carte qui reçoit ${n} DON!! épuisée${n > 1 ? 's' : ''} :`, 'donTarget');
     if (uid !== null && uid !== undefined) giveRestedDon(ctx.s, ctx.me, uid, n);
   },
-  useful: (s, p) => s.players[p].donRested > 0 && candidates(s, p, t).length > 0,
+  useful: (s, p, self) => s.players[p].donRested > 0 && candidates(s, p, t, undefined, self).length > 0,
 });
+
+// « Donnez jusqu'à N cartes DON!! épuisées de votre adversaire à 1 de ses Personnages » (Krieg OP15-008) ; « donnez
+// jusqu'à 1 carte DON!! épuisée au Leader ou à un Personnage de son propriétaire » (Buggy OP15-012) : les DON!! viennent
+// de la zone de Coût du propriétaire de la carte choisie (autant que possible, jusqu'à N)
+export const giveRestedDonToOwner = (t: Targets, n: number, source: string): Effect => {
+  const list = (s: GameState, p: PlayerId, self?: number) => candidates(s, p, t, (c) => s.players[findField(s, c.uid)!.player].donRested > 0, self);
+  return {
+    run: (ctx) => {
+      const what = n > 1 ? `jusqu’à ${n} DON!! épuisées` : '1 DON!! épuisée';
+      const uid = chooseUpTo1(ctx, list(ctx.s, ctx.me, ctx.source), `${source} : carte qui reçoit ${what} de son propriétaire :`, t.side === 'own' ? 'donTarget' : 'oppDonTarget');
+      if (uid === null) return;
+      const f = findField(ctx.s, uid)!;
+      const O = ctx.s.players[f.player];
+      const k = Math.min(n, O.donRested);
+      O.donRested -= k;
+      f.card.don += k;
+      const adverse = f.player === ctx.me ? '' : k > 1 ? ' adverses' : ' adverse';
+      log(ctx.s, ctx.me, `donne ${k} DON!! épuisée${k > 1 ? 's' : ''}${adverse} à ${def(f.card.num).name} (${source})`);
+    },
+    useful: (s, p, self) => list(s, p, self).length > 0,
+  };
+};
 
 // ---------- Main, deck, Défausse, Vie, DON!! ----------
 
@@ -544,8 +628,9 @@ export const searchTop = (count: number, n: number, spec: CharSpec & { category?
   effect((ctx) => { lookTopPick(ctx, count, n, (num) => cardMatches(num, spec), what, rest); }, (s, p) => s.players[p].deck.length > 0);
 
 // « Regardez N cartes du dessus de votre deck et jouez jusqu'à 1 carte Personnage ... Puis, placez les cartes restantes
-// au-dessous de votre deck dans l'ordre de votre choix »
-export const lookTopPlay = (count: number, spec: CharSpec, source: string, opts: { rested?: boolean } = {}): Effect => effect((ctx) => {
+// au-dessous de votre deck dans l'ordre de votre choix » ; rest 'trash' : « Puis, placez les cartes restantes dans votre
+// Défausse » (Air Door OP03-094)
+export const lookTopPlay = (count: number, spec: CharSpec, source: string, opts: { rested?: boolean; rest?: 'bottom' | 'trash' } = {}): Effect => effect((ctx) => {
   const P = ctx.s.players[ctx.me];
   const looked = P.deck.splice(0, count);
   const eligible = uniqueByNum(looked.filter((c) => def(c.num).category === 'CHARACTER' && cardMatches(c.num, spec) && canPlayCharacters(ctx.s, ctx.me, c.num)));
@@ -557,10 +642,15 @@ export const lookTopPlay = (count: number, spec: CharSpec, source: string, opts:
   }) : 'none';
   log(ctx.s, ctx.me, `regarde ${count} cartes du dessus de son deck`);
   const played = answer === 'none' ? null : looked.splice(looked.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1)[0];
-  const ordered = bottomOrder(ctx, looked);
-  P.deck.push(...ordered);
-  reveal(ctx.s, ordered.map((c) => c.uid), ctx.me);
-  if (played) playCharacter(ctx, ctx.me, played, opts);
+  if (opts.rest === 'trash') {
+    P.trash.push(...looked);
+    if (looked.length) log(ctx.s, ctx.me, `place ${looked.map((c) => def(c.num).name).join(', ')} dans sa Défausse`);
+  } else {
+    const ordered = bottomOrder(ctx, looked);
+    P.deck.push(...ordered);
+    reveal(ctx.s, ordered.map((c) => c.uid), ctx.me);
+  }
+  if (played) playCharacter(ctx, ctx.me, played, { rested: opts.rested });
 }, (s, p) => s.players[p].deck.length > 0 && canPlayCharacters(s, p));
 
 // « Jouez jusqu'à 1 carte Personnage ... de votre main / Défausse » (sans payer son coût ; rested : « épuisée »)
@@ -680,12 +770,13 @@ export const activateEventFromHand = (spec: CharSpec, source: string): Effect =>
   };
 };
 
-// « Ce Personnage gagne [Initiative] pour tout le tour » (la carte qui porte l'effet)
-export const selfKeyword = (keyword: Keyword, source: string): Effect => effect((ctx) => {
+// « Ce Personnage gagne [Initiative] pour tout le tour » (la carte qui porte l'effet) ; until 'battle' : « pendant ce
+// combat » (Kaku OP03-059 : [Exil])
+export const selfKeyword = (keyword: Keyword, source: string, until: 'turn' | 'battle' = 'turn'): Effect => effect((ctx) => {
   const f = findField(ctx.s, ctx.source);
   if (!f) return;
-  addMod(ctx.s, { uid: ctx.source, stat: 'keyword', keyword, amount: 0, until: 'turn', source });
-  log(ctx.s, ctx.me, `${def(f.card.num).name} gagne [${KEYWORD_FR[keyword]}] pour le tour (${source})`);
+  addMod(ctx.s, { uid: ctx.source, stat: 'keyword', keyword, amount: 0, until, source });
+  log(ctx.s, ctx.me, `${def(f.card.num).name} gagne [${KEYWORD_FR[keyword]}] ${until === 'battle' ? 'pour le combat' : 'pour le tour'} (${source})`);
 }, (s, _p, self) => Boolean(findField(s, self)));
 
 // « Ajoutez à votre main jusqu'à 1 carte ... de votre Défausse » (carte connue de l'adversaire)
@@ -784,6 +875,219 @@ export const addDon = (n: number, state: 'active' | 'rested'): Effect =>
 
 // « Redressez jusqu'à N de vos cartes DON!! »
 export const readyDon = (n: number): Effect => effect((ctx) => { untapDon(ctx.s, ctx.me, n); }, (s, p) => s.players[p].donRested > 0);
+
+// ---------- La carte qui porte l'effet (OP03, ST-01 : tâche 1.1) ----------
+
+// « Redressez ce Leader / ce Personnage » (Kuro OP03-021, Rob Lucci OP03-076)
+export const readySelf = (): Effect => effect((ctx) => { setActive(ctx.s, ctx.me, ctx.source); }, (s, _p, self) => Boolean(findField(s, self)?.card.rested));
+
+// « Épuisez ce Personnage » (effet, pas coût : Jango OP03-028). Ne sert à rien en soi : l'effet qui l'accompagne décide
+export const restThis = (): Effect => effect((ctx) => { restByEffect(ctx, ctx.source); }, () => false);
+
+// « Placez ce Personnage dans votre Défausse » (effet : Gaimon OP03-043). Ne sert à rien en soi
+export const trashThis = (): Effect => effect((ctx) => {
+  const f = removeFromField(ctx.s, ctx.source, 'trash');
+  if (f) log(ctx.s, ctx.me, `place ${def(f.card.num).name} dans sa Défausse`);
+}, () => false);
+
+// « Puis, placez ce Personnage dans votre Défausse à la fin de ce tour » (Thatch OP03-005) ; oublié si la carte quitte le
+// terrain avant
+export const trashAtEndOfTurn = (source: string): Effect => effect((ctx) => {
+  const f = findField(ctx.s, ctx.source);
+  if (!f || f.leader || f.stage) return;
+  addDelayed(ctx.s, { turn: ctx.s.turn, player: ctx.me, action: 'trashChar', amount: 0, uid: ctx.source, source });
+  log(ctx.s, ctx.me, `${def(f.card.num).name} ira dans la Défausse à la fin du tour (${source})`);
+}, () => false);
+
+// « Ce Personnage / ce Leader gagne +X de puissance » (la carte qui porte l'effet, sans choix)
+export const selfPowerMod = (amount: number, until: 'battle' | 'turn' | 'oppNextEnd', source: string): Effect => effect((ctx) => {
+  const f = findField(ctx.s, ctx.source);
+  if (!f || f.stage) return;
+  const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
+  addMod(ctx.s, { uid: ctx.source, stat: 'power', amount, until: u, source });
+  log(ctx.s, ctx.me, `${def(f.card.num).name} ${amount >= 0 ? `gagne +${amount}` : `reçoit −${-amount}`} de puissance ${UNTIL_TEXT(ctx.s, u)} (${source})`);
+}, (s, _p, self) => Boolean(findField(s, self)));
+
+// « Votre adversaire ne peut pas activer le [Bloqueur] d'un Personnage ... pendant ce combat » ([En attaquant] : la carte
+// qui attaque ; Adio OP03-002, Usopp ST01-002). Sans limite, mieux vaut selfKeyword('Unblockable', ..., 'battle')
+export const blockerBan = (limit: BlockerLimit, source: string): Effect => {
+  const inLimit = (s: GameState, c: FieldCard) => (limit.powerMax === undefined || power(s, c.uid) <= limit.powerMax)
+    && (limit.powerMin === undefined || power(s, c.uid) >= limit.powerMin) && (limit.costMax === undefined || fieldCost(s, c.uid) <= limit.costMax);
+  return effect((ctx) => {
+    const f = findField(ctx.s, ctx.source);
+    if (!f) return;
+    addMod(ctx.s, { uid: ctx.source, stat: 'blockerBan', amount: 0, until: 'battle', source, limit });
+    const which = [
+      limit.powerMax !== undefined ? `de ${limit.powerMax} de puissance ou moins` : '',
+      limit.powerMin !== undefined ? `de ${limit.powerMin} de puissance ou plus` : '',
+      limit.costMax !== undefined ? `de coût ${limit.costMax} ou moins` : '',
+    ].filter(Boolean).join(' ');
+    log(ctx.s, ctx.me, `l'adversaire ne peut pas activer le [Bloqueur] de ses Personnages ${which} pendant ce combat (${source})`);
+  }, (s, p) => s.players[other(p)].chars.some((c) => !c.rested && hasBlocker(s, other(p), c) && inLimit(s, c)));
+};
+
+// [Déclenchement] « jouez cette carte » avec une condition ou un coût (Hatchan OP03-033 : when(...) ; Charlotte Cracker
+// OP03-108 : withCost(discardCost(1), ...)) ; le « jouez cette carte » sans rien d'autre est déjà générique
+export const playThis = (opts: { rested?: boolean } = {}): Effect => effect((ctx) => {
+  const t = ctx.trigger;
+  if (!t || (def(t.card.num).category === 'CHARACTER' && !canPlayCharacters(ctx.s, ctx.me, t.card.num))) return;
+  t.moved = true;
+  playCharacter(ctx, ctx.me, t.card, opts);
+}, (s, p) => canPlayCharacters(s, p));
+
+// [En cas de KO] « (vous pouvez) jouer cette carte Personnage depuis votre Défausse (épuisée) » (Marco OP03-013)
+export const playSelfFromTrash = (source: string, opts: { rested?: boolean } = {}): Effect => effect((ctx) => {
+  const P = ctx.s.players[ctx.me];
+  const i = P.trash.findIndex((c) => c.uid === ctx.source);
+  if (i < 0 || !canPlayCharacters(ctx.s, ctx.me, P.trash[i].num)) return;
+  const [self] = P.trash.splice(i, 1);
+  log(ctx.s, ctx.me, `joue ${def(self.num).name} depuis sa Défausse (${source})`);
+  playCharacter(ctx, ctx.me, self, opts);
+}, (s, p, self) => canPlayCharacters(s, p) && s.players[p].trash.some((c) => c.uid === self));
+
+// ---------- Deck, Vie, coût (OP03, ST-01 : tâche 1.1) ----------
+
+// « Vous pouvez placer N cartes du dessus de votre deck dans votre Défausse » (toutes celles qui restent s'il y en a
+// moins). Question 'mayMill' : l'IA accepte quand son Leader gagne à deck vide (Nami OP03-040)
+export const mayTrashTop = (n: number, source: string): Effect => effect((ctx) => {
+  const P = ctx.s.players[ctx.me];
+  if (!P.deck.length) return;
+  if (!may(ctx, `${source} : placer ${n} carte${n > 1 ? 's' : ''} du dessus de ton deck dans ta Défausse ?`, 'mayMill')) return;
+  const k = Math.min(n, P.deck.length);
+  trashTopDeck(ctx.s, ctx.me, k);
+  log(ctx.s, ctx.me, `place ${k} carte${k > 1 ? 's' : ''} du dessus de son deck dans sa Défausse (${source}, ${P.deck.length} restante${P.deck.length > 1 ? 's' : ''})`);
+}, (s, p) => s.players[p].deck.length > 0);
+
+// « Regardez N cartes du dessus de votre deck et placez-en jusqu'à M dans votre Défausse. Puis, placez les cartes
+// restantes au-dessous de votre deck dans l'ordre de votre choix » (Corgy OP03-083)
+export const lookTopTrash = (count: number, max: number, source: string): Effect => effect((ctx) => {
+  const P = ctx.s.players[ctx.me];
+  const looked = P.deck.splice(0, count);
+  const trashed: Card[] = [];
+  for (let i = 0; i < max && looked.length; i++) {
+    const answer = ctx.ask({
+      prompt: `${source} : tu regardes ${[...trashed, ...looked].map((c) => def(c.num).name).join(', ')}. Carte à placer dans ta Défausse${max > 1 ? ` (${i + 1}/${max})` : ''} :`,
+      options: [...uniqueByNum(looked).map((c) => ({ id: `card:${c.uid}`, label: def(c.num).name, uid: c.uid, num: c.num })), { id: 'none', label: 'Aucune autre' }],
+      tag: 'discard',
+      cards: [...trashed, ...looked].map((c) => ({ uid: c.uid, num: c.num, owner: ctx.me })),
+    });
+    if (answer === 'none') break;
+    trashed.push(...looked.splice(looked.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1));
+  }
+  P.trash.push(...trashed);
+  const ordered = bottomOrder(ctx, looked);
+  P.deck.push(...ordered);
+  reveal(ctx.s, ordered.map((c) => c.uid), ctx.me);
+  log(ctx.s, ctx.me, `regarde ${count} cartes du dessus de son deck${trashed.length ? ` et place ${trashed.map((c) => def(c.num).name).join(', ')} dans sa Défausse` : ''}`);
+}, (s, p) => s.players[p].deck.length > 0);
+
+// « Placez dans sa Défausse jusqu'à N cartes du dessus de la Vie adverse » (Charlotte Linlin OP03-114) : pas des dégâts
+// (pas de [Déclenchement]) ; la carte devient publique
+export const trashOppLife = (n = 1): Effect => effect((ctx) => {
+  const O = ctx.s.players[ctx.opp];
+  for (let i = 0; i < n && O.life.length; i++) {
+    const top = O.life.shift()!;
+    O.trash.push({ uid: top.uid, num: top.num });
+    log(ctx.s, ctx.opp, `la carte du dessus de sa Vie va dans sa Défausse : ${def(top.num).name} (${O.life.length} Vie)`);
+  }
+}, (s, p) => s.players[other(p)].life.length > 0);
+
+// « Regardez jusqu'à 1 carte du dessus de votre Vie ou de celle de votre adversaire, et placez-la au-dessus ou au-dessous
+// de cette Vie » (Charlotte Katakuri OP03-099, Shirley OP03-104) : seul celui qui regarde connaît la carte ensuite
+export const lookLifeArrange = (source: string): Effect => effect((ctx) => {
+  const mine = ctx.s.players[ctx.me].life.length > 0;
+  const theirs = ctx.s.players[ctx.opp].life.length > 0;
+  if (!mine && !theirs) return;
+  const which = ctx.ask({
+    prompt: `${source} : regarder la carte du dessus de quelle Vie ?`,
+    options: [
+      ...(mine ? [{ id: 'mine', label: 'Ta Vie' }] : []),
+      ...(theirs ? [{ id: 'opp', label: 'La Vie adverse' }] : []),
+      { id: 'none', label: 'Aucune' },
+    ],
+    tag: 'lifeLook',
+  });
+  if (which === 'none') return;
+  const owner = which === 'mine' ? ctx.me : ctx.opp;
+  const life = ctx.s.players[owner].life;
+  const card = life[0];
+  const answer = ctx.ask({
+    prompt: `${source} : ${def(card.num).name}, carte du dessus de ${owner === ctx.me ? 'ta Vie' : 'la Vie adverse'}. Où la placer ?`,
+    options: [{ id: 'top', label: 'La laisser au-dessus' }, { id: 'bottom', label: 'La placer au-dessous' }],
+    tag: 'lifeArrange',
+    cards: [{ uid: card.uid, num: card.num, owner }],
+  });
+  if (answer === 'bottom' && life.length > 1) life.push(life.shift()!);
+  reveal(ctx.s, [card.uid], ctx.me);
+  const whose = owner === ctx.me ? 'sa Vie' : 'la Vie adverse';
+  log(ctx.s, ctx.me, `regarde la carte du dessus de ${whose} et la place ${answer === 'top' ? 'au-dessus' : 'au-dessous'} (${source})`);
+  privateLog(ctx.s, ctx.me, `carte regardée (${whose}) : ${def(card.num).name}`);
+}, (s, p) => s.players[p].life.length + s.players[other(p)].life.length > 0);
+
+// « Ajoutez jusqu'à 1 Personnage ... au-dessus ou au-dessous de la Vie de son propriétaire, face visible » (Charlotte
+// Katakuri OP03-123) ; faceUp false : face cachée (connue des deux joueurs)
+export const toOwnersLife = (t: Targets, source: string, faceUp = true): Effect => {
+  const list = (s: GameState, p: PlayerId, self?: number) => candidates(s, p, t, (c) => canLeaveByEffect(s, c.uid, p), self);
+  return {
+    run: (ctx) => {
+      const uid = chooseUpTo1(ctx, list(ctx.s, ctx.me, ctx.source), `${source} : ${t.label} à placer ${faceUp ? 'face visible' : 'face cachée'} dans la Vie de son propriétaire :`, 'oppToLife');
+      if (uid === null) return;
+      const side = ctx.ask({
+        prompt: `${source} : au-dessus ou au-dessous de sa Vie ?`,
+        options: [{ id: 'lifeBottom', label: 'Au-dessous' }, { id: 'lifeTop', label: 'Au-dessus' }],
+        tag: 'lifeSideOpp',
+      });
+      removeByEffect(ctx, uid, side === 'lifeTop' ? (faceUp ? 'lifeTop' : 'lifeTopHidden') : (faceUp ? 'lifeBottom' : 'lifeBottomHidden'));
+    },
+    useful: (s, p, self) => list(s, p, self).length > 0,
+  };
+};
+
+// « Le coût de ... devient 0 pour tout le tour » : une baisse égale à son coût du moment (comme « la puissance devient
+// 0 », 4-12 ; un coût déjà nul ou négatif ne change pas) (Helmeppo OP03-091)
+export const costToZero = (t: Targets, until: 'turn' | 'oppNextEnd', source: string): Effect => ({
+  run: (ctx) => {
+    const uid = chooseUpTo1(ctx, candidates(ctx.s, ctx.me, t, undefined, ctx.source), `${source} : ${t.label} dont le coût devient 0 :`, t.side === 'opp' ? 'oppCost' : 'ownCost');
+    if (uid === null) return;
+    const u = until === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : until;
+    const cost = fieldCost(ctx.s, uid);
+    if (cost > 0) addMod(ctx.s, { uid, stat: 'cost', amount: -cost, until: u, source });
+    log(ctx.s, ctx.me, `le coût de ${nameOf(ctx.s, uid)} devient 0 ${UNTIL_TEXT(ctx.s, u)} (${source})`);
+  },
+  useful: (s, p, self) => candidates(s, p, t, undefined, self).length > 0,
+});
+
+// ---------- Effets « quand ... » et effets permanents (OP03, ST-01 : tâche 1.1) ----------
+
+// « [DON!! x1] Quand l'attaque de ce Leader / Personnage inflige des dégâts à la Vie adverse, ... » (who 'self' : Nami
+// OP03-040, Usopp OP03-041) ; « Quand vous infligez des dégâts à la Vie adverse, ... » (who 'any' : Gaimon OP03-043).
+// La condition est lue au moment des dégâts (8-6) ; une [Double attaque] ne déclenche l'effet qu'une fois (4-6-2-2)
+export const afterDamage = (who: 'self' | 'any', run: Effect, cond?: Condition, once?: string): WhenEffect => ({
+  on: 'damage',
+  ...(once ? { once } : {}),
+  if: (s, owner, self, e) => e.by === owner && (who === 'any' || (e.cause === 'attack' && e.uid === self.uid)) && (cond?.(s, owner, self.uid) ?? true),
+  run: (ctx) => run.run(ctx),
+});
+
+// Mot-clé que la carte gagne tant que la condition est vraie (« [DON!! x1] Ce Personnage gagne [Double attaque] », Krieg
+// OP03-025), pour CardBehavior.keywordAura : card({ ... }, { keywordAura: keywordWhile('Double Attack', selfDon(1)) })
+export const keywordWhile = (k: Keyword, cond: Condition): NonNullable<CardBehavior['keywordAura']> =>
+  (s, p, src, target, kk) => kk === k && target.uid === src.uid && cond(s, p, src.uid);
+
+// La carte qui attaque pendant le combat en cours a-t-elle cet attribut ?
+export const attackerAttribute = (s: GameState, attribute: string) => Boolean(s.battle && def(findField(s, s.battle.attacker)?.card.num ?? '?').attributes.includes(attribute));
+
+// « Ce Personnage ne peut pas être mis KO en combat par des cartes <Tranche> » (Buggy OP03-008, OP03-032) ; without :
+// « par des Personnages sans l'attribut <Spécial> » (Smoker P-025), pour CardBehavior.cantBeKO, avec une condition
+// facultative ([DON!! x1])
+export const koImmuneInBattle = (spec: { attribute?: string; without?: string; characters?: boolean }, cond?: Condition): NonNullable<CardBehavior['cantBeKO']> =>
+  (s, owner, self, cause) => {
+    if (cause !== 'battle' || !s.battle || (cond && !cond(s, owner, self.uid))) return false;
+    const f = findField(s, s.battle.attacker);
+    if (!f || (spec.characters && f.leader)) return false;
+    const attrs = def(f.card.num).attributes;
+    return (spec.attribute === undefined || attrs.includes(spec.attribute)) && (spec.without === undefined || !attrs.includes(spec.without));
+  };
 
 // ---------- Coûts ----------
 
@@ -974,10 +1278,10 @@ export const restLeaderOrStage = (type: string): Cost => {
 // « Donner 1 de vos cartes DON!! redressées à ... »// « Donner 1 de vos cartes DON!! redressées à ... »
 export const giveActiveDon = (t: Targets): Cost => ({
   label: `donner 1 de tes DON!! redressées (${t.label})`,
-  can: (s, p) => s.players[p].donActive > 0 && candidates(s, p, t).length > 0,
+  can: (s, p, self) => s.players[p].donActive > 0 && candidates(s, p, t, undefined, self).length > 0,
   pay: (ctx) => {
     const P = ctx.s.players[ctx.me];
-    const list = candidates(ctx.s, ctx.me, t);
+    const list = candidates(ctx.s, ctx.me, t, undefined, ctx.source);
     if (P.donActive <= 0 || !list.length) return false;
     const answer = list.length === 1 ? `card:${list[0]}` : ctx.ask({
       prompt: 'Carte qui reçoit 1 DON!! redressée :',
@@ -993,12 +1297,14 @@ export const giveActiveDon = (t: Targets): Cost => ({
 });
 
 // « Épuiser N de vos cartes » (Leader, Personnages, Lieu ou DON!! redressées de la zone de Coût) ; « Épuiser N de vos
-// Personnages » : le joueur les choisit une à une
-export const restCost = (n: number, what: 'cards' | 'characters'): Cost => {
-  const field = (s: GameState, p: PlayerId) => (what === 'cards' ? allField(s, p) : s.players[p].chars).filter((c) => !c.rested && canBeRested(s, c.uid));
-  const dons = (s: GameState, p: PlayerId) => (what === 'cards' ? s.players[p].donActive : 0);
+// Personnages » : le joueur les choisit une à une ; spec : « N de vos Personnages de type {East Blue} » (Kuro OP03-021)
+export const restCost = (n: number, what: 'cards' | 'characters', spec?: CharSpec): Cost => {
+  const field = (s: GameState, p: PlayerId) => (what === 'cards' ? allField(s, p) : s.players[p].chars)
+    .filter((c) => !c.rested && canBeRested(s, c.uid) && (!spec || matches(s, c, spec)));
+  const dons = (s: GameState, p: PlayerId) => (what === 'cards' && !spec ? s.players[p].donActive : 0);
+  let label: string | undefined;
   return {
-    label: `épuiser ${n} de tes ${what === 'cards' ? 'cartes' : 'Personnages'}`,
+    get label() { return (label ??= spec ? `épuiser ${n} de tes ${describeSpec('Personnages', spec)}` : `épuiser ${n} de tes ${what === 'cards' ? 'cartes' : 'Personnages'}`); },
     can: (s, p) => field(s, p).length + dons(s, p) >= n,
     pay: (ctx) => {
       const P = ctx.s.players[ctx.me];
@@ -1035,6 +1341,52 @@ export const returnOwnChar = (notSelf = false): Cost => ({
       tag: 'returnOwn',
     });
     return removeByEffect(ctx, Number(answer.split(':')[1]), 'hand');
+  },
+});
+
+// « Placer N de vos Personnages ... dans votre Défausse » (Marshall D. Teach OP03-012 : « 1 de vos Personnages rouges de
+// 4000 de puissance ou plus », la carte qui porte l'effet comprise si elle correspond)
+export const trashOwnCharCost = (spec: CharSpec, n = 1): Cost => {
+  const list = (s: GameState, p: PlayerId) => s.players[p].chars.filter((c) => matches(s, c, spec)).map((c) => c.uid);
+  let label: string | undefined;
+  return {
+    get label() { return (label ??= `placer ${n} de tes ${describeSpec(n > 1 ? 'Personnages' : 'Personnage', spec)} dans ta Défausse`); },
+    can: (s, p) => list(s, p).length >= n,
+    pay: (ctx) => {
+      for (let i = 0; i < n; i++) {
+        const options = list(ctx.s, ctx.me);
+        if (!options.length) return false;
+        const answer = ctx.ask({
+          prompt: `Personnage à placer dans ta Défausse${n > 1 ? ` (${i + 1}/${n})` : ''} :`,
+          options: options.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })),
+          tag: 'trashOwn',
+        });
+        const f = removeFromField(ctx.s, Number(answer.split(':')[1]), 'trash');
+        if (!f) return false;
+        log(ctx.s, ctx.me, `place ${def(f.card.num).name} dans sa Défausse`);
+      }
+      return true;
+    },
+  };
+};
+
+// « Placer dans votre Défausse 1 carte du dessus (ou du dessous) de votre Vie » (Thunder Bolt OP03-121 : 'top' ;
+// Kingbaum OP03-100, Charlotte Chiffon OP03-109 : 'both') : la carte devient publique
+export const trashLifeCost = (ends: 'top' | 'both'): Cost => ({
+  label: `placer dans ta Défausse la carte du dessus${ends === 'both' ? ' ou du dessous' : ''} de ta Vie`,
+  can: (s, p) => s.players[p].life.length > 0,
+  pay: (ctx) => {
+    const P = ctx.s.players[ctx.me];
+    if (!P.life.length) return false;
+    const from = ends === 'top' ? 'top' : ctx.ask({
+      prompt: 'Carte de ta Vie à placer dans ta Défausse :',
+      options: [{ id: 'top', label: 'La carte du dessus' }, { id: 'bottom', label: 'La carte du dessous' }],
+      tag: 'lifeSide',
+    });
+    const card = from === 'top' ? P.life.shift()! : P.life.pop()!;
+    P.trash.push({ uid: card.uid, num: card.num });
+    log(ctx.s, ctx.me, `place dans sa Défausse la carte ${from === 'top' ? 'du dessus' : 'du dessous'} de sa Vie : ${def(card.num).name} (${P.life.length} Vie)`);
+    return true;
   },
 });
 
@@ -1076,7 +1428,11 @@ export function card(spec: CardSpec, extra: CardBehavior = {}): CardBehavior {
     b.onMain = e.run;
     b.mainUseful ??= (s, p) => e.useful(s, p, -1);
   }
-  if (spec.onCounter) b.onCounter = spec.onCounter.run;
+  if (spec.onCounter) {
+    const e = spec.onCounter;
+    b.onCounter = e.run;
+    if (e.power) b.counterPower ??= (s, p, target) => e.power!(s, p, target);
+  }
   if (spec.onTrigger) b.onTrigger = spec.onTrigger.run;
   if (spec.onOpponentAttack) b.onOpponentAttack = { run: spec.onOpponentAttack.run };
   if (spec.activateMain) {
