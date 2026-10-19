@@ -1,9 +1,13 @@
 // Sabo du méta (octobre 2026) : un test par carte nouvelle, condition vraie et condition fausse
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { heuristicChooser } from '../ai/heuristic.ts';
+import { DECKS } from '../engine/decks.ts';
 import { fieldCost, hasBlocker, hasKeyword, power } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
-import { choose, coherent, expectTag, hasOption, option, play, scenario, setChars, setDeckTop, setDon, setHand, take } from './helpers.ts';
+import {
+  attack, choose, coherent, expectTag, hasOption, option, play, scenario, setChars, setDeckTop, setDon, setHand, setLife, take,
+} from './helpers.ts';
 import { act } from '../engine/engine.ts';
 
 const META = 'META-SABO-2026-10';
@@ -26,10 +30,30 @@ const OPP_ROBIN = 'OP11-009';  // coût 3, 4000
 const OPP_NAMI = 'OP01-016';   // coût 1
 const OPP_LUFFY = 'ST23-004';  // coût 1
 const OPP_BROOK = 'ST31-003';  // coût 2
+const O_CHOPPER = 'ST21-008';  // adversaire ST-21 : coût 4, 6000
+
+// Gerd et « Je suis Luffy ! » (ajoutés le 16 octobre 2026, hors de la liste du méta) : la liste du méta plus ces cartes,
+// avec le Leader Sabo (pas {Erbaf}) ou le Leader Luffy OP17-079 ({Erbaf})
+const GERD = 'OP17-081';
+const LUFFY_KING = 'OP17-096';
+const KAIDO = 'OP08-079';  // coût 9
+const ERBAF_CARDS = { ...DECKS[META].cards, [GERD]: 4, [LUFFY_KING]: 4, [KAIDO]: 1 };
+const TEST_SABO = 'TEST-SABO-ERBAF';
+const TEST_LUFFY = 'TEST-LUFFY-ERBAF';
+DECKS[TEST_SABO] = { id: TEST_SABO, name: 'Essai Sabo', series: 'TEST', leader: 'OP13-004', cards: ERBAF_CARDS };
+DECKS[TEST_LUFFY] = { id: TEST_LUFFY, name: 'Essai Luffy', series: 'TEST', leader: 'OP17-079', cards: ERBAF_CARDS };
 
 const toTrash = (g: GameState, p: PlayerId, nums: string[]) => g.players[p].trash.push(...nums.map((n) => take(g, p, n)));
 const mine = (s: GameState, num: string) => s.players[0].chars.find((c) => c.num === num)!;
 const theirs = (s: GameState, num: string) => s.players[1].chars.find((c) => c.num === num)!;
+const toCounter = (s: GameState) => {
+  while (s.decision && s.decision.kind !== 'counter') s = choose(s, s.decision.kind === 'blocker' ? 'noblock' : 'no');
+  return s;
+};
+const toTrigger = (s: GameState) => {
+  for (let i = 0; i < 10 && s.decision && s.decision.tag !== 'trigger'; i++) s = choose(s, s.decision.kind === 'blocker' ? 'noblock' : s.decision.kind === 'counter' ? 'pass' : 'no');
+  return s;
+};
 
 test('Haguar D. Sauro et Usopp : +12 de coût ; +3000 avec un Personnage de coût 12 ou plus en jeu (sinon rien)', () => {
   let s = scenario([META, 'ST-31'], (g) => setChars(g, 0, [{ num: USOPP }]));
@@ -266,5 +290,82 @@ test('Brook (ST01-011) : 2 DON!! épuisées à son Leader ou à un de ses Person
   s = choose(s, `card:${s.players[0].leader.uid}`);
   assert.equal(s.players[0].leader.don, 2);
   assert.equal(s.players[0].donRested, 3);
+  coherent(s);
+});
+
+test('Gerd : +12 de coût seulement avec un Leader {Erbaf} (Jinbe devient alors [Bloqueur])', () => {
+  let s = scenario([TEST_LUFFY, 'ST-31'], (g) => setChars(g, 0, [{ num: GERD }, { num: JINBE }]));
+  assert.equal(fieldCost(s, mine(s, GERD).uid), 14);
+  assert.equal(hasBlocker(s, 0, mine(s, JINBE)), true);
+  s = scenario([TEST_SABO, 'ST-31'], (g) => setChars(g, 0, [{ num: GERD }, { num: JINBE }]));
+  assert.equal(fieldCost(s, mine(s, GERD).uid), 2, 'Leader Sabo : pas {Erbaf}');
+  assert.equal(hasBlocker(s, 0, mine(s, JINBE)), false);
+});
+
+test('Gerd : défausser 1 carte pour reprendre un Personnage de coût 8 ou moins autre que [Gerd] ; l’IA ne défausse pas pour rien', () => {
+  const setup = (hand: string[], trash: string[]) => (g: GameState) => {
+    setHand(g, 0, hand);
+    setDon(g, 0, 10);
+    toTrash(g, 0, trash);
+  };
+  let s = play(scenario([TEST_SABO, 'ST-31'], setup([GERD, SANJI], [LOKI, LUFFY, KAIDO, GERD])), GERD);
+  expectTag(s, 'may');
+  assert.equal(heuristicChooser(s, s.decision!), 'yes');
+  s = choose(s, 'yes');
+  if (s.decision?.tag === 'discard') s = choose(s, 'card');
+  expectTag(s, 'pick');
+  assert.deepEqual(s.decision!.options.map((o) => o.num ?? o.id).sort(), [LOKI, LUFFY, SANJI, 'none'].sort(), 'ni Kaido (9) ni Gerd');
+  s = choose(s, (o) => o.num === LOKI);
+  assert.deepEqual(s.players[0].hand.map((c) => c.num), [LOKI]);
+  assert.deepEqual(s.players[0].trash.map((c) => c.num).sort(), [GERD, KAIDO, LUFFY, SANJI].sort());
+  coherent(s);
+
+  // rien à reprendre : la question est posée (le coût est payable), l'IA refuse
+  s = play(scenario([TEST_SABO, 'ST-31'], setup([GERD, SANJI], [KAIDO, GERD])), GERD);
+  expectTag(s, 'may');
+  assert.equal(heuristicChooser(s, s.decision!), 'no');
+  s = choose(s, 'no');
+  assert.deepEqual(s.players[0].hand.map((c) => c.num), [SANJI]);
+  // plus de carte en main : pas de question
+  s = play(scenario([TEST_SABO, 'ST-31'], setup([GERD], [LOKI])), GERD);
+  assert.equal(s.decision?.kind, 'main');
+});
+
+test('« Je suis Luffy ! » : [Contre] +4000 avec un Personnage de coût 12 ou plus de l’un ou l’autre joueur, sinon rien (l’IA le voit)', () => {
+  for (const giant of ['mine', 'theirs', 'none'] as const) {
+    const attacker = giant === 'theirs' ? SAURO : O_CHOPPER;  // 6000 tous les deux
+    let s = scenario([TEST_SABO, giant === 'theirs' ? TEST_SABO : 'ST-21'], (g) => {
+      setHand(g, 0, [LUFFY_KING]);
+      setDon(g, 0, 1);
+      setLife(g, 0, [USOPP, SANJI]);
+      setChars(g, 0, giant === 'mine' ? [{ num: SAURO }] : []);
+      setChars(g, 1, [{ num: attacker }]);
+    }, 1);
+    s = toCounter(attack(s, theirs(s, attacker).uid, s.players[0].leader.uid));
+    assert.equal(heuristicChooser(s, s.decision!).startsWith('cevent:'), giant !== 'none', giant);
+    s = choose(s, (o) => o.id.startsWith('cevent:'));
+    if (s.decision?.kind === 'counter') s = choose(s, 'pass');
+    assert.equal(s.log.some((l) => l.text.includes('+4000 de puissance pour le combat')), giant !== 'none', giant);
+    assert.equal(s.players[0].life.length, giant === 'none' ? 1 : 2, giant);
+    assert.ok(s.players[0].trash.some((c) => c.num === LUFFY_KING));
+    coherent(s);
+  }
+});
+
+test('« Je suis Luffy ! » : [Déclenchement] reprendre une carte {Erbaf} de sa Défausse', () => {
+  let s = scenario([TEST_SABO, 'ST-21'], (g) => {
+    setLife(g, 0, [LUFFY_KING]);
+    setHand(g, 0, []);
+    toTrash(g, 0, [NAMI_ST, USOPP]);
+    setChars(g, 1, [{ num: O_CHOPPER }]);
+  }, 1);
+  s = toTrigger(attack(s, theirs(s, O_CHOPPER).uid, s.players[0].leader.uid));
+  expectTag(s, 'trigger');
+  s = choose(s, 'trigger');
+  expectTag(s, 'pick');
+  assert.deepEqual(s.decision!.options.map((o) => o.num ?? o.id).sort(), [USOPP, 'none'].sort(), 'Nami (OP01-016) n’est pas {Erbaf}');
+  s = choose(s, (o) => o.num === USOPP);
+  assert.deepEqual(s.players[0].hand.map((c) => c.num), [USOPP]);
+  assert.deepEqual(s.players[0].trash.map((c) => c.num).sort(), [LUFFY_KING, NAMI_ST].sort());
   coherent(s);
 });
