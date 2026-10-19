@@ -12,11 +12,14 @@
 import crypto from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import zlib from 'node:zlib';
+// Les cartes d'abord : rules.ts et les fichiers de cartes s'importent l'un l'autre, et les fichiers de cartes lisent
+// des constantes de rules.ts dès leur chargement. Entrer par le moteur (archive.ts, engine.ts) avant les cartes fait
+// planter le démarrage du serveur quand ce module est le premier à charger le jeu (server/index.js).
+import { cardData } from '../game/engine/cards/index.ts';
 import { ARCS, findArc, findChapter } from '../game/adventure/arcs.ts';
 import { chapterStatuses } from '../game/adventure/progress.ts';
 import { openBooster } from '../game/boosters/open.ts';
 import { replayRecord } from '../game/coach/archive.ts';
-import { cardData } from '../game/engine/cards/index.ts';
 import { deckErrors } from '../game/engine/deckRules.ts';
 import { CUSTOM_PREFIX, CUSTOM_SERIES, DECKS } from '../game/engine/decks.ts';
 import { newGame } from '../game/engine/engine.ts';

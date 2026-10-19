@@ -2,6 +2,7 @@
 // vérifiée en rejouant la partie enregistrée, refus (partie perdue, mauvais deck, mauvais niveau, partie truquée ou d'un
 // autre compte), double envoi, boosters ouverts une seule fois, deck d'aventure limité à la Cale, suppression du compte
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -295,4 +296,15 @@ test('aventure (serveur) : la suppression du compte efface ses données de l’a
   for (const table of tables) assert.equal(rows(table, C), 0, table);
   // les autres comptes gardent tout
   assert.ok(rows('game_inventory', A) > 0 && rows('game_progress', A) > 0 && rows('game_adventure', B) > 0);
+});
+
+test('aventure (serveur) : le module se charge seul, comme premier module du jeu au démarrage du serveur', () => {
+  // server/index.js importe game-adventure.js avant les autres modules du jeu : ses imports doivent passer par les
+  // cartes avant le moteur (rules.ts et les fichiers de cartes s'importent l'un l'autre). Les tests préchargent les
+  // cartes (load-local.ts) : seul un processus neuf voit ce problème.
+  const out = spawnSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', `await import(${JSON.stringify(new URL(paths.adventure, import.meta.url).href)})`], {
+    env: { ...process.env, TCGC_DB: join(dir, 'chargement.db') },
+    encoding: 'utf8',
+  });
+  assert.equal(out.status, 0, out.stderr);
 });
