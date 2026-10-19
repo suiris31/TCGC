@@ -97,37 +97,38 @@ test('progression : une victoire ouvre le chapitre suivant, le défi bonus ne bl
   assert.equal(currentChapter(ARC, new Set(['c1', 'c2', 'c3', 'defi', 'fin'])), undefined);
 });
 
-test('progression d’East Blue : le défi de Mihawk s’ouvre après le Baratie sans être exigé ensuite', () => {
+test('progression d’East Blue : l’histoire se gagne dans l’ordre sans les défis, qui s’ouvrent en chemin', () => {
   const order = [...EAST_BLUE.chapters].sort((a, b) => a.order - b.order);
   const story = order.filter((c) => !c.optional).map((c) => c.id);
-  const defi = order.find((c) => c.optional)!;
   const wins = new Set<string>();
   for (const id of story) {
     assert.equal(currentChapter(EAST_BLUE, wins), id);
     assert.equal(chapterStatuses(EAST_BLUE, wins)[id], 'open');
     wins.add(id);
   }
-  assert.equal(chapterStatuses(EAST_BLUE, wins)[defi.id], 'open');
   assert.equal(arcFinished(EAST_BLUE, wins), true);
+  // un défi qui ne demande que des chapitres de l'histoire est ouvert à la fin de l'arc
+  for (const c of order.filter((c) => c.optional && requiredChapters(EAST_BLUE, c).every((id) => story.includes(id)))) {
+    assert.equal(chapterStatuses(EAST_BLUE, wins)[c.id], 'open', c.id);
+  }
 });
 
-test('boosters provisoires : 12 cartes différentes d’OP03, même tirage = même booster', () => {
-  assert.deepEqual(boosterSets(), ['OP03']);
+// Ce que tout générateur doit respecter (le provisoire comme celui de la tâche 1.5, qui ajoute ses propres tests)
+test('boosters : 12 cartes du catalogue, même tirage = même booster', () => {
+  assert.ok(boosterSets().includes('OP03'));
   const a = openBooster('OP03', seeded(42));
   assert.deepEqual(openBooster('OP03', seeded(42)), a);
   assert.notDeepEqual(openBooster('OP03', seeded(43)), a);
   assert.equal(a.set, 'OP03');
   assert.equal(a.cards.length, BOOSTER_SIZE);
-  assert.equal(new Set(a.cards.map((c) => c.number)).size, BOOSTER_SIZE);
   for (const c of a.cards) {
-    assert.match(c.number, /^OP03-\d{3}$/);
-    assert.equal(c.rarity, CARDS[c.number].rarity);
-    assert.equal(c.variant, 'base');
+    assert.ok(CARDS[c.number], `${c.number} absent du catalogue`);
+    assert.ok(c.rarity && c.variant, `${c.number} : rareté ou version vide`);
   }
-  assert.throws(() => openBooster('OP99', seeded(1)), /OP99/);
+  assert.throws(() => openBooster('OP99', seeded(1)));
 });
 
-test('boosters provisoires : un display de 24, les cartes communes plus fréquentes que les rares', () => {
+test('boosters : un display de 24, les cartes communes plus fréquentes que les rares', () => {
   const display = openDisplay('OP03', seeded(7));
   assert.equal(display.length, DISPLAY_SIZE);
   assert.deepEqual(openDisplay('OP03', seeded(7)), display);
