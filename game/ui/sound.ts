@@ -68,3 +68,56 @@ export function sfx(kind: Sfx) {
     case 'lose': [392, 330, 262].forEach((f, i) => tone(a, f, f * 0.97, i * 0.18, 0.4, 'sine', 0.09)); break;
   }
 }
+
+// Ouverture des boosters (tâche 1.6) : papier déchiré, carte retournée, et un son par genre de carte (lueur d'une R,
+// éclat d'une SR ou d'un Leader, fanfare d'une SEC, scintillement d'une version spéciale), précédé d'une montée qui fait
+// attendre les plus belles
+export type BoosterSfx = 'tear' | 'flip' | 'shine' | 'suspense' | 'super' | 'secret' | 'special';
+
+// Bruit filtré dont la hauteur glisse (souffle, déchirure, montée)
+function sweep(a: AudioContext, start: number, duration: number, volume: number, from: number, to: number) {
+  const buffer = a.createBuffer(1, Math.floor(a.sampleRate * duration), a.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = a.createBufferSource();
+  src.buffer = buffer;
+  const filter = a.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.Q.value = 1.4;
+  filter.frequency.setValueAtTime(from, a.currentTime + start);
+  filter.frequency.exponentialRampToValueAtTime(to, a.currentTime + start + duration);
+  const gain = a.createGain();
+  gain.gain.setValueAtTime(0.0001, a.currentTime + start);
+  gain.gain.exponentialRampToValueAtTime(volume, a.currentTime + start + duration * 0.6);
+  gain.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + start + duration);
+  src.connect(filter).connect(gain).connect(a.destination);
+  src.start(a.currentTime + start);
+}
+
+export function boosterSfx(kind: BoosterSfx) {
+  const a = audio();
+  if (!a) return;
+  switch (kind) {
+    case 'tear':
+      for (let i = 0; i < 8; i++) noise(a, i * 0.032 + Math.random() * 0.012, 0.045, 0.11, 4500 + Math.random() * 2500);
+      sweep(a, 0.22, 0.35, 0.14, 700, 3200);
+      break;
+    case 'flip': noise(a, 0, 0.09, 0.07, 3200); tone(a, 480, 640, 0.01, 0.07, 'triangle', 0.03); break;
+    case 'shine': tone(a, 1318, 1318, 0, 0.35, 'sine', 0.05); tone(a, 1760, 1760, 0.09, 0.45, 'sine', 0.04); break;
+    case 'suspense': sweep(a, 0, 0.75, 0.12, 250, 2600); tone(a, 196, 392, 0, 0.75, 'triangle', 0.045); break;
+    case 'super':
+      [784, 988, 1175, 1568].forEach((f, i) => tone(a, f, f, i * 0.07, 0.45, 'triangle', 0.07));
+      sweep(a, 0, 0.7, 0.07, 3500, 9000);
+      break;
+    case 'secret':
+      tone(a, 120, 50, 0, 0.7, 'sine', 0.25);
+      [523, 659, 784].forEach((f) => tone(a, f, f, 0.04, 1, 'triangle', 0.06));
+      [1046, 1318, 1568, 2093].forEach((f, i) => tone(a, f, f, 0.32 + i * 0.08, 0.7, 'sine', 0.05));
+      sweep(a, 0.04, 1.3, 0.08, 2500, 10000);
+      break;
+    case 'special':
+      [659, 880, 1046, 1318, 1760, 2093].forEach((f, i) => tone(a, f, f * 1.01, i * 0.05, 0.5, 'sine', 0.05));
+      sweep(a, 0, 0.9, 0.07, 5000, 12000);
+      break;
+  }
+}
