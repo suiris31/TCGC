@@ -2,93 +2,93 @@
  "decks": {
   "META-ENEL-2026-10": {
    "name": "deck-META-ENEL-2026-10",
-   "update": 300,
-   "createdAt": "2026-10-15 10:13:12",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:04:44",
+   "specHash": "4c256fa6"
   },
   "META-KAIDO-2026-10": {
    "name": "deck-META-KAIDO-2026-10",
-   "update": 300,
-   "createdAt": "2026-10-15 10:13:39",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:05:09",
+   "specHash": "4c256fa6"
   },
   "META-MIHAWK-2026-10": {
    "name": "deck-META-MIHAWK-2026-10",
-   "update": 300,
-   "createdAt": "2026-10-15 10:11:50",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:03:26",
+   "specHash": "4c256fa6"
   },
   "META-ROBIN-2026-10": {
    "name": "deck-META-ROBIN-2026-10",
-   "update": 300,
-   "createdAt": "2026-10-15 10:12:19",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:03:54",
+   "specHash": "4c256fa6"
   },
   "META-SABO-2026-10": {
    "name": "deck-META-SABO-2026-10",
-   "update": 300,
-   "createdAt": "2026-10-15 10:11:23",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:03:02",
+   "specHash": "4c256fa6"
   },
   "META-XEBEC-2026-10": {
    "name": "deck-META-XEBEC-2026-10",
-   "update": 300,
-   "createdAt": "2026-10-15 10:12:46",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:04:19",
+   "specHash": "4c256fa6"
   },
   "ST-21": {
    "name": "deck-ST-21",
-   "update": 300,
-   "createdAt": "2026-10-15 10:14:06",
-   "specHash": "a0664ced"
+   "update": 742,
+   "createdAt": "2026-10-19 19:05:35",
+   "specHash": "4c256fa6"
   },
   "ST-22": {
    "name": "deck-ST-22",
-   "update": 300,
-   "createdAt": "2026-10-15 10:14:33",
-   "specHash": "a0664ced"
+   "update": 737,
+   "createdAt": "2026-10-19 19:05:59",
+   "specHash": "4c256fa6"
   },
   "ST-30": {
    "name": "deck-ST-30",
-   "update": 300,
-   "createdAt": "2026-10-15 10:15:00",
-   "specHash": "a0664ced"
+   "update": 700,
+   "createdAt": "2026-10-19 19:06:26",
+   "specHash": "4c256fa6"
   },
   "ST-31": {
    "name": "deck-ST-31",
-   "update": 300,
-   "createdAt": "2026-10-15 10:09:09",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:00:51",
+   "specHash": "4c256fa6"
   },
   "ST-32": {
    "name": "deck-ST-32",
-   "update": 300,
-   "createdAt": "2026-10-15 10:09:35",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:01:17",
+   "specHash": "4c256fa6"
   },
   "ST-33": {
    "name": "deck-ST-33",
-   "update": 300,
-   "createdAt": "2026-10-15 10:10:00",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:01:42",
+   "specHash": "4c256fa6"
   },
   "ST-34": {
    "name": "deck-ST-34",
-   "update": 300,
-   "createdAt": "2026-10-15 10:10:29",
-   "specHash": "a0664ced"
+   "update": 1200,
+   "createdAt": "2026-10-19 19:02:08",
+   "specHash": "4c256fa6"
   },
   "ST-35": {
    "name": "deck-ST-35",
-   "update": 300,
-   "createdAt": "2026-10-15 10:08:43",
-   "specHash": "a0664ced"
+   "update": 800,
+   "createdAt": "2026-10-19 19:00:25",
+   "specHash": "4c256fa6"
   },
   "ST-36": {
    "name": "deck-ST-36",
-   "update": 300,
-   "createdAt": "2026-10-15 10:10:56",
-   "specHash": "a0664ced"
+   "update": 1200,
+   "createdAt": "2026-10-19 19:02:34",
+   "specHash": "4c256fa6"
   }
  }
 }

@@ -1,10 +1,10 @@
 {
  "name": "deck-ST-22",
  "deck": "ST-22",
- "createdAt": "2026-10-15 10:14:33",
- "specHash": "a0664ced",
- "encodingVersion": 4,
- "engine": "558c76a",
+ "createdAt": "2026-10-19 19:05:59",
+ "specHash": "4c256fa6",
+ "encodingVersion": 5,
+ "engine": "6b7b896",
  "synthetic": false,
  "vocab": [
   "EB03-032",
@@ -237,7 +237,7 @@
   "static_dim": 136,
   "dyn_dim": 53,
   "glob_dim": 92,
-  "opt_dim": 54,
+  "opt_dim": 56,
   "vocab_size": 225,
   "groups": 4,
   "count_index": 17,
@@ -269,57 +269,60 @@
  ],
  "training": {
   "checkpoint": "rl\\checkpoints\\deck-ST-22\\latest.pt",
-  "update": 300,
-  "games": 65733,
+  "update": 737,
+  "games": 165945,
   "level": 0,
   "gateHistory": [
    {
-    "update": 200,
+    "update": 500,
     "level": "deck",
     "passed": true,
     "results": [
-     "heuristic 50.0 % [44–56] sur 240 parties (seuil 0 % OK)",
-     "base 44.2 % [38–50] sur 240 parties (seuil 0 % OK)",
-     "Elo 1014 (heuristique = 1000)"
+     "heuristic 56.7 % [50–63] sur 240 parties (seuil 0 % OK, choix inutiles 0.80 par partie)",
+     "base 42.5 % [36–49] sur 240 parties (seuil 0 % OK, choix inutiles 0.78 par partie)",
+     "experts 22.5 % [18–28] sur 240 parties (seuil 0 % OK, choix inutiles 0.74 par partie)",
+     "Elo 1031 (heuristique = 1000)"
     ]
    },
    {
-    "update": 250,
+    "update": 600,
     "level": "deck",
     "passed": true,
     "results": [
-     "heuristic 53.8 % [47–60] sur 240 parties (seuil 0 % OK)",
-     "base 41.2 % [35–48] sur 240 parties (seuil 0 % OK)",
-     "Elo 1019 (heuristique = 1000)"
+     "heuristic 50.8 % [45–57] sur 240 parties (seuil 0 % OK, choix inutiles 0.44 par partie)",
+     "base 42.5 % [36–49] sur 240 parties (seuil 0 % OK, choix inutiles 0.44 par partie)",
+     "experts 22.9 % [18–29] sur 240 parties (seuil 0 % OK, choix inutiles 0.44 par partie)",
+     "Elo 1016 (heuristique = 1000)"
     ]
    },
    {
-    "update": 300,
+    "update": 700,
     "level": "deck",
     "passed": true,
     "results": [
-     "heuristic 57.9 % [52–64] sur 240 parties (seuil 0 % OK)",
-     "base 42.1 % [36–48] sur 240 parties (seuil 0 % OK)",
-     "Elo 1039 (heuristique = 1000)"
+     "heuristic 59.2 % [53–65] sur 240 parties (seuil 0 % OK, choix inutiles 0.35 par partie)",
+     "base 48.8 % [42–55] sur 240 parties (seuil 0 % OK, choix inutiles 0.29 par partie)",
+     "experts 19.6 % [15–25] sur 240 parties (seuil 0 % OK, choix inutiles 0.32 par partie)",
+     "Elo 1050 (heuristique = 1000)"
     ]
    }
   ]
  },
- "sha256": "1a1a170f46da26b7ca09dd8f51f8b2f55fda8a5b6a103131ceaf790f5403b04a",
+ "sha256": "1d6fc9882add51740dd35711c804404ba26c558bfaefb9345764f692af9a25da",
  "check": {
   "onnxruntime": {
    "observations": 300,
-   "max_prob_diff": 5.513429641723633e-06,
-   "max_value_diff": 1.5497207641601562e-06,
+   "max_prob_diff": 5.185604095458984e-06,
+   "max_value_diff": 2.0153820514678955e-06,
    "same_best_option": 1.0
   },
   "browser": {
    "games": 3,
-   "decisions": 173,
-   "max_prob_diff": 3.8107979953849735e-06,
-   "max_value_diff": 8.940696716308594e-07,
+   "decisions": 201,
+   "max_prob_diff": 7.512724992553288e-06,
+   "max_value_diff": 1.4901161193847656e-06,
    "option_mismatches": 0,
-   "browser_ms_per_decision": 4.217321965317919
+   "browser_ms_per_decision": 3.9565208955223876
   }
  }
 }

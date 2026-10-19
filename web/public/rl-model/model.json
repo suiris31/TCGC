@@ -1,8 +1,8 @@
 {
  "name": "rtx2070-main",
- "createdAt": "2026-10-15 10:08:13",
- "specHash": "a0664ced",
- "encodingVersion": 4,
+ "createdAt": "2026-10-19 18:59:13",
+ "specHash": "4c256fa6",
+ "encodingVersion": 5,
  "engine": "8a819ca",
  "synthetic": false,
  "vocab": [
@@ -101,7 +101,7 @@
   "static_dim": 136,
   "dyn_dim": 53,
   "glob_dim": 92,
-  "opt_dim": 54,
+  "opt_dim": 56,
   "vocab_size": 90,
   "groups": 4,
   "count_index": 17,
@@ -178,7 +178,7 @@
    }
   ]
  },
- "sha256": "0745c621050779f0afe2395092830aaf1943a87e6962efb68fd2cbb1511aab66",
+ "sha256": "5c56468ff672da712cea459311673829920e168d9e095cedc03e6c0dc34c556f",
  "check": {
   "onnxruntime": {
    "observations": 300,
@@ -192,7 +192,7 @@
    "max_prob_diff": 1.8759212593089103e-05,
    "max_value_diff": 3.2186508178710938e-06,
    "option_mismatches": 0,
-   "browser_ms_per_decision": 4.0742085
+   "browser_ms_per_decision": 4.195644
   }
  }
 }
