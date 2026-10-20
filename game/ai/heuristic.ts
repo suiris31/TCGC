@@ -141,6 +141,11 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
       && (hasBlocker(s, other(p), c) || others.some((a) => power(s, a.uid) >= power(s, c.uid))));
     return opens.length ? 'early' : null;
   },
+  // OP03 rouge (tâche 1.8) : Thatch (+2000, puis dans la Défausse) seulement si le bonus lui fait gagner une attaque ;
+  // Striker (épuiser 2 DON!! et le Lieu) avec les DON!! qui restent en fin de tour
+  'OP03-005': (s, p, card) => (canAttack(s, p, card)
+    && attackTargets(s, p, card).some((t) => power(s, t) > power(s, card.uid) && power(s, t) <= power(s, card.uid) + 2000) ? 'early' : null),
+  'OP03-020': (s, p) => (s.players[p].donActive >= 2 ? 'end' : null),
 };
 
 function abilityTiming(s: GameState, p: PlayerId, uid: number): Timing {
@@ -297,6 +302,25 @@ const EVENT_SCORE: Record<string, (s: GameState, p: PlayerId) => number | null> 
   // Kaido du méta
   'OP07-077': (s, p) => (s.players[p].hand.length <= 5 ? 1.5 : null),
   'EB04-040': (s, p) => (s.players[p].donActive >= 6 && fieldCards(s, p).some((c) => def(c.num).names.includes('Kaido') && canAttack(s, p, c)) ? 2 : null),
+  // OP03 rouge (tâche 1.8). Flame Emperor : avec le Leader Ace prêt à attaquer ([Double attaque], +3000), ou pour abattre
+  // une grosse menace
+  'OP03-016': (s, p) => {
+    const threat = oppCharsWhere(s, p, (c) => power(s, c.uid) <= 8000 && fieldValue(s, c.uid) >= 5).length > 0;
+    return canAttack(s, p, s.players[p].leader) ? 6 + (threat ? 2 : 0) : threat ? 4 : null;
+  },
+  // Cross Fire : en [Principale] seulement s'il ouvre une mise KO, sinon gardé pour son [Contre]
+  'OP03-017': (s, p) => (enablesKo(s, p, 4000) ? 3 : null),
+  // Fire Fist : au moins une cible qui vaut l'Événement défaussé
+  'OP03-018': (s, p) => {
+    const n = oppCharsWhere(s, p, (c) => power(s, c.uid) <= 5000 && fieldValue(s, c.uid) >= 3).length;
+    return n ? 2 + Math.min(n, 2) : null;
+  },
+  // Fiery Doll : +4000 au Leader quand l'adversaire est presque battu, ou que son Leader ne passerait pas sans
+  'OP03-019': (s, p) => {
+    const L = s.players[p].leader;
+    const O = s.players[other(p)];
+    return canAttack(s, p, L) && (O.life.length <= 2 || power(s, L.uid) < power(s, O.leader.uid)) ? 2 : null;
+  },
 };
 
 // ---------- Plan d'attaque ----------
@@ -671,6 +695,34 @@ function chooseEffect(s: GameState, d: Decision): string {
     const targetIsChar = !findField(s, b.target)?.leader;
     const attackerIsChar = !findField(s, b.attacker)?.leader;
     return yesNo(s.active === p ? targetIsChar && atk < dp && atk >= dp - 2000 : attackerIsChar && atk >= dp && atk - 2000 < dp);
+  }
+  // OP03 rouge (tâche 1.8), questions de l'effet d'une de ses propres cartes (un effet résolu pendant les dégâts infligés à
+  // son Leader peut en poser d'autres à l'adversaire, avec ce Leader pour source)
+  const ownSource = d.source !== undefined && findField(s, d.source)?.player === p;
+  // Leader Portgas.D.Ace : défausser des Événements ou des Lieux (+1000 chacun) seulement autant qu'il en faut pour gagner
+  // le combat en attaquant, ou pour le repousser quand défendre vaut la peine (seuils des Contres)
+  if (d.tag === 'discard' && sourceNum === 'OP03-001' && ownSource && d.options.some((o) => o.id === 'none')) {
+    const b = s.battle;
+    if (!b) return 'none';
+    const atk = power(s, b.attacker);
+    const dp = power(s, b.target);
+    const left = P.hand.filter((c) => def(c.num).category === 'EVENT' || def(c.num).category === 'STAGE').length;
+    const st = styleFor(s, p);
+    const life = P.life.length;
+    const attacking = s.active === p;
+    const need = attacking ? Math.ceil((dp - atk) / 1000) : Math.floor((atk - dp) / 1000) + 1;
+    const worth = attacking ? need <= 2
+      : life <= st.counterLife || (life <= st.counterMid && need <= st.counterSmall + 1) || (need <= st.counterSmall && P.hand.length >= 5);
+    return need > 0 && need <= left && worth ? (byHand(false)[0] ?? d.options[0]).id : 'none';
+  }
+  // Marshall.D.Teach (OP03-012) : placer dans la Défausse seulement un Personnage qui y partira de toute façon à la fin du
+  // tour (Thatch), jamais Teach lui-même s'il y en a un autre
+  const expendable = (uid: number) => s.delayed.some((x) => x.action === 'trashChar' && x.uid === uid && x.turn === s.turn);
+  if (d.tag === 'may' && sourceNum === 'OP03-012' && ownSource) {
+    return yesNo(P.chars.some((c) => c.uid !== d.source && expendable(c.uid) && def(c.num).colors.includes('Red') && power(s, c.uid) >= 4000));
+  }
+  if (d.tag === 'trashOwn' && sourceNum === 'OP03-012' && ownSource) {
+    return (cards.find((o) => expendable(uidOf(o))) ?? byValue(false).find((o) => uidOf(o) !== d.source) ?? d.options[0]).id;
   }
   // Sasaki (défausser 2) et Basil Hawkins (défausser 1) : seulement avec une main fournie
   if (d.tag === 'may' && sourceNum === 'OP17-068') return yesNo(P.hand.length >= 4);
