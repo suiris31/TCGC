@@ -531,6 +531,32 @@ questions-réponses Bandai, tournois).
      n'importe lequel de ses Personnages.
 269. **Nami (OP03-030)** : « carte verte » : une carte dont les couleurs comprennent le vert (une carte verte et jaune
      compte) ; les Événements et Lieux {East Blue} verts comptent.
+## OP03 bleue (tâche 1.10), choix faits sans validation
+
+290. **Nami (OP03-040), victoire à deck vide** : le deck vide se constate comme la défaite habituelle (règle 9-2), une
+     fois l'effet en cours terminé, quelle qu'en soit la cause (pioche, cartes placées dans la Défausse par un effet ou
+     un coût) et pendant les deux tours ; avec un autre Leader, le même deck vide fait perdre. Un effet qui pioche plus
+     de cartes qu'il n'en reste pioche celles qui restent et va jusqu'au bout (Kaya défausse encore 2 cartes) avant la
+     victoire.
+291. **Usopp's Pirate Crew (OP03-042)** : « un [Usopp] bleu » : toute carte bleue au nom d'Usopp, Sniperking (OP03-122)
+     compris puisque son nom est aussi [Usopp] ; un Usopp d'une autre couleur (ST21-002, rouge) ne compte pas.
+292. **Gaimon (OP03-043)** : « quand vous infligez des dégâts » : chaque attaque de son Leader ou d'un de ses Personnages
+     qui touche, et les dégâts d'un effet (un déclenchement par traitement des dégâts, comme au numéro 200) ; pas les
+     dégâts qu'on subit. Gaimon doit encore être sur le terrain quand l'effet se résout. L'IA n'accepte qu'avec un
+     Leader qui gagne à deck vide (sinon elle perdrait Gaimon et 3 cartes pour rien).
+293. **Yosaku & Johnny (OP03-053)** : la condition [DON!! x1] reste vraie pendant le tour adverse tant que la DON!! est
+     donnée (elle ne revient qu'à la phase de Recharge suivante) : le +2000 compte aussi en défense, sans le +1000 de la
+     DON!! (qui ne vaut que pendant son propre tour).
+294. **Gum Gum Super Marteau (OP03-055)** : « jusqu'à 1 de vos Leaders gagne +4000 » : le bonus va à son Leader même
+     quand c'est un de ses Personnages qui est attaqué (il ne le protège donc pas) ; l'IA ne le compte que pour défendre
+     son Leader, avec une autre carte en main à défausser.
+295. **« Renvoyez (ou placez au-dessous du deck) jusqu'à 1 Personnage ... » sans « adverse »** (Zeff, Patty, Sniperking,
+     [Déclenchement] de Gum Gum Super Marteau, San Zen Sekai) : un Personnage de l'un ou l'autre joueur, les siens
+     compris. San Zen Sekai n'est proposé par l'IA et le coach que s'il vise un Personnage adverse (le jouer pour ses
+     propres Personnages reste permis). Nojiko dit « adverse » : seulement ceux de l'adversaire.
+296. **« Si vous avez 20 cartes ou moins dans votre deck »** (Carne, Patty, Yosaku & Johnny) : compté au moment où
+     l'effet se lit (la puissance de Carne et de Yosaku & Johnny suit le deck à chaque instant ; Patty : quand son effet
+     [Jouée] se résout).
 
 ## Comment c'est vérifié
 
