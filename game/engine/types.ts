@@ -83,6 +83,9 @@ export interface PlayerState {
   // « vous ne pouvez pas ajouter de cartes de Vie à votre main avec vos propres effets pour tout le tour » (Atmos ST15-001)
   noLifeToHandTurn?: number;
   koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
+  // tour pendant lequel aucun de ses Personnages ne peut être mis KO, en combat ou par un effet, y compris ceux joués
+  // ensuite (White Out ST06-016)
+  noKoTurn?: number;
 }
 
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro
