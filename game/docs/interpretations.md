@@ -687,6 +687,41 @@ questions-réponses Bandai, tournois).
      ne compte jamais pendant son tour.
 436. **Ripper (OP11-096)** : « un Personnage noir {Marine} autre que [Ripper] » : un Personnage qui ne s'appelle pas
      Ripper (un deuxième Ripper ne compte pas).
+## Adversaires de l'aventure, liste B (tâche 1.16), choix faits sans validation
+
+Cartes de Baggy, Krieg et Arlong hors OP03 et ST-01 (`cards/aventure-b.ts`).
+
+460. **« Vous pouvez défausser 1 carte : ... »** (Alvida OP01-064, Arlong OP06-023) : la question n'est posée que si
+     l'effet peut faire quelque chose (une cible existe) ; défausser pour rien n'aurait aucun sens.
+461. **Baggy (OP16-041, Leader)** : « un de vos Personnages {Impel Down} quitte le terrain » = mis KO (en combat ou par
+     un effet) ou renvoyé en main, au-dessous du deck ou dans la Vie par un effet. Un Personnage placé dans la Défausse
+     pour payer un coût ou faute de place n'est pas compté (le moteur ne l'annonce pas). L'effet n'est proposé que s'il a
+     un [Prisonniers d'Impel Down] à jouer et 1 DON!! sur le Leader à ce moment-là ; c'est alors qu'il compte pour le
+     tour.
+462. **Cabaji (OP02-052)** : « si vous avez [Mohji] » = un Personnage nommé [Mohji] sur son terrain : Morge OP02-060 et
+     Morge OP09-053 (même nom en VO), pas « Morge et Cabaji » OP12-055 (un autre nom).
+463. **Maggy Ball spéciale (OP09-058)** : le texte français dit que l'adversaire choisit le Personnage qu'il doit
+     renvoyer ; le texte anglais officiel dit « jusqu'à 1 Personnage adverse » choisi par le joueur. On suit l'anglais.
+464. **Krieg (OP15-001, Leader)** : « si tous vos Personnages sont {East Blue} » est faux s'il n'a aucun Personnage. Le
+     −2000 vaut pendant tout le tour adverse, tant que le Leader a 1 DON!! et que la condition est vraie.
+465. **Krieg (OP15-008)** : il gagne [Initiative] même si aucune DON!! adverse n'a pu être donnée (« Puis, ... »).
+466. **Krieg (OP15-008)** : « pour chaque carte DON!! qui leur est attachée » = les DON!! attachées, au moment de
+     l'activation, au Personnage adverse qui a reçu celles de l'effet [Jouée] (y compris celles que son propriétaire lui
+     avait déjà données) ; 0 s'il a quitté le terrain. L'activation n'est proposée que le tour où Krieg a été joué.
+467. **« Et personne ne discute jamais mes ordres !! » (OP15-038)** : le [Contre] vise n'importe lequel de ses [Krieg]
+     (le Leader Krieg OP15-001 compris), pas forcément la carte attaquée ; l'IA ne l'utilise que si la carte attaquée est
+     un [Krieg].
+468. **Arlong (EB02-011)** : le « Puis, ... ne peut pas être épuisé » ne dépend pas du type du Leader (seule la DON!!
+     donnée en dépend).
+469. **Tour de passe-passe brouillard (OP09-059)** : le joueur choisit d'abord s'il défausse, puis combien de cartes (1
+     ou 2), puis lesquelles ; autant de cartes du dessus du deck vont dans la Défausse (moins s'il n'en reste pas
+     assez). L'IA ne défausse pas (sauf avec un Leader qui gagne à deck vide).
+470. **Cabaji (ST25-002), Alvida (OP12-042)** : « coût de base » = coût imprimé ; la carte elle-même (coût 4) ne compte
+     jamais parmi les 2 Personnages de coût 5 ou plus.
+471. **Baggy (OP16-048)** : le [Bloqueur] n'est proposé, quand l'adversaire attaque, que s'il a un [Prisonniers d'Impel
+     Down] redressé (un Bloqueur épuisé ne peut pas bloquer) ; l'effet compte alors pour le tour.
+472. **Baggy (ST25-004)** : l'effet peut être activé sans Leader [Baggy] (le coût est payé, rien n'est joué) ; l'IA et
+     les aides ne le proposent pas. **Baggy (OP02-058)** : « autre que [Baggy] » exclut toutes les cartes nommées [Baggy].
 
 ## Comment c'est vérifié
 
