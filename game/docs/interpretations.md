@@ -478,6 +478,35 @@ questions-réponses Bandai, tournois).
      Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
      regardée la connaît (tant qu'elle reste dans la Vie).
 
+## OP03 rouge (tâche 1.8), choix faits sans validation
+
+230. **Leader Portgas.D.Ace (OP03-001)** : quand il attaque ou est attaqué, les Événements et les Lieux se défaussent un
+     par un (« Aucun autre » pour s'arrêter) ; chaque carte donne son +1000 tout de suite (même total qu'à la fin). C'est
+     une défausse : les effets qui réagissent à une carte défaussée réagissent. L'effet se résout quand l'attaque est
+     déclarée, avant les [Bloqueur] : si le Leader attaqué est protégé par un de ses [Bloqueur], le bonus est perdu. Sans
+     Événement ni Lieu en main, rien n'est demandé.
+231. **Curiel (OP03-004)** : « le tour où il est joué » vaut aussi quand il est joué par un effet ; avec 1 DON!!, son
+     [Initiative] ne lui permet donc d'attaquer que des Personnages ce tour-là.
+232. **Marshall.D.Teach (OP03-012)** : le Personnage placé dans la Défausse pour payer quitte le terrain par un effet de
+     son joueur (Moby Dick OP08-056 y réagit), comme pour l'autre Teach (OP13-053). S'il se choisit lui-même, l'attaque
+     s'arrête (plus d'attaquant) et il pioche quand même (206).
+233. **Marco (OP03-013)** : une fois l'Événement défaussé, Marco est toujours rejoué (on ne paie pas pour ne rien faire) ;
+     rejoué pendant le tour adverse, son [Votre tour] [Jouée] ne met rien KO.
+234. **Lim (OP03-015)** : mis KO pendant le tour adverse, en combat ou par un effet ; le −2000 dure jusqu'à la fin de ce
+     tour.
+235. **Monkey.D.Garp (OP03-014)** : « carte Personnage rouge de coût 1 » : le coût imprimé de la carte en main ; son effet
+     [Jouée] se résout après l'effet de Garp, pendant l'attaque.
+236. **Flame Emperor (OP03-016)** : avec le Leader [Portgas.D.Ace], le [Double attaque] et le +3000 sont donnés même
+     sans Personnage à mettre KO (« jusqu'à 1 ») ; avec un autre Leader, rien du tout. Le [Déclenchement] ne dépend pas
+     du Leader.
+237. **Cross Fire (OP03-017)** : en [Contre], le −4000 peut viser n'importe quel Personnage adverse ; il ne protège que si
+     l'attaquant est un Personnage (l'IA ne le compte que dans ce cas).
+238. **Fire Fist (OP03-018)** : deux cibles différentes (la première est déjà dans la Défausse quand on choisit la
+     seconde) ; Fire Fist est déjà dans la Défausse quand on paie : il faut un autre Événement en main, sinon rien.
+239. **Striker (OP03-020)** : ② et « épuiser ce Lieu » se paient ensemble ; avec un autre Leader que [Portgas.D.Ace], payer
+     ne fait rien (l'IA ne le fait pas, l'interface le signale).
+240. **Baggy (OP03-008)** : « cartes <Tranche> » comprend un Leader <Tranche> qui attaque.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
