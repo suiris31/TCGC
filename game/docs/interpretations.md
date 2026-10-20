@@ -478,6 +478,29 @@ questions-réponses Bandai, tournois).
      Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
      regardée la connaît (tant qu'elle reste dans la Vie).
 
+## Adversaires de l'aventure, liste A (tâche 1.15), choix faits sans validation
+
+430. **White Out (ST06-016)**, [Déclenchement] « aucun de vos Personnages ne peut être mis KO pour tout le tour » : une
+     protection du joueur pour le tour (en combat et par un effet, le sien compris), qui couvre aussi les Personnages
+     joués après l'effet ; elle ne protège pas le Leader (qui n'est jamais mis KO).
+431. **Kobby (Leader OP11-001)**, remplacement : les 3 cartes peuvent être n'importe lesquelles de la Défausse ; il faut en
+     avoir 3 pour le proposer. Le [Une fois par tour] compte quand le joueur accepte ; « quitter le terrain » comprend le
+     KO, le renvoi en main, sous le deck ou dans la Vie, par un effet adverse seulement (pas en combat).
+432. **Kobby (OP15-009)**, remplacement : vaut pour n'importe lequel de ses Personnages de 7000 de puissance de base ou
+     moins (Kobby compris), autant de fois que le joueur le veut (pas de [Une fois par tour]) ; chaque fois, −2000 au
+     Leader jusqu'à la fin du tour en cours (le plus souvent le tour adverse).
+433. **Les frères Nyaban (OP15-028)**, « 1 DON!! de la zone de Coût adverse » : une DON!! redressée s'il y en a (elle
+     manquera à l'adversaire pour payer un [Contre] ce tour-ci), sinon une épuisée. Le choix est fait d'office, c'est
+     toujours le plus utile.
+434. **Kobby (ST06-002)**, « vous pouvez défausser 1 carte : mettez KO un Personnage de coût 0 » : la défausse n'est
+     proposée que s'il y a une cible (défausser pour rien n'apporterait rien).
+435. **Jango (OP15-026)** : son effet [Activation : Principale] reste possible à tout moment, mais l'IA ne s'en sert que si
+     une de ses cartes tire parti des DON!! données aux Personnages adverses (Krieg OP15-001, Morge OP15-018, Dracule
+     Mihawk OP15-027...). Une DON!! ainsi donnée revient dans la zone de Coût de l'adversaire à sa phase de Recharge et
+     ne compte jamais pendant son tour.
+436. **Ripper (OP11-096)** : « un Personnage noir {Marine} autre que [Ripper] » : un Personnage qui ne s'appelle pas
+     Ripper (un deuxième Ripper ne compte pas).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
