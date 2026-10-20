@@ -24,6 +24,7 @@ import { META_MIHAWK } from './meta-mihawk.ts';
 import { META_ROBIN } from './meta-robin.ts';
 import { META_SABO } from './meta-sabo.ts';
 import { META_XEBEC } from './meta-xebec.ts';
+import { OP03_NOIRE } from './op03-noire.ts';
 import { ST21 } from './st21.ts';
 import { ST22 } from './st22.ts';
 import { ST30 } from './st30.ts';
@@ -40,6 +41,7 @@ const BEHAVIORS: Record<string, CardBehavior> = {
   ...META_XEBEC, ...META_ENEL, ...META_KAIDO, ...ST21, ...ST22, ...ST30, ...FAM_SABO, ...FAM_META, ...FAM_KIDD, ...FAM_KAIDO,
   ...FAM_KATAKURI, ...FAM_KUZAN, ...FAM_WB, ...FAM_SH_RED, ...FAM_ZORO, ...FAM_SN_GREEN,
   ...FAM_ROBIN_PURPLE, ...FAM_ROBIN_YELLOW, ...FAM_LUFFY_ACE,
+  ...OP03_NOIRE,
 };
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir
