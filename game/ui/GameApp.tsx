@@ -12,6 +12,8 @@ import './styles.css';
 
 // Atelier des écrans de l'aventure (#play/atelier) : chargé seulement quand on l'ouvre
 const Atelier = lazy(() => import('./adventure/Atelier.tsx').then((m) => ({ default: m.Atelier })));
+// Mode Aventure (#play/aventure) : chargé quand on l'ouvre
+const AdventureApp = lazy(() => import('./adventure/AdventureApp.tsx').then((m) => ({ default: m.AdventureApp })));
 
 // Version du programme de cette page ; celle du serveur arrive avec les cartes
 const ENGINE = typeof __ENGINE__ === 'string' ? __ENGINE__ : 'inconnue';
@@ -37,11 +39,12 @@ async function fetchCards(): Promise<void> {
   }
 }
 
-type Mode = { kind: 'solo' } | { kind: 'lobby'; code?: string } | { kind: 'match'; id: string } | { kind: 'atelier'; page?: string };
+type Mode = { kind: 'solo' } | { kind: 'lobby'; code?: string } | { kind: 'match'; id: string } | { kind: 'atelier'; page?: string } | { kind: 'adventure' };
 
 // Adresse de l'onglet : #play/salle/<code> (lien envoyé par un ami), #play/partie/<id> (partie en ligne ouverte) ou
-// #play/atelier[/<page>] (essais des écrans de l'aventure, sans lien visible)
+// #play/atelier[/<page>] (essais des écrans de l'aventure, sans lien visible) ou #play/aventure (mode Aventure)
 function modeFromHash(): Mode {
+  if (/^#play\/aventure(?:\/|$)/.test(window.location.hash)) return { kind: 'adventure' };
   const atelier = window.location.hash.match(/^#play\/atelier(?:\/([\w-]+))?$/);
   if (atelier) return { kind: 'atelier', page: atelier[1] };
   const room = window.location.hash.match(/^#play\/salle\/([A-Za-z0-9-]+)/);
@@ -53,6 +56,7 @@ function modeFromHash(): Mode {
 
 function hashOf(mode: Mode): string {
   if (mode.kind === 'atelier') return mode.page ? `#play/atelier/${mode.page}` : '#play/atelier';
+  if (mode.kind === 'adventure') return '#play/aventure';
   return mode.kind === 'match' ? `#play/partie/${mode.id}` : '#play';
 }
 
@@ -121,12 +125,16 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
           <Lobby initialCode={mode.code} onOpen={(id) => setMode({ kind: 'match', id })} onBack={() => setMode({ kind: 'solo' })} />
         ) : mode.kind === 'match' ? (
           <OnlineMatch key={mode.id} id={mode.id} onLeave={() => setMode({ kind: 'solo' })} />
+        ) : mode.kind === 'adventure' ? (
+          <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de l’aventure…</div>}>
+            <AdventureApp onBack={() => setMode({ kind: 'solo' })} />
+          </Suspense>
         ) : mode.kind === 'atelier' ? (
           <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de l’atelier…</div>}>
             <Atelier page={mode.page} onPage={(page) => setMode({ kind: 'atelier', page })} onBack={() => setMode({ kind: 'solo' })} />
           </Suspense>
         ) : (
-          <App notice={notice} onImmersive={immersive} online={{
+          <App notice={notice} onImmersive={immersive} adventure={{ onOpen: () => setMode({ kind: 'adventure' }) }} online={{
             onOpen: () => setMode({ kind: 'lobby' }),
             resume: current ? {
               label: current.status === 'playing'
