@@ -478,6 +478,41 @@ questions-réponses Bandai, tournois).
      Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
      regardée la connaît (tant qu'elle reste dans la Vie).
 
+## OP03 jaune (tâche 1.13), choix faits sans validation
+
+380. **Leader Charlotte Katakuri (OP03-099)** : « jusqu'à 1 » : le joueur peut ne regarder aucune Vie ; le +1000 pour le
+     combat s'applique quand même (« Puis »). La [DON!! x1] se compte au moment où il attaque.
+381. **Sanji (OP03-102), Charlotte Chiffon (OP03-109), Charlotte Linlin (OP03-114), Térébration (OP03-118)** : « ajoutez
+     jusqu'à 1 carte du dessus de votre deck au-dessus de votre Vie » se fait sans question (le joueur qui a payé le coût
+     la veut toujours) ; la carte ajoutée est face cachée ; deck vide : rien.
+382. **[Déclenchement] « vous pouvez [coût] : jouez cette carte »** (Kingbaum OP03-100, Charlotte Cracker OP03-108,
+     Charlotte Smoothie OP03-110, Charlotte Slurp OP03-113) : si le joueur active le [Déclenchement] sans pouvoir ou
+     vouloir payer (plus de Vie, main vide), la carte va dans la Défausse, pas dans sa main (10-1-5-3).
+383. **« Carte ayant [Déclenchement] »** (Charlotte Oven OP03-105, Streusen OP03-115, Buzz Cut Mochi OP03-119) : lu sur
+     le texte anglais de la carte, toutes catégories confondues pour Oven et Streusen.
+384. **Charlotte Cracker (OP03-108)** : la condition est lue en permanence : le +1000 et la [Double attaque] disparaissent
+     dès que les Vies s'égalisent, même au milieu d'un combat ; ils valent aussi pendant le tour adverse tant qu'une DON!!
+     lui est donnée.
+385. **Charlotte Pudding (OP03-112)** : [Sanji] désigne les cartes nommées exactement Sanji (pas Vinsmoke Sanji ni « Sanji
+     & Pudding ») ; « autre que [Charlotte Pudding] » ; une carte {Équipage de Big Mom} de n'importe quelle catégorie
+     (Événements compris).
+386. **Charlotte Linlin (OP03-114)** : avec un Leader {Équipage de Big Mom}, la carte du dessus de la Vie adverse va dans
+     sa Défausse sans question (« jusqu'à 1 », toujours à l'avantage du joueur) ; elle devient publique ; ce n'est pas un
+     dégât (pas de [Déclenchement], interprétation 200).
+387. **Coûts payables sans cible** (Streusen OP03-115, Colonne foudroyante OP03-121) : « jusqu'à 1 » : le joueur peut payer
+     même sans Personnage adverse à mettre KO ; l'IA ne le fait pas.
+388. **Shirahoshi (OP03-116)** : les 2 cartes défaussées sont choisies dans toute la main, cartes piochées comprises.
+389. **Napoleon (OP03-117)** : « jusqu'au début de votre prochain tour » est traité comme « jusqu'à la fin du prochain tour
+     adverse » (rien ne se passe entre les deux) ; il vise un Leader ou un Personnage nommé [Charlotte Linlin] ; ce n'est
+     pas [Une fois par tour], mais s'épuiser ne se fait qu'une fois.
+390. **Buzz Cut Mochi (OP03-119)** : le nombre de Vies est comparé au moment de l'effet ; son [Déclenchement] joue sans payer
+     son coût un Personnage de coût imprimé 4 ou moins ayant [Déclenchement].
+391. **Tropical Torment (OP03-120)** : son [Déclenchement] active l'effet [Principale] avec sa condition, lue du point de vue
+     du joueur qui révèle la carte (l'adversaire est celui qui attaque).
+392. **Charlotte Katakuri (OP03-123)** : il peut viser ses propres Personnages, lui compris ; le joueur qui utilise l'effet
+     choisit le dessus ou le dessous de la Vie du propriétaire ; la carte y est face visible (publique) ; ce n'est pas une
+     mise KO ([En cas de KO] non déclenché).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
