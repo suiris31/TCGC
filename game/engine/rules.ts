@@ -663,6 +663,8 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
 export function canBeKO(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId): boolean {
   const f = findField(s, uid);
   if (!f) return false;
+  // « aucun de vos Personnages ne peut être mis KO pour tout le tour » (protection du joueur, pas des cartes du moment)
+  if (s.players[f.player].noKoTurn === s.turn && !f.leader && !f.stage) return false;
   const own = def(f.card.num).cantBeKO;
   if (own && !isNegated(s, uid) && own(s, f.player, f.card, cause, by)) return false;
   for (const c of allField(s, f.player)) {

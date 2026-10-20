@@ -149,7 +149,23 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
   'OP03-005': (s, p, card) => (canAttack(s, p, card)
     && attackTargets(s, p, card).some((t) => power(s, t) > power(s, card.uid) && power(s, t) <= power(s, card.uid) + 2000) ? 'early' : null),
   'OP03-020': (s, p) => (s.players[p].donActive >= 2 ? 'end' : null),
+  // Adversaires de l'aventure, liste A (tâche 1.15). Jango (OP15-026) : se défausser pour donner une DON!! adverse,
+  // seulement si une de ses cartes en tire parti ; Monkey D. Garp (ST06-012) : mettre KO avant les attaques ; Tashigi
+  // (ST06-006) : −2 de coût quand un Personnage adverse passe ainsi à 0 et qu'une de ses cartes en profite ; Leader
+  // Smoker (OP02-093) : une fois sa DON!! donnée, avant qu'il attaque
+  'OP15-026': (s, p, card) => (def(card.num).activateMain?.useful?.(s, p, card) ? 'late' : null),
+  'ST06-012': (s, p, card) => (def(card.num).activateMain?.useful?.(s, p, card) ? 'early' : null),
+  'ST06-006': (s, p) => (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) > 0 && fieldCost(s, c.uid) <= 2).length && costZeroPayoff(s, p) ? 'early' : null),
+  'OP02-093': (s, p, card) => (card.don >= 1 && canAttack(s, p, card) ? 'early' : null),
 };
+
+// Une de ses cartes profite d'un Personnage de coût 0 : Smoker (OP02-102, ST06-004) prêt à attaquer, Kobby (ST06-002)
+// jouable
+function costZeroPayoff(s: GameState, p: PlayerId): boolean {
+  const P = s.players[p];
+  return P.chars.some((c) => (c.num === 'OP02-102' || c.num === 'ST06-004') && canAttack(s, p, c))
+    || P.hand.some((c) => c.num === 'ST06-002' && P.donActive >= 1);
+}
 
 function abilityTiming(s: GameState, p: PlayerId, uid: number): Timing {
   const f = findField(s, uid);
@@ -700,6 +716,12 @@ function chooseEffect(s: GameState, d: Decision): string {
   const sourceNum = d.source !== undefined ? findField(s, d.source)?.card.num : undefined;
   if (d.tag === 'may' && sourceNum === 'OP13-031') return yesNo(P.chars.some((c) => c.uid !== d.source && (def(c.num).cost ?? 0) <= 5));
   if (d.tag === 'may' && sourceNum === 'OP06-033') return yesNo(O.chars.some((c) => c.rested));
+  // Leader Smoker (−1) et Tashigi (−2) : de préférence un Personnage adverse dont le coût tombe ainsi à 0 (tâche 1.15)
+  if (d.tag === 'oppCost' && (sourceNum === 'OP02-093' || sourceNum === 'ST06-006')) {
+    const down = sourceNum === 'OP02-093' ? 1 : 2;
+    const zero = cards.filter((o) => fieldCost(s, uidOf(o)) > 0 && fieldCost(s, uidOf(o)) <= down).sort((a, b) => fieldValue(s, uidOf(b)) - fieldValue(s, uidOf(a)));
+    if (zero.length) return zero[0].id;
+  }
   // Newgate (+3000 au Leader) et Linlin bleue (+1000) : défausser seulement si ça change l'issue du combat
   if (d.tag === 'may' && (sourceNum === 'OP17-040' || sourceNum === 'OP17-049') && s.battle) {
     const bonus = sourceNum === 'OP17-040' ? 3000 : 1000;
