@@ -478,6 +478,32 @@ questions-réponses Bandai, tournois).
      Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
      regardée la connaît (tant qu'elle reste dans la Vie).
 
+## OP03 verte (tâche 1.9), choix faits sans validation
+
+260. **Kuro (OP03-021, Leader)** : l'effet n'est pas limité à une fois par tour. Les 2 Personnages {East Blue} épuisés
+     pour le payer doivent être redressés ; des Personnages joués ce tour conviennent. L'effet peut s'activer avec le
+     Leader déjà redressé : seul le Personnage adverse est alors épuisé.
+261. **Arlong (OP03-022, Leader)** : les 2 DON!! données se comptent au moment de l'attaque ; « coût de 4 ou moins » est
+     le coût imprimé de la carte en main, « ayant un [Déclenchement] » se lit dans le texte anglais.
+262. **Coûts facultatifs** (« vous pouvez ... : », Arlong, Krieg OP03-025, Out-of-the-Bag OP03-036, Tooth Attack
+     OP03-037) : la question n'est posée que si l'effet peut faire quelque chose (un Personnage à jouer, à mettre KO, une
+     carte [Kuro] à redresser). Payer pour rien est permis par les règles, mais ne sert à rien.
+263. **Jango (OP03-028)** : seuls les choix qui peuvent faire quelque chose sont proposés : redresser s'il y a un Leader
+     ou Personnage {East Blue} épuisé qui convient ; « épuisez ce Personnage et jusqu'à 1 Personnage adverse » s'il y a un
+     Personnage adverse redressé (épuiser Jango seul ne sert à rien). S'il n'en reste qu'un, il est pris d'office.
+264. **Sham (OP03-027)** : le [Buchi] joué par Sham résout son [Jouée] ensuite ; il peut mettre KO le Personnage que Sham
+     vient d'épuiser.
+265. **Buggy (OP03-032)** : « cartes <Tranche> » : le Leader ou le Personnage qui l'attaque ; seulement en combat (un effet
+     peut le mettre KO).
+266. **Out-of-the-Bag (OP03-036)** : « vos cartes [Kuro] » : le Leader ou un Personnage nommé [Kuro].
+267. **Hatchan (OP03-033)** : avec un Leader qui n'est pas {East Blue}, activer le [Déclenchement] ne fait rien et la carte
+     va dans la Défausse (règle 10-1-5-3) ; mieux vaut l'ajouter à sa main.
+268. **One, Two, Jango (OP03-039)** : le +1000 « pendant ce tour » ne sert qu'à attaquer (c'est le tour du joueur) : l'IA
+     ne joue la carte pour lui seul que si un de ses Personnages peut encore attaquer. L'effet, lui, peut viser
+     n'importe lequel de ses Personnages.
+269. **Nami (OP03-030)** : « carte verte » : une carte dont les couleurs comprennent le vert (une carte verte et jaune
+     compte) ; les Événements et Lieux {East Blue} verts comptent.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
