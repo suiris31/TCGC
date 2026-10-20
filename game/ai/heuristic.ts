@@ -121,6 +121,9 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
   'OP11-066': (s, p, card) => (canAttack(s, p, card) ? 'end' : 'late'),
   'OP11-071': (s, p) => (knowsTop(s, p) && s.players[p].hand.length >= 3 ? 'late' : null),
   'ST36-005': (s, p) => (s.players[p].donRested > 0 && canAttack(s, p, s.players[p].leader) ? 'early' : null),
+  // OP03 jaune (tâche 1.13) : Napoleon s'épuise pour renforcer [Charlotte Linlin] pendant le tour adverse, en fin de tour
+  // s'il pouvait encore attaquer
+  'OP03-117': (s, p, card) => (canAttack(s, p, card) ? 'end' : 'late'),
   // Leader Mihawk : redresser 3 DON!! une fois ses Personnages joués (il ne pourra plus en jouer ce tour-ci)
   'OP14-020': (s, p) => (s.players[p].donRested > 0 && s.players.some((P) => P.chars.some((c) => fieldCost(s, c.uid) >= 5)) ? 'late' : null),
   // Captain John et Miss Buckingham Stussy (Xebec du méta) : en fin de tour, épuisés pendant le tour adverse
@@ -299,6 +302,11 @@ const EVENT_SCORE: Record<string, (s: GameState, p: PlayerId) => number | null> 
   'OP15-074': (s, p) => (s.players[p].hand.length <= 4 ? 1 : null),
   'OP15-077': (s, p) => (oppCharsWhere(s, p, (c) => c.rested && power(s, c.uid) <= 6000).length ? 1.5 : null),
   'OP15-078': (s, p) => (oppCharsWhere(s, p, (c) => !c.rested && power(s, c.uid) <= 5000 && hasBlocker(s, other(p), c)).length ? 1.5 : null),
+  // OP03 jaune (tâche 1.13) : Buzz Cut Mochi et Colonne foudroyante pour une cible qui vaut la carte (Colonne : pas au
+  // prix de sa dernière Vie) ; Tropical Torment dès que l'adversaire a 4 Vies ou plus (mainUseful)
+  'OP03-119': (s, p) => (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 4 && fieldValue(s, c.uid) >= 3).length ? 3 : null),
+  'OP03-120': () => 2,
+  'OP03-121': (s, p) => (s.players[p].life.length >= 2 && oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 5 && fieldValue(s, c.uid) >= 4).length ? 3 : null),
   // Kaido du méta
   'OP07-077': (s, p) => (s.players[p].hand.length <= 5 ? 1.5 : null),
   'EB04-040': (s, p) => (s.players[p].donActive >= 6 && fieldCards(s, p).some((c) => def(c.num).names.includes('Kaido') && canAttack(s, p, c)) ? 2 : null),
@@ -636,6 +644,18 @@ const TRIGGER_WORTH: Record<string, (s: GameState, p: PlayerId) => boolean> = {
   'OP12-039': (s, p) => s.battle !== null && s.active !== p,
   // « DON!! −1 : jouez cette carte » : sans DON!! sur le terrain, le [Déclenchement] ne ferait rien
   'OP05-073': (s, p) => donOnField(s, p) >= 1,
+  // OP03 jaune (tâche 1.13), Vie restante après la carte révélée. Kingbaum : placer une Vie dans la Défausse, pas la
+  // dernière ; Cracker, Smoothie, Slurp : il faut une carte à défausser ; Térébration : 2 cartes pour une Vie seulement
+  // quand il n'en reste plus (sinon son [Contre] +5000 vaut mieux en main) ; Buzz Cut Mochi : un Personnage à jouer ;
+  // Tropical Torment et Colonne foudroyante : un effet possible
+  'OP03-100': (s, p) => s.players[p].life.length >= 2,
+  'OP03-108': (s, p) => s.players[p].hand.length >= 1,
+  'OP03-110': (s, p) => s.players[p].hand.length >= 1,
+  'OP03-113': (s, p) => s.players[p].hand.length >= 1,
+  'OP03-118': (s, p) => s.players[p].life.length === 0 && s.players[p].hand.length >= 4,
+  'OP03-119': (s, p) => s.players[p].hand.some((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4 && Boolean(def(c.num).triggerEn)),
+  'OP03-120': (s, p) => s.players[other(p)].life.length >= 4,
+  'OP03-121': (s, p) => oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 5).length > 0,
 };
 
 const amountIn = (prompt: string) => Number(prompt.match(/[−-](\d+)/)?.[1] ?? 0);
@@ -745,6 +765,16 @@ function chooseEffect(s: GameState, d: Decision): string {
   }
   // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus
   if (d.tag === 'may' && sourceNum === 'ST10-010') return yesNo(O.hand.length >= 7);
+  // OP03 jaune (tâche 1.13) : Charlotte Oven (défausser une carte à [Déclenchement], +3000) et Charlotte Smoothie (une Vie
+  // en main, +2000, pas la dernière) seulement si le bonus fait passer l'attaque ; Streusen seulement s'il y a un
+  // Personnage de coût 1 ou moins à mettre KO
+  if (d.tag === 'may' && (sourceNum === 'OP03-105' || sourceNum === 'OP03-110') && s.battle && s.active === p && s.battle.attacker === d.source) {
+    const atk = power(s, s.battle.attacker);
+    const dp = power(s, s.battle.target);
+    const bonus = sourceNum === 'OP03-105' ? 3000 : 2000;
+    return yesNo(atk < dp && atk + bonus >= dp && (sourceNum === 'OP03-105' || P.life.length >= 2));
+  }
+  if (d.tag === 'may' && sourceNum === 'OP03-115' && findField(s, d.source!)?.player === p) return yesNo(O.chars.some((c) => fieldCost(s, c.uid) <= 1));
   // Kyo : défausser 2 cartes pour garder un Personnage seulement avec une main fournie
   if (d.tag === 'replace' && P.hand.length < 4 && d.options.some((o) => o.id.startsWith('replace:') && findField(s, uidOf(o))?.card.num === 'OP17-045')) {
     const other = d.options.find((o) => o.id.startsWith('replace:') && findField(s, uidOf(o))?.card.num !== 'OP17-045');

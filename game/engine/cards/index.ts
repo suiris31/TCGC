@@ -38,6 +38,7 @@ import { ST36 } from './st36.ts';
 import { OP03_VERTE } from './op03-verte.ts';
 import { OP03_BLEUE } from './op03-bleue.ts';
 import { OP03_VIOLETTE } from './op03-violette.ts';
+import { OP03_JAUNE } from './op03-jaune.ts';
 
 // Un fichier par deck : celui où ses cartes ont été codées (une carte reprise dans un autre deck n'est codée qu'une fois)
 const BEHAVIORS: Record<string, CardBehavior> = {
@@ -50,6 +51,7 @@ const BEHAVIORS: Record<string, CardBehavior> = {
   ...OP03_BLEUE,
   ...OP03_VIOLETTE,
   ...OP03_NOIRE,
+  ...OP03_JAUNE,
 };
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir
