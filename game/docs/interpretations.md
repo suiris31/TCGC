@@ -478,6 +478,25 @@ questions-réponses Bandai, tournois).
      Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
      regardée la connaît (tant qu'elle reste dans la Vie).
 
+## ST-01, deck de départ de l'Aventure (tâche 1.14), choix faits sans validation
+
+410. **Liste du deck ST-01** : Bandai annonce 51 cartes (Leader compris) sans le détail ; les sites se contredisent (un
+     site anglais en totalise 54, un site japonais 48). Retenue : la liste qui fait bien 50 cartes, Personnages
+     ST01-002 à ST01-010 en 4 exemplaires, ST01-011 à ST01-017 en 2 (source dans `engine/decks.ts`).
+411. **Roronoa Zoro (ST01-013)** : « [DON!! x1] +1000 » vaut aussi pendant le tour adverse : la DON!! reste donnée jusqu'à
+     la phase de Recharge de son propriétaire (seul le +1000 de la DON!! elle-même ne compte que pendant son tour).
+412. **Diable Jambe (ST01-016)** : le joueur choisit la carte quand il active l'Événement ; elle ne peut pas être bloquée
+     pour toutes ses attaques du tour (interprétation 215). L'Événement reste permis sans [Bloqueur] adverse redressé ou
+     sans carte qui peut encore attaquer, mais l'IA le garde alors et l'interface le signale comme inutile.
+413. **Thousand Sunny (ST01-017), Jinbe (ST01-005)** : le +1000 pour le tour peut aller à une carte qui a déjà attaqué ;
+     l'IA le donne à une carte qui peut encore attaquer, et le Thousand Sunny est signalé comme inutile quand aucune ne le
+     peut.
+414. **Guard Point (ST01-014)** : le +3000 du [Contre] va à la carte attaquée, sans question (comme les autres [Contre]
+     « jusqu'à 1 de vos Leader ou Personnages ... pendant ce combat »). Son [Déclenchement] (+1000 pour le tour) se choisit.
+415. **Monkey.D.Luffy (Leader ST01-001), Nami (ST01-007)** : « jusqu'à 1 DON!! épuisée » ; s'il n'y a qu'une carte
+     possible, la DON!! lui est donnée sans question (comme Nami ST21-009) ; sans DON!! épuisée, l'effet compte comme
+     utilisé pour le tour et ne fait rien.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

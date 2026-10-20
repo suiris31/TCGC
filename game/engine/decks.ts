@@ -180,6 +180,19 @@ export const DECKS: Record<string, DeckList> = {
       'ST30-010': 4, 'ST30-011': 2, 'ST30-012': 2, 'ST30-013': 4, 'ST30-014': 2, 'ST30-015': 4, 'ST30-016': 2, 'ST30-017': 4,
     },
   },
+  // Deck de départ de l'Aventure (tâche 1.14) : STARTER DECK -Straw Hat Crew- [ST-01], liste relevée sur
+  // https://laughtale-pirates.com/askerbert/one-piece-cardlist-starterdeck01 (quantités par carte, 51 cartes avec le
+  // Leader comme l'annonce Bandai ; d'autres sites se contredisent ou ne totalisent pas 50)
+  'ST-01': {
+    id: 'ST-01',
+    name: 'Luffy, Équipage de Chapeau de paille (rouge)',
+    series: 'ST-01',
+    leader: 'ST01-001',
+    cards: {
+      'ST01-002': 4, 'ST01-003': 4, 'ST01-004': 4, 'ST01-005': 4, 'ST01-006': 4, 'ST01-007': 4, 'ST01-008': 4, 'ST01-009': 4,
+      'ST01-010': 4, 'ST01-011': 2, 'ST01-012': 2, 'ST01-013': 2, 'ST01-014': 2, 'ST01-015': 2, 'ST01-016': 2, 'ST01-017': 2,
+    },
+  },
 };
 
 export function deckSize(deck: Pick<DeckList, 'cards'>) {
