@@ -20,7 +20,7 @@ import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
 import { UI_SCALES, ZOOM_DELAYS, useSettings, type Settings } from './settings.ts';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
-import { deckInfo, deckLabel, playable, useMyDecks } from './myDecks.ts';
+import { deckInfo, deckLabel, isAdventureDeck, playable, useMyDecks } from './myDecks.ts';
 import { GUIDES } from './deckGuides.ts';
 import { CardZoom, useCardZoom } from './Zoom.tsx';
 import { setSoundEnabled, sfx } from './sound.ts';
@@ -769,7 +769,7 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
       <img src={cardImage(leader)} alt="" />
       <span className="deck-name">{deck.name}</span>
       <span className="deck-id">{DECKS[id] ? deck.id : leader.name}{note ? ` · ${note}` : ''}</span>
-      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? 'Deck perso'}</span>
+      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (isAdventureDeck(id) ? '🧭 Deck d’aventure (cartes de la Cale)' : 'Deck perso')}</span>
       <span className="deck-guide-btn" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
         onClick={(e) => { e.stopPropagation(); onGuide(id); }}>📖 Guide</span>
     </button>
