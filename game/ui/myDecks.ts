@@ -4,8 +4,13 @@ import { useEffect, useState } from 'react';
 import { playableErrors } from '../engine/deckRules.ts';
 import { CUSTOM_PREFIX, DECKS, type DeckList } from '../engine/decks.ts';
 
+// Mode d'un deck, choisi à sa création : 'libre' (toutes les cartes jouables) ou 'aventure' (seulement des cartes de la
+// Cale du mode Aventure : le serveur refuse les autres)
+export type DeckMode = 'libre' | 'aventure';
+
 export interface MyDeck extends DeckList {
   updatedAt: string;
+  mode?: DeckMode;   // absent des réponses d'avant le mode Aventure : 'libre'
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -54,14 +59,18 @@ export function useMyDecks(): { decks: MyDeck[]; ready: boolean; error: boolean 
 export const deckInfo = (id: string): DeckList | undefined => DECKS[id] ?? decks.find((d) => d.id === id);
 export const deckLabel = (id: string, fallback?: string) => deckInfo(id)?.name ?? fallback ?? id;
 export const playable = (d: Pick<DeckList, 'leader' | 'cards'>) => playableErrors(d.leader, d.cards).length === 0;
+// Deck d'aventure (construit avec les cartes de la Cale)
+export const isAdventureDeck = (d: string | Pick<MyDeck, 'mode'> | undefined) =>
+  (typeof d === 'string' ? decks.find((x) => x.id === d) : d)?.mode === 'aventure';
 
 export function newDeckId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(12));
   return CUSTOM_PREFIX + Array.from(bytes, (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
 }
 
-export async function saveMyDeck(d: { id: string; name: string; leader: string; cards: Record<string, number> }): Promise<MyDeck> {
-  const saved = await call<MyDeck>(`decks/${encodeURIComponent(d.id)}`, 'PUT', { name: d.name, leader: d.leader, cards: d.cards });
+// mode : à donner à la création d'un deck d'aventure (sans mode, un nouveau deck est libre ; ensuite le mode ne change plus)
+export async function saveMyDeck(d: { id: string; name: string; leader: string; cards: Record<string, number>; mode?: DeckMode }): Promise<MyDeck> {
+  const saved = await call<MyDeck>(`decks/${encodeURIComponent(d.id)}`, 'PUT', { name: d.name, leader: d.leader, cards: d.cards, ...(d.mode ? { mode: d.mode } : {}) });
   decks = [saved, ...decks.filter((x) => x.id !== saved.id)];
   notify();
   return saved;

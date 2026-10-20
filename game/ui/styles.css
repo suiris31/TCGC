@@ -1070,3 +1070,76 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
   .op-bo-zoom-card { height: calc(100dvh - 6rem); }
 }
 /* === fin 1.6 === */
+
+/* === Tâche 1.18 : la Cale et le deck d'aventure === */
+.op-hold, .op-adeck { gap: 1.1rem; }
+.op-hold-head, .op-adeck-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 1rem; }
+.op-hold-head h1, .op-adeck-head h1 { margin: 0; font-size: 1.8rem; color: var(--accent); }
+.op-hold-summary { flex-basis: 100%; }
+.op-hold-boosters { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.9rem 1rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+.op-hold-boosters h2 { margin: 0; }
+.op-hold-boosters-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+.op-hold-boosters p { margin: 0; }
+.op-hold-packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.6rem; }
+.op-hold-pack-text strong { white-space: nowrap; }
+.op-hold-pack { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.6rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+/* paquet dessiné par nous (aucun visuel officiel) */
+.op-hold-pack-art { flex: none; width: 2.6rem; height: 3.6rem; display: grid; place-items: center; border-radius: 5px; background: linear-gradient(160deg, #e8574a, #8a2a3a 55%, #2a1838); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.18), 0 3px 8px rgba(0, 0, 0, 0.4); }
+.op-hold-pack-art span { font-size: 0.7rem; font-weight: 800; color: #fff; letter-spacing: 0.5px; transform: rotate(-12deg); }
+.op-hold-pack-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.op-hold-cards { display: flex; flex-direction: column; gap: 0.6rem; }
+.op-hold-cards > p { margin: 0; }
+.op-hold-filters select { height: 2.5rem; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 0 0.6rem; font: inherit; }
+.op-hold-sort { display: flex; align-items: center; gap: 0.3rem; }
+.op-hold-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.8rem 0.6rem; }
+.op-hold-card { display: flex; flex-direction: column; gap: 0.1rem; padding: 0; border: 0; background: none; color: var(--text); text-align: left; min-width: 0; }
+.op-hold-img { position: relative; display: block; aspect-ratio: 600 / 838; border-radius: 6px; background: var(--surface); overflow: hidden; transition: transform 0.12s; }
+.op-hold-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.op-hold-img img.op-hold-noimg { visibility: hidden; }
+.op-hold-card.is-special .op-hold-img { box-shadow: 0 0 0 2px #c9a2ff, 0 0 14px rgba(201, 162, 255, 0.45); }
+@media (hover: hover) { .op-hold-card:hover .op-hold-img { transform: translateY(-3px); } }
+.op-hold-count { position: absolute; right: 4px; bottom: 4px; background: var(--accent); color: var(--accent-ink); font-weight: 800; border-radius: 6px; padding: 0 0.35rem; }
+.op-hold-variant { position: absolute; left: 4px; top: 4px; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(40, 18, 70, 0.9); color: #e3ccff; font-size: 0.72rem; font-weight: 700; border-radius: 6px; padding: 0 0.3rem; }
+.op-hold-todo { position: absolute; left: 4px; bottom: 4px; background: rgba(10, 18, 32, 0.88); color: var(--muted); font-size: 0.72rem; border-radius: 6px; padding: 0 0.3rem; }
+.op-hold-name { font-size: 0.9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 0.2rem; }
+.modal-box.op-hold-zoom { max-width: 46rem; flex-direction: row; align-items: flex-start; gap: 1.1rem; }
+.op-hold-zoom-img { width: min(19rem, 45%); max-height: 78vh; object-fit: contain; border-radius: 10px; flex: none; }
+.op-hold-zoom-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.op-hold-zoom-text p { margin: 0; }
+.modal-box.op-rates { max-width: 34rem; }
+.op-rates p { margin: 0; }
+.op-rates-set { display: flex; flex-direction: column; gap: 0.4rem; }
+.op-rates-set h4 { margin: 0; color: var(--accent); }
+.op-rates-table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+.op-rates-table th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); padding: 0.2rem 0.3rem; }
+.op-rates-table td { padding: 0.25rem 0.3rem; border-bottom: 1px solid var(--line); }
+.op-rates-table td:last-child, .op-rates-table th:last-child { text-align: right; white-space: nowrap; }
+.op-rates-sub td:first-child { padding-left: 1.2rem; color: var(--muted); }
+/* deck d'aventure */
+.op-adeck-intro { margin: 0; }
+.op-adeck section h2 { margin-bottom: 0.5rem; }
+.op-adeck-chosen { display: grid; grid-template-columns: minmax(17rem, 26rem) 1fr; gap: 0.6rem 1.2rem; align-items: center; }
+.op-adeck-chosen > p { grid-column: 1 / -1; margin: 0; }
+.op-adeck-curve { min-width: 0; }
+.op-adeck-actions { margin-top: 0.7rem; }
+.db-tile.op-db-chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.op-db-tag { align-self: flex-start; margin-top: 0.15rem; }
+.op-db-holdnote { margin: 0; padding: 0.4rem 1.4rem; border-bottom: 1px solid var(--line); }
+.op-db-adventure { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
+.op-db-adventure p { margin: 0; }
+@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+  .op-hold, .op-adeck { padding: 1rem 0.8rem 3rem; gap: 0.9rem; }
+  .op-hold-head h1, .op-adeck-head h1 { font-size: 1.35rem; }
+  .op-hold-grid { grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr)); gap: 0.6rem 0.45rem; }
+  .op-hold-filters select { flex: 1 1 8rem; min-width: 0; }
+  .op-hold-filters .db-search { flex-basis: 100%; }
+  .op-hold-sort { flex: 1 1 8rem; }
+  .op-hold-sort select { flex: 1; }
+  .op-adeck-chosen { grid-template-columns: 1fr; }
+  .op-db-holdnote { padding: 0.4rem 0.8rem; }
+}
+@media (max-width: 900px) and (orientation: portrait) {
+  .modal-box.op-hold-zoom { flex-direction: column; align-items: center; }
+  .op-hold-zoom-img { width: min(16rem, 70%); }
+}
+/* === fin 1.18 === */

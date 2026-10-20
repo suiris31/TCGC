@@ -2,33 +2,52 @@
 // deck : cartes jouables compatibles avec le Leader (filtres, cartes possédées), liste du deck, bilan (courbe des
 // coûts, règles de construction, tournoi officiel, cartes manquantes de ma collection et leur prix). Téléphone d'abord :
 // sur un écran étroit, catalogue, deck et bilan sont trois onglets ; sur un grand écran, trois colonnes.
+// Mode « cartes de la Cale » (deck d'aventure, HoldMode) : le même éditeur ne propose que les cartes possédées dans la
+// Cale du mode Aventure, au plus min(possédées, 4) par numéro, et enregistre le deck en mode 'aventure'.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CARDS, cardStatus, HIDDEN } from '../engine/cards/index.ts';
 import { anyNumber, DECK_SIZE, formatIssues, MAX_COPIES, playableErrors, type Regulations } from '../engine/deckRules.ts';
 import { DECKS, deckSize, type DeckList } from '../engine/decks.ts';
 import { def } from '../engine/rules.ts';
 import type { CardDef, Color } from '../engine/types.ts';
+import { chooseAdventureDeck } from './adventure/api.ts';
+import { holdLimit, holdProblems } from './adventure/hold.ts';
+import { fetchHoldState } from './adventure/holdState.ts';
 import type { Preview } from './CardView.tsx';
 import { CardThumb, CostCurve, DeckStats } from './DeckGuide.tsx';
 import { cardImage } from './images.ts';
 import { isTouch } from './device.ts';
 import {
-  deckPrices, deckText, deleteMyDeck, newDeckId, ownedNumbers, parseDeckText, playable, saveMyDeck, useMyDecks, wishMissing,
+  deckPrices, deckText, deleteMyDeck, isAdventureDeck, newDeckId, ownedNumbers, parseDeckText, playable, saveMyDeck, useMyDecks, wishMissing,
   type CardCollection, type MyDeck,
 } from './myDecks.ts';
 
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
-interface Draft { id: string; name: string; leader: string; cards: Record<string, number> }
+export interface Draft { id: string; name: string; leader: string; cards: Record<string, number> }
+
+// Mode « cartes de la Cale » : l'éditeur d'un deck d'aventure
+export interface HoldMode {
+  hold: Record<string, number>;               // cartes de la Cale par numéro, toutes versions confondues (holdByNumber)
+  chosen: string | null;                      // deck d'aventure choisi à l'ouverture de l'éditeur
+  // choisir ce deck pour l'aventure ; renvoie le deck choisi (une erreur est montrée telle quelle)
+  onChoose: (id: string) => Promise<string | null>;
+}
+
+// Mode « cartes de la Cale », lu sur le serveur (pour ouvrir un deck d'aventure depuis « Mes decks »)
+export async function loadHoldMode(): Promise<HoldMode> {
+  const { byNumber, adventure } = await fetchHoldState();
+  return { hold: byNumber, chosen: adventure.deckId, onChoose: async (id) => (await chooseAdventureDeck(id)).deckId };
+}
 
 const COLOR_HEX: Record<string, string> = { Red: '#d9443a', Green: '#2f9e5b', Blue: '#2f6fd1', Purple: '#8a4fc9', Yellow: '#e2b623', Black: '#55556a' };
 const COLOR_FR: Record<Color, string> = { Red: 'Rouge', Green: 'Vert', Blue: 'Bleu', Purple: 'Violet', Black: 'Noir', Yellow: 'Jaune' };
 const CATEGORY_FR: Record<string, string> = { CHARACTER: 'Personnages', EVENT: 'Événements', STAGE: 'Lieux' };
 const euros = (x: number) => x.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-const playableNums = () => Object.keys(CARDS).filter((n) => n !== HIDDEN && cardStatus(n) !== 'todo');
+export const playableNums = () => Object.keys(CARDS).filter((n) => n !== HIDDEN && cardStatus(n) !== 'todo');
 const maxCopies = (d: CardDef) => (anyNumber(d) ? DECK_SIZE : MAX_COPIES);
 
 // Carte permise avec ce Leader : toutes ses couleurs sur le Leader, et pas interdite par lui
-function fits(leader: string, num: string): boolean {
+export function fits(leader: string, num: string): boolean {
   const L = def(leader);
   const d = def(num);
   return d.category !== 'LEADER' && d.colors.length > 0 && d.colors.every((c) => L.colors.includes(c)) && !L.rules?.deckRestriction?.(d);
@@ -52,9 +71,25 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
   const [picking, setPicking] = useState<'new' | null>(null);
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const open = (d: Draft) => { setNotice(null); setDraft(d); };
+  const [holdMode, setHoldMode] = useState<HoldMode | null>(null);
+  const [loadingHold, setLoadingHold] = useState(false);
+  const open = (d: Draft) => { setNotice(null); setHoldMode(null); setDraft(d); };
+  // un deck d'aventure s'ouvre en mode « cartes de la Cale »
+  const openAdventure = (d: MyDeck) => {
+    setNotice(null);
+    setLoadingHold(true);
+    loadHoldMode().then(
+      (m) => { setHoldMode(m); setDraft({ id: d.id, name: d.name, leader: d.leader, cards: { ...d.cards } }); },
+      (e: Error) => setNotice(`Impossible d’ouvrir ce deck d’aventure : ${e.message}`),
+    ).finally(() => setLoadingHold(false));
+  };
+  const free = decks.filter((d) => !isAdventureDeck(d));
+  const adventure = decks.filter((d) => isAdventureDeck(d));
 
-  if (draft) return <DeckEditor key={draft.id} initial={draft} existing={decks.some((d) => d.id === draft.id)} onBack={() => setDraft(null)} onHover={onHover} onPlay={onPlay} />;
+  if (draft) {
+    return <DeckEditor key={draft.id} initial={draft} existing={decks.some((d) => d.id === draft.id)} hold={holdMode ?? undefined}
+      onBack={() => { setDraft(null); setHoldMode(null); }} onHover={onHover} onPlay={onPlay} />;
+  }
   const copy = (id: string) => {
     if (!id) return;
     const src = DECKS[id] ?? decks.find((d) => d.id === id);
@@ -77,22 +112,32 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
                 <option value="">Choisir…</option>
                 <optgroup label="Decks du méta">{Object.values(DECKS).filter((d) => d.series === 'META').map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>
                 <optgroup label="Decks pour débutant">{Object.values(DECKS).filter((d) => d.series !== 'META').map((d) => <option key={d.id} value={d.id}>{d.name} ({d.id})</option>)}</optgroup>
-                {decks.length > 0 && <optgroup label="Mes decks">{decks.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>}
+                {free.length > 0 && <optgroup label="Mes decks">{free.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>}
+                {adventure.length > 0 && <optgroup label="Mes decks d’aventure">{adventure.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>}
               </select>
             </label>
             <button className="op-btn op-btn-ghost" onClick={() => setImporting(true)}>Importer une liste</button>
           </div>
           {notice && <p className="db-notice">{notice}</p>}
           {error && <p className="danger">Impossible de charger tes decks : vérifie ta connexion.</p>}
-          {ready && !decks.length && (
+          {ready && !free.length && (
             <div className="history-empty">
-              <p>Tu n’as pas encore de deck à toi.</p>
+              <p>{adventure.length ? 'Tu n’as pas encore de deck libre (avec toutes les cartes).' : 'Tu n’as pas encore de deck à toi.'}</p>
               <p className="op-muted op-small">Crée-en un à partir d’un Leader, copie un deck préconstruit pour le modifier, ou colle une liste trouvée sur un site de decks. L’éditeur ne propose que les cartes que le jeu sait déjà jouer.</p>
             </div>
           )}
           <div className="db-list">
-            {decks.map((d) => <MyDeckTile key={d.id} deck={d} onOpen={() => open({ id: d.id, name: d.name, leader: d.leader, cards: { ...d.cards } })} onPlay={() => onPlay(d.id)} />)}
+            {free.map((d) => <MyDeckTile key={d.id} deck={d} onOpen={() => open({ id: d.id, name: d.name, leader: d.leader, cards: { ...d.cards } })} onPlay={() => onPlay(d.id)} />)}
           </div>
+          {adventure.length > 0 && (
+            <section className="op-db-adventure">
+              <h3>🧭 Mes decks d’aventure</h3>
+              <p className="op-small op-muted">Construits avec les cartes gagnées dans l’Aventure (ta Cale) : on n’y ajoute que des cartes de la Cale. Pour un deck avec toutes les cartes, copie-le : la copie sera un deck libre.</p>
+              <div className="db-list">
+                {adventure.map((d) => <MyDeckTile key={d.id} deck={d} busy={loadingHold} onOpen={() => openAdventure(d)} onPlay={() => onPlay(d.id)} />)}
+              </div>
+            </section>
+          )}
         </div>
         {picking && (
           <LeaderPicker onClose={() => setPicking(null)} onHover={onHover}
@@ -111,34 +156,42 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
   );
 }
 
-function MyDeckTile({ deck, onOpen, onPlay }: { deck: MyDeck; onOpen: () => void; onPlay: () => void }) {
+export function MyDeckTile({ deck, onOpen, onPlay, busy, chosen, onChoose }: {
+  deck: MyDeck; onOpen: () => void; onPlay?: () => void; busy?: boolean;
+  chosen?: boolean; onChoose?: () => void;   // deck d'aventure : choisi pour l'aventure, ou le choisir
+}) {
   const L = CARDS[deck.leader];
   const size = deckSize(deck);
   const ok = L && playable(deck);
   return (
-    <div className="db-tile">
+    <div className={`db-tile${chosen ? ' op-db-chosen' : ''}`}>
       {L && <img src={cardImage(L)} alt="" />}
       <div className="db-tile-text">
         <strong>{deck.name}</strong>
         <span className="op-small op-muted">{L?.name ?? deck.leader} · {size}/{DECK_SIZE} cartes</span>
         <span className={`op-small ${ok ? 'db-ok' : 'db-ko'}`}>{ok ? '✔ Jouable' : size !== DECK_SIZE ? '✎ Incomplet' : '✖ À corriger'}</span>
+        {isAdventureDeck(deck) && <span className="op-chip op-db-tag">{chosen ? '⚓ Deck de l’aventure' : '🧭 Aventure'}</span>}
       </div>
       <div className="db-tile-actions">
-        <button className="op-btn op-btn-ghost btn-small" onClick={onOpen}>Modifier</button>
-        {ok && <button className="op-btn op-btn-primary btn-small" onClick={onPlay}>Jouer</button>}
+        <button className="op-btn op-btn-ghost btn-small" onClick={onOpen} disabled={busy}>Modifier</button>
+        {ok && onChoose && !chosen && <button className="op-btn op-btn-primary btn-small" onClick={onChoose} disabled={busy}>Choisir</button>}
+        {ok && onPlay && <button className="op-btn op-btn-primary btn-small" onClick={onPlay}>Jouer</button>}
       </div>
     </div>
   );
 }
 
-function LeaderPicker({ onPick, onClose, onHover }: { onPick: (num: string) => void; onClose: () => void; onHover: Hover }) {
-  const leaders = useMemo(() => playableNums().filter((n) => CARDS[n].category === 'LEADER')
-    .sort((a, b) => CARDS[a].colors.join().localeCompare(CARDS[b].colors.join()) || CARDS[a].name.localeCompare(CARDS[b].name)), []);
+// only : Leaders proposés seulement s'ils sont dans la Cale (mode « cartes de la Cale »)
+export function LeaderPicker({ onPick, onClose, onHover, only }: { onPick: (num: string) => void; onClose: () => void; onHover: Hover; only?: Record<string, number> }) {
+  const leaders = useMemo(() => playableNums().filter((n) => CARDS[n].category === 'LEADER' && (!only || (only[n] ?? 0) > 0))
+    .sort((a, b) => CARDS[a].colors.join().localeCompare(CARDS[b].colors.join()) || CARDS[a].name.localeCompare(CARDS[b].name)), [only]);
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-box db-leaders" onClick={(e) => e.stopPropagation()}>
         <header className="db-row"><h3>Choisis ton Leader</h3><span className="db-grow" /><button className="icon-btn" onClick={onClose}>✕</button></header>
-        <p className="op-small op-muted">Seuls les Leaders que le jeu sait déjà jouer sont proposés.</p>
+        <p className="op-small op-muted">{only
+          ? 'Seuls les Leaders de ta Cale que le jeu sait déjà jouer sont proposés : gagne des boosters pour en trouver d’autres.'
+          : 'Seuls les Leaders que le jeu sait déjà jouer sont proposés.'}</p>
         <div className="db-leader-grid">
           {leaders.map((n) => (
             <button key={n} className="db-leader" onClick={() => onPick(n)}
@@ -150,6 +203,7 @@ function LeaderPicker({ onPick, onClose, onHover }: { onPick: (num: string) => v
             </button>
           ))}
         </div>
+        {!leaders.length && <p className="op-muted">Aucun Leader jouable dans ta Cale pour l’instant.</p>}
       </div>
     </div>
   );
@@ -182,21 +236,28 @@ function ImportBox({ onImport, onClose }: { onImport: (d: Draft, unknown: string
 
 type Pane = 'cards' | 'deck' | 'check';
 
-// existing : deck déjà enregistré ; un deck neuf n'est enregistré qu'à sa première carte (pas de deck vide oublié)
-function DeckEditor({ initial, existing, onBack, onHover, onPlay }: { initial: Draft; existing: boolean; onBack: () => void; onHover: Hover; onPlay: (id: string) => void }) {
+// existing : deck déjà enregistré ; un deck neuf n'est enregistré qu'à sa première carte (pas de deck vide oublié).
+// hold : mode « cartes de la Cale » (deck d'aventure) ; onPlay : bouton « Jouer » (partie libre)
+export function DeckEditor({ initial, existing, hold, onBack, onHover, onPlay }: {
+  initial: Draft; existing: boolean; hold?: HoldMode; onBack: () => void; onHover: Hover; onPlay?: (id: string) => void;
+}) {
   const [draft, setDraft] = useState<Draft>(initial);
   const [pane, setPane] = useState<Pane>(Object.keys(initial.cards).length ? 'deck' : 'cards');
   const [save, setSave] = useState<'saved' | 'saving' | 'pending' | 'error'>('pending');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [changeLeader, setChangeLeader] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [owned, setOwned] = useState<Record<string, number> | null>(null);
+  const [owned, setOwned] = useState<Record<string, number> | null>(hold ? hold.hold : null);
+  const [chosen, setChosen] = useState(hold?.chosen ?? null);
+  const [choosing, setChoosing] = useState<string | null>(null);
   const first = useRef(true);
   const stored = useRef(existing);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const regs = useRegulations();
+  const limit = (d: CardDef) => (hold ? holdLimit(hold.hold, d) : maxCopies(d));
 
-  useEffect(() => { ownedNumbers().then(setOwned, () => setOwned({})); }, []);
+  // cartes possédées : de la collection (deck libre), ou de la Cale (deck d'aventure)
+  useEffect(() => { if (!hold) ownedNumbers().then(setOwned, () => setOwned({})); }, []);
   // enregistrement automatique, un instant après la dernière modification (le deck est enregistré dès son ouverture)
   useEffect(() => {
     clearTimeout(timer.current);
@@ -215,14 +276,17 @@ function DeckEditor({ initial, existing, onBack, onHover, onPlay }: { initial: D
     if (!stored.current && !Object.keys(draft.cards).length) return;
     timer.current = setTimeout(() => {
       setSave('saving');
-      saveMyDeck(draft).then(() => { stored.current = true; setSave('saved'); setSaveError(null); }, (e: Error) => { setSave('error'); setSaveError(e.message); });
+      saveMyDeck(hold ? { ...draft, mode: 'aventure' } : draft)
+        .then(() => { stored.current = true; setSave('saved'); setSaveError(null); }, (e: Error) => { setSave('error'); setSaveError(e.message); });
     }, first.current ? 0 : 700);
     first.current = false;
     return () => clearTimeout(timer.current);
   }, [draft]);
 
   const size = deckSize(draft);
-  const errors = playableErrors(draft.leader, draft.cards);
+  const holdIssues = hold ? holdProblems(hold.hold, draft.leader, draft.cards) : [];
+  const rules = playableErrors(draft.leader, draft.cards);
+  const errors = [...rules, ...holdIssues];
   const official = formatIssues(draft.leader, draft.cards, regs);
   const setCount = (num: string, n: number) => setDraft((d) => {
     const cards = { ...d.cards };
@@ -232,9 +296,15 @@ function DeckEditor({ initial, existing, onBack, onHover, onPlay }: { initial: D
   });
   const add = (num: string, delta: number) => {
     const n = (draft.cards[num] ?? 0) + delta;
-    if (delta > 0 && (size >= DECK_SIZE || n > maxCopies(def(num)))) return;
+    if (delta > 0 && (size >= DECK_SIZE || n > limit(def(num)))) return;
     setCount(num, n);
   };
+  const choose = () => {
+    if (!hold) return;
+    setChoosing('…');
+    hold.onChoose(draft.id).then((id) => { setChosen(id); setChoosing(null); }, (e: Error) => setChoosing(e.message));
+  };
+  const isChosen = Boolean(hold) && chosen === draft.id;
   const pickLeader = (leader: string) => {
     setChangeLeader(false);
     setDraft((d) => ({ ...d, leader, cards: Object.fromEntries(Object.entries(d.cards).filter(([n]) => fits(leader, n))) }));
@@ -266,8 +336,18 @@ function DeckEditor({ initial, existing, onBack, onHover, onPlay }: { initial: D
           <button className={`db-status ${errors.length ? 'db-ko' : 'db-ok'}`} onClick={() => setPane('check')}>
             {errors.length ? `✖ ${errors.length} à corriger` : '✔ Jouable'}
           </button>
-          {!errors.length && save === 'saved' && <button className="op-btn op-btn-primary btn-small" onClick={() => onPlay(draft.id)}>Jouer</button>}
+          {hold && (isChosen
+            ? <span className="op-chip op-db-tag" title="C’est avec ce deck que tu joues les chapitres de l’aventure">⚓ Deck de l’aventure</span>
+            : !errors.length && save === 'saved' && <button className="op-btn op-btn-primary btn-small" onClick={choose} disabled={choosing === '…'}>Choisir pour l’aventure</button>)}
+          {onPlay && !errors.length && save === 'saved' && <button className={`op-btn ${hold ? 'op-btn-ghost' : 'op-btn-primary'} btn-small`} onClick={() => onPlay(draft.id)}>Jouer</button>}
         </div>
+        {hold && (
+          <p className="op-small op-muted op-db-holdnote">
+            🧰 Deck d’aventure : seules les cartes de ta Cale sont proposées, autant d’exemplaires que tu en as (4 au plus).
+            {!isChosen && errors.length > 0 && ' Pour le choisir, il doit être jouable (voir le bilan).'}
+            {choosing && choosing !== '…' && <span className="danger"> {choosing}</span>}
+          </p>
+        )}
         <nav className="history-tabs db-tabs">
           {([['cards', 'Ajouter des cartes'], ['deck', `Deck (${size})`], ['check', 'Bilan']] as [Pane, string][]).map(([p, label]) => (
             <button key={p} className={pane === p ? 'seg on' : 'seg'} onClick={() => setPane(p)}>{label}</button>
@@ -275,28 +355,30 @@ function DeckEditor({ initial, existing, onBack, onHover, onPlay }: { initial: D
         </nav>
         <div className="db-panes">
           <section className={`db-pane ${pane === 'cards' ? 'on' : ''}`}>
-            <CardBrowser leader={draft.leader} cards={draft.cards} full={size >= DECK_SIZE} owned={owned} onAdd={add} onHover={onHover} />
+            <CardBrowser leader={draft.leader} cards={draft.cards} full={size >= DECK_SIZE} owned={owned} hold={hold?.hold} limit={limit} onAdd={add} onHover={onHover} />
           </section>
           <section className={`db-pane ${pane === 'deck' ? 'on' : ''}`}>
-            <DeckContents cards={draft.cards} owned={owned} onAdd={add} onHover={onHover} full={size >= DECK_SIZE} />
+            <DeckContents cards={draft.cards} owned={owned} inHold={Boolean(hold)} limit={limit} onAdd={add} onHover={onHover} full={size >= DECK_SIZE} />
           </section>
           <section className={`db-pane ${pane === 'check' ? 'on' : ''}`}>
-            <DeckCheck draft={draft} errors={errors} official={official} />
+            <DeckCheck draft={draft} errors={rules} official={official} holdIssues={hold ? holdIssues : undefined} />
             <div className="db-row db-danger-zone">
-              {confirmDelete
+              {isChosen
+                ? <span className="op-small op-muted">C’est ton deck d’aventure : choisis-en un autre avant de le supprimer.</span>
+                : confirmDelete
                 ? <><span className="op-small">Supprimer ce deck ?</span><button className="op-btn op-btn-ghost btn-small" onClick={() => setConfirmDelete(false)}>Non</button><button className="op-btn btn-small db-delete" onClick={remove}>Oui, supprimer</button></>
                 : <button className="op-btn op-btn-ghost btn-small" onClick={() => setConfirmDelete(true)}>Supprimer ce deck</button>}
             </div>
           </section>
         </div>
-        {changeLeader && <LeaderPicker onClose={() => setChangeLeader(false)} onPick={pickLeader} onHover={onHover} />}
+        {changeLeader && <LeaderPicker onClose={() => setChangeLeader(false)} onPick={pickLeader} onHover={onHover} only={hold?.hold} />}
       </div>
     </div>
   );
 }
 
 // Image d'une carte avec ses boutons − et +
-function CardPick({ num, count, canAdd, owned, onAdd, onHover }: { num: string; count: number; canAdd: boolean; owned?: number; onAdd: (num: string, delta: number) => void; onHover: Hover }) {
+function CardPick({ num, count, canAdd, owned, inHold, onAdd, onHover }: { num: string; count: number; canAdd: boolean; owned?: number; inHold?: boolean; onAdd: (num: string, delta: number) => void; onHover: Hover }) {
   const d = def(num);
   return (
     <div className={`db-card ${count ? 'in' : ''}`}>
@@ -306,7 +388,7 @@ function CardPick({ num, count, canAdd, owned, onAdd, onHover }: { num: string; 
         onClick={(e) => { if (isTouch()) onHover({ num, rect: e.currentTarget.getBoundingClientRect(), pinned: true }); else if (canAdd) onAdd(num, 1); }}>
         <img src={cardImage(d)} alt={d.name} loading="lazy" draggable={false} />
         {count > 0 && <span className="db-badge">×{count}</span>}
-        {owned !== undefined && owned > 0 && <span className="db-owned" title={`${owned} exemplaire${owned > 1 ? 's' : ''} dans ta collection`}>✓{owned}</span>}
+        {owned !== undefined && owned > 0 && <span className="db-owned" title={`${owned} exemplaire${owned > 1 ? 's' : ''} dans ta ${inHold ? 'Cale' : 'collection'}`}>{inHold ? '🧰' : '✓'}{owned}</span>}
       </div>
       <div className="db-card-btns">
         <button className="icon-btn" disabled={!count} onClick={() => onAdd(num, -1)} aria-label={`Retirer ${d.name}`}>−</button>
@@ -318,15 +400,19 @@ function CardPick({ num, count, canAdd, owned, onAdd, onHover }: { num: string; 
 
 const COSTS = ['', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
-function CardBrowser({ leader, cards, full, owned, onAdd, onHover }: {
-  leader: string; cards: Record<string, number>; full: boolean; owned: Record<string, number> | null; onAdd: (num: string, delta: number) => void; onHover: Hover;
+// hold : seulement les cartes de la Cale (deck d'aventure) ; limit : exemplaires permis d'une carte
+function CardBrowser({ leader, cards, full, owned, hold, limit: copies, onAdd, onHover }: {
+  leader: string; cards: Record<string, number>; full: boolean; owned: Record<string, number> | null; hold?: Record<string, number>;
+  limit: (d: CardDef) => number; onAdd: (num: string, delta: number) => void; onHover: Hover;
 }) {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
   const [cost, setCost] = useState('');
   const [onlyOwned, setOnlyOwned] = useState(false);
   const [limit, setLimit] = useState(60);
-  const pool = useMemo(() => playableNums().filter((n) => fits(leader, n)), [leader]);
+  const pool = useMemo(() => playableNums().filter((n) => fits(leader, n) && (!hold || (hold[n] ?? 0) > 0)), [leader, hold]);
+  // cartes de la Cale que le jeu ne sait pas encore jouer (elles ne peuvent pas aller dans un deck)
+  const waiting = useMemo(() => (hold ? Object.keys(hold).filter((n) => hold[n] > 0 && !(n in CARDS && cardStatus(n) !== 'todo')).length : 0), [hold]);
   const text = q.trim().toLowerCase();
   const shown = pool
     .filter((n) => {
@@ -349,21 +435,27 @@ function CardBrowser({ leader, cards, full, owned, onAdd, onHover }: {
         <select value={cost} onChange={(e) => setCost(e.target.value)} aria-label="Coût">
           {COSTS.map((c) => <option key={c} value={c}>{c === '' ? 'Tout coût' : c === '10' ? 'Coût 10+' : `Coût ${c}`}</option>)}
         </select>
-        <label className="db-check"><input type="checkbox" checked={onlyOwned} disabled={!owned} onChange={(e) => setOnlyOwned(e.target.checked)} /> Possédées</label>
+        {!hold && <label className="db-check"><input type="checkbox" checked={onlyOwned} disabled={!owned} onChange={(e) => setOnlyOwned(e.target.checked)} /> Possédées</label>}
       </div>
-      <p className="op-small op-muted">{shown.length} carte{shown.length > 1 ? 's' : ''}{full ? ' · deck complet (50 cartes)' : ''} · seules les cartes que le jeu sait déjà jouer sont proposées ; il y en aura de plus en plus.</p>
+      <p className="op-small op-muted">{shown.length} carte{shown.length > 1 ? 's' : ''}{full ? ' · deck complet (50 cartes)' : ''} · {hold
+        ? `cartes de ta Cale permises avec ce Leader${waiting ? ` ; ${waiting} sorte${waiting > 1 ? 's' : ''} de ta Cale pas encore jouable${waiting > 1 ? 's' : ''} par le jeu` : ''}.`
+        : 'seules les cartes que le jeu sait déjà jouer sont proposées ; il y en aura de plus en plus.'}</p>
       <div className="db-grid">
         {shown.slice(0, limit).map((n) => {
           const count = cards[n] ?? 0;
-          return <CardPick key={n} num={n} count={count} canAdd={!full && count < maxCopies(CARDS[n])} owned={owned?.[n]} onAdd={onAdd} onHover={onHover} />;
+          return <CardPick key={n} num={n} count={count} canAdd={!full && count < copies(CARDS[n])} owned={owned?.[n]} inHold={Boolean(hold)} onAdd={onAdd} onHover={onHover} />;
         })}
       </div>
+      {hold && !pool.length && <p className="op-muted">Aucune carte de ta Cale ne va avec ce Leader : ouvre des boosters pour en gagner.</p>}
       {shown.length > limit && <button className="op-btn op-btn-ghost db-more" onClick={() => setLimit((l) => l + 60)}>Afficher plus ({shown.length - limit})</button>}
     </>
   );
 }
 
-function DeckContents({ cards, owned, onAdd, onHover, full }: { cards: Record<string, number>; owned: Record<string, number> | null; onAdd: (num: string, delta: number) => void; onHover: Hover; full: boolean }) {
+function DeckContents({ cards, owned, inHold, limit, onAdd, onHover, full }: {
+  cards: Record<string, number>; owned: Record<string, number> | null; inHold: boolean; limit: (d: CardDef) => number;
+  onAdd: (num: string, delta: number) => void; onHover: Hover; full: boolean;
+}) {
   const list = Object.entries(cards).map(([num, n]) => ({ num, n, d: def(num) }));
   if (!list.length) return <p className="op-muted db-empty">Ton deck est vide : ajoute des cartes depuis l’onglet « Ajouter des cartes ».</p>;
   return (
@@ -380,12 +472,14 @@ function DeckContents({ cards, owned, onAdd, onHover, full }: { cards: Record<st
                 <div className="db-line-text">
                   <span>{d.name}</span>
                   <span className="op-small op-muted">{num} · coût {d.cost ?? 0}{d.power !== null ? ` · ${d.power}` : ''}{d.counter ? ` · Contre +${d.counter}` : ''}
-                    {owned ? <> · <span className={(owned[num] ?? 0) >= n ? 'db-ok' : 'db-ko'}>{Math.min(owned[num] ?? 0, n)}/{n} possédée{n > 1 ? 's' : ''}</span></> : null}</span>
+                    {owned ? <> · <span className={(owned[num] ?? 0) >= n ? 'db-ok' : 'db-ko'}>{inHold
+                      ? `${owned[num] ?? 0} dans ta Cale`
+                      : `${Math.min(owned[num] ?? 0, n)}/${n} possédée${n > 1 ? 's' : ''}`}</span></> : null}</span>
                 </div>
                 <div className="db-line-btns">
                   <button className="icon-btn" onClick={() => onAdd(num, -1)} aria-label={`Retirer ${d.name}`}>−</button>
                   <b>{n}</b>
-                  <button className="icon-btn" disabled={full || n >= maxCopies(d)} onClick={() => onAdd(num, 1)} aria-label={`Ajouter ${d.name}`}>＋</button>
+                  <button className="icon-btn" disabled={full || n >= limit(d)} onClick={() => onAdd(num, 1)} aria-label={`Ajouter ${d.name}`}>＋</button>
                 </div>
               </div>
             ))}
@@ -396,7 +490,8 @@ function DeckContents({ cards, owned, onAdd, onHover, full }: { cards: Record<st
   );
 }
 
-function DeckCheck({ draft, errors, official }: { draft: Draft; errors: string[]; official: ReturnType<typeof formatIssues> }) {
+// holdIssues : deck d'aventure (le tournoi officiel et la collection réelle ne le concernent pas)
+function DeckCheck({ draft, errors, official, holdIssues }: { draft: Draft; errors: string[]; official: ReturnType<typeof formatIssues>; holdIssues?: string[] }) {
   const [prices, setPrices] = useState<Record<string, CardCollection> | null>(null);
   const [lang, setLang] = useState<'fr' | 'en'>('fr');
   const [wished, setWished] = useState<string | null>(null);
@@ -404,6 +499,7 @@ function DeckCheck({ draft, errors, official }: { draft: Draft; errors: string[]
   const numbers = Object.keys(draft.cards).join();
   useEffect(() => {
     setPrices(null);
+    if (holdIssues) return;
     const nums = [draft.leader, ...Object.keys(draft.cards)];
     const t = setTimeout(() => { deckPrices(nums).then(setPrices, () => setPrices({})); }, 500);
     return () => clearTimeout(t);
@@ -430,13 +526,22 @@ function DeckCheck({ draft, errors, official }: { draft: Draft; errors: string[]
         <h3>Règles du jeu</h3>
         {errors.length
           ? <ul className="db-issues">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
-          : <p className="db-ok">✔ Ce deck est jouable dans l’appli, contre l’IA et en ligne.</p>}
+          : <p className="db-ok">✔ Ce deck est jouable dans l’appli, contre l’IA et en ligne{holdIssues ? ', et peut servir pour l’aventure' : ''}.</p>}
       </section>
+      {holdIssues && (
+        <section className="hist-section">
+          <h3>Avec ta Cale</h3>
+          {holdIssues.length
+            ? <ul className="db-issues">{holdIssues.map((e) => <li key={e}>{e}</li>)}</ul>
+            : <p className="db-ok">✔ Toutes ses cartes sont dans ta Cale.</p>}
+        </section>
+      )}
       <section className="hist-section">
         <h3>Courbe des coûts</h3>
         <CostCurve deck={deck} />
         <DeckStats deck={deck} />
       </section>
+      {!holdIssues && <>
       <section className="hist-section">
         <h3>Tournoi officiel</h3>
         {official.errors.length
@@ -473,6 +578,7 @@ function DeckCheck({ draft, errors, official }: { draft: Draft; errors: string[]
           </>
         )}
       </section>
+      </>}
       <section className="hist-section">
         <h3>Exporter</h3>
         <textarea className="db-text" rows={6} readOnly value={text} onFocus={(e) => e.currentTarget.select()} />
