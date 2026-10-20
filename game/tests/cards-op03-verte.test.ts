@@ -75,6 +75,16 @@ function hitMe(deck: string, life: string[], hand: string[] = [], opp: { num: st
   return s;
 }
 
+test('OP03 verte : les 16 cartes à faire sont codées, Alvida, Pearl et Momoo jouables d’office', () => {
+  assert.equal(Object.keys(OP03_VERTE).length, 16);
+  for (let i = 21; i <= 39; i++) {
+    const num = `OP03-0${i}`;
+    assert.equal(cardStatus(num), ['OP03-023', 'OP03-031', 'OP03-035'].includes(num) ? 'auto' : 'coded', num);
+  }
+  // [Déclenchement] « jouez cette carte » génériques
+  for (const num of [KUROOBI, CHEW, NAMI]) assert.ok(triggerEffect(num), num);
+});
+
 test('Kuro (OP03-021, Leader) : ③ et 2 Personnages {East Blue} épuisés : se redresser et épuiser un Personnage adverse de coût 5 ou moins', () => {
   const setup = (eb: string[], don: number) => (g: GameState) => {
     g.players[0].leader.rested = true;
@@ -106,6 +116,129 @@ test('Kuro (OP03-021, Leader) : ③ et 2 Personnages {East Blue} épuisés : se 
     const t = scenario([KURO, 'ST-21'], setup([...eb], don));
     assert.equal(hasOption(t, `act:${t.players[0].leader.uid}`), false, `${eb.length} Personnages, ${don} DON!!`);
   }
+});
+
+test('Arlong (OP03-022, Leader) : [DON!! x2] [En attaquant] ① jouer un Personnage de coût 4 ou moins ayant un [Déclenchement]', () => {
+  const run = (attached: number, active = 3, hand = [CHEW, GIN, KRIEG, HATCHAN]) => {
+    const s = scenario([ARLONG, 'ST-21'], (g) => {
+      setHand(g, 0, hand);
+      setChars(g, 1, []);
+      g.players[0].leader.don = attached;
+      setDon(g, 0, active);
+    });
+    return attack(s, s.players[0].leader.uid, s.players[1].leader.uid);
+  };
+  let s = run(2);
+  expectTag(s, 'may');
+  aiAnswers(s);
+  s = choose(s, 'yes');
+  expectTag(s, 'playFree');
+  assert.deepEqual(offered(s), [CHEW, HATCHAN], 'Gin n’a pas de [Déclenchement], Krieg coûte 6');
+  s = pick(s, CHEW);
+  assert.ok(mine(s, CHEW));
+  assert.equal(s.players[0].donActive, 2);
+  assert.equal(s.decision?.player, 1, 'le combat continue');
+  coherent(s);
+  // 1 DON!! donnée, aucune DON!! redressée pour payer ①, ou aucun Personnage à jouer (① pas demandé) : rien
+  for (const [attached, active, hand] of [[1, 3, [CHEW]], [2, 0, [CHEW]], [2, 3, [GIN, KRIEG]]] as const) {
+    const t = run(attached, active, [...hand]);
+    assert.equal(t.decision?.player, 1, `${attached} DON!! données, ${active} redressées, ${hand.length} cartes`);
+    assert.equal(t.players[0].chars.length, 0);
+    assert.equal(t.players[0].donActive, active);
+  }
+});
+
+test('Gin (OP03-024) : avec un Leader {East Blue}, épuiser jusqu’à 2 Personnages adverses de coût 4 ou moins', () => {
+  const run = (deck: string) => play(scenario([deck, 'ST-21'], (g) => {
+    setHand(g, 0, [GIN]);
+    setDon(g, 0, 4);
+    setChars(g, 1, [{ num: O_JINBE }, { num: O_CHOPPER }, { num: O_LUFFY }]);
+  }), GIN);
+  let s = run(KURO);
+  expectTag(s, 'oppRest');
+  assert.deepEqual(offered(s), [O_JINBE, O_CHOPPER]);
+  s = pick(s, O_JINBE);
+  assert.deepEqual(offered(s), [O_CHOPPER]);
+  s = pick(s, O_CHOPPER);
+  assert.deepEqual(s.players[1].chars.map((c) => c.rested), [true, true, false]);
+  coherent(s);
+  s = run(OTHER);
+  assert.equal(s.decision?.kind, 'main');
+  assert.ok(s.players[1].chars.every((c) => !c.rested));
+});
+
+test('Krieg (OP03-025) : défausser 1 carte pour mettre KO jusqu’à 2 Personnages adverses épuisés de coût 4 ou moins ; [DON!! x1] [Double attaque]', () => {
+  const run = (hand: string[], rested = true) => play(scenario([KURO, 'ST-21'], (g) => {
+    setHand(g, 0, hand);
+    setDon(g, 0, 6);
+    setChars(g, 1, [
+      { num: O_JINBE, extra: { rested } }, { num: O_CHOPPER, extra: { rested } }, { num: O_LUFFY, extra: { rested: true } },
+      { num: O_STUSSY },
+    ]);
+  }), KRIEG);
+  let s = run([KRIEG, ALVIDA]);
+  expectTag(s, 'may');
+  aiAnswers(s);
+  s = choose(s, 'yes');
+  if (s.decision?.tag === 'discard') s = pick(s, ALVIDA);
+  expectTag(s, 'oppKo');
+  assert.deepEqual(offered(s), [O_JINBE, O_CHOPPER], 'Luffy coûte 5, Stussy est redressé');
+  s = pick(s, O_JINBE);
+  s = pick(s, O_CHOPPER);
+  assert.ok(inTrash(s, 1, O_JINBE) && inTrash(s, 1, O_CHOPPER) && inTrash(s, 0, ALVIDA));
+  assert.deepEqual(s.players[1].chars.map((c) => c.num), [O_LUFFY, O_STUSSY]);
+  coherent(s);
+  // refus de défausser, ou main vide : rien
+  s = choose(run([KRIEG, ALVIDA]), 'no');
+  assert.equal(s.players[1].chars.length, 4);
+  s = run([KRIEG]);
+  assert.equal(s.decision?.kind, 'main');
+  assert.equal(s.players[1].chars.length, 4);
+  // aucun Personnage épuisé de coût 4 ou moins : la défausse n'est pas demandée (interprétation 262)
+  s = run([KRIEG, ALVIDA], false);
+  assert.equal(s.decision?.kind, 'main');
+  assert.equal(s.players[0].hand.length, 1);
+
+  // [Double attaque] avec 1 DON!! donnée : 2 dégâts
+  s = scenario([KURO, 'ST-21'], (g) => {
+    setChars(g, 0, [{ num: KRIEG }, { num: KRIEG, extra: { don: 1 } }]);
+    setChars(g, 1, []);
+    setHand(g, 1, []);
+    setLife(g, 1, [O_JINBE, O_STUSSY, O_VEGAPUNK]);
+    setDon(g, 0, 0);
+  });
+  const [bare, boosted] = s.players[0].chars;
+  assert.equal(hasKeyword(s, 0, bare, 'Double Attack'), false);
+  assert.equal(hasKeyword(s, 0, boosted, 'Double Attack'), true);
+  s = attack(s, boosted.uid, s.players[1].leader.uid);
+  for (let i = 0; i < 3 && s.decision?.player === 1; i++) s = choose(s, s.decision.kind === 'blocker' ? 'noblock' : 'pass');
+  assert.equal(s.players[1].life.length, 1);
+  coherent(s);
+});
+
+test('Kuroobi (OP03-026) : avec un Leader {East Blue}, épuiser jusqu’à 1 Personnage adverse ; [Déclenchement] jouez cette carte', () => {
+  const run = (deck: string) => play(scenario([deck, 'ST-21'], (g) => {
+    setHand(g, 0, [KUROOBI]);
+    setDon(g, 0, 4);
+    setChars(g, 1, [{ num: O_LUFFY }]);
+  }), KUROOBI);
+  let s = run(KURO);
+  expectTag(s, 'oppRest');
+  assert.deepEqual(offered(s), [O_LUFFY], 'quel que soit son coût');
+  s = pick(s, O_LUFFY);
+  assert.ok(theirs(s, O_LUFFY).rested);
+  s = run(OTHER);
+  assert.equal(s.decision?.kind, 'main');
+  assert.equal(theirs(s, O_LUFFY).rested, false);
+  // [Déclenchement] : la carte est jouée, puis son [Jouée] épuise un Personnage adverse
+  s = hitMe(KURO, [KUROOBI, ALVIDA], [], [{ num: O_LUFFY }]);
+  expectTag(s, 'trigger');
+  s = choose(s, 'trigger');
+  assert.ok(mine(s, KUROOBI));
+  expectTag(s, 'oppRest');
+  s = pick(s, O_LUFFY);
+  assert.ok(theirs(s, O_LUFFY).rested);
+  coherent(s);
 });
 
 test('Sham (OP03-027) : avec un Leader {East Blue}, épuiser un Personnage adverse de coût 2 ou moins et, sans [Buchi], jouer [Buchi] de sa main', () => {
@@ -169,6 +302,87 @@ test('Jango (OP03-028) : redresser un Leader ou Personnage {East Blue} de coût 
   assert.ok(mine(s, JANGO).rested);
 });
 
+test('Chew (OP03-029) et Buchi (OP03-034) : mettre KO un Personnage adverse épuisé de coût 4 / 2 ou moins', () => {
+  const run = (num: string, opp: string[]) => play(scenario([KURO, 'ST-21'], (g) => {
+    setHand(g, 0, [num]);
+    setDon(g, 0, 4);
+    setChars(g, 1, opp.map((n) => ({ num: n, extra: { rested: true } })));
+  }), num);
+  let s = run(CHEW, [O_JINBE, O_CHOPPER, O_LUFFY]);
+  expectTag(s, 'oppKo');
+  assert.deepEqual(offered(s), [O_JINBE, O_CHOPPER]);
+  s = pick(s, O_CHOPPER);
+  assert.ok(inTrash(s, 1, O_CHOPPER));
+  coherent(s);
+  s = run(BUCHI, [O_JINBE, O_STUSSY]);
+  assert.deepEqual(offered(s), [O_JINBE]);
+  s = pick(s, O_JINBE);
+  assert.ok(inTrash(s, 1, O_JINBE));
+  // rien d'épuisé (ou trop cher) : pas de question
+  assert.equal(run(CHEW, [O_LUFFY]).decision?.kind, 'main');
+  assert.equal(run(BUCHI, [O_STUSSY]).decision?.kind, 'main');
+  const t = play(scenario([KURO, 'ST-21'], (g) => { setHand(g, 0, [CHEW]); setDon(g, 0, 4); setChars(g, 1, [{ num: O_JINBE }]); }), CHEW);
+  assert.equal(t.decision?.kind, 'main', 'Jinbe redressé');
+});
+
+test('Nami (OP03-030) : regarder 5 cartes, en ajouter une verte {East Blue} autre que [Nami] à sa main', () => {
+  let s = play(scenario([KURO, 'ST-21'], (g) => {
+    setHand(g, 0, [NAMI]);
+    setDon(g, 0, 2);
+    setDeckTop(g, 0, [NAMI, JINBE, KRIEG, BAG, ALVIDA]);
+  }), NAMI);
+  expectTag(s, 'pick');
+  assert.deepEqual(offered(s), [KRIEG, BAG, ALVIDA], 'ni [Nami], ni Jinbe (rouge)');
+  aiAnswers(s);
+  s = keepOrder(pick(s, KRIEG));
+  assert.deepEqual(s.players[0].hand.map((c) => c.num), [KRIEG]);
+  assert.deepEqual(s.players[0].deck.slice(-4).map((c) => c.num), [NAMI, JINBE, BAG, ALVIDA]);
+  coherent(s);
+  // aucune carte qui convient : rien à prendre
+  s = play(scenario([KURO, 'ST-21'], (g) => {
+    setHand(g, 0, [NAMI]);
+    setDon(g, 0, 2);
+    setDeckTop(g, 0, [NAMI, JINBE, STUSSY, JINBE, STUSSY]);
+  }), NAMI);
+  assert.notEqual(s.decision?.tag, 'pick');
+  s = keepOrder(s);
+  assert.equal(s.players[0].hand.length, 0);
+  coherent(s);
+});
+
+test('Buggy (OP03-032) : ne peut pas être mis KO en combat par une carte <Tranche>', () => {
+  const fight = (attacker: string) => {
+    let s = scenario([KURO, 'ST-21'], (g) => {
+      setHand(g, 0, []);
+      setChars(g, 0, [{ num: BUGGY, extra: { rested: true } }]);
+      setChars(g, 1, [{ num: attacker }]);
+      setDon(g, 1, 0);
+    }, 1);
+    s = attack(s, theirs(s, attacker).uid, mine(s, BUGGY).uid);
+    if (s.decision?.kind === 'counter') s = choose(s, 'pass');
+    return s;
+  };
+  let s = fight(O_ZORO);  // <Tranche>, 5000 contre 5000
+  assert.ok(mine(s, BUGGY), 'Buggy reste');
+  coherent(s);
+  s = fight(O_CHOPPER);   // <Sagesse>, 6000
+  assert.ok(inTrash(s, 0, BUGGY));
+  coherent(s);
+});
+
+test('Hatchan (OP03-033) : [Déclenchement] avec un Leader {East Blue}, jouer cette carte', () => {
+  let s = hitMe(KURO, [HATCHAN, ALVIDA]);
+  expectTag(s, 'trigger');
+  s = choose(s, 'trigger');
+  assert.ok(mine(s, HATCHAN));
+  coherent(s);
+  // Leader {Supernovae} : le [Déclenchement] ne fait rien, la carte va dans la Défausse
+  s = choose(hitMe(OTHER, [HATCHAN, ALVIDA]), 'trigger');
+  assert.equal(s.players[0].chars.length, 0);
+  assert.ok(inTrash(s, 0, HATCHAN));
+  coherent(s);
+});
+
 test('Out-of-the-Bag (OP03-036) : épuiser un Personnage {East Blue} pour redresser [Kuro] ; [Déclenchement] KO d’un Personnage épuisé de coût 3 ou moins', () => {
   const run = (deck: string, restedLeader: boolean, chars: string[]) => scenario([deck, 'ST-21'], (g) => {
     g.players[0].leader.rested = restedLeader;
@@ -199,6 +413,64 @@ test('Out-of-the-Bag (OP03-036) : épuiser un Personnage {East Blue} pour redres
   assert.deepEqual(offered(s), [O_STUSSY]);
   s = pick(s, O_STUSSY);
   assert.ok(inTrash(s, 1, O_STUSSY) && inTrash(s, 0, BAG));
+  coherent(s);
+});
+
+test('Tooth Attack (OP03-037) : épuiser un Personnage {East Blue} pour mettre KO un Personnage épuisé de coût 3 ou moins ; [Déclenchement] jouer un Personnage à [Déclenchement]', () => {
+  const run = (chars: string[]) => scenario([KURO, 'ST-21'], (g) => {
+    setHand(g, 0, [TOOTH]);
+    setDon(g, 0, 1);
+    setChars(g, 0, chars.map((num) => ({ num })));
+    setChars(g, 1, [{ num: O_STUSSY, extra: { rested: true } }, { num: O_CHOPPER, extra: { rested: true } }]);
+  });
+  let s = play(run([MOMOO, JINBE]), TOOTH);
+  s = choose(s, 'yes');
+  // coût : Momoo, seul Personnage {East Blue}, épuisé d'office
+  expectTag(s, 'oppKo');
+  assert.deepEqual(offered(s), [O_STUSSY]);
+  s = pick(s, O_STUSSY);
+  assert.ok(inTrash(s, 1, O_STUSSY) && mine(s, MOMOO).rested);
+  coherent(s);
+  assert.equal(mainUseful(run([JINBE]), TOOTH), false, 'pas de Personnage {East Blue}');
+  // [Déclenchement] pendant l'attaque adverse : Chew, pas Gin (sans [Déclenchement]) ni Krieg (coût 6)
+  s = choose(hitMe(KURO, [TOOTH, ALVIDA], [CHEW, GIN, KRIEG]), 'trigger');
+  expectTag(s, 'playFree');
+  assert.deepEqual(offered(s), [CHEW]);
+  aiAnswers(s);
+  s = pick(s, CHEW);
+  assert.ok(mine(s, CHEW));
+  if (s.decision?.tag === 'oppKo') s = choose(s, 'none');  // Chew [Jouée] : Stussy, épuisé par son attaque
+  coherent(s);
+});
+
+test('Deathly Poison Gas Bomb MH5 (OP03-038) : épuiser jusqu’à 2 Personnages adverses de coût 2 ou moins ; [Déclenchement] 1 de coût 5 ou moins', () => {
+  let s = scenario([KURO, 'ST-21'], (g) => {
+    setHand(g, 0, [MH5]);
+    setDon(g, 0, 1);
+    setChars(g, 1, [{ num: O_VEGAPUNK }, { num: O_JINBE }, { num: O_STUSSY }]);
+  });
+  s = play(s, MH5);
+  expectTag(s, 'oppRest');
+  assert.deepEqual(offered(s), [O_VEGAPUNK, O_JINBE]);
+  s = pick(pick(s, O_VEGAPUNK), O_JINBE);
+  assert.deepEqual(s.players[1].chars.map((c) => c.rested), [true, true, false]);
+  coherent(s);
+  assert.equal(mainUseful(scenario([KURO, 'ST-21'], (g) => { setHand(g, 0, [MH5]); setChars(g, 1, [{ num: O_STUSSY }]); }), MH5), false);
+  // [Déclenchement] : Luffy (coût 5), pas Chopper (coût 6 pour le tour)
+  s = scenario([KURO, 'ST-21'], (g) => {
+    setHand(g, 0, []);
+    setChars(g, 0, []);
+    setLife(g, 0, [MH5, ALVIDA]);
+    const [, , chopper] = setChars(g, 1, [{ num: O_STUSSY }, { num: O_LUFFY }, { num: O_CHOPPER }]);
+    addMod(g, { uid: chopper.uid, stat: 'cost', amount: 2, until: 'turn', source: 'Test' });
+    setDon(g, 1, 0);
+  }, 1);
+  s = attack(s, theirs(s, O_STUSSY).uid, s.players[0].leader.uid);
+  s = choose(s, 'trigger');
+  expectTag(s, 'oppRest');
+  assert.deepEqual(offered(s), [O_LUFFY]);
+  s = pick(s, O_LUFFY);
+  assert.ok(theirs(s, O_LUFFY).rested);
   coherent(s);
 });
 
