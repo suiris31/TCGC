@@ -332,4 +332,24 @@ export const GUIDES: Record<string, DeckGuide> = {
     strengths: ['Personnages de 6000 solides et protégés', 'Ace et Luffy à 9000 en défense', 'Bonne recherche de cartes'],
     weaknesses: ['Leader à 6000, qui perd 2000 avec un Personnage de 7000 ou plus', 'Peu de moyens de retirer les gros Personnages adverses', 'Dépend des Personnages de 6000'],
   },
+  // Deck de départ de l'Aventure (tâche 1.14) : guide pour un joueur qui découvre le jeu
+  'ST-01': {
+    styles: ['Agressif', 'Débutant', 'Rouge'],
+    summary: 'Le premier équipage de Luffy : des Personnages simples et puissants pour leur coût, des DON!! données pour frapper plus fort, et des effets qui empêchent l’adversaire de bloquer.',
+    plan: [
+      'Tours 1 à 2 : pose des petits Personnages (Karoo et ses 3000 pour 1 DON!!, Nami, Usopp, Vivi). Chopper ([Bloqueur]) protège ton Leader.',
+      'À chaque tour : l’effet du Leader donne 1 DON!! épuisée à ton Leader ou à un Personnage prêt à attaquer. Nami fait la même chose : tes DON!! redressées restent pour jouer des cartes.',
+      'Tours 3 et 4 : Jinbe, Nico Robin, Zoro (+1000 de plus dès qu’il a 1 DON!!) et Franky (6000) : attaque le Leader adverse avec plusieurs cartes chaque tour pour faire baisser sa Vie.',
+      'Fin de partie : Luffy (ST01-012) attaque le tour où il arrive ; avec 2 DON!!, personne ne peut le bloquer. Gum-Gum Jet Pistol met KO un gros Personnage adverse.',
+    ],
+    combos: [
+      { title: 'DON!! épuisées, attaques plus fortes', cards: ['ST01-001', 'ST01-007', 'ST01-011'], text: 'Le Leader et Nami donnent chacun 1 DON!! déjà épuisée, Brook (en arrivant) en donne 2 : +1000 de puissance par DON!! pour l’attaque, sans dépenser tes DON!! redressées.' },
+      { title: 'Personne ne bloque', cards: ['ST01-012', 'ST01-016', 'ST01-002'], text: 'Luffy avec 2 DON!! et Diable Jambe empêchent l’adversaire de bloquer ; Usopp avec 2 DON!! empêche de bloquer avec un Personnage de 5000 ou plus.' },
+      { title: 'Sanji arrive en attaquant', cards: ['ST01-004'], text: 'Avec 2 DON!! données, Sanji (4000) gagne [Initiative] : il attaque à 6000 le tour où tu le joues.' },
+      { title: 'Le petit coup de pouce', cards: ['ST01-005', 'ST01-017', 'ST01-014'], text: 'Jinbe (avec 1 DON!!, en attaquant) et le Thousand Sunny donnent +1000 à un autre attaquant. Guard Point sauve une carte attaquée (+3000 en Contre).' },
+    ],
+    mulligan: 'Garde deux ou trois Personnages de coût 1 à 3 (Karoo, Nami, Usopp, Vivi, Sanji, Jinbe). Repioche une main faite surtout de cartes à 4 ou 5 et d’Événements.',
+    strengths: ['Facile à jouer : peu d’effets, des Personnages solides', 'Pression sur le Leader adverse dès les premiers tours', 'Plusieurs façons d’empêcher les blocages'],
+    weaknesses: ['Peu de pioche', 'Peu de moyens de retirer les Personnages adverses', 'Contres faibles : beaucoup de Personnages sans Contre (Sanji, Jinbe, Zoro, Luffy)'],
+  },
 };
