@@ -185,7 +185,7 @@ export const DECKS: Record<string, DeckList> = {
   // Leader comme l'annonce Bandai ; d'autres sites se contredisent ou ne totalisent pas 50)
   'ST-01': {
     id: 'ST-01',
-    name: 'Luffy, Équipage de Chapeau de paille (rouge)',
+    name: 'Chapeaux de paille (rouge)',
     series: 'ST-01',
     leader: 'ST01-001',
     cards: {
