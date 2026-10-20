@@ -25,6 +25,7 @@ import { META_ROBIN } from './meta-robin.ts';
 import { META_SABO } from './meta-sabo.ts';
 import { META_XEBEC } from './meta-xebec.ts';
 import { OP03_ROUGE } from './op03-rouge.ts';
+import { OP03_NOIRE } from './op03-noire.ts';
 import { ST21 } from './st21.ts';
 import { ST22 } from './st22.ts';
 import { ST30 } from './st30.ts';
@@ -48,6 +49,7 @@ const BEHAVIORS: Record<string, CardBehavior> = {
   ...OP03_VERTE,
   ...OP03_BLEUE,
   ...OP03_VIOLETTE,
+  ...OP03_NOIRE,
 };
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir

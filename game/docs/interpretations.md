@@ -587,6 +587,32 @@ questions-réponses Bandai, tournois).
 327. **Top Knot (OP03-074)** : le Personnage va au-dessous du deck de son propriétaire ; les DON!! qui viennent de payer
      l'Événement comptent pour le DON!! −2. [Déclenchement] de Hull Dismantler Slash et de Top Knot (« activez l'effet
      [Principale] ») : le DON!! −X se paie de la même façon pendant le tour adverse.
+## OP03 noire (tâche 1.12), choix faits sans validation
+
+350. **« Vous pouvez [coût] : [effet] »** (Kaku OP03-080, Rob Lucci OP03-092, Wanze OP03-093, Charlotte Linlin
+     OP03-077) : la question n'est posée que si l'effet peut faire quelque chose (une cible, un Leader « CP », 1 Vie ou
+     moins, son propre tour pour l'[Initiative] de Rob Lucci). Les règles permettent de payer pour rien, mais personne
+     n'y a intérêt, et l'IA paierait.
+351. **Rob Lucci (Leader OP03-076)** : un Personnage adverse mis KO pendant son tour, quelle que soit la cause (combat ou
+     effet, le sien ou celui de l'adversaire). La question n'est posée que si le Leader est épuisé. Le [Une fois par tour]
+     compte seulement quand les 2 cartes sont défaussées : refuser laisse l'effet pour un KO suivant. Plusieurs
+     Personnages mis KO ensemble : une seule fois.
+352. **Charlotte Linlin (Leader OP03-077)** : la Vie (1 ou moins) est lue avant de payer, ce qui revient au même (payer
+     ne change pas la Vie) ; le ② épuise 2 DON!! redressées de la zone de Coût ; deck vide : pas de question.
+353. **Issho (OP03-078)** : le −3 vaut aussi pour les Personnages adverses joués ensuite, tant qu'Issho a sa DON!! et
+     que c'est son tour ; un coût qui passe sous 0 compte comme 0 (1-3-6-2).
+354. **Tempest Kick Sky Slicer (OP03-096)** : un seul KO au choix, parmi les Personnages adverses de coût 0 (coût
+     modifié, un coût négatif compris) et le Lieu adverse de coût 3 ou moins (coût imprimé). Le Lieu va dans la Défausse ;
+     ce n'est pas un Personnage mis KO (pas d'effet « quand un Personnage est mis KO »).
+355. **Six Pouvoirs Gun (OP03-097)** : le +3000 va à la carte attaquée, comme les autres [Contre] « jusqu'à 1 de vos
+     Leader ou Personnages » ; sans défausse, rien.
+356. **Spandam (OP03-086), Brandnew (OP03-089), Air Door (OP03-094)** : les cartes regardées et placées dans la Défausse
+     deviennent publiques ; la carte prise est révélée. [Déclenchement] d'Air Door : un Personnage dont les couleurs
+     comprennent le noir.
+357. **Soap Sheep (OP03-095)** : au [Déclenchement], c'est l'adversaire qui choisit la carte qu'il défausse.
+358. **Blueno (OP03-090)** : le Personnage joué épuisé depuis la Défausse déclenche son effet [Jouée] ; Blueno lui-même
+     (coût 5) ne peut pas se rejouer.
+359. **Enies Lobby (OP03-098)** : le Lieu peut s'épuiser sans Leader « CP » (rien ne se passe alors) ; l'IA ne le fait pas.
 
 ## Comment c'est vérifié
 
