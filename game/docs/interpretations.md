@@ -478,6 +478,37 @@ questions-réponses Bandai, tournois).
      Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
      regardée la connaît (tant qu'elle reste dans la Vie).
 
+## OP03 violette (tâche 1.11), choix faits sans validation (à revoir si besoin)
+
+320. **Iceburg (Leader OP03-058), [Activation : Principale]** : le DON!! −1 et l'épuisement du Leader se paient ensemble ;
+     le Personnage {Galley-La Company} « de coût 5 ou moins » se lit sur son coût imprimé (il est en main) et il est joué
+     sans payer son coût. L'effet n'est proposé que s'il y a un tel Personnage à jouer, comme le Leader Luffy de ST-21 ou
+     Zéphyr : l'activer sans cela ne ferait que coûter une DON!!, et l'IA simple, qui active ces effets dès qu'elle le
+     peut, en perdrait une à chaque tour. De même, le Lieu **Galley-La Company (OP03-075)** n'est proposé qu'avec le
+     Leader [Iceburg] et une carte dans le deck DON!!. Iceburg ne peut pas attaquer : une DON!! qu'on lui donne ne sert à
+     rien (l'interface le signale).
+321. **Kaku (OP03-059)** : [Exil] seulement pendant ce combat ; il ne change rien si l'attaque ne touche pas la Vie
+     adverse, donc il ne rend pas utile une attaque trop faible. Comme pour tout DON!! −X (choix 28), les DON!! renvoyées
+     sont d'abord les épuisées, puis les redressées, puis celles données (Kaku peut alors perdre la sienne).
+322. **Paulie (OP03-066)** : « 8 DON!! ou plus sur votre terrain » se compte après la DON!! ajoutée (redressées, épuisées
+     et données, choix 44) ; sans le coût ➁, ni DON!! ni KO. Joué de la main, il y en a toujours au moins 8 (5 + 2 + 1) :
+     la condition compte quand il est joué par le Leader Iceburg.
+323. **Peepley Lulu (OP03-067)** : [DON!! x1] se vérifie au moment de l'attaque. **Tilestone (OP03-064), Minozebra
+     (OP03-068), Minorhinoceros (OP03-069)** : le type du Leader se lit quand l'effet [En cas de KO] se résout.
+324. **Monkey D. Luffy (OP03-070)** : le DON!! −1 et la défausse forment un seul coût (les deux ou rien) ; « Personnage
+     de coût 5 » : coût imprimé de 5 exactement.
+325. **Gum Gum Jet Rafale (OP03-072)** : le +3000 va à la carte attaquée (choix 20) ; il faut une autre carte en main à
+     défausser (l'Événement joué n'y est plus), sinon l'IA ne le compte pas parmi ses [Contre]. Coût « - » : 0.
+326. **Zambai (OP03-063), Hull Dismantler Slash (OP03-073)** : comme au choix 211, le DON!! −1 peut se payer sans Leader
+     {Water Seven} (rien ne se passe ensuite). L'IA simple répond oui à ces coûts facultatifs, comme à tous les autres
+     (King OP08-060, Jack OP17-069...) : la faire refuser sans Leader {Water Seven}, comme le prévoit le choix 211,
+     demande une règle dans `game/ai/heuristic.ts`, hors de cette tâche. Sans Leader {Water Seven}, Hull Dismantler Slash
+     est signalé inutile depuis la main (l'IA ne le joue pas). Rob Lucci (OP03-071) : de même, le DON!! −1 peut se payer
+     sans Personnage adverse à épuiser.
+327. **Top Knot (OP03-074)** : le Personnage va au-dessous du deck de son propriétaire ; les DON!! qui viennent de payer
+     l'Événement comptent pour le DON!! −2. [Déclenchement] de Hull Dismantler Slash et de Top Knot (« activez l'effet
+     [Principale] ») : le DON!! −X se paie de la même façon pendant le tour adverse.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
