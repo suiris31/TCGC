@@ -99,7 +99,8 @@ const chapterLines = (userId: number) => db.prepare("SELECT * FROM game_ledger W
 
 test('gains : chaque chapitre d’East Blue rapporte ses Berry du barème à la première victoire', () => {
   const { firstWin, firstWinFinal, firstWinBonus } = ECONOMY.adventure;
-  const expected: Record<string, number> = { 'eb-6-loguetown': firstWinFinal, 'eb-defi-mihawk': firstWinBonus, 'eb-defi-baggy': firstWinBonus };
+  // défi ultime de Mihawk : le prix d'un display (décision de l'utilisateur, tâche 2.7)
+  const expected: Record<string, number> = { 'eb-6-loguetown': firstWinFinal, 'eb-defi-mihawk': ECONOMY.shop.OP03.display, 'eb-defi-baggy': firstWinBonus };
   for (const c of ARC.chapters) {
     assert.deepEqual(c.rewards.filter((r) => r.kind === 'berry'), [{ kind: 'berry', amount: expected[c.id] ?? firstWin }], c.id);
   }

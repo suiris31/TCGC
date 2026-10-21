@@ -4,12 +4,14 @@ import { replayRecord, type GameRecord, type GameSummary } from '../coach/archiv
 import { progress, type Axis, type Group, type Period, type Progress } from '../coach/progress.ts';
 import { buildRecap, MISTAKE, type Recap } from '../coach/review.ts';
 import { def } from '../engine/rules.ts';
+import { ECONOMY } from '../economy/config.ts';
 import type { Preview } from './CardView.tsx';
 import { pct, RecapBody, ReviewItem, StatsTable } from './Coach.tsx';
 import { CardThumb } from './DeckGuide.tsx';
 import { importFiles, loadRecord, loadSummaries } from './archiveClient.ts';
 import { isTouch } from './device.ts';
-import { deckLabel } from './myDecks.ts';
+import { GameGain, useGameGain } from './economy/GameGain.tsx';
+import { deckLabel, isAdventureDeck } from './myDecks.ts';
 
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
 type Tab = 'progress' | 'axes' | 'games';
@@ -31,6 +33,9 @@ function rememberNames(list: GameSummary[]) {
     if (g.config.aiDeckName) savedNames.set(g.config.aiDeck, g.config.aiDeckName);
   }
 }
+// Deck de la Cale (deck d'aventure) : noté dans la partie en ligne, sinon d'après mes decks
+const HoldMark = () => <span className="op-hold-mark" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure">🧭 Cale</span>;
+const holdMine = (g: Pick<GameSummary, 'holdDeck' | 'config'>) => Boolean(g.holdDeck) || isAdventureDeck(g.config.myDeck);
 const pctOr = (x: number | null) => (x === null ? '—' : pct(x));
 const num = (x: number | null, digits = 1) => (x === null ? '—' : x.toLocaleString('fr-FR', { maximumFractionDigits: digits }));
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
@@ -350,8 +355,8 @@ function GamesTab({ p, online, onOpen }: { p: Progress; online: GameSummary[]; o
               {online.map((g) => (
                 <tr key={g.id} onClick={() => onOpen(g.id)} className="hist-row">
                   <td>{dateText(g.startedAt)}</td>
-                  <td>{deckName(g.config.myDeck)}</td>
-                  <td>{g.opponent} <span className="op-small op-muted">{deckName(g.config.aiDeck)}</span></td>
+                  <td>{deckName(g.config.myDeck)} {holdMine(g) && <HoldMark />}</td>
+                  <td>{g.opponent} <span className="op-small op-muted">{deckName(g.config.aiDeck)}</span> {g.opponentHoldDeck && <HoldMark />}</td>
                   <td><span className={STATUS[g.status][1]}>{STATUS[g.status][0]}</span></td>
                   <td>{g.turns}</td>
                 </tr>
@@ -368,7 +373,7 @@ function GamesTab({ p, online, onOpen }: { p: Progress; online: GameSummary[]; o
           {p.rows.map((r) => (
             <tr key={r.id} onClick={() => onOpen(r.id)} className="hist-row">
               <td>{dateText(r.date)}</td>
-              <td>{deckName(r.myDeck)}</td>
+              <td>{deckName(r.myDeck)} {isAdventureDeck(r.myDeck) && <HoldMark />}</td>
               <td>{deckName(r.aiDeck)} <span className="op-small op-muted">{LEVEL[r.level]}</span></td>
               <td><span className={STATUS[r.status][1]}>{STATUS[r.status][0]}</span>{r.practice && <span className="op-chip">entraînement</span>}</td>
               <td>{r.turns}</td>
@@ -381,6 +386,27 @@ function GamesTab({ p, online, onOpen }: { p: Progress; online: GameSummary[]; o
       </table>
     </>
   );
+}
+
+// Gain d'une partie finie depuis moins de ECONOMY.rules.claimWithinHours : sur demande, le serveur le calcule (ou
+// redonne celui déjà compté). Rattrape une partie dont la fin n'a pas pu réclamer son gain (réseau coupé).
+function claimable(rec: GameRecord, now = Date.now()) {
+  const end = Date.parse(rec.endedAt ?? '');
+  return (rec.status === 'won' || rec.status === 'lost') && !rec.practice && Number.isFinite(end)
+    && now - end < ECONOMY.rules.claimWithinHours * 3_600_000;
+}
+
+function DetailGain({ rec }: { rec: GameRecord }) {
+  const { gain, claim, retry } = useGameGain();
+  if (!gain) {
+    return (
+      <p>
+        <button className="op-btn op-btn-ghost btn-small" onClick={() => claim(async () => rec.id)}>👛 Voir le gain de cette partie</button>
+        <span className="op-small op-muted"> Une partie ne rapporte qu’une fois : si son gain est déjà compté, il s’affiche simplement.</span>
+      </p>
+    );
+  }
+  return <GameGain gain={gain} onRetry={retry} />;
 }
 
 function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; onResume: (rec: GameRecord, move: number) => void }) {
@@ -411,7 +437,7 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
     <div className="game-detail">
       <button className="op-link" onClick={onBack}>← Toutes les parties</button>
       <div className="detail-head">
-        <h3>{deckName(rec.config.myDeck)} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} <span className="op-small op-muted">· {online ? `${oppName}, en ligne` : `IA ${LEVEL[rec.config.level]}`}</span></h3>
+        <h3>{deckName(rec.config.myDeck)} {holdMine(rec) && <HoldMark />} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} {rec.opponentHoldDeck && <HoldMark />} <span className="op-small op-muted">· {online ? `${oppName}, en ligne` : `IA ${LEVEL[rec.config.level]}`}</span></h3>
         <p>
           <span className={cls}>{label}</span>{rec.winReason ? ` · ${rec.winReason}` : ''} · {plural(rec.turns, 'tour')} · {minutesText((Date.parse(end) - Date.parse(rec.startedAt)) / 60000)}
           {' · '}{rec.wentFirst ? 'tu commençais' : `${oppName} commençait`}
@@ -421,6 +447,7 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
           {rec.practice ? ' · partie d’entraînement reprise depuis un moment revu' : ''}
         </p>
       </div>
+      {claimable(rec) && <DetailGain rec={rec} />}
       {online ? (
         <section>
           <h3>Statistiques</h3>

@@ -7,6 +7,7 @@ import { findChapter } from '../adventure/arcs.ts';
 import { ADVENTURE_DECKS, EAST_BLUE_REAL_DECKS } from '../adventure/decks.ts';
 import { EAST_BLUE } from '../adventure/east-blue.ts';
 import { boosterSets } from '../boosters/open.ts';
+import { ECONOMY } from '../economy/config.ts';
 import { CARDS, cardStatus } from '../engine/cards/index.ts';
 import { deckErrors } from '../engine/deckRules.ts';
 import { DECKS, deckSize } from '../engine/decks.ts';
@@ -103,7 +104,9 @@ test('East Blue : récompenses à la première victoire (boosters OP03, recrues 
     for (const r of c.rewards) {
       if (r.kind === 'booster') {
         assert.ok(boosterSets().includes(r.set) && r.count > 0, `${c.id} : booster ${r.set}`);
-        total += r.count;
+        // le défi ultime de Mihawk vaut un display entier (décision de l'utilisateur, tâche 2.7) : compté à part
+        if (c.id === 'eb-defi-mihawk') assert.equal(r.count, ECONOMY.shop.OP03.boostersPerDisplay, 'défi ultime : un display');
+        else total += r.count;
       }
       if (r.kind === 'card') {
         assert.ok(CARDS[r.number] && r.count > 0, `${c.id} : carte ${r.number}`);
@@ -113,5 +116,5 @@ test('East Blue : récompenses à la première victoire (boosters OP03, recrues 
       }
     }
   }
-  assert.ok(total >= 15 && total <= 20, `${total} boosters sur l'arc`);
+  assert.ok(total >= 15 && total <= 20, `${total} boosters sur l'arc (hors défi ultime)`);
 });

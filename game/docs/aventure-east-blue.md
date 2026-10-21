@@ -41,7 +41,7 @@ Depuis la tâche 1.19, chaque chapitre joue son vrai deck ; les niveaux ont ét�
 | 2 | `eb-2-orange-town` | Le clown d'Orange Town | Orange Town | Baggy le Clown | 1 Débutant | `AV-EB-BAGGY` | 2 boosters |
 | 3 | `eb-3-sirop` | Le majordome de Sirop | Village de Sirop | Kuro | 1 Débutant (2) | `AV-EB-KURO` | 2 boosters, Usopp (ST21-002) |
 | 4 | `eb-4-baratie` | Le restaurant sur la mer | Baratie | Don Krieg | 1 Débutant (2) | `AV-EB-KRIEG` | 2 boosters, Sanji (OP10-005) |
-| 5 | `eb-defi-mihawk` | Défi : le plus grand épéiste | Baratie | Mihawk | 4 IA entraînée | META-MIHAWK-2026-10 | 3 boosters |
+| 5 | `eb-defi-mihawk` | Défi ultime : le plus grand épéiste | Baratie | Mihawk | 4 IA entraînée | META-MIHAWK-2026-10 | 1 display (24 boosters) et 2 000 ฿ |
 | 6 | `eb-5-arlong-park` | Le parc des hommes-poissons | Arlong Park | Arlong | 1 Débutant (3) | `AV-EB-ARLONG` | 2 boosters, Nami (OP01-016) |
 | 7 | `eb-defi-baggy` | Défi : l'échafaud de Loguetown | Loguetown | Baggy et Alvida | 1 Débutant (3) | `AV-EB-BAGGY-ALVIDA` | 3 boosters |
 | 8 | `eb-6-loguetown` | Dernière escale avant Grand Line | Loguetown | Smoker | 1 Débutant (3) | `AV-EB-SMOKER` | 4 boosters |
@@ -96,7 +96,9 @@ Choix et limites :
 - **Cartes {East Blue} d'autres équipages** chez Kuro et Krieg (Alvida, Momoo, Hatchan, Chew, Pearl...) : leurs
   Leaders demandent des Personnages {East Blue}, et l'équipage du Chat Noir ou de Krieg seul ne remplit pas 50 cartes.
 - **Mihawk** joue le deck méta déjà jouable `META-MIHAWK-2026-10` au niveau 4 (IA entraînée), qui a son modèle
-  spécialisé. C'est le défi le plus dur de l'arc, pour les joueurs qui en veulent.
+  spécialisé. C'est le **défi ultime** de l'arc (décision de l'utilisateur, 21 octobre 2026) : presque imbattable avec
+  les decks de l'époque, il le reste volontairement, et sa victoire rapporte un display et de quoi en acheter un autre
+  (section « Défis et boutique »).
 - **Équilibrage** : mesuré et réglé par la tâche 1.19 (section « Équilibrage » plus bas).
 
 ## Cartes à coder hors OP03 et ST-01 : listes A et B
@@ -178,7 +180,10 @@ touchent pas. Nom affiché d'après le catalogue ; les longs titres d'Événemen
 
 Données à la **première victoire** de chaque chapitre (contrat, § 5).
 
-- **Boosters OP03** : 2 par chapitre, 3 par défi, 4 pour Smoker, soit **20 boosters** sur l'arc (14 sans les défis).
+- **Boosters OP03** : 2 par chapitre, 3 pour le défi de Baggy et Alvida, 4 pour Smoker, un display (24) pour le défi
+  ultime de Mihawk, soit **41 boosters** sur l'arc (14 sans les défis).
+- **Berry** (étape 2) : 200 ฿ par chapitre, 400 pour Smoker, 300 pour le défi de Baggy et Alvida, 2 000 (le prix d'un
+  display en boutique) pour le défi ultime de Mihawk.
 - **Recrues** : quand un membre de l'équipage rejoint Luffy, le joueur reçoit **1 carte rouge de ce personnage**,
   jouable tout de suite dans son deck de départ, et qu'il n'a pas déjà :
   - Zoro, après Shells Town : **OP01-025** (Super Rare, [Initiative]) ;
@@ -268,3 +273,21 @@ Choix :
    (au niveau Débutant depuis la tâche 1.19), avec deux Alvida en plus (2 cartes à coder). À retirer si l'on veut alléger la liste B.
 6. **Règles spéciales** : un chapitre 1 avec moins de Vies pour Morgan (`rules.aiLife`) aiderait les débutants, quand
    le moteur saura l'appliquer. C'est le seul moyen vu par la tâche 1.19 d'atteindre 75 % au chapitre 1.
+
+## Défis et boutique (tâche 2.7, 21 octobre 2026)
+
+Les défis peuvent-ils se gagner avec un deck amélioré par la boutique ? Mesure : `node --no-warnings
+scripts/game/adventure-balance.ts 300 --chapitres eb-defi-mihawk,eb-defi-baggy --joueur <deck>` (joueur joué par l'IA
+simple ; `--joueur` et `--adversaire` acceptent un fichier `.json` `{ name, leader, cards }`).
+
+| Deck du joueur | Baggy et Alvida (Débutant) | Mihawk (IA entraînée) |
+|---|---|---|
+| ST-01 et les recrues | 30 % | 1 % |
+| ST-01 renforcé (Namur ×4, Speed Jill ×4, Fire Fist ×2, Marco ×2 : ~1 200 ฿ au comptoir au pire) | 55 % | 1 % |
+| Lucci noir (deck d'OP03 seul de l'étude 2.1) | 86 % | 4 % |
+
+- **Baggy et Alvida** : réglé par la boutique.
+- **Mihawk** : le deck du méta écrase les decks d'OP03 quel que soit le niveau (au niveau Débutant : Lucci noir 15 %) ;
+  une liste allégée (sans Shanks ni Law) laisse 13 à 17 % à Lucci, le deck pour débutant ST-32 10 %. **Décision de
+  l'utilisateur** : le garder tel quel comme **défi ultime**, annoncé sur l'écran du chapitre (`rules.note`), avec une
+  récompense à la hauteur : un display (24 boosters) et 2 000 ฿.
