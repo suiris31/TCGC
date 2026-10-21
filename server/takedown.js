@@ -38,8 +38,9 @@ function wrap(text, width = 16, max = 3) {
   return lines;
 }
 
-// Face 63 × 88 (proportions d'une carte) : cadre de la couleur de la carte, numéro, nom, gouvernail dessiné par nous
-export function cardFace({ number = '', name = '', colors = [] } = {}) {
+// Face 63 × 88 (proportions d'une carte) : cadre de la couleur de la carte, numéro, nom, gouvernail dessiné par nous ;
+// coût (en haut à gauche), Contre et puissance (en bas) quand on les connaît, pour que le jeu reste jouable
+export function cardFace({ number = '', name = '', colors = [], cost = null, power = null, counter = null } = {}) {
   const fills = colors.map((c) => COLORS[c]).filter(Boolean);
   const [a, b] = [fills[0] ?? NEUTRAL, fills[1] ?? fills[0] ?? NEUTRAL];
   const lines = wrap(name);
@@ -59,20 +60,26 @@ export function cardFace({ number = '', name = '', colors = [] } = {}) {
 ${lines.map((l, i) => `<text x="315" y="${(top + i * size * 1.15).toFixed(0)}" font-size="${size}" font-weight="700">${escapeXml(l)}</text>`).join('\n')}
 </g>
 <rect x="26" y="760" width="578" height="94" rx="22" fill="url(#c)" opacity="0.9"/>
+<g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-weight="700" fill="#fff">
+${cost ? `<circle cx="92" cy="96" r="50" fill="${a}"/><text x="92" y="116" font-size="58" text-anchor="middle">${escapeXml(cost)}</text>` : ''}
+${counter ? `<text x="60" y="823" font-size="40">+${escapeXml(counter)}</text>` : ''}
+${power ? `<text x="570" y="826" font-size="50" text-anchor="end">${escapeXml(power)}</text>` : ''}
+</g>
 </svg>`;
 }
 
 // Nom, numéro et couleurs de la carte d'un visuel. kind : 'product' (miniature TCGplayer, id = numéro de produit),
 // 'fr' (visuel VF, id = « OP03-001_p1 »), 'en' (visuel VO du jeu, même forme)
 function cardOf(kind, id) {
+  const stats = (row) => ({ cost: row?.cost ?? null, power: row?.power ?? null, counter: row?.counter ?? null });
   if (kind === 'product') {
-    const row = db.prepare('SELECT name, number, color FROM cards WHERE product_id = ?').get(Number(id));
-    return row ? { number: row.number, name: row.name, colors: colorsOf(row.number, row.color) } : { number: '', name: '' };
+    const row = db.prepare('SELECT name, number, color, cost, power, counter FROM cards WHERE product_id = ?').get(Number(id));
+    return row ? { number: row.number, name: row.name, colors: colorsOf(row.number, row.color), ...stats(row) } : {};
   }
   const number = id.split('_')[0].toUpperCase();
   const fr = kind === 'fr' ? db.prepare('SELECT name FROM fr_cards WHERE image_id = ? OR number = ? ORDER BY image_id = ? DESC').get(id, number, id) : null;
-  const en = db.prepare('SELECT name, color FROM cards WHERE number = ? ORDER BY variant IS NOT NULL').get(number);
-  return { number, name: fr?.name ?? en?.name ?? '', colors: colorsOf(number, en?.color) };
+  const en = db.prepare('SELECT name, color, cost, power, counter FROM cards WHERE number = ? ORDER BY variant IS NOT NULL').get(number);
+  return { number, name: fr?.name ?? en?.name ?? '', colors: colorsOf(number, en?.color), ...stats(en) };
 }
 
 // Les versions parallèles n'ont pas toujours de couleur chez TCGplayer : celle de la version de base

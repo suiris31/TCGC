@@ -21,10 +21,10 @@ const server = await import(takedownModule);
 const { default: express } = await import(expressModule);
 
 db.prepare("INSERT INTO sets (group_id, code, name) VALUES (1, 'OP03', 'Pillars of Strength')").run();
-const card = db.prepare('INSERT INTO cards (product_id, group_id, name, full_name, variant, number, color) VALUES (?, 1, ?, ?, ?, ?, ?)');
-card.run(497932, 'Portgas.D.Ace', 'Portgas.D.Ace (001)', null, 'OP03-001', 'Red');
-card.run(497934, 'Portgas.D.Ace', 'Portgas.D.Ace (001) (Alternate Art)', 'Alternate Art', 'OP03-001', null);
-card.run(498100, 'Nami & <Usopp>', 'Nami & <Usopp>', null, 'OP03-099', 'Green;Yellow');
+const card = db.prepare('INSERT INTO cards (product_id, group_id, name, full_name, variant, number, color, cost, power, counter) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?)');
+card.run(497932, 'Portgas.D.Ace', 'Portgas.D.Ace (001)', null, 'OP03-001', 'Red', null, '5000', null);
+card.run(497934, 'Portgas.D.Ace', 'Portgas.D.Ace (001) (Alternate Art)', 'Alternate Art', 'OP03-001', null, null, '5000', null);
+card.run(498100, 'Nami & <Usopp>', 'Nami & <Usopp>', null, 'OP03-099', 'Green;Yellow', '4', '6000', '1000');
 db.prepare("INSERT INTO fr_cards (image_id, number, name) VALUES ('OP03-001_p1', 'OP03-001', 'Portgas D. Ace')").run();
 
 // Les routes réelles qu'un interrupteur peut couper, et d'autres qu'il ne doit jamais toucher : chacune répond « vrai »
@@ -119,6 +119,8 @@ test('interrupteur : la face dessinée porte le nom, le numéro et la couleur de
     assert.match(two, /OP03-099/);
     assert.match(two, /#24865a[\s\S]*#c99a0e/);
     assert.match(two, /Nami &amp; &lt;Usopp&gt;/);
+    assert.match(two, />4<\/text>[\s\S]*>\+1000<\/text>[\s\S]*>6000<\/text>/, 'coût, Contre et puissance');
+    assert.doesNotMatch(thumb, /<circle cx="92"/, 'pas de coût pour un Leader');
     assert.doesNotMatch(two, /<Usopp>/);
     // carte inconnue de la base : numéro seul, sans erreur ; adresse invalide refusée
     assert.match(await face('/img-en-hd/ST99-001.webp'), /ST99-001/);
