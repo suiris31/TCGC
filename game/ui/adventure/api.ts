@@ -37,7 +37,7 @@ export class AdventureApiError extends Error {
 
 const BASE = import.meta.env.BASE_URL;
 
-async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+export async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${BASE}api/game/${path}`, {
