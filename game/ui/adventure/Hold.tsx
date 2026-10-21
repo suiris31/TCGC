@@ -1,52 +1,35 @@
 // La Cale (tâche 1.18) : les cartes gagnées dans l'aventure, en grille (filtres par couleur, type, rareté, extension et
 // version ; tris), avec le nombre d'exemplaires et le visuel de chaque version ; les boosters gagnés pas encore ouverts,
-// à ouvrir d'un appui (tirage sur le serveur, puis l'écran d'ouverture) ; un résumé des taux de tirage.
+// à ouvrir d'un appui (tirage sur le serveur, puis l'écran d'ouverture) ; un résumé des taux de tirage. Depuis la tâche
+// 2.6 : « Échanger mes doublons » (game/ui/economy/Duplicates.tsx) et le comptoir (Counter.tsx), aussi depuis une carte.
 // Une carte de la Cale peut manquer du catalogue du navigateur (cartes SP d'autres extensions, cartes pas encore
 // jouables) : son visuel vient alors du relais de l'appli (img-en-hd/<numéro>.webp), comme dans BoosterOpening.
-import { useMemo, useState, type SyntheticEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { findChapter } from '../../adventure/arcs.ts';
-import { BOOSTER_SETS, versionImageUrl } from '../../boosters/sets/index.ts';
+import { BOOSTER_SETS } from '../../boosters/sets/index.ts';
 import type { BoosterContent } from '../../boosters/types.ts';
+import { ECONOMY } from '../../economy/config.ts';
 import { cardData } from '../../engine/cards/index.ts';
 import type { Category, Color } from '../../engine/types.ts';
-import { cardImage } from '../images.ts';
+import { CounterScreen, counterPrice } from '../economy/Counter.tsx';
+import { DuplicatesDialog, duplicateCount } from '../economy/Duplicates.tsx';
+import { berry } from '../economy/Wallet.tsx';
 import { EffectText } from '../Zoom.tsx';
-import { boosterChapter, loadHold, openWonBooster, type HoldCard, type WonBooster } from './api.ts';
+import { boosterChapter, holdByNumber, loadHold, openWonBooster, type HoldCard, type WonBooster } from './api.ts';
 import { BoosterOpening, ownedCounts } from './BoosterOpening.tsx';
+import { CardImage } from './CardImage.tsx';
 import {
   boosterRates, chanceText, filterChoices, filterHold, holdEntries, holdSummary, NO_FILTER, RARITY_LABELS, SORT_LABELS, sortHold, versionName,
   type HoldEntry, type HoldFilter, type HoldSort,
 } from './hold.ts';
 import { useHoldState } from './holdState.ts';
 
-const BASE = import.meta.env.BASE_URL;
 const COLORS: [Color, string][] = [['Red', 'Rouge'], ['Green', 'Vert'], ['Blue', 'Bleu'], ['Purple', 'Violet'], ['Black', 'Noir'], ['Yellow', 'Jaune']];
 const CATEGORIES: [Category, string][] = [['LEADER', 'Leaders'], ['CHARACTER', 'Personnages'], ['EVENT', 'Événements'], ['STAGE', 'Lieux']];
 const CATEGORY_ONE: Record<Category, string> = { LEADER: 'Leader', CHARACTER: 'Personnage', EVENT: 'Événement', STAGE: 'Lieu' };
 const COLOR_FR = Object.fromEntries(COLORS) as Record<Color, string>;
 const PAGE = 90;
 export const FREE_NOTICE = 'Boosters virtuels gratuits, sans valeur réelle, ni échangeables ni revendables.';
-
-// Visuels à essayer, dans l'ordre : celui de la version, celui du catalogue, celui du relais de l'appli
-function imageSources(e: Pick<HoldEntry, 'number' | 'variant'>): string[] {
-  const version = versionImageUrl(e.number, e.variant);
-  const d = cardData()[e.number];
-  return [...new Set([...(version ? [BASE + version] : []), ...(d ? [cardImage(d)] : []), `${BASE}img-en-hd/${e.number}.webp`])];
-}
-
-function CardImage({ entry, className }: { entry: Pick<HoldEntry, 'number' | 'variant' | 'name'>; className?: string }) {
-  const sources = imageSources(entry);
-  // visuel introuvable : le suivant de la liste
-  const next = (ev: SyntheticEvent<HTMLImageElement>) => {
-    const img = ev.currentTarget;
-    const i = Number(img.dataset.i ?? 0) + 1;
-    if (i < sources.length) {
-      img.dataset.i = String(i);
-      img.src = sources[i];
-    } else img.classList.add('op-hold-noimg');
-  };
-  return <img className={className} src={sources[0]} alt={entry.name} loading="lazy" draggable={false} onError={next} />;
-}
 
 // D'où vient un booster gagné (« Gagné à Orange Town »)
 function boosterOrigin(b: WonBooster): string {
@@ -62,6 +45,9 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
   const [opened, setOpened] = useState<{ contents: BoosterContent[]; owned: Record<string, number> } | null>(null);
   const [opening, setOpening] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // comptoir ouvert (focus : la carte d'où l'on vient) ; fenêtre d'échange des doublons
+  const [counter, setCounter] = useState<{ focus?: string } | null>(null);
+  const [duplicates, setDuplicates] = useState(false);
 
   // Ouvre les boosters un par un sur le serveur, puis montre l'ouverture. « Nouveau ! » se compte d'après la Cale lue
   // juste avant (01-contrats.md, § 6).
@@ -85,6 +71,7 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
   };
 
   if (opened) return <BoosterOpening content={opened.contents} owned={opened.owned} onDone={() => setOpened(null)} />;
+  if (counter) return <CounterScreen focus={counter.focus} onBack={() => { setCounter(null); void reload(); }} />;
   if (!data) {
     return (
       <div className="setup op-hold">
@@ -96,8 +83,11 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
     );
   }
   return (
-    <HoldView cards={data.cards} boosters={data.adventure.boosters} onBack={onBack} onOpen={open} opening={opening}
-      notice={notice ?? error} />
+    <>
+      <HoldView cards={data.cards} boosters={data.adventure.boosters} onBack={onBack} onOpen={open} opening={opening}
+        notice={notice ?? error} onDuplicates={() => setDuplicates(true)} onCounter={(focus) => setCounter({ focus })} />
+      {duplicates && <DuplicatesDialog onClose={() => setDuplicates(false)} onExchanged={() => void reload()} />}
+    </>
   );
 }
 
@@ -113,15 +103,20 @@ function HoldHead({ onBack, summary }: { onBack: () => void; summary?: string })
 
 // ---------- L'écran, sans serveur (aussi pour l'atelier) ----------
 
-export function HoldView({ cards, boosters, onBack, onOpen, opening = false, notice }: {
+// onDuplicates : bouton « Échanger mes doublons » ; onCounter : comptoir (focus : carte à y chercher)
+export function HoldView({ cards, boosters, onBack, onOpen, opening = false, notice, onDuplicates, onCounter }: {
   cards: HoldCard[];
   boosters: WonBooster[];
   onBack: () => void;
   onOpen: (ids: string[]) => void;
   opening?: boolean;
   notice?: string | null;
+  onDuplicates?: () => void;
+  onCounter?: (focus?: string) => void;
 }) {
   const entries = useMemo(() => holdEntries(cards), [cards]);
+  const owned = useMemo(() => holdByNumber(cards), [cards]);
+  const extra = useMemo(() => duplicateCount(cards), [cards]);
   const choices = useMemo(() => filterChoices(entries), [entries]);
   const [filter, setFilter] = useState<HoldFilter>(NO_FILTER);
   const [sort, setSort] = useState<HoldSort>('number');
@@ -174,6 +169,21 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
       </section>
 
       <section className="op-hold-cards">
+        {(onDuplicates || onCounter) && entries.length > 0 && (
+          <div className="op-hold-actions">
+            {onDuplicates && (
+              <button className="op-btn op-btn-ghost" onClick={onDuplicates} disabled={extra === 0}
+                title={extra ? `${plural(extra, 'exemplaire')} au-delà de ${ECONOMY.duplicates.keep} : à échanger contre des Berry` : `Aucune carte en plus de ${ECONOMY.duplicates.keep} exemplaires`}>
+                ♻️ Échanger mes doublons{extra > 0 && <span className="op-hold-actions-count">{extra}</span>}
+              </button>
+            )}
+            {onCounter && (
+              <button className="op-btn op-btn-ghost" onClick={() => onCounter()} title="Un exemplaire de plus d’une carte déjà trouvée">
+                🏪 Comptoir
+              </button>
+            )}
+          </div>
+        )}
         {entries.length > 0 && <div className="db-filters op-hold-filters">
           <input className="db-search" value={filter.q} onChange={(e) => set({ q: e.target.value })} placeholder="Nom ou numéro" aria-label="Rechercher une carte" />
           <select value={filter.color} onChange={(e) => set({ color: e.target.value as Color | '' })} aria-label="Couleur">
@@ -236,7 +246,8 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
         )}
       </section>
 
-      {zoom && <HoldCardZoom entry={zoom} onClose={() => setZoom(null)} />}
+      {zoom && <HoldCardZoom entry={zoom} owned={owned[zoom.number] ?? 0} onClose={() => setZoom(null)}
+        onCounter={onCounter && (() => { setZoom(null); onCounter(zoom.number); })} />}
       {rates && <BoosterRates sets={[...new Set(boosters.map((b) => b.set))]} onClose={() => setRates(false)} />}
     </div>
   );
@@ -244,8 +255,10 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
 
 // ---------- Une carte en grand ----------
 
-function HoldCardZoom({ entry, onClose }: { entry: HoldEntry; onClose: () => void }) {
+// owned : exemplaires de la carte, toutes versions ; onCounter : en acheter un de plus au comptoir
+function HoldCardZoom({ entry, owned, onClose, onCounter }: { entry: HoldEntry; owned: number; onClose: () => void; onCounter?: () => void }) {
   const d = cardData()[entry.number];
+  const price = counterPrice(entry.number);
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-box op-hold-zoom" onClick={(e) => e.stopPropagation()}>
@@ -264,6 +277,11 @@ function HoldCardZoom({ entry, onClose }: { entry: HoldEntry; onClose: () => voi
           <p className="op-small op-muted">{entry.playable
             ? 'Elle peut aller dans ton deck d’aventure (toutes versions confondues, 4 exemplaires au plus).'
             : 'Le jeu ne sait pas encore la jouer : elle ne peut pas encore aller dans un deck.'}</p>
+          {onCounter && price !== undefined && owned < ECONOMY.counter.max && (
+            <button className="op-btn op-btn-ghost op-hold-zoom-counter" onClick={onCounter}>
+              🏪 Un exemplaire de plus au comptoir · {berry(price)}
+            </button>
+          )}
         </div>
       </div>
     </div>
