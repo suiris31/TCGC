@@ -2,7 +2,9 @@
 // d'aventure. Tout est gardé et vérifié par le serveur, un navigateur ne peut s'attribuer ni victoire ni carte :
 // - une victoire ne compte qu'après avoir rejoué avec le moteur la partie enregistrée (game_records) : départ identique
 //   à celui d'une vraie partie, coups permis, vainqueur, adversaire et niveau du chapitre, deck d'aventure du joueur ;
-// - les boosters sont tirés ici à l'ouverture (aléatoire cryptographique) : le navigateur ne reçoit que le résultat.
+// - les boosters sont tirés ici à l'ouverture (aléatoire cryptographique) : le navigateur ne reçoit que le résultat ;
+// - les Berry d'une première victoire passent par credit (game-economy.js, raison « chapitre ») ; les coups de l'IA de
+//   la partie sont comparés à ceux de son niveau, comme pour le gain d'une partie.
 //   GET  /api/game/adventure                              mon état : arcs commencés, victoires, deck, boosters à ouvrir
 //   POST /api/game/adventure/:arcId/start                 commencer un arc (une seule fois) : deck de départ dans la Cale
 //   PUT  /api/game/adventure/deck                         choisir mon deck d'aventure { deckId }
@@ -16,12 +18,15 @@ import crypto from 'node:crypto';
 import '../game/engine/cards/index.ts';
 import { ARCS, findArc, findChapter } from '../game/adventure/arcs.ts';
 import { chapterStatuses } from '../game/adventure/progress.ts';
+import { LEVELS } from '../game/ai/search.ts';
 import { openBooster } from '../game/boosters/open.ts';
+import { ECONOMY } from '../game/economy/config.ts';
 import { deckErrors } from '../game/engine/deckRules.ts';
 import { CUSTOM_PREFIX, DECKS } from '../game/engine/decks.ts';
 import { rateLimit } from './auth.js';
 import { db, transaction } from './db.js';
 import { DECK_ID, deckOf, holdErrors, saveDeck } from './game-decks.js';
+import { credit } from './game-economy.js';
 import { RECORD_ID } from './game-records.js';
 import { checkShape, freshStart, invalidGame, readRecord, refuse, replayGame, requireCards, validList } from './game-verify.js';
 
@@ -166,19 +171,34 @@ function verifyGame(userId, rec, chapter, deckId) {
   const missing = holdErrors(userId, mine.list.leader, mine.list.cards);
   if (missing.length) throw refuse('wrong_deck', `Le deck de cette partie contient des cartes absentes de ta Cale (${missing[0]})`);
   if (!freshStart(rec, chapter.opponent.deck)) throw invalidGame("elle ne commence pas comme une partie du jeu");
-  const { final } = replayGame(rec);
+  const { level } = chapter.opponent;
+  const { final, agreement } = replayGame(rec, level);
   if (final.winner === null) throw refuse('game_not_over', "Cette partie n'est pas finie", 409);
-  return final.winner === human;
+  if (final.winner !== human) return false;
+  // une victoire rapporte des Berry : l'IA doit avoir joué comme à son niveau (étude 2.1, § 5.3 ; niveau 4 non vérifiable)
+  const min = ECONOMY.rules.aiAgreementMin[level];
+  if (agreement.forced > 0 || (agreement.free > 0 && agreement.agreed / agreement.free < min)) {
+    throw refuse('ai_mismatch', `Les coups de l’IA ne sont pas ceux du niveau ${LEVELS[level].name} : victoire non comptée`, 409);
+  }
+  return true;
 }
 
-// Récompenses d'une première victoire. Les Berry arrivent avec l'étape 2 : pas encore données.
-function grant(userId, rewards, source, at) {
+// Berry de la première victoire d'un chapitre : une seule fois par chapitre (raison « chapitre », référence = chapitre)
+function creditChapter(userId, chapter, amount, now, early = false) {
+  const label = `Chapitre gagné : ${chapter.title}${early ? ' (avant l’ouverture de la boutique)' : ''}`;
+  return credit(userId, 'chapitre', chapter.id, amount, { label, chapter: chapter.id, ...(early ? { early: true } : {}) }, now);
+}
+
+// Récompenses d'une première victoire
+function grant(userId, chapter, source, now) {
+  const at = now.toISOString();
   const given = [];
   const boosters = [];
-  for (const r of rewards) {
+  for (const r of chapter.rewards) {
     if (r.kind === 'booster') for (let i = 0; i < r.count; i++) boosters.push(addBooster(userId, r.set, source, at));
     else if (r.kind === 'card') addToHold(userId, r.number, 'base', r.count);
     else if (r.kind === 'deck' && DECKS[r.deck]) addDeckToHold(userId, DECKS[r.deck]);
+    else if (r.kind === 'berry' && Number.isInteger(r.amount) && r.amount > 0) creditChapter(userId, chapter, r.amount, now);
     else continue;
     given.push(r);
   }
@@ -216,9 +236,31 @@ export function chapterResult(userId, chapterId, recordId, now = new Date()) {
       ON CONFLICT(user_id, chapter) DO UPDATE SET wins = wins + 1, first_win_at = COALESCE(first_win_at, excluded.first_win_at)`)
       .run(userId, chapter.id, at);
     if (before?.first_win_at) return nothing(true);
-    return { won: true, firstWin: true, ...grant(userId, chapter.rewards, `chapitre ${chapter.id}`, at) };
+    return { won: true, firstWin: true, ...grant(userId, chapter, `chapitre ${chapter.id}`, now) };
   });
 }
+
+// Premières victoires d'avant l'économie (chapitres gagnés entre la mise en ligne des étapes 1 et 2) : leurs Berry
+// sont crédités une fois, au démarrage du serveur. Même raison et même référence qu'une victoire d'aujourd'hui : un
+// chapitre ne rapporte jamais deux fois, et un nouveau démarrage ne donne rien de plus. Renvoie le nombre de crédits.
+export function creditEarlyChapters(now = new Date()) {
+  const chapters = new Map(ARCS.flatMap((arc) => arc.chapters).map((c) => [c.id, c]));
+  const missing = db.prepare(`SELECT p.user_id, p.chapter FROM game_progress p
+    WHERE p.first_win_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM game_ledger l
+      WHERE l.user_id = p.user_id AND l.reason = 'chapitre' AND l.ref = p.chapter)
+    ORDER BY p.first_win_at`).all();
+  let n = 0;
+  transaction(() => {
+    for (const row of missing) {
+      const chapter = chapters.get(row.chapter);
+      const amount = (chapter?.rewards ?? []).reduce((sum, r) => sum + (r.kind === 'berry' ? r.amount : 0), 0);
+      if (!amount || creditChapter(row.user_id, chapter, amount, now, true).already) continue;
+      n++;
+    }
+  });
+  return n;
+}
+creditEarlyChapters();
 
 // ---------- Routes ----------
 
