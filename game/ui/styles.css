@@ -1258,3 +1258,35 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
   .op-adv-panel { padding: 0.7rem 0.9rem; }
 }
 /* === fin 1.17 === */
+
+/* === Tâche 1.21 : finitions de l'aventure === */
+/* Changement d'écran : l'écran qui arrive se fond (accueil, carte, chapitre, fin de partie, Cale, deck) */
+.op-adv-layer > .setup { animation: op-adv-screen 0.28s ease-out; }
+@keyframes op-adv-screen { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* Bilan de l'arc */
+.modal-box.op-adv-finale { max-width: 34rem; align-items: center; text-align: center; border-color: rgba(240, 192, 79, 0.55); background: radial-gradient(circle at 50% 0%, rgba(240, 192, 79, 0.16), transparent 60%), var(--bg-2); }
+.op-adv-finale h2 { text-transform: none; letter-spacing: normal; font-size: 1.7rem; color: var(--accent); font-family: Georgia, 'Times New Roman', serif; }
+.op-adv-finale p { margin: 0; line-height: 1.5; }
+.op-adv-finale-flag { font-size: 3.2rem; line-height: 1; animation: op-adv-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+.op-adv-finale-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+.op-adv-finale-stats span { padding: 0.35rem 0.7rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 0.9rem; }
+.op-adv-finale-stats b { color: var(--accent); }
+.op-adv-finale-list { width: 100%; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.25rem; text-align: left; }
+.op-adv-finale-list li { display: grid; grid-template-columns: 1.2rem 1fr auto; align-items: baseline; gap: 0.5rem; padding: 0.3rem 0.5rem; border-radius: 8px; }
+.op-adv-finale-list li.is-won > span:first-child { color: var(--green); font-weight: 800; }
+.op-adv-finale-list li:not(.is-won) { opacity: 0.7; }
+@media (max-width: 600px) {
+  .op-adv-wide { display: none; }
+  .op-adv-finale-list li { grid-template-columns: 1.2rem 1fr; }
+  .op-adv-finale-list li > span:last-child { grid-column: 2; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .modal-box.op-adv-finale { max-width: 40rem; gap: 0.5rem; padding: 0.9rem 1.1rem; max-height: calc(100dvh - 1rem); }
+  .op-adv-finale-flag { font-size: 2rem; }
+  .op-adv-finale h2 { font-size: 1.3rem; }
+  .op-adv-finale-list li { padding: 0.1rem 0.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .op-adv-layer > .setup, .op-adv-finale-flag { animation: none; }
+}
+/* === fin 1.21 === */
