@@ -10,6 +10,9 @@ const boosters = (count: number): Reward[] => [{ kind: 'booster', set: 'OP03', c
 // Berry de la première victoire (étape 2, barème de game/economy/config.ts) : chapitre, dernier chapitre, défi bonus
 const berry = (amount: number): Reward => ({ kind: 'berry', amount });
 const { firstWin, firstWinFinal, firstWinBonus } = ECONOMY.adventure;
+// Défi ultime (Mihawk, décision de l'utilisateur du 21 octobre 2026) : imbattable ou presque avec les decks de l'époque,
+// il rapporte un display OP03 et de quoi en acheter un autre en boutique
+const DISPLAY = ECONOMY.shop.OP03;
 // Un membre d'équipage qui rejoint Luffy : une carte rouge, jouable tout de suite dans le deck de départ
 const recruit = (number: string): Reward => ({ kind: 'card', number, count: 1 });
 
@@ -143,11 +146,12 @@ export const EAST_BLUE: Arc = {
     {
       id: 'eb-defi-mihawk',
       order: 5,
-      title: 'Défi : le plus grand épéiste',
+      title: 'Défi ultime : le plus grand épéiste',
       place: 'Baratie',
       map: { x: 0.62, y: 0.18 },
       opponent: { name: 'Mihawk', deck: 'META-MIHAWK-2026-10', level: 4 },
       optional: true,
+      rules: { note: 'Défi ultime : Mihawk joue un deck d’aujourd’hui avec l’IA entraînée, bien plus fort que les decks d’OP03. Il est fait pour être presque imbattable : la victoire rapporte un display entier et de quoi en acheter un autre.' },
       intro: [
         { who: '', text: 'Un bateau minuscule glisse vers le Baratie. À son bord, un seul homme et une épée immense.' },
         { who: 'Zoro', card: ZORO, text: 'C’est lui, le meilleur épéiste du monde. Luffy, celui-là, je m’en occupe seul.' },
@@ -164,7 +168,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Zoro', card: ZORO, text: 'Encore une fois. Je m’entraînerai jour et nuit s’il le faut.' },
         { who: 'Luffy', card: LUFFY, text: 'Il reviendra plus fort. Et nous aussi !' },
       ],
-      rewards: [...boosters(3), berry(firstWinBonus)],
+      rewards: [...boosters(DISPLAY.boostersPerDisplay), berry(DISPLAY.display)],
     },
     {
       id: 'eb-5-arlong-park',

@@ -204,7 +204,7 @@ export function EarnHelp() {
         <li><strong>En ligne</strong> : {berry(e.online.win)} par victoire, {berry(e.online.loss)} par défaite.</li>
         <li>
           <strong>Aventure</strong> : la première victoire d’un chapitre rapporte {berry(e.adventure.firstWin)}
-          ({berry(e.adventure.firstWinBonus)} pour un défi, {berry(e.adventure.firstWinFinal)} pour la fin d’un arc).
+          ({berry(e.adventure.firstWinBonus)} pour un défi, {berry(e.adventure.firstWinFinal)} pour la fin d’un arc ; le défi ultime de Mihawk : un display et {berry(e.shop.OP03.display)}).
         </li>
         <li>
           <strong>Bonus du jour</strong> : +{berry(e.dailyBonus.amount)} sur la première victoire du jour. Pas joué hier ? Il
