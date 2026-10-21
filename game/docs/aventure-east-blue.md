@@ -32,25 +32,26 @@ Luffy et son deck de départ, **ST-01**.
 
 ## Chapitres
 
-| Ordre | Identifiant | Titre | Lieu | Adversaire | Niveau | Deck provisoire | Vrai deck | Récompenses |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `eb-1-shells-town` | Le chasseur de pirates | Shells Town | Capitaine Morgan | 1 Débutant | ST-33 | `AV-EB-MORGAN` | 2 boosters, Zoro (OP01-025) |
-| 2 | `eb-2-orange-town` | Le clown d'Orange Town | Orange Town | Baggy le Clown | 1 Débutant | ST-36 | `AV-EB-BAGGY` | 2 boosters |
-| 3 | `eb-3-sirop` | Le majordome de Sirop | Village de Sirop | Kuro | 2 Confirmé | ST-32 | `AV-EB-KURO` | 2 boosters, Usopp (ST21-002) |
-| 4 | `eb-4-baratie` | Le restaurant sur la mer | Baratie | Don Krieg | 2 Confirmé | ST-34 | `AV-EB-KRIEG` | 2 boosters, Sanji (OP10-005) |
-| 5 | `eb-defi-mihawk` | Défi : le plus grand épéiste | Baratie | Mihawk | 4 IA entraînée | — | META-MIHAWK-2026-10 (déjà le vrai) | 3 boosters |
-| 6 | `eb-5-arlong-park` | Le parc des hommes-poissons | Arlong Park | Arlong | 3 Expert | ST-31 | `AV-EB-ARLONG` | 2 boosters, Nami (OP01-016) |
-| 7 | `eb-defi-baggy` | Défi : l'échafaud de Loguetown | Loguetown | Baggy et Alvida | 3 Expert | ST-22 | `AV-EB-BAGGY-ALVIDA` | 3 boosters |
-| 8 | `eb-6-loguetown` | Dernière escale avant Grand Line | Loguetown | Smoker | 3 Expert | META-SABO-2026-10 | `AV-EB-SMOKER` | 4 boosters |
+Depuis la tâche 1.19, chaque chapitre joue son vrai deck ; les niveaux ont été baissés pour la difficulté (section
+« Équilibrage » plus bas ; niveau de la tâche 1.2 entre parenthèses).
+
+| Ordre | Identifiant | Titre | Lieu | Adversaire | Niveau | Deck | Récompenses |
+|---|---|---|---|---|---|---|---|
+| 1 | `eb-1-shells-town` | Le chasseur de pirates | Shells Town | Capitaine Morgan | 1 Débutant | `AV-EB-MORGAN` | 2 boosters, Zoro (OP01-025) |
+| 2 | `eb-2-orange-town` | Le clown d'Orange Town | Orange Town | Baggy le Clown | 1 Débutant | `AV-EB-BAGGY` | 2 boosters |
+| 3 | `eb-3-sirop` | Le majordome de Sirop | Village de Sirop | Kuro | 1 Débutant (2) | `AV-EB-KURO` | 2 boosters, Usopp (ST21-002) |
+| 4 | `eb-4-baratie` | Le restaurant sur la mer | Baratie | Don Krieg | 1 Débutant (2) | `AV-EB-KRIEG` | 2 boosters, Sanji (OP10-005) |
+| 5 | `eb-defi-mihawk` | Défi : le plus grand épéiste | Baratie | Mihawk | 4 IA entraînée | META-MIHAWK-2026-10 | 3 boosters |
+| 6 | `eb-5-arlong-park` | Le parc des hommes-poissons | Arlong Park | Arlong | 1 Débutant (3) | `AV-EB-ARLONG` | 2 boosters, Nami (OP01-016) |
+| 7 | `eb-defi-baggy` | Défi : l'échafaud de Loguetown | Loguetown | Baggy et Alvida | 1 Débutant (3) | `AV-EB-BAGGY-ALVIDA` | 3 boosters |
+| 8 | `eb-6-loguetown` | Dernière escale avant Grand Line | Loguetown | Smoker | 1 Débutant (3) | `AV-EB-SMOKER` | 4 boosters |
 
 - **Déblocage** (règle par défaut de `progress.ts`) : chaque chapitre demande le chapitre obligatoire précédent. Le
   défi de Mihawk s'ouvre après le Baratie, celui de Baggy et Alvida après Arlong Park, en même temps que Loguetown :
   le joueur peut y gagner 3 boosters de plus avant d'affronter Smoker. Les défis ne bloquent jamais l'histoire.
 - **Positions sur la carte** (`map`, de 0 à 1 dans la zone East Blue) : d'ouest en est dans l'ordre du voyage, en
   zigzag ; chaque défi est placé près du lieu de son chapitre (au nord du Baratie, au nord de Loguetown).
-- **Deck de départ** : `starterDeck` reste ST-21 (jouable) jusqu'à ce que ST-01 le soit (tâche 1.14) ;
-  `EAST_BLUE_REAL_DECKS.starterDeck` vaut `'ST-01'`.
-- **Decks provisoires** : ceux de la tâche 0 sont gardés ; le nouveau défi joue ST-22 (bleu, comme Baggy) en attendant.
+- **Deck de départ** : ST-01 (`EAST_BLUE_REAL_DECKS.starterDeck`), depuis la tâche 1.19.
 - **Règles spéciales** (`rules`) : aucune, le moteur ne sait pas encore les appliquer.
 
 ## Dialogues
@@ -75,13 +76,13 @@ dans `decks.ts`.
 
 | Deck | Leader | Thème et plan de jeu | Cartes d'OP03 |
 |---|---|---|---|
-| `AV-EB-MORGAN` | Kobby OP11-001 (rouge/noir) | La Marine de Shells Town : Morgan, Hermep, Ripper, Kobby. **Volontairement simple** : beaucoup de Personnages sans effet (Doberman, T-Bone, Momonga, Morgan 8000), deux contres simples. | 18 / 50 |
+| `AV-EB-MORGAN` | Kobby OP11-001 (rouge/noir) | La Marine de Shells Town : Morgan, Hermep, Helmeppo, Ripper, Kobby, Koby, Jango. **Volontairement faible** (tâche 1.19) : petits Personnages, baisses de coût (Hermep, Ère glaciaire) que seul Koby met à profit, aucun Événement [Contre]. | 12 / 50 |
 | `AV-EB-BAGGY` | Baggy OP16-041 (bleu) | La bande de Baggy : Baggy, Cabaji, Morge et Richie, les boulets Baggy (renvoi en main). Simple. | 0 / 50 (voir plus bas) |
 | `AV-EB-KURO` | Kuro OP03-021 (vert) | L'équipage du Chat Noir (Jango, Sham, Buchi, les frères Nyaban, trois Kuro) : épuiser les Personnages adverses, puis mettre KO ceux qui sont épuisés. Que des Personnages {East Blue}, pour l'effet du Leader. | 36 / 50 |
-| `AV-EB-KRIEG` | Krieg OP15-001 (rouge/vert) | L'armada de Don Krieg (Gin, Pearl, deux Krieg en vert et en rouge, la bombe de gaz) : seulement des Personnages {East Blue}, pour que le Leader affaiblisse l'adversaire pendant son tour. | 32 / 50 |
-| `AV-EB-ARLONG` | Arlong OP03-022 (vert/jaune) | Les hommes-poissons d'Arlong Park (Hatchan, Kuroobi, Chew, Momoo, trois Arlong) et Nami : des Personnages à [Déclenchement] de coût 4 au plus, que le Leader pose en attaquant ; des sirènes jaunes en soutien. Solide. | 40 / 50 |
+| `AV-EB-KRIEG` | Krieg OP15-001 (rouge/vert) | L'armada de Don Krieg (Gin, Pearl, deux Krieg en vert et en rouge, la bombe de gaz) et des pirates d'East Blue de passage (Buggy, Nami, Hatchan, Chew) : seulement des Personnages {East Blue}, pour que le Leader affaiblisse l'adversaire pendant son tour. Peu de Gin et de Krieg depuis la tâche 1.19. | 38 / 50 |
+| `AV-EB-ARLONG` | Arlong OP03-022 (vert/jaune) | Les hommes-poissons d'Arlong Park (Hatchan, Kuroobi, Chew, Momoo, quatre Arlong) et Nami : des Personnages à [Déclenchement] de coût 4 au plus, que le Leader pose en attaquant ; Jinbe (équipage du Soleil, comme Arlong) à la place des sirènes depuis la tâche 1.19. Solide. | 30 / 50 |
 | `AV-EB-BAGGY-ALVIDA` | Baggy OP16-041 (bleu) | La bande de Baggy renforcée par Alvida (deux versions) et plus de Baggy de coût 5. Joué au niveau Expert. | 0 / 50 |
-| `AV-EB-SMOKER` | Smoker OP02-093 (noir) | La Marine de Loguetown : Smoker (trois versions), Tashigi, Hina, Hermep, Kobby. Baisser les coûts adverses puis mettre KO les Personnages de coût 0 ; contres et Issho. **Le plus solide**. | 12 / 50 |
+| `AV-EB-SMOKER` | Smoker OP02-093 (noir) | La Marine de Loguetown : Smoker (trois versions), Tashigi, Hina, Hermep, Kobby, et des soldats (T-Bone, Jango, Fullbody). Baisser les coûts adverses puis mettre KO les Personnages de coût 0. Plus de Garp, d'Issho, de Vergo ni d'Onde de choc depuis la tâche 1.19 (le deck était presque imbattable avec ST-01). | 8 / 50 |
 
 Choix et limites :
 
@@ -96,10 +97,12 @@ Choix et limites :
   Leaders demandent des Personnages {East Blue}, et l'équipage du Chat Noir ou de Krieg seul ne remplit pas 50 cartes.
 - **Mihawk** joue le deck méta déjà jouable `META-MIHAWK-2026-10` au niveau 4 (IA entraînée), qui a son modèle
   spécialisé. C'est le défi le plus dur de l'arc, pour les joueurs qui en veulent.
-- **Équilibrage** : pas mesuré, les cartes n'étant pas encore codées. La tâche 1.19 le fait quand les decks sont
-  jouables (parties contre ST-01 et contre un deck amélioré par les boosters).
+- **Équilibrage** : mesuré et réglé par la tâche 1.19 (section « Équilibrage » plus bas).
 
 ## Cartes à coder hors OP03 et ST-01 : listes A et B
+
+> Tableaux de la tâche 1.2 (cartes codées par les tâches 1.15 et 1.16), gardés tels quels. Les listes ont changé avec
+> l'équilibrage de la tâche 1.19 : quantités dans `decks.ts` ; cartes entrées et sorties dans la section « Équilibrage ».
 
 **49 cartes différentes** en tout (dont 4 Leaders), 12 déjà jouables (rien à faire, à part vérifier qu'elles le sont
 toujours) et **37 à coder**. Chaque liste est formée de decks entiers et n'a aucune carte en commun avec l'autre.
@@ -188,14 +191,68 @@ Données à la **première victoire** de chaque chapitre (contrat, § 5).
   (OP03-041) et de Nami (OP03-030, OP03-040) sont bleues ou vertes, inutilisables avec Luffy rouge. Les quatre recrues
   choisies sont déjà jouables (rien à coder) et le test vérifie qu'elles sont rouges.
 
-## Pour la tâche 1.19 (brancher les vrais decks)
+## Équilibrage (tâche 1.19)
 
-- Enregistrer les 7 decks de `ADVENTURE_DECKS` dans `game/engine/decks.ts` quand leurs cartes sont jouables
-  (`playableErrors` vide), puis remplacer `opponent.deck` de chaque chapitre par `EAST_BLUE_REAL_DECKS[id]`, et
-  `starterDeck` par `EAST_BLUE_REAL_DECKS.starterDeck` (`ST-01`). Le défi de Mihawk n'a pas d'entrée : il garde
-  `META-MIHAWK-2026-10`.
-- Équilibrer : niveaux d'IA, quelques exemplaires, éventuellement les recrues (nombre d'exemplaires) d'après ST-01
-  (tâche 1.14).
+Mesure : `node --no-warnings scripts/game/adventure-balance.ts 1000` (options `--recrues`, `--niveau n`,
+`--chapitres id,id`, `--fils n`, `--rapport fichier.md`). Le deck de départ ST-01, joué par l'IA simple (comme un
+joueur correct), affronte l'adversaire de chaque chapitre à son niveau ; il est joué comme un deck d'aventure (liste
+secrète pour l'IA adverse). Graines fixes, chaque donne jouée des deux côtés, premier joueur alterné. Niveaux 2 et 3
+avec un nombre fixe de tirages (16 et 48), niveau 4 avec le modèle de l'IA entraînée exécuté dans Node (onnxruntime-web,
+choix le plus probable, comme le navigateur).
+
+Courbe visée par le plan : environ 75 % de victoires au chapitre 1, en baisse régulière jusqu'à 40–50 % contre
+Smoker, 25 % au défi.
+
+### Avant (listes et niveaux de la tâche 1.2, 100 parties par chapitre)
+
+| Chapitre | Niveau | Victoires du joueur |
+|---|---|---|
+| 1 Morgan | Débutant | 39 % |
+| 2 Baggy | Débutant | 45 % |
+| 3 Kuro | Confirmé | 13 % |
+| 4 Krieg | Confirmé | 1 % |
+| Défi Mihawk | IA entraînée | 0 % |
+| 5 Arlong | Expert | 18 % |
+| Défi Baggy et Alvida | Expert | 5 % |
+| 6 Smoker | Expert | 4 % |
+
+ST-01 est un deck de 2022, bien plus faible que ceux du registre : joué par l'IA simple, il gagne 0 à 5 % contre les
+decks du méta et les decks pour débutant ST-31 à ST-36, 12 % contre ST-21 et ST-22. Les niveaux Confirmé et Expert
+coûtent 35 points de victoires ou plus (Kuro : 48 % au niveau Débutant, 13 % au niveau Confirmé ; Smoker : 25 % et 3 %).
+
+### Après (1000 parties par chapitre)
+
+| Chapitre | Niveau | ST-01 seul | ST-01 et les recrues des chapitres d'avant |
+|---|---|---|---|
+| 1 Morgan | Débutant | 59 % (56 à 62) | 59 % |
+| 2 Baggy | Débutant | 44 % (41 à 47) | 47 % |
+| 3 Kuro | Débutant | 48 % (45 à 51) | 47 % |
+| 4 Krieg | Débutant | 44 % (41 à 47) | 47 % |
+| Défi Mihawk | IA entraînée | 1 % (0 à 1) | 1 % |
+| 5 Arlong | Débutant | 42 % (39 à 45) | 49 % |
+| Défi Baggy et Alvida | Débutant | 28 % (25 à 30) | 31 % |
+| 6 Smoker | Débutant | 39 % (36 à 42) | 51 % |
+
+(Entre parenthèses : intervalle de confiance à 95 %. Les recrues remplacent chacune un Karoo, puis un Vivi ; les
+boosters gagnés ne sont pas comptés, le joueur réel sera donc un peu plus fort.)
+
+Choix :
+
+- **Toute l'histoire au niveau Débutant.** Même affaiblies, les listes jouées au niveau Confirmé restent presque
+  imbattables avec ST-01 (Smoker très affaibli : 3 % au niveau Confirmé). Le niveau Débutant a aussi l'avantage de jouer
+  pareil sur tous les appareils : les niveaux 2 et 3 du navigateur sont limités en temps (500 ms et 1,8 s par choix),
+  donc plus faibles sur un téléphone lent que dans la mesure. La difficulté vient des listes.
+- **Listes ajustées** (detail dans `decks.ts`) : Morgan sans Momonga, Vergo, Issho ni White Out, avec des jeunes recrues
+  et des baisses de coût que seul Koby met à profit ; Krieg avec moins de Gin, de Krieg et de Pearl, et des pirates
+  d'East Blue de passage ; Arlong renforcé par Jinbe à la place des sirènes (trop facile au chapitre 5) ; Smoker sans
+  Garp, Issho, Vergo ni Onde de choc. Baggy, Kuro et Baggy et Alvida sont inchangés. Toutes les cartes restent
+  jouables ; 4 cartes jouables d'office entrent dans les listes (ST06-003, ST06-009 en liste A ; OP07-027, OP13-029 en
+  liste B), 3 cartes codées en sortent (Garp ST06-012, Onde de choc ST06-014, Gyn OP15-007).
+- **Limites** : le chapitre 1 plafonne vers 60 % (essais jusqu'à 62 % avec des listes encore plus faibles : ST-01 perd
+  contre presque tout) ; les chapitres 2 à 4 forment un palier vers 45 %, à 3 points près (Baggy un peu plus dur que
+  Kuro, dans la marge de la mesure).
+- **Défi de Mihawk** : 1 % au niveau 4, 2 % même au niveau Débutant (le deck du méta ne change pas). Il reste un défi
+  pour un deck amélioré par les boosters ; voir la question 4.
 
 ## Questions ouvertes
 
@@ -205,8 +262,9 @@ Données à la **première victoire** de chaque chapitre (contrat, § 5).
 3. **Recrues** : cartes rouges utiles tout de suite (choix actuel), ou versions d'OP03 plus fidèles à l'époque mais
    d'une autre couleur (Usopp OP03-041, Nami Leader OP03-040, qui ouvrirait un deck East Blue bleu) ?
 4. **Défi de Mihawk au niveau 4** (IA entraînée) : à garder si l'IA entraînée est bien plus forte que l'Expert avec ce
-   deck ; sinon niveau 3.
+   deck ; sinon niveau 3. Mesure de la tâche 1.19 : 1 % de victoires pour ST-01 au niveau 4, 2 % au niveau 1 ; le
+   niveau change peu, c'est le deck du méta qui fait la différence.
 5. **Second défi** (Baggy et Alvida à Loguetown) : le plan demandait 1 ou 2 défis ; celui-ci rejoue la bande de Baggy
-   au niveau Expert, avec deux Alvida en plus (2 cartes à coder). À retirer si l'on veut alléger la liste B.
+   (au niveau Débutant depuis la tâche 1.19), avec deux Alvida en plus (2 cartes à coder). À retirer si l'on veut alléger la liste B.
 6. **Règles spéciales** : un chapitre 1 avec moins de Vies pour Morgan (`rules.aiLife`) aiderait les débutants, quand
-   le moteur saura l'appliquer.
+   le moteur saura l'appliquer. C'est le seul moyen vu par la tâche 1.19 d'atteindre 75 % au chapitre 1.

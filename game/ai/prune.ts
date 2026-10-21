@@ -37,6 +37,8 @@ const DON_DEFENSE: Record<string, number> = {
   'P-054': 1,
   'OP03-079': 1,  // Vergo : pas mis KO en combat
   'OP03-090': 1,  // Blueno : [Bloqueur]
+  'OP03-053': 1,  // Yosaku & Johnny : +2000 avec 20 cartes ou moins dans le deck (tâche 1.19)
+  'OP15-001': 1,  // Leader Krieg : [Tour adverse] −2000 à tous les Personnages adverses (tâche 1.19)
 };
 // Cartes qui comptent toutes les DON!! données de leur joueur (3 ou plus) : Brook (Bloqueur +3000), Luffy (Initiative)
 const COUNTS_ALL_DON = ['ST31-003', 'ST31-004'];

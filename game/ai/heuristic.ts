@@ -157,6 +157,9 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
   'ST06-012': (s, p, card) => (def(card.num).activateMain?.useful?.(s, p, card) ? 'early' : null),
   'ST06-006': (s, p) => (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) > 0 && fieldCost(s, c.uid) <= 2).length && costZeroPayoff(s, p) ? 'early' : null),
   'OP02-093': (s, p, card) => (card.don >= 1 && canAttack(s, p, card) ? 'early' : null),
+  // Vrais decks de l'aventure (tâche 1.19). Leader Kuro (OP03-021) : se redresser seulement une fois qu'il a attaqué, pour
+  // attaquer une seconde fois (sinon l'IA payait 3 DON!! et 2 Personnages pour rien)
+  'OP03-021': (s, p, card) => (card.rested && def(card.num).activateMain?.useful?.(s, p, card) !== false ? 'early' : null),
 };
 
 // Une de ses cartes profite d'un Personnage de coût 0 : Smoker (OP02-102, ST06-004) prêt à attaquer, Kobby (ST06-002)
@@ -357,7 +360,7 @@ interface AttackPlan {
 }
 
 // Personnages qui gagnent [Initiative] avec des DON!! données (Sanji : 2)
-const RUSH_DON: Record<string, number> = { 'ST31-001': 2 };
+const RUSH_DON: Record<string, number> = { 'ST31-001': 2, 'ST01-004': 2 };
 
 // Événement clé gardé en réserve : Zoro redressé par « Luffy deviendra un jour le roi des pirates !! » attaque deux fois
 function keyReserve(s: GameState, p: PlayerId, st: Style): number {
@@ -672,6 +675,8 @@ const TRIGGER_WORTH: Record<string, (s: GameState, p: PlayerId) => boolean> = {
   'OP03-119': (s, p) => s.players[p].hand.some((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4 && Boolean(def(c.num).triggerEn)),
   'OP03-120': (s, p) => s.players[other(p)].life.length >= 4,
   'OP03-121': (s, p) => oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 5).length > 0,
+  // Hatchan (tâche 1.19) : « jouez cette carte » seulement avec un Leader {East Blue} (sinon elle irait dans la Défausse)
+  'OP03-033': (s, p) => leaderHasType(s, p, 'East Blue'),
 };
 
 const amountIn = (prompt: string) => Number(prompt.match(/[−-](\d+)/)?.[1] ?? 0);
@@ -785,6 +790,12 @@ function chooseEffect(s: GameState, d: Decision): string {
   if (d.tag === 'may' && sourceNum === 'OP17-081') {
     return yesNo(P.trash.some((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 8 && !def(c.num).names.includes('Gerd')));
   }
+  // OP03 violette (tâche 1.19, proposé par 1.11) : DON!! −1 seulement si l'effet servira. Zambai : avec un Leader {Water
+  // Seven} (choix 211) ; Rob Lucci : un Personnage adverse redressé de coût 5 ou moins à épuiser ; Kaku : [Exil] utile
+  // seulement contre le Leader adverse qui a encore des Vies
+  if (d.tag === 'may' && sourceNum === 'OP03-063' && ownSource) return yesNo(leaderHasType(s, p, 'Water Seven'));
+  if (d.tag === 'may' && sourceNum === 'OP03-071' && ownSource) return yesNo(O.chars.some((c) => !c.rested && fieldCost(s, c.uid) <= 5));
+  if (d.tag === 'may' && sourceNum === 'OP03-059' && ownSource) return yesNo(s.battle?.target === O.leader.uid && O.life.length > 0);
   // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus
   if (d.tag === 'may' && sourceNum === 'ST10-010') return yesNo(O.hand.length >= 7);
   // OP03 jaune (tâche 1.13) : Charlotte Oven (défausser une carte à [Déclenchement], +3000) et Charlotte Smoothie (une Vie

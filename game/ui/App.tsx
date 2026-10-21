@@ -5,7 +5,7 @@ import { LEVELS, type Analysis, type Level } from '../ai/search.ts';
 import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary, type Replayed } from '../coach/archive.ts';
 import { buildRecap, HINT, isReviewable, REVIEW, toReview, type Move, type MoveReview } from '../coach/review.ts';
 import { CARDS } from '../engine/cards/index.ts';
-import { DECKS } from '../engine/decks.ts';
+import { DECKS, freeDeckIds } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
 import { counterValue, def } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
@@ -67,10 +67,10 @@ interface Recording {
 }
 
 // Adversaire « Aléatoire » : un deck du registre (méta ou pour débutant) tiré au sort au lancement de chaque partie,
-// autre que le sien quand c'est possible
+// autre que le sien quand c'est possible (jamais un adversaire de l'aventure)
 const RANDOM_DECK = 'random';
 function randomDeck(myDeck: string) {
-  const pool = Object.keys(DECKS).filter((id) => id !== myDeck);
+  const pool = freeDeckIds().filter((id) => id !== myDeck);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -886,12 +886,13 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
 }
 
 // Choix d'un deck : decks rangés par sorte (méta, pour débutant, du plus récent au plus ancien), filtre par couleur du
-// Leader. L'ordre de DECKS ne change pas (il sert aux graines des parties de vérification).
+// Leader. L'ordre de DECKS ne change pas (il sert aux graines des parties de vérification). Les adversaires de l'aventure
+// n'y sont pas.
 const DECK_GROUPS: { label: string; ids: () => string[] }[] = [
-  { label: 'Decks du méta', ids: () => Object.keys(DECKS).filter((id) => DECKS[id].series === 'META') },
+  { label: 'Decks du méta', ids: () => freeDeckIds().filter((id) => DECKS[id].series === 'META') },
   {
     label: 'Decks pour débutant',
-    ids: () => Object.keys(DECKS).filter((id) => DECKS[id].series !== 'META').sort((a, b) => b.localeCompare(a, 'fr', { numeric: true })),
+    ids: () => freeDeckIds().filter((id) => DECKS[id].series !== 'META').sort((a, b) => b.localeCompare(a, 'fr', { numeric: true })),
   },
 ];
 const COLOR_FILTERS: [string, string][] = [['', 'Toutes'], ['Red', 'Rouge'], ['Green', 'Vert'], ['Blue', 'Bleu'], ['Purple', 'Violet'], ['Black', 'Noir'], ['Yellow', 'Jaune']];

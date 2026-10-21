@@ -1,7 +1,7 @@
 // Arc East Blue (tâche 1.2) : de Shells Town à Loguetown, 6 chapitres et 2 défis bonus. Textes écrits par nous, sans
 // citation du manga ni de l'anime ; scénario, choix des decks et récompenses : game/docs/aventure-east-blue.md.
-// Les adversaires jouent pour l'instant des decks du registre déjà jouables ; leurs vrais decks (EAST_BLUE_REAL_DECKS,
-// decks.ts) sont branchés par la tâche 1.19, comme le vrai deck de départ (ST-01).
+// Les adversaires jouent leurs vrais decks (decks.ts, EAST_BLUE_REAL_DECKS ; branchés par la tâche 1.19, qui a mesuré la
+// difficulté de chaque chapitre : scripts/game/adventure-balance.ts) ; le joueur part avec ST-01.
 // Les identifiants des chapitres servent de clé en base : ne pas les changer.
 import type { Arc, Reward } from './types.ts';
 
@@ -23,7 +23,7 @@ export const EAST_BLUE: Arc = {
   title: 'East Blue',
   region: 'east-blue',
   boosterSet: 'OP03',
-  starterDeck: 'ST-21',
+  starterDeck: 'ST-01',
   chapters: [
     {
       id: 'eb-1-shells-town',
@@ -31,7 +31,7 @@ export const EAST_BLUE: Arc = {
       title: 'Le chasseur de pirates',
       place: 'Shells Town',
       map: { x: 0.1, y: 0.62 },
-      opponent: { name: 'Capitaine Morgan', deck: 'ST-33', level: 1 },
+      opponent: { name: 'Capitaine Morgan', deck: 'AV-EB-MORGAN', level: 1 },
       intro: [
         { who: '', text: 'Un petit bateau, un chapeau de paille et un rêve plus grand que l’océan : Luffy a pris la mer. Première escale, Shells Town et sa base de la Marine.' },
         { who: 'Kobby', card: 'OP15-009', text: 'Luffy, fais attention ! Ici, tout le monde obéit au capitaine Morgan. Même la Marine a peur de lui.' },
@@ -59,7 +59,7 @@ export const EAST_BLUE: Arc = {
       title: 'Le clown d’Orange Town',
       place: 'Orange Town',
       map: { x: 0.24, y: 0.36 },
-      opponent: { name: 'Baggy le Clown', deck: 'ST-36', level: 1 },
+      opponent: { name: 'Baggy le Clown', deck: 'AV-EB-BAGGY', level: 1 },
       intro: [
         { who: '', text: 'Les rues d’Orange Town sont désertes : les habitants se cachent depuis que la bande de Baggy occupe la ville.' },
         { who: 'Nami', card: NAMI_ARLONG, text: 'Moi, je vole les pirates, nuance. Baggy garde une carte de Grand Line, et je compte bien la lui prendre.' },
@@ -86,7 +86,7 @@ export const EAST_BLUE: Arc = {
       title: 'Le majordome de Sirop',
       place: 'Village de Sirop',
       map: { x: 0.38, y: 0.7 },
-      opponent: { name: 'Kuro', deck: 'ST-32', level: 2 },
+      opponent: { name: 'Kuro', deck: 'AV-EB-KURO', level: 1 },
       intro: [
         { who: '', text: 'Au village de Sirop, un garçon au long nez annonce chaque matin l’arrivée des pirates. Plus personne ne l’écoute.' },
         { who: 'Usopp', card: USOPP, text: 'Cette fois, c’est vrai ! J’ai entendu le majordome de Kaya préparer une attaque pour demain matin !' },
@@ -114,7 +114,7 @@ export const EAST_BLUE: Arc = {
       title: 'Le restaurant sur la mer',
       place: 'Baratie',
       map: { x: 0.54, y: 0.44 },
-      opponent: { name: 'Don Krieg', deck: 'ST-34', level: 2 },
+      opponent: { name: 'Don Krieg', deck: 'AV-EB-KRIEG', level: 1 },
       intro: [
         { who: '', text: 'Le Baratie, restaurant flottant, sert tous les marins de passage. Même les pirates affamés.' },
         { who: 'Zeff', card: 'OP03-047', text: 'Ici, on nourrit quiconque a faim. Ce qui se passe après le dessert, c’est une autre histoire.' },
@@ -168,7 +168,7 @@ export const EAST_BLUE: Arc = {
       title: 'Le parc des hommes-poissons',
       place: 'Arlong Park',
       map: { x: 0.74, y: 0.68 },
-      opponent: { name: 'Arlong', deck: 'ST-31', level: 3 },
+      opponent: { name: 'Arlong', deck: 'AV-EB-ARLONG', level: 1 },
       intro: [
         { who: '', text: 'Au village de Cocoyashi, chacun paie Arlong pour rester en vie. Nami paie depuis des années, en secret, pour racheter son village.' },
         { who: 'Nojiko', card: 'OP03-048', text: 'Ma sœur a tout porté seule. Elle ne vous demandera jamais d’aide : elle est bien trop fière.' },
@@ -196,7 +196,7 @@ export const EAST_BLUE: Arc = {
       title: 'Défi : l’échafaud de Loguetown',
       place: 'Loguetown',
       map: { x: 0.82, y: 0.14 },
-      opponent: { name: 'Baggy et Alvida', deck: 'ST-22', level: 3 },
+      opponent: { name: 'Baggy et Alvida', deck: 'AV-EB-BAGGY-ALVIDA', level: 1 },
       optional: true,
       intro: [
         { who: '', text: 'Sur la grand-place de Loguetown se dresse l’échafaud où l’histoire des pirates a basculé. Luffy veut le voir de tout près.' },
@@ -223,7 +223,7 @@ export const EAST_BLUE: Arc = {
       title: 'Dernière escale avant Grand Line',
       place: 'Loguetown',
       map: { x: 0.92, y: 0.4 },
-      opponent: { name: 'Smoker', deck: 'META-SABO-2026-10', level: 3 },
+      opponent: { name: 'Smoker', deck: 'AV-EB-SMOKER', level: 1 },
       intro: [
         { who: '', text: 'Loguetown, dernière ville avant Grand Line. Le capitaine Smoker y veille, et aucun pirate ne lui a jamais échappé.' },
         { who: 'Smoker', card: 'OP02-093', text: 'Chapeau de paille. Ta prime ne m’intéresse pas. Simplement, aucun pirate ne passe par ici.' },
