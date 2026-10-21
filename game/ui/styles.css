@@ -1383,6 +1383,8 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
 }
 @media (max-width: 900px) and (orientation: portrait) {
   .op-shop-main { grid-template-columns: 1fr; }
+  /* carte du monde : avec « Boutique », les boutons passent sur deux lignes plutôt que d'être coupés */
+  .op-adv-head-actions .op-btn { flex: 1 1 auto; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
   .op-shop-main { grid-template-columns: minmax(15rem, 1fr) 1.4fr; gap: 0.7rem; }
