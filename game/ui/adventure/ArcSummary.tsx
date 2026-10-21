@@ -37,7 +37,7 @@ export function ArcSummary({ arc, adv, holdCards, onClose }: {
         <div className="op-adv-finale-flag" aria-hidden="true">🏴‍☠️</div>
         <h2 id="op-adv-finale-title">{arc.title} est terminé !</h2>
         <p>
-          De {story[0].place} à {story[story.length - 1].place}, tu as battu tous les adversaires de l’arc. Ton équipage a fait
+          De {story[0].place} à {story[story.length - 1].place}, tu as battu tous les adversaires de l’histoire. Ton équipage a fait
           ses preuves : au loin se dresse Reverse Mountain, porte de la suite du voyage, qui arrive bientôt.
         </p>
         <div className="op-adv-finale-stats">
