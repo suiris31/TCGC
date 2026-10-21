@@ -70,21 +70,87 @@ const bump = (map: Map<string, Use>, key: string, effective: boolean) => {
 };
 const offers = new Map<string, Use>(); // clé : numéro|action ; calls = proposée, effective = choisie
 
+// ---------- Contrôles d'après le texte anglais (effectEn) ----------
+// Un effet « [DON!! xN] » qui agit avec moins de N DON!! données, un effet « [Une fois par tour] » qui agit deux fois
+// dans le tour, un effet permanent « [Votre tour] » (ou « [Tour adverse] ») qui compte pendant l'autre tour : à examiner
+// (le premier exemple de chaque anomalie est gardé).
+const anomalies = new Map<string, { count: number; example: string }>();
+const flag = (key: string, example: string) => {
+  const a = anomalies.get(key) ?? { count: 0, example };
+  a.count++;
+  anomalies.set(key, a);
+};
+const HOOK_TEXT: Record<string, string> = {
+  onPlay: '[On Play]', whenAttacking: '[When Attacking]', endOfTurn: '[End of Your Turn]', activateMain: '[Activate: Main]',
+  onOpponentAttack: '[On Your Opponent\'s Attack]',
+};
+const textLines = (num: string) => (CARDS[num].effectEn ?? '').split('\n');
+const donNeeded = (num: string, what: string) => {
+  const marker = HOOK_TEXT[what];
+  const line = marker && textLines(num).find((l) => l.includes(marker));
+  const m = line?.slice(0, line.indexOf(marker)).match(/\[DON!! x(\d+)\]/);
+  return m ? Number(m[1]) : 0;
+};
+const ONCE_HOOKS = /^(when\d*|activateMain|onOpponentAttack|koReplace|koReplaceAlly|restReplace|replaceRemoval)$/;
+const oncePerTurnHook = new Map<string, string>(); // numéro -> la seule capacité qui peut porter son [Une fois par tour]
+const onceUsed = new Map<string, number>();         // numéro|uid|partie|tour -> fois où il a agi
+let gameNo = 0;
+const checked = { don: [] as string[], once: [] as string[], turn: [] as string[] };
+const TURN_STATICS = new Set(['selfPower', 'aura', 'oppAura', 'costAura', 'oppCostAura']);
+// [Votre tour] / [Tour adverse] des lignes permanentes (sans [Jouée], [En attaquant]...) qui parlent de puissance ou de coût
+const turnOnly = (num: string, what: string): 'mine' | 'theirs' | null => {
+  const word = what.toLowerCase().includes('cost') ? 'cost' : 'power';
+  const lines = textLines(num).filter((l) => !/\[(On Play|When Attacking|On K\.O\.|Activate: Main|Main|Counter|Trigger|End of Your Turn)\]/.test(l) && l.includes(word));
+  const mine = lines.some((l) => l.includes('[Your Turn]'));
+  const theirs = lines.some((l) => l.includes('[Opponent\'s Turn]'));
+  return mine && !theirs && lines.length === 1 ? 'mine' : theirs && !mine && lines.length === 1 ? 'theirs' : null;
+};
+
 type Fn = (...args: unknown[]) => unknown;
 const stateOf = (arg: unknown): GameState => ((arg as { s?: GameState }).s ?? arg) as GameState;
 // effet qui agit : utile s'il a écrit dans le journal
-const wrapAction = (num: string, what: string, fn: Fn): Fn => (...a: unknown[]) => {
-  const s = stateOf(a[0]);
-  const before = s.log.length;
-  const result = fn(...a);
-  bump(uses, `${num}|${what}`, s.log.length > before);
-  return result;
+const wrapAction = (num: string, what: string, fn: Fn): Fn => {
+  const need = donNeeded(num, what);
+  if (need) checked.don.push(`${num} ${what}`);
+  return (...a: unknown[]) => {
+    const s = stateOf(a[0]);
+    const ctx = a[0] as { s?: GameState; source?: number };
+    const uid = ctx.s ? ctx.source : (a[2] as { uid?: number } | undefined)?.uid;
+    const don = uid !== undefined ? findField(s, uid)?.card.don : undefined;
+    const before = s.log.length;
+    const result = fn(...a);
+    const effective = s.log.length > before;
+    bump(uses, `${num}|${what}`, effective);
+    if (effective && need && don !== undefined && don < need) flag(`${num} ${CARDS[num].name} : ${what} [DON!! x${need}] a agi avec ${don} DON!!`, `tour ${s.turn}`);
+    if (effective && uid !== undefined && oncePerTurnHook.get(num) === what) {
+      // une carte rejouée après avoir quitté le terrain est une nouvelle carte (son [Une fois par tour] repart à zéro)
+      const name = CARDS[num].name;
+      let playedAt = s.log.length - 1;
+      while (playedAt >= 0 && s.log[playedAt].text !== `joue ${name}` && !s.log[playedAt].text.startsWith(`joue ${name} `)) playedAt--;
+      const key = `${num}|${uid}|${gameNo}|${s.turn}|${playedAt}`;
+      const n = (onceUsed.get(key) ?? 0) + 1;
+      onceUsed.set(key, n);
+      if (n === 2) flag(`${num} ${CARDS[num].name} : ${what} [Une fois par tour] a agi deux fois dans le tour`, `tour ${s.turn} : ${s.log.slice(-3).map((l) => l.text).join(' / ')}`);
+    }
+    return result;
+  };
 };
 // effet permanent ou condition : compté quand il change quelque chose (vrai, non nul)
-const wrapStatic = (num: string, what: string, fn: Fn, neutral: unknown): Fn => (...a: unknown[]) => {
-  const result = fn(...a);
-  if (result !== neutral && result !== undefined) bump(uses, `${num}|${what}`, true);
-  return result;
+const wrapStatic = (num: string, what: string, fn: Fn, neutral: unknown): Fn => {
+  const only = TURN_STATICS.has(what) ? turnOnly(num, what) : null;
+  if (only) checked.turn.push(`${num} ${what}`);
+  return (...a: unknown[]) => {
+    const result = fn(...a);
+    if (result !== neutral && result !== undefined) {
+      bump(uses, `${num}|${what}`, true);
+      if (only) {
+        const s = a[0] as GameState;
+        const mine = s.active === a[1];
+        if (only === 'mine' ? !mine : mine) flag(`${num} ${CARDS[num].name} : ${what} [${only === 'mine' ? 'Votre tour' : 'Tour adverse'}] compte pendant l'autre tour`, `tour ${s.turn}, valeur ${String(result)}`);
+      }
+    }
+    return result;
+  };
 };
 
 const ACTIONS = ['onPlay', 'whenAttacking', 'onKO', 'endOfTurn', 'onMain', 'onCounter', 'onTrigger'] as const;
@@ -115,6 +181,8 @@ for (const num of stageNums) {
     if (x) { (d as Record<string, unknown>)[r] = { ...x, apply: wrapAction(num, r, x.apply) }; list.push(r); }
   }
   if (d.rules) list.push('rules');
+  const onceHooks = list.filter((w) => ONCE_HOOKS.test(w));
+  if ((d.effectEn ?? '').split('[Once Per Turn]').length === 2 && onceHooks.length === 1) { oncePerTurnHook.set(num, onceHooks[0]); checked.once.push(`${num} ${onceHooks[0]}`); }
   expectedEffects.set(num, list);
 }
 
@@ -157,6 +225,7 @@ const wins = new Map<string, [number, number]>(); // deck de l'aventure -> [vict
 function play(a: DeckList | string, b: DeckList | string, seed: number, first: 0 | 1, randomChoices: boolean) {
   const name = (d: DeckList | string) => (typeof d === 'string' ? d : d.id);
   const where = `${name(a)} contre ${name(b)} (graine ${seed}, ${randomChoices ? 'hasard' : 'IA'})`;
+  gameNo++;
   try {
     const s = newGame({ decks: [a, b], names: ['A', 'B'], seed, first }, (st: GameState, d: Decision) => {
       decisions++;
@@ -280,6 +349,7 @@ const secs = Math.round((Date.now() - t0) / 1000);
 const summary = [
   `${total} parties (${seeds.length} graine(s) × ${modes.join(' et ')}, ${leaders.length} Leaders × ${perLeader} decks × ${games} parties, decks de l'aventure ${adventureGames} par confrontation), ${decisions} décisions, ${secs} s.`,
   `Cartes de l'étape : ${stage.size} (${stageNums.length} jouables${todo.length ? `, à faire : ${todo.join(' ')}` : ''}).`,
+  `Contrôles d'après le texte : ${checked.don.length} effets [DON!! xN], ${checked.once.length} [Une fois par tour], ${checked.turn.length} effets permanents [Votre tour] ou [Tour adverse].`,
   `Contrôles de cohérence et réponses de l'IA : ${problems.length ? `**${problems.length} problème(s)**` : 'aucun problème'}.`,
 ];
 console.log(summary.join('\n'));
@@ -288,12 +358,16 @@ console.log(`${never.length} effet(s) ou carte(s) jamais vus :`);
 for (const n of never) console.log('  -', n);
 console.log(`${useless.length} effet(s) déclenché(s) mais jamais utile(s) :`);
 for (const n of useless) console.log('  ?', n);
+const anomalyLines = [...anomalies].map(([k, a]) => `${k} : ${a.count} fois (premier : ${a.example})`);
+console.log(`${anomalyLines.length} anomalie(s) d'après le texte :`);
+for (const n of anomalyLines) console.log('  !', n);
 if (reportFile) {
   const lines = [
     ...summary, '',
     '### Problèmes', '', ...(problems.length ? problems.slice(0, 60).map((p) => `- ${p}`) : ['- aucun']), '',
     '### Jamais vus', '', ...(never.length ? never.map((n) => `- ${n}`) : ['- rien']), '',
     '### Déclenchés mais jamais utiles (rien écrit dans le journal)', '', ...(useless.length ? useless.map((n) => `- ${n}`) : ['- rien']), '',
+    '### Anomalies d’après le texte ([DON!! xN], [Une fois par tour], [Votre tour] / [Tour adverse])', '', ...(anomalyLines.length ? anomalyLines.map((n) => `- ${n}`) : ['- aucune']), '',
     '### Victoires des decks de l’aventure (passes sans hasard)', '', ...winLines, '',
     '### Carte par carte', '',
     'Effets codés : nombre de déclenchements (utile : a écrit dans le journal ; effet permanent : nombre de fois où il a changé quelque chose). Choix : pris / proposés.', '',
