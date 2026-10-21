@@ -99,7 +99,7 @@ test('en ligne (serveur) : un deck de la Cale auquel il manque des cartes est re
 test('en ligne (serveur) : l’hôte qui échange des cartes de son deck de la Cale avant l’arrivée de son ami ferme sa salle', () => {
   const room = online.openRoom(A, deckA.id, later(20));
   setCount(A.id, card, 0);
-  refused(() => online.enterRoom(B, room.code, 'ST-35', later(21)), 'host_hold_incomplete', /Luffy n'a plus toutes les cartes.*fermée/);
+  refused(() => online.enterRoom(B, room.code, 'ST-35', later(21)), 'host_hold_incomplete', /Luffy n'a plus toutes les cartes de son deck de la Cale \(.*absente de sa Cale\).*fermée/);
   const row = db.prepare('SELECT status, code FROM game_matches WHERE id = ?').get(room.id);
   assert.deepEqual({ ...row }, { status: 'cancelled', code: null });
   refused(() => online.enterRoom(B, room.code, 'ST-35', later(22)), 'unknown_room');

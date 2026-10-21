@@ -295,7 +295,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">🌐 En ligne</div>
-          <div className="match op-small op-muted">{view.you.deckName ?? DECKS[view.you.deck]?.name}{view.you.hold && <> <HoldMark /></>} <span className="vs">contre</span> {oppName} · {view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}{view.opponent?.hold && <> <HoldMark /></>}</div>
+          <div className="match op-small op-muted" title={`${view.you.deckName ?? DECKS[view.you.deck]?.name}${view.you.hold ? ' (deck de la Cale)' : ''} contre ${oppName} · ${view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}${view.opponent?.hold ? ' (deck de la Cale)' : ''}`}>{view.you.deckName ?? DECKS[view.you.deck]?.name}{view.you.hold && <> <HoldMark /></>} <span className="vs">contre</span> {oppName} · {view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}{view.opponent?.hold && <> <HoldMark /></>}</div>
           <div className={`phase-pill ${game.active === seat ? 'pill-me' : 'pill-opp'}`}>Tour {game.turn || 1} · {who}{game.battle ? ' ⚔' : ''}</div>
           <span className={view.opponentOnline ? 'presence presence-on' : 'presence'} title={view.opponentOnline ? `${oppName} est connecté` : `${oppName} n’est pas connecté en ce moment`}>●</span>
           <div className="top-actions">

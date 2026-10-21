@@ -77,9 +77,10 @@ function holdProblems(p) {
   return p.hold ? holdErrors(p.userId, p.list.leader, p.list.cards) : [];
 }
 
-function holdMessage(errors) {
+// Premier problème (et le nombre des autres) ; others : message pour l'autre joueur (« sa Cale » au lieu de « ta Cale »)
+function holdMessage(errors, others = false) {
   const more = errors.length > 1 ? ` (et ${errors.length - 1} autre${errors.length > 2 ? 's' : ''})` : '';
-  return `${errors[0]}${more}`;
+  return `${others ? errors[0].replace(/ta Cale/g, 'sa Cale') : errors[0]}${more}`;
 }
 
 // Deck personnalisé : relu dans la base (seulement ceux du compte) ; sa liste reste côté serveur. Un deck de la Cale est
@@ -168,7 +169,7 @@ export function enterRoom(user, rawCode, deck, now = new Date()) {
   const hostErrors = guest.userId === m.host.userId ? [] : holdProblems(m.host);
   if (hostErrors.length) {
     close(m, 'cancelled', now);
-    throw new MatchError('host_hold_incomplete', `${m.host.name} n'a plus toutes les cartes de son deck de la Cale (${holdMessage(hostErrors)}) : `
+    throw new MatchError('host_hold_incomplete', `${m.host.name} n'a plus toutes les cartes de son deck de la Cale (${holdMessage(hostErrors, true)}) : `
       + 'la salle est fermée. Demande-lui d’en ouvrir une nouvelle.', 409);
   }
   joinMatch(m, guest, now, crypto.randomInt(2 ** 31));
