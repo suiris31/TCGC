@@ -1407,3 +1407,25 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
 }
 @keyframes op-wallet-delta-calm { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 /* === fin 2.3 === */
+/* === Tâche 2.5 : les gains partout === */
+.op-gain { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.6rem 0; padding: 0.75rem 0.9rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); text-align: left; }
+.op-gain.is-gain { border-color: rgba(240, 192, 79, 0.55); background: linear-gradient(180deg, rgba(240, 192, 79, 0.1), var(--surface)); }
+.op-gain p { margin: 0; }
+.op-gain-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.op-gain-title { font-weight: 700; color: var(--muted); font-size: 0.893rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.op-gain-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.op-gain-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.1rem; font-size: 1.3rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.op-gain-part { display: inline-block; opacity: 0; animation: op-gain-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
+.op-gain-dot { margin: 0 0.4rem; color: var(--muted); font-weight: 400; }
+.op-gain-bonus { color: var(--green); }
+.op-gain-chest { color: var(--blue); }
+.op-gain-refused { color: var(--muted); }
+.op-gain-note { color: var(--accent); opacity: 0.85; }
+@keyframes op-gain-pop { 0% { opacity: 0; transform: translateY(0.5rem) scale(0.6); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .op-gain-part { animation: none; opacity: 1; }
+}
+@media (max-width: 900px) and (orientation: portrait) {
+  .op-gain-line { font-size: 1.1rem; }
+}
+/* === fin 2.5 === */

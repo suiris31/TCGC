@@ -193,7 +193,7 @@ test('aventure (serveur) : victoire vérifiée en rejouant la partie, récompens
   const first = adv.chapterResult(A, C1.id, store(A, won), new Date('2026-10-19T12:31:00Z'));
   assert.equal(first.won, true);
   assert.equal(first.firstWin, true);
-  assert.deepEqual(first.rewards, C1.rewards.filter((r) => r.kind !== 'berry'));
+  assert.deepEqual(first.rewards, C1.rewards);
   assert.equal(first.boosters.length, rewardBoosters(C1));
   assert.ok(first.boosters.length > 0);
   for (const b of first.boosters) {
