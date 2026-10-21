@@ -2,7 +2,7 @@
 // chaque extension en vente, avec ce qu'ils contiennent), l'achat avec une confirmation explicite, puis « Ouvrir
 // maintenant » (écran d'ouverture de l'étape 1) ou « Plus tard » (les boosters attendent dans la Cale), et l'historique
 // des gains et des dépenses. Les prix viennent du serveur (game/economy/config.ts), jamais du navigateur ; le serveur
-// tire les cartes à l'ouverture. Le comptoir a son propre écran (tâche 2.6).
+// tire les cartes à l'ouverture. Le comptoir a son propre écran (tâche 2.6, Counter.tsx), ouvert depuis la vitrine.
 import { useCallback, useEffect, useState } from 'react';
 import { BOOSTER_SETS } from '../../boosters/sets/index.ts';
 import type { BoosterContent } from '../../boosters/types.ts';
@@ -12,6 +12,7 @@ import { BoosterOpening, ownedCounts } from '../adventure/BoosterOpening.tsx';
 import { boosterRates, chanceText } from '../adventure/hold.ts';
 import { BOOSTER_NOTICE, PackIcon } from '../adventure/RewardsScreen.tsx';
 import * as api from './api.ts';
+import { CounterScreen, type CounterClient } from './Counter.tsx';
 import { berry, EarnHelp, showWallet, useWallet, WalletBadge, WalletDetails } from './Wallet.tsx';
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -29,6 +30,7 @@ export interface ShopClient {
   // ouvre les boosters sur le serveur, un par un ; progress : nombre de boosters déjà ouverts. En cas d'erreur après
   // quelques boosters, renvoie ceux qui sont ouverts et l'erreur
   openBoosters: (ids: string[], progress: (done: number) => void) => Promise<Opened & { error?: string }>;
+  counter?: CounterClient;   // comptoir (tâche 2.6) ; par défaut, celui du serveur
 }
 
 async function openOnServer(ids: string[], progress: (done: number) => void): Promise<Opened & { error?: string }> {
@@ -74,6 +76,7 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
   const [opened, setOpened] = useState<Opened | null>(null);
   const [contents, setContents] = useState<string | null>(null);   // extension dont on montre le contenu
   const [historyKey, setHistoryKey] = useState(0);
+  const [counter, setCounter] = useState(false);
 
   const loadShop = useCallback(() => {
     setShopError(undefined);
@@ -121,6 +124,8 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
     return <BoosterOpening content={opened.contents} owned={opened.owned} onDone={() => { setOpened(null); setStep((s) => (s?.kind === 'done' && s.error ? s : null)); }} />;
   }
 
+  if (counter) return <CounterScreen client={client.counter} onBack={() => { setCounter(false); setHistoryKey((k) => k + 1); }} />;
+
   const balance = wallet?.balance;
   return (
     <div className="setup op-shop">
@@ -153,6 +158,11 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
           ) : shopError ? (
             <p className="danger op-small">{shopError} <button className="op-btn op-btn-ghost btn-small" onClick={loadShop}>Réessayer</button></p>
           ) : <p className="op-muted"><span className="op-spinner" /> Ouverture de la vitrine…</p>}
+          <button className="op-shop-counter-link" onClick={() => setCounter(true)}>
+            <span aria-hidden="true">🏪</span>
+            <span><strong>Comptoir</strong><span className="op-small op-muted">Un exemplaire de plus d’une carte déjà trouvée, jusqu’à 4</span></span>
+            <span aria-hidden="true">→</span>
+          </button>
           <p className="op-small op-muted">{BOOSTER_NOTICE} Les Berry ne s’achètent pas : ils se gagnent en jouant.</p>
         </section>
       </div>

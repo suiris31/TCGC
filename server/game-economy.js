@@ -6,18 +6,24 @@
 //   GET  /api/game/shop                      la vitrine (prix du barème)
 //   POST /api/game/shop/buy                  acheter un booster ou un display { set, kind, purchaseId }
 //   POST /api/game/rewards/:recordId         le gain d'une partie finie et enregistrée (vérifiée en la rejouant)
+//   GET  /api/game/shop/counter              le comptoir : les cartes déjà trouvées, à compléter jusqu'à 4
+//   POST /api/game/shop/counter              acheter un exemplaire de plus { number, purchaseId }
+//   GET  /api/game/duplicates?withVariants=  aperçu de l'échange des doublons (au-delà de 4 exemplaires)
+//   POST /api/game/duplicates/exchange       échanger les doublons de l'aperçu { stateKey, exchangeId, withVariants }
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 // Les cartes avant le moteur (voir game-verify.js)
-import '../game/engine/cards/index.ts';
+import { cardData } from '../game/engine/cards/index.ts';
 import { ARCS } from '../game/adventure/arcs.ts';
 import { LEVELS } from '../game/ai/search.ts';
+import { BOOSTER_SETS } from '../game/boosters/sets/index.ts';
 import { ECONOMY } from '../game/economy/config.ts';
 import { deckErrors } from '../game/engine/deckRules.ts';
 import { CUSTOM_SERIES, DECKS, isCustomDeck } from '../game/engine/decks.ts';
 import { act } from '../game/engine/engine.ts';
 import { rateLimit } from './auth.js';
 import { db, getMeta, setMeta, transaction } from './db.js';
+import { holdCounts, listDecks } from './game-decks.js';
 import { RECORD_ID } from './game-records.js';
 import { checkShape, freshStart, readRecord, refuse, replayGame, requireCards, validList } from './game-verify.js';
 import { ENGINE } from './version.js';
@@ -401,6 +407,150 @@ export function claimReward(userId, recordId, now = new Date()) {
   });
 }
 
+// ---------- Rareté d'une carte (comptoir et doublons) ----------
+
+// Rareté de la version de base, au barème (L, C, UC, R, SR, SEC) : celle de la description des boosters, sinon celle
+// du catalogue ; null pour une carte sans valeur au barème (promo...), que le comptoir ne vend pas et qu'on n'échange pas
+const RARITIES = new Set(Object.keys(ECONOMY.duplicates.value));
+const BOOSTER_RARITY = new Map();
+for (const s of Object.values(BOOSTER_SETS)) {
+  for (const [rarity, list] of Object.entries(s.cards)) for (const number of list) BOOSTER_RARITY.set(number, { set: s.set, rarity });
+}
+
+function cardRarity(number) {
+  const r = BOOSTER_RARITY.get(number)?.rarity ?? cardData()[number]?.rarity;
+  return RARITIES.has(r) ? r : null;
+}
+
+const cardName = (number) => cardData()[number]?.name ?? number;
+
+// Cartes de la Cale, par version (par numéro, toutes versions confondues : holdCounts de game-decks.js)
+const holdRows = (userId) =>
+  db.prepare('SELECT number, variant, count FROM game_inventory WHERE user_id = ? AND count > 0 ORDER BY number, variant').all(userId);
+
+// ---------- Comptoir : un exemplaire de plus d'une carte déjà trouvée ----------
+
+// Les cartes du comptoir : celles des extensions en vente à la boutique (description de leurs boosters)
+const counterCard = (number) => {
+  const c = typeof number === 'string' ? BOOSTER_RARITY.get(number) : undefined;
+  return c && Object.hasOwn(ECONOMY.shop, c.set) && RARITIES.has(c.rarity) ? c : undefined;
+};
+
+export function counterOffer(userId) {
+  const owned = holdCounts(userId);
+  const { max, onlyFound, price } = ECONOMY.counter;
+  const cards = [];
+  for (const [number, c] of BOOSTER_RARITY) {
+    if (!counterCard(number) || (onlyFound && !owned[number])) continue;
+    cards.push({ number, set: c.set, rarity: c.rarity, price: price[c.rarity], owned: owned[number] ?? 0, max });
+  }
+  return { cards };
+}
+
+// Achat au comptoir : débit et carte (version de base) dans la Cale, dans la même transaction, prix du barème. Le même
+// purchaseId renvoie le même achat (already: true), sans rien refaire.
+export function buyAtCounter(userId, number, purchaseId, now = new Date()) {
+  if (typeof purchaseId !== 'string' || !OPERATION_ID.test(purchaseId)) throw refuse('bad_request', 'Identifiant d’achat invalide');
+  return transaction(() => {
+    const done = ledgerRow(userId, 'comptoir', purchaseId);
+    if (done) {
+      const detail = JSON.parse(done.detail);
+      return { wallet: walletView(userId, walletRow(userId, now), now), spent: -done.amount, card: { number: detail.number, variant: 'base', count: 1 }, already: true };
+    }
+    const card = counterCard(number);
+    if (!card) throw refuse('not_found', 'Cette carte n’est pas en vente au comptoir', 404);
+    const { max, onlyFound } = ECONOMY.counter;
+    const owned = holdCounts(userId)[number] ?? 0;
+    const name = cardName(number);
+    if (onlyFound && !owned) throw refuse('not_found_yet', `Tu n’as pas encore trouvé ${name} : il faut l’avoir tirée une fois dans un booster`, 409);
+    if (owned >= max) throw refuse('counter_max', `Tu as déjà ${max} exemplaires de ${name}`, 409);
+    const price = ECONOMY.counter.price[card.rarity];
+    const { balance } = walletRow(userId, now);
+    if (balance < price) throw refuse('insufficient_funds', `Il te manque ${price - balance} ฿ pour ${name}`, 409);
+    credit(userId, 'comptoir', purchaseId, -price, { label: `Comptoir : ${name} (${number})`, number }, now);
+    db.prepare(`INSERT INTO game_inventory (user_id, number, variant, count) VALUES (?, ?, 'base', 1)
+      ON CONFLICT(user_id, number, variant) DO UPDATE SET count = count + 1`).run(userId, number);
+    return { wallet: walletView(userId, walletRow(userId, now), now), spent: price, card: { number, variant: 'base', count: 1 } };
+  });
+}
+
+// ---------- Doublons : au-delà de ECONOMY.duplicates.keep exemplaires, échangés contre des Berry ----------
+
+// Ordre de départ des versions : la version de base d'abord, puis (seulement si demandé) les autres, les plus rares en
+// dernier
+const VARIANT_ORDER = ['base', 'parallele', 'sp', 'manga'];
+const variantRank = (v) => (VARIANT_ORDER.includes(v) ? VARIANT_ORDER.indexOf(v) : VARIANT_ORDER.length);
+
+// Ce que l'échange prendrait, d'après la Cale lue maintenant. stateKey résume la Cale et le choix des versions : si
+// l'une ou l'autre change entre l'aperçu et l'échange, on refait l'aperçu. decks : decks d'aventure complets avant
+// l'échange et plus après.
+function duplicatesPlan(userId, withVariants) {
+  const rows = holdRows(userId);
+  const stateKey = crypto.createHash('sha256')
+    .update(JSON.stringify([withVariants, rows.map((r) => [r.number, r.variant, r.count])])).digest('base64url').slice(0, 24);
+  const byNumber = new Map();
+  for (const r of rows) byNumber.set(r.number, [...(byNumber.get(r.number) ?? []), r]);
+  const { keep, value } = ECONOMY.duplicates;
+  const lines = [];
+  const before = {};
+  const removed = {};
+  for (const [number, versions] of byNumber) {
+    before[number] = versions.reduce((s, v) => s + v.count, 0);
+    let extra = before[number] - keep;
+    const rarity = cardRarity(number);
+    if (extra <= 0 || !rarity) continue;
+    for (const v of [...versions].sort((a, b) => variantRank(a.variant) - variantRank(b.variant))) {
+      if (extra <= 0 || (v.variant !== 'base' && !withVariants)) break;
+      const count = Math.min(extra, v.count);
+      lines.push({ number, variant: v.variant, rarity, count, value: value[rarity] });
+      removed[number] = (removed[number] ?? 0) + count;
+      extra -= count;
+    }
+  }
+  const decks = [];
+  if (lines.length) {
+    for (const d of listDecks(userId).filter((x) => x.mode === 'aventure')) {
+      const need = { ...d.cards, [d.leader]: (d.cards[d.leader] ?? 0) + 1 };
+      const broken = Object.entries(need).some(([n, k]) => removed[n] && k <= before[n] && k > before[n] - removed[n]);
+      if (broken) decks.push({ id: d.id, name: d.name });
+    }
+  }
+  return { stateKey, lines, total: lines.reduce((s, l) => s + l.count * l.value, 0), decks };
+}
+
+export function previewDuplicates(userId, withVariants = false) {
+  requireCards();
+  return duplicatesPlan(userId, Boolean(withVariants));
+}
+
+// Échange : les doublons quittent la Cale et les Berry arrivent dans la même transaction, sur la Cale de l'aperçu
+// (stateKey). Le même exchangeId renvoie le même échange (already: true), sans rien refaire.
+export function exchangeDuplicates(userId, stateKey, exchangeId, withVariants = false, now = new Date()) {
+  if (typeof exchangeId !== 'string' || !OPERATION_ID.test(exchangeId)) throw refuse('bad_request', 'Identifiant d’échange invalide');
+  return transaction(() => {
+    const done = ledgerRow(userId, 'doublons', exchangeId);
+    if (done) {
+      const detail = JSON.parse(done.detail);
+      return { wallet: walletView(userId, walletRow(userId, now), now), lines: detail.lines ?? [], total: done.amount, already: true };
+    }
+    requireCards();
+    const plan = duplicatesPlan(userId, Boolean(withVariants));
+    if (typeof stateKey !== 'string' || stateKey !== plan.stateKey) {
+      throw refuse('hold_changed', 'Ta Cale a changé depuis l’aperçu : regarde le nouvel aperçu avant d’échanger', 409);
+    }
+    if (!plan.lines.length) throw refuse('bad_request', 'Pas de doublon à échanger');
+    // une version dont tous les exemplaires partent quitte la Cale (pas de ligne à 0 exemplaire)
+    const take = db.prepare('UPDATE game_inventory SET count = count - ? WHERE user_id = ? AND number = ? AND variant = ? AND count > ?');
+    const drop = db.prepare('DELETE FROM game_inventory WHERE user_id = ? AND number = ? AND variant = ? AND count = ?');
+    for (const l of plan.lines) {
+      if (!take.run(l.count, userId, l.number, l.variant, l.count).changes) drop.run(userId, l.number, l.variant, l.count);
+    }
+    const cards = plan.lines.reduce((s, l) => s + l.count, 0);
+    credit(userId, 'doublons', exchangeId, plan.total, { label: `Échange de ${cards} doublon${cards > 1 ? 's' : ''}`, lines: plan.lines }, now);
+    return { wallet: walletView(userId, walletRow(userId, now), now), lines: plan.lines, total: plan.total };
+  });
+}
+
 // ---------- Routes (le compte est déjà vérifié par requireUser) ----------
 
 export function economyRoutes(app) {
@@ -425,5 +575,22 @@ export function economyRoutes(app) {
   app.post('/api/game/rewards/:recordId', (req, res) => {
     limit(`rewards:${req.user.id}`, 40, HOUR);
     res.json(claimReward(req.user.id, req.params.recordId));
+  });
+  app.get('/api/game/shop/counter', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(counterOffer(req.user.id));
+  });
+  app.post('/api/game/shop/counter', (req, res) => {
+    limit(`shop-buy:${req.user.id}`, 60, 60_000);
+    res.json(buyAtCounter(req.user.id, req.body?.number, req.body?.purchaseId));
+  });
+  app.get('/api/game/duplicates', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(previewDuplicates(req.user.id, req.query.withVariants === '1'));
+  });
+  app.post('/api/game/duplicates/exchange', (req, res) => {
+    limit(`duplicates:${req.user.id}`, 30, 60_000);
+    const withVariants = req.body?.withVariants === true || req.body?.withVariants === 1;
+    res.json(exchangeDuplicates(req.user.id, req.body?.stateKey, req.body?.exchangeId, withVariants));
   });
 }
