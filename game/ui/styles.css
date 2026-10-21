@@ -1290,3 +1290,110 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
   .op-adv-layer > .setup, .op-adv-finale-flag { animation: none; }
 }
 /* === fin 1.21 === */
+
+/* === Tâche 2.3 : la boutique === */
+/* Pastille du solde : la bourse (👛), jamais la prime de l'avis de recherche */
+.op-wallet-badge { position: relative; flex: none; display: inline-flex; align-items: center; gap: 0.35rem; height: 2.286rem; padding: 0 0.8rem 0 0.55rem; border-radius: 999px; border: 1px solid rgba(240, 192, 79, 0.55); background: linear-gradient(180deg, rgba(240, 192, 79, 0.18), rgba(240, 192, 79, 0.06)); color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.op-wallet-badge.op-wallet-link { font: inherit; font-weight: 800; cursor: pointer; transition: transform 0.12s, box-shadow 0.2s; }
+@media (hover: hover) { .op-wallet-badge.op-wallet-link:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px var(--accent); } }
+.op-wallet-purse { font-size: 1.1rem; }
+.op-wallet-badge.is-up { animation: op-wallet-up 0.7s ease-out; }
+.op-wallet-badge.is-down { animation: op-wallet-down 0.5s ease-out; }
+@keyframes op-wallet-up { 0% { box-shadow: 0 0 0 0 rgba(240, 192, 79, 0.8); transform: scale(1); } 30% { transform: scale(1.08); } 100% { box-shadow: 0 0 0 0.9rem rgba(240, 192, 79, 0); transform: none; } }
+@keyframes op-wallet-down { 30% { transform: scale(0.94); } 100% { transform: none; } }
+.op-wallet-delta { position: absolute; right: 0.4rem; top: -0.2rem; pointer-events: none; font-size: 0.9rem; font-weight: 800; animation: op-wallet-delta 1.8s ease-out forwards; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+.op-wallet-delta.is-gain { color: var(--green); }
+.op-wallet-delta.is-spent { color: #ff9a8f; }
+@keyframes op-wallet-delta { 0% { opacity: 0; transform: translateY(0.4rem); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-1.6rem); } }
+/* Détail de la bourse */
+.op-wallet-details { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+.op-wallet-details li { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.55rem 0.7rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); line-height: 1.35; }
+.op-wallet-details li > span:last-child { flex: 1; min-width: 0; }
+.op-wallet-details li.is-ready { border-color: rgba(240, 192, 79, 0.5); }
+.op-wallet-details li.is-done { border-color: rgba(76, 195, 138, 0.5); }
+.op-wallet-details li.is-capped { border-color: rgba(239, 90, 76, 0.45); }
+.op-wallet-icon { flex: none; font-size: 1.3rem; line-height: 1.2; }
+.op-wallet-pips { display: flex; gap: 0.3rem; margin-top: 0.35rem; }
+.op-wallet-pips i { flex: 1; max-width: 3rem; height: 0.45rem; border-radius: 999px; background: var(--line); }
+.op-wallet-pips i.on { background: var(--accent); }
+.op-wallet-bar { display: block; height: 0.35rem; margin-top: 0.35rem; border-radius: 999px; background: var(--line); overflow: hidden; }
+.op-wallet-bar i { display: block; height: 100%; background: var(--accent); transition: width 0.6s ease-out; }
+.is-capped .op-wallet-bar i { background: var(--red); }
+.op-wallet-help summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.op-wallet-help ul { margin: 0.5rem 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; line-height: 1.4; }
+.op-wallet-help p { margin: 0; }
+/* Écran de la boutique */
+.op-shop { max-width: 70rem; gap: 1.1rem; }
+.op-shop-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.op-shop-head h1 { flex: 1; margin: 0; font-size: 1.8rem; color: var(--accent); }
+.op-shop-main { display: grid; grid-template-columns: minmax(17rem, 25rem) 1fr; gap: 1.1rem; align-items: start; }
+.op-shop-purse, .op-shop-window, .op-shop-history { display: flex; flex-direction: column; gap: 0.7rem; padding: 1rem 1.1rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+.op-shop-purse h2, .op-shop-window h2, .op-shop-history h2 { margin: 0; }
+.op-shop-purse p, .op-shop-window p, .op-shop-history p { margin: 0; }
+.op-shop-balance { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.op-shop-shelf { display: flex; flex-direction: column; gap: 0.6rem; }
+.op-shop-shelf-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 0.3rem 1rem; }
+.op-shop-shelf-head h3 { margin: 0; }
+.op-shop-item { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 0.9rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.op-shop-display { border-color: rgba(240, 192, 79, 0.45); background: linear-gradient(135deg, rgba(240, 192, 79, 0.1), transparent 60%), var(--surface); }
+.op-shop-art { flex: none; width: 5.2rem; display: grid; place-items: center; }
+.op-shop-art .op-adv-pack { width: 2.8rem; }
+.op-shop-box { position: relative; display: block; width: 5rem; height: 4.6rem; }
+.op-shop-box .op-adv-pack { position: absolute; bottom: 0; }
+.op-shop-box .op-adv-pack:nth-child(1) { left: 0; transform: rotate(-12deg); }
+.op-shop-box .op-adv-pack:nth-child(2) { left: 1.1rem; transform: rotate(-3deg); }
+.op-shop-box .op-adv-pack:nth-child(3) { left: 2.2rem; transform: rotate(7deg); }
+.op-shop-box .op-adv-pack:not(:last-child) b { visibility: hidden; }
+.op-shop-item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.op-shop-item-text strong { font-size: 1.1rem; }
+.op-shop-saving { align-self: flex-start; margin-top: 0.2rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(76, 195, 138, 0.16); color: var(--green); font-size: 0.82rem; font-weight: 700; }
+.op-shop-buy { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; text-align: right; }
+.op-shop-price { font-size: 1.25rem; font-weight: 800; color: var(--accent); white-space: nowrap; }
+/* Contenu d'un booster et d'un display */
+.modal-box.op-shop-contents { max-width: 40rem; }
+/* Confirmation et achat */
+.modal-box.op-shop-dialog { max-width: 28rem; align-items: center; text-align: center; }
+.op-shop-dialog p { margin: 0; line-height: 1.45; }
+.op-shop-stack { position: relative; display: inline-flex; justify-content: center; height: 5.4rem; }
+.op-shop-stack .op-adv-pack { width: 3.3rem; }
+.op-shop-stack .op-adv-pack:first-child:not(:last-child) { position: absolute; transform: translate(-0.9rem, 0.2rem) rotate(-10deg); opacity: 0.85; }
+.op-shop-stack.is-fresh .op-adv-pack:last-child { animation: op-adv-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+/* Historique */
+.op-shop-ledger { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.op-shop-ledger li { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.2rem; border-bottom: 1px solid var(--line); }
+.op-shop-ledger li:last-child { border-bottom: 0; }
+.op-shop-ledger-icon { flex: none; width: 1.6rem; text-align: center; font-size: 1.15rem; }
+.op-shop-ledger-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.op-shop-ledger-amount { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.op-shop-ledger-amount.is-spent { color: #ff9a8f; }
+.op-shop-more { align-self: center; }
+@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+  .op-shop { padding: 1rem 0.8rem 3rem; gap: 0.9rem; }
+  .op-shop-head h1 { font-size: 1.35rem; }
+  .op-shop-purse, .op-shop-window, .op-shop-history { padding: 0.8rem; }
+  .op-shop-balance { font-size: 1.8rem; }
+}
+@media (max-width: 900px) and (orientation: portrait) {
+  .op-shop-main { grid-template-columns: 1fr; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .op-shop-main { grid-template-columns: minmax(15rem, 1fr) 1.4fr; gap: 0.7rem; }
+}
+@media (max-width: 600px) {
+  .op-shop-item { flex-wrap: wrap; gap: 0.6rem 0.8rem; }
+  .op-shop-art { width: 3.6rem; }
+  .op-shop-art .op-adv-pack { width: 2.2rem; }
+  .op-shop-box { width: 3.6rem; height: 3.6rem; }
+  .op-shop-box .op-adv-pack:nth-child(2) { left: 0.7rem; }
+  .op-shop-box .op-adv-pack:nth-child(3) { left: 1.4rem; }
+  .op-shop-buy { flex-basis: 100%; flex-direction: row; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+  .op-shop-buy .op-small { order: -1; margin-right: auto; }
+  .op-adv-head .op-wallet-badge { padding: 0 0.6rem 0 0.4rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .op-wallet-badge.is-up, .op-wallet-badge.is-down, .op-shop-stack.is-fresh .op-adv-pack:last-child { animation: none; }
+  .op-wallet-delta { animation: op-wallet-delta-calm 1.8s linear forwards; }
+  .op-wallet-bar i { transition: none; }
+}
+@keyframes op-wallet-delta-calm { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+/* === fin 2.3 === */

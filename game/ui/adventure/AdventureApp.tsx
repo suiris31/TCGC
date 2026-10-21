@@ -1,7 +1,8 @@
 // Mode Aventure (tâche 1.17) : le parcours complet, de l'accueil à la fin de l'arc.
 // - Premier passage : écran d'accueil, « Prendre la mer » donne le deck de départ (dans la Cale) et le deck d'aventure.
 // - Carte du monde (WorldMap) avec la progression lue sur le serveur ; une île verrouillée s'explique, une île ouverte
-//   ou gagnée ouvre son chapitre (ChapterScreen) ; « Ma Cale » et « Mon deck » ouvrent les écrans de la tâche 1.18.
+//   ou gagnée ouvre son chapitre (ChapterScreen) ; « Ma Cale » et « Mon deck » ouvrent les écrans de la tâche 1.18 ;
+//   le solde de la bourse et « Boutique » ouvrent la boutique (tâche 2.3).
 // - « Combattre » lance la partie sur le plateau du jeu (App, partie imposée) : ton deck d'aventure contre le deck et le
 //   niveau du chapitre. Une partie quittée ou coupée (onglet fermé) se reprend depuis le chapitre.
 // - Fin de partie : l'enregistrement final est envoyé, puis le serveur rejoue la partie et donne les récompenses de la
@@ -20,6 +21,8 @@ import { App } from '../App.tsx';
 import { flushQueue, loadRecord, loadSummaries, whenSaved } from '../archiveClient.ts';
 import { deckInfo, loadMyDecks, playable, useMyDecks } from '../myDecks.ts';
 import { useSettings } from '../settings.ts';
+import { ShopScreen } from '../economy/Shop.tsx';
+import { useWallet, WalletBadge } from '../economy/Wallet.tsx';
 import { boosterSfx, setSoundEnabled } from '../sound.ts';
 import { AdventureDeckScreen } from './AdventureDeck.tsx';
 import { ArcSummary } from './ArcSummary.tsx';
@@ -33,7 +36,7 @@ import { WorldMap, forgetShip } from './WorldMap.tsx';
 const ARC = ARCS[0];
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-type Screen = { kind: 'map' } | { kind: 'chapter'; id: string } | { kind: 'hold' } | { kind: 'deck' };
+type Screen = { kind: 'map' } | { kind: 'chapter'; id: string } | { kind: 'hold' } | { kind: 'deck' } | { kind: 'shop' };
 
 // Partie en cours ou finie (le plateau reste monté jusqu'au retour à la carte, pour le récap du coach)
 interface Match {
@@ -270,6 +273,8 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     );
   } else if (screen.kind === 'hold') {
     content = <HoldScreen onBack={() => { setScreen({ kind: 'map' }); void reload(); }} />;
+  } else if (screen.kind === 'shop') {
+    content = <ShopScreen onBack={() => { setScreen({ kind: 'map' }); void reload(); }} />;
   } else if (screen.kind === 'deck') {
     content = <AdventureDeckScreen onBack={() => { setScreen({ kind: 'map' }); void reload(); void loadMyDecks(); }} />;
   } else if (screen.kind === 'chapter' && chapterOf(screen.id)) {
@@ -297,6 +302,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       <>
         <MapScreen adv={adv} statuses={statuses} current={current} picked={picked} onPick={onPick} busy={openBusy} error={openError}
           finished={arcFinished(ARC, wins)} onBack={onBack} onHold={() => setScreen({ kind: 'hold' })} onDeck={() => setScreen({ kind: 'deck' })}
+          onShop={() => setScreen({ kind: 'shop' })}
           onChapter={openChapter} onOpenBoosters={() => void openBoosters(adv.boosters.map((b) => b.id))} onSummary={() => setFinale(true)} />
         {finale && !opening && <ArcSummary arc={ARC} adv={adv} onClose={() => setFinale(false)} />}
       </>
@@ -357,7 +363,7 @@ function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: strin
   );
 }
 
-function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPick, onBack, onHold, onDeck, onChapter, onOpenBoosters, onSummary }: {
+function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPick, onBack, onHold, onDeck, onShop, onChapter, onOpenBoosters, onSummary }: {
   adv: AdventureState;
   statuses: Record<string, ChapterStatus>;
   current?: string;
@@ -369,6 +375,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
   onBack: () => void;
   onHold: () => void;
   onDeck: () => void;
+  onShop: () => void;
   onChapter: (id: string) => void;
   onOpenBoosters: () => void;
   onSummary: () => void;
@@ -377,11 +384,13 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
   const locked = picked && statuses[picked] === 'locked' ? ARC.chapters.find((c) => c.id === picked) : undefined;
   const needed = locked ? requiredChapters(ARC, locked).filter((id) => statuses[id] !== 'won').map((id) => ARC.chapters.find((c) => c.id === id)!) : [];
   const waiting = adv.boosters.length;
+  const { wallet } = useWallet();
   return (
     <div className="setup op-adv op-adv-map">
       <header className="op-adv-head">
         <button className="op-btn op-btn-ghost btn-small" onClick={onBack}>← Jeu</button>
         <h1 className="op-adv-map-title">{ARC.title}</h1>
+        <WalletBadge wallet={wallet} onClick={onShop} />
         <div className="op-adv-head-actions">
           {waiting > 0 && (
             <button className="op-btn btn-small op-adv-gift" disabled={busy} onClick={onOpenBoosters} title="Ouvrir tes boosters gagnés (ils restent aussi dans ta Cale)">
@@ -390,6 +399,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
           )}
           <button className="op-btn op-btn-ghost btn-small" onClick={onHold}>🧰 Ma Cale</button>
           <button className="op-btn op-btn-ghost btn-small" onClick={onDeck}>🃏 Mon deck</button>
+          <button className="op-btn op-btn-ghost btn-small" onClick={onShop}>🏪 Boutique</button>
         </div>
       </header>
       <WorldMap arcs={ARCS} statuses={statuses} current={current} onPick={onPick} selected={picked} />
