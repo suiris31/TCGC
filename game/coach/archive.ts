@@ -70,6 +70,8 @@ export interface GameRecord {
   log: LogEntry[];
   mode?: 'solo' | 'online';       // partie en ligne contre un autre joueur (absent : contre l'IA)
   opponent?: string;              // partie en ligne : pseudo de l'adversaire
+  holdDeck?: true;                // partie en ligne : mon deck était un deck de la Cale (game/online/match.ts)
+  opponentHoldDeck?: true;        // partie en ligne : celui de l'adversaire aussi
 }
 
 // Version légère, sans l'état de départ, les coups ni le journal (liste des parties)
