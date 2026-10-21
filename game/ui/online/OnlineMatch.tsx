@@ -78,9 +78,14 @@ function WaitingRoom({ view, onLeave }: { view: LiveView; onLeave: () => void })
       </div>
       {copied && <p className="good">{copied}</p>}
       <p className="op-muted"><span className="op-spinner" /> En attente de ton ami… La partie commence dès qu’il rejoint la salle{minutes !== null ? ` (encore ${minutes} min)` : ''}.</p>
-      <p className="op-small op-muted">Ton deck : {view.you.deckName ?? DECKS[view.you.deck]?.name ?? view.you.deck}</p>
+      <p className="op-small op-muted">Ton deck : {view.you.deckName ?? DECKS[view.you.deck]?.name ?? view.you.deck}{view.you.hold && <> <HoldMark /></>}</p>
     </div>
   );
+}
+
+// Repère d'un deck de la Cale (cartes gagnées dans l'Aventure, vérifiées par le serveur au début de la partie)
+function HoldMark() {
+  return <span className="op-hold-mark" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure, vérifiées au début de la partie">🧭 Cale</span>;
 }
 
 // ---------- Plateau ----------
@@ -290,7 +295,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">🌐 En ligne</div>
-          <div className="match op-small op-muted">{view.you.deckName ?? DECKS[view.you.deck]?.name} <span className="vs">contre</span> {oppName} · {view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}</div>
+          <div className="match op-small op-muted" title={`${view.you.deckName ?? DECKS[view.you.deck]?.name}${view.you.hold ? ' (deck de la Cale)' : ''} contre ${oppName} · ${view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}${view.opponent?.hold ? ' (deck de la Cale)' : ''}`}>{view.you.deckName ?? DECKS[view.you.deck]?.name}{view.you.hold && <> <HoldMark /></>} <span className="vs">contre</span> {oppName} · {view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}{view.opponent?.hold && <> <HoldMark /></>}</div>
           <div className={`phase-pill ${game.active === seat ? 'pill-me' : 'pill-opp'}`}>Tour {game.turn || 1} · {who}{game.battle ? ' ⚔' : ''}</div>
           <span className={view.opponentOnline ? 'presence presence-on' : 'presence'} title={view.opponentOnline ? `${oppName} est connecté` : `${oppName} n’est pas connecté en ce moment`}>●</span>
           <div className="top-actions">
@@ -410,7 +415,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
         <div className="modal" onClick={() => setShowEnd(false)}>
           <div className="modal-box online-end" onClick={(e) => e.stopPropagation()}>
             <h2 className={won ? 'good' : 'danger'}>{won ? 'Victoire !' : 'Défaite'}</h2>
-            <p>{game.winReason} · {game.turn} tours</p>
+            <p>{game.winReason} · {game.turn} tours{view.you.hold && view.opponent?.hold ? ' · 🧭 partie avec decks de la Cale' : ''}</p>
             <p className="op-small op-muted">La partie est rangée dans « Mes parties ». Le coach était désactivé pendant la partie ; depuis « Mes parties », tu peux la revoir et rejouer un moment contre l’IA.</p>
             <div className="modal-actions">
               <button className="op-btn op-btn-primary" onClick={onLeave}>Retour au menu</button>

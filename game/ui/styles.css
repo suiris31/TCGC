@@ -1290,3 +1290,11 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
   .op-adv-layer > .setup, .op-adv-finale-flag { animation: none; }
 }
 /* === fin 1.21 === */
+/* === Tâche 2.4 : decks de la Cale en ligne === */
+/* Repère d'un deck de la Cale (deck d'aventure) : sur sa tuile dans le choix des decks, et pendant la partie en ligne */
+.deck-tile.op-deck-hold .deck-name { color: var(--accent); }
+.op-hold-badge { position: absolute; top: 0.4rem; left: 0.4rem; padding: 0.1rem 0.45rem; border-radius: 999px; background: rgba(12, 18, 30, 0.85); border: 1px solid rgba(240, 192, 79, 0.7); color: var(--accent); font-size: 0.72rem; font-weight: 700; pointer-events: none; }
+.op-hold-mark { display: inline-block; padding: 0 0.35rem; border-radius: 999px; border: 1px solid rgba(240, 192, 79, 0.6); color: var(--accent); font-size: 0.85em; white-space: nowrap; }
+.op-hold-note { margin-top: 0.7rem; padding: 0.55rem 0.8rem; border-radius: 10px; border: 1px solid rgba(240, 192, 79, 0.45); background: rgba(240, 192, 79, 0.08); font-size: 0.9rem; line-height: 1.45; }
+.op-hold-note-bad { border-color: rgba(217, 68, 58, 0.6); background: rgba(217, 68, 58, 0.1); }
+/* === fin 2.4 === */
