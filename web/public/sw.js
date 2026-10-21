@@ -28,7 +28,8 @@ self.addEventListener('fetch', (event) => {
       const hit = await cache.match(event.request);
       if (hit) return hit;
       const res = await fetch(event.request);
-      if (res.ok) cache.put(event.request, res.clone());
+      // no-store : face de carte dessinée de l'interrupteur de retrait, à ne pas garder à la place du vrai visuel
+      if (res.ok && !/no-store/.test(res.headers.get('Cache-Control') ?? '')) cache.put(event.request, res.clone());
       return res;
     }));
     return;

@@ -35,7 +35,8 @@ function describe(card: SharedCard) {
 // Rien ne passe par le serveur.
 export function SharedPage({ token }: { token: string }) {
   const { uiLang, setUiLang, toast } = useApp();
-  const [view, setView] = useState<SharedView | 'missing' | null>(null);
+  // closed : pages publiques fermées par l'interrupteur de retrait du serveur
+  const [view, setView] = useState<SharedView | 'missing' | 'closed' | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('set');
@@ -44,7 +45,7 @@ export function SharedPage({ token }: { token: string }) {
   useEffect(() => {
     let cancelled = false;
     setView(null);
-    api.shared(token).then((v) => { if (!cancelled) setView(v); }).catch(() => { if (!cancelled) setView('missing'); });
+    api.shared(token).then((v) => { if (!cancelled) setView(v); }).catch((e: { code?: string }) => { if (!cancelled) setView(e.code === 'public_closed' ? 'closed' : 'missing'); });
     return () => { cancelled = true; };
   }, [token]);
 
@@ -57,14 +58,14 @@ export function SharedPage({ token }: { token: string }) {
 
   if (view === null) return <>{header}<div className="center"><div className="spinner" /></div></>;
 
-  if (view === 'missing') {
+  if (view === 'missing' || view === 'closed') {
     return (
       <>
         {header}
         <div className="page stack">
           <section className="panel stack-tight">
-            <h3 className="flush">{t('shared.notFound.title')}</h3>
-            <p className="muted flush">{t('shared.notFound.text')}</p>
+            <h3 className="flush">{t(view === 'closed' ? 'shared.closed.title' : 'shared.notFound.title')}</h3>
+            <p className="muted flush">{t(view === 'closed' ? 'shared.closed.text' : 'shared.notFound.text')}</p>
           </section>
           <Cta />
         </div>

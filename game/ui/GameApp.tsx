@@ -21,6 +21,8 @@ const ENGINE = typeof __ENGINE__ === 'string' ? __ENGINE__ : 'inconnue';
 // Le serveur a été mis à jour depuis l'ouverture de la page : ses cartes et son arbitre peuvent ne plus correspondre
 // au code de la page
 class Outdated extends Error {}
+// Le jeu est fermé par l'interrupteur de retrait du serveur (server/takedown.js)
+class Closed extends Error {}
 
 // Informations des cartes : une fois par visite (les fils de calcul de l'IA les reçoivent du module chargé ici)
 let cardsLoaded: Promise<void> | null = null;
@@ -33,7 +35,8 @@ async function fetchCards(): Promise<void> {
       if (engine !== ENGINE && engine !== 'inconnue' && ENGINE !== 'inconnue') throw new Outdated(engine);
       return loadCardData(cards);
     }
-    // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes
+    // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes, ou le jeu est fermé
+    if (res.status === 503 && (await res.json().catch(() => null))?.code === 'game_closed') throw new Closed();
     if (res.status !== 503 || attempt >= 40) throw new Error(`le serveur a répondu ${res.status}`);
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
@@ -78,7 +81,7 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
       cardsLoaded = null;
       throw e;
     });
-    cardsLoaded.then(() => setState('ready'), (e: unknown) => setState(e instanceof Outdated ? 'outdated' : e instanceof Error ? e.message : String(e)));
+    cardsLoaded.then(() => setState('ready'), (e: unknown) => setState(e instanceof Outdated ? 'outdated' : e instanceof Closed ? 'closed' : e instanceof Error ? e.message : String(e)));
   }, []);
 
   // Tailles du jeu en rem : la taille du texte de la page ne change que pendant que le jeu est affiché
@@ -150,6 +153,11 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
         <div className="opc-wait">
           Le jeu vient d’être mis à jour. Recharge la page pour jouer avec la nouvelle version.{' '}
           <button className="op-btn op-btn-primary" onClick={() => window.location.reload()}>Recharger</button>
+        </div>
+      ) : state === 'closed' ? (
+        <div className="opc-wait">
+          <p>Le jeu est fermé pour le moment. Ta collection reste disponible, et tes parties, tes decks, ta Cale et ta
+            progression sont gardés. <a className="op-link" href="#legal">En savoir plus</a></p>
         </div>
       ) : (
         <div className="opc-wait">Impossible de charger le jeu : {state}. Réessaie dans un moment.</div>

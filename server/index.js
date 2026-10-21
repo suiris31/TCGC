@@ -23,6 +23,7 @@ import {
 } from './cards.js';
 import { downloadThumb, thumbPath } from './images.js';
 import { buildIndex, identify, indexStatus } from './scan.js';
+import { takedownRoutes } from './takedown.js';
 import { notifyAfterSync, notifyPrefs, pushPublicKey, sendTest, setNotifyPrefs, subscribe, unsubscribe } from './notify.js';
 import { deleteShare, getShare, regenerateShare, saveShare, sharedView } from './share.js';
 import { runSync, syncInProgress, syncIsStale } from './sync.js';
@@ -63,6 +64,9 @@ app.use('/api', (req, res, next) => {
 });
 
 const log = (...args) => console.log(new Date().toLocaleTimeString('fr-FR'), ...args);
+
+// Interrupteur de retrait (visuels, jeu, pages publiques), avant toutes les routes qu'il peut couper
+takedownRoutes(app, { log });
 
 // Synchro des prix, notifications (prix cibles atteints...), puis mise à jour de l'index de scan (nouvelles cartes),
 // en tâche de fond
