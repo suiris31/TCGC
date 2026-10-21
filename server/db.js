@@ -281,8 +281,36 @@ db.exec(`
     PRIMARY KEY (user_id, record_id)
   );
 
-  -- Suppression d'un compte (auth.js) : ses données de l'aventure partent avec lui, dans la même transaction.
-  -- Recréé à chaque démarrage pour suivre les tables ajoutées.
+  -- Économie des Berry (voir game-economy.js). Porte-monnaie : le solde (cumul du journal, tenu dans la même
+  -- transaction), la réserve du bonus du jour et le coffre de la semaine. Jours et semaines : heure de Paris.
+  CREATE TABLE IF NOT EXISTS game_wallet (
+    user_id       INTEGER PRIMARY KEY,
+    balance       INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    bonus_reserve INTEGER NOT NULL DEFAULT 1,  -- bonus du jour en attente (de 0 à ECONOMY.dailyBonus.keepDays)
+    bonus_day     TEXT NOT NULL,               -- "2026-10-21" : jour du dernier calcul de la réserve
+    week          TEXT NOT NULL,               -- "2026-10-19" : lundi de la semaine en cours
+    week_wins     INTEGER NOT NULL DEFAULT 0,  -- victoires de la semaine (coffre)
+    chest_given   INTEGER NOT NULL DEFAULT 0,  -- coffre de la semaine déjà donné (0/1)
+    updated_at    TEXT NOT NULL
+  );
+
+  -- Journal des Berry : chaque mouvement, une seule fois par raison et par référence (une partie, un chapitre, un
+  -- achat ne comptent qu'une fois)
+  CREATE TABLE IF NOT EXISTS game_ledger (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    amount  INTEGER NOT NULL,              -- signé : gain positif, dépense négative
+    reason  TEXT NOT NULL,                 -- 'partie', 'bonus-jour', 'coffre', 'chapitre', 'achat'... (LedgerReason)
+    ref     TEXT NOT NULL,                 -- partie, chapitre, identifiant d'achat, lundi de la semaine...
+    day     TEXT NOT NULL,                 -- jour de Paris : "2026-10-21"
+    at      TEXT NOT NULL,                 -- date ISO
+    detail  TEXT NOT NULL DEFAULT '{}'     -- JSON : label, adversaire, coefficient, boosters...
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS game_ledger_once ON game_ledger(user_id, reason, ref);
+  CREATE INDEX IF NOT EXISTS game_ledger_day ON game_ledger(user_id, day);
+
+  -- Suppression d'un compte (auth.js) : ses données de l'aventure et de l'économie partent avec lui, dans la même
+  -- transaction. Recréé à chaque démarrage pour suivre les tables ajoutées.
   DROP TRIGGER IF EXISTS game_adventure_forget;
   CREATE TRIGGER game_adventure_forget AFTER DELETE ON users BEGIN
     DELETE FROM game_inventory WHERE user_id = OLD.id;
@@ -290,6 +318,8 @@ db.exec(`
     DELETE FROM game_progress WHERE user_id = OLD.id;
     DELETE FROM game_adventure WHERE user_id = OLD.id;
     DELETE FROM game_adventure_results WHERE user_id = OLD.id;
+    DELETE FROM game_wallet WHERE user_id = OLD.id;
+    DELETE FROM game_ledger WHERE user_id = OLD.id;
   END;
 `);
 
@@ -399,14 +429,27 @@ export function setMeta(key, value) {
     .run(key, value == null ? null : String(value));
 }
 
+// Transaction : appelée dans une autre transaction (credit de game-economy.js depuis une récompense de chapitre...),
+// elle devient un point de sauvegarde de la première : une erreur n'annule que ce qu'elle a fait
+let depth = 0;
 export function transaction(fn) {
-  db.exec('BEGIN');
+  const savepoint = depth ? `sp${depth}` : null;
+  db.exec(savepoint ? `SAVEPOINT ${savepoint}` : 'BEGIN');
+  depth++;
+  let result;
   try {
-    const result = fn();
-    db.exec('COMMIT');
-    return result;
+    result = fn();
   } catch (err) {
-    db.exec('ROLLBACK');
+    depth--;
+    db.exec(savepoint ? `ROLLBACK TO ${savepoint}; RELEASE ${savepoint}` : 'ROLLBACK');
     throw err;
   }
+  depth--;
+  try {
+    db.exec(savepoint ? `RELEASE ${savepoint}` : 'COMMIT');
+  } catch (err) {
+    if (!savepoint) db.exec('ROLLBACK');
+    throw err;
+  }
+  return result;
 }

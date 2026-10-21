@@ -13,6 +13,7 @@ import { addDeck, deckContents, starterDecks } from './decks.js';
 import { adventureRoutes } from './game-adventure.js';
 import { enLargeImage, ensureGameCards, gameCards } from './game-cards.js';
 import { deckRoutes } from './game-decks.js';
+import { economyRoutes } from './game-economy.js';
 import { expireRooms, forgetUser, onlineRoutes } from './game-online.js';
 import { readRecordBody, RECORD_ID, recordBlob, recordSummariesJson, saveRecord } from './game-records.js';
 import { mailConfigured } from './mail.js';
@@ -481,6 +482,9 @@ onlineRoutes(app, { log });
 
 // Mode Aventure : progression, Cale, boosters gagnés
 adventureRoutes(app);
+
+// Économie des Berry : porte-monnaie, boutique, gain des parties
+economyRoutes(app);
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
