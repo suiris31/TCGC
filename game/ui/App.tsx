@@ -28,6 +28,7 @@ import { flushQueue, keepForLater, loadSummaries, saveRecord, whenSaved } from '
 import { HistoryScreen } from './History.tsx';
 import { useDevice, useWakeLock } from './device.ts';
 import { cardImage } from './images.ts';
+import { GameGain, useGameGain } from './economy/GameGain.tsx';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
@@ -173,6 +174,10 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const celebrated = useRef(false);
   const ended = useRef(false);
   const [reviewed, setReviewed] = useState(0);
+  // Gain de la partie libre (Berry) : demandé au serveur une fois la partie finie et enregistrée (l'aventure le demande
+  // elle-même, avec le résultat du chapitre)
+  const { gain, claim, retry: retryGain, reset: resetGain } = useGameGain();
+  const claimed = useRef<string | null>(null);
 
   // Sauvegarde de la partie dans le dossier parties/ : mise à jour au fil des coups, puis à la fin quand le coach a
   // analysé tes décisions. Si l'onglet se ferme, une copie attend dans le navigateur jusqu'au lancement suivant.
@@ -309,6 +314,19 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     });
   }, [game, practice, session]);
 
+  // Partie libre finie : enregistrée tout de suite, puis son gain est demandé au serveur (une fois par partie ; pas une
+  // partie reprise depuis un moment revu, qui ne rapporte rien)
+  useEffect(() => {
+    const r = recording.current;
+    if (configured || !game || game.winner === null || practice || !r || claimed.current === r.id) return;
+    claimed.current = r.id;
+    clearTimeout(saveTimer.current);
+    const rec = snapshot();
+    if (!rec) return;
+    const saved = saveRecord(rec).then(() => rec.id);
+    claim(() => saved);
+  }, [configured, game, practice, snapshot, claim]);
+
   // Partie imposée (Aventure) : finie et vue (écran de victoire ou de défaite passé), elle est enregistrée sur le serveur
   // puis signalée, une seule fois (pas une partie reprise depuis un moment revu, qui ne compte pas)
   useEffect(() => {
@@ -391,6 +409,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     setSession(named);
     setGame(initial);
     startRecording(initial, named);
+    resetGain();
     setUndo([]);
     setShowEnd(true);
     setPractice(false);
@@ -498,6 +517,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     setCelebrate(false);
     celebrated.current = false;
     setHistory(false);
+    resetGain();
     startRecording(state, cfg, { from: rec.id, turn: state.turn });
     setGame(state);
     resetUi();
@@ -668,6 +688,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     const state = moves.current[index].state;
     const from = recording.current?.id ?? null;
     closeRecording();
+    resetGain();
     startRecording(state, session, { from, turn: state.turn });
     moves.current = moves.current.slice(0, index);
     for (const key of [...reviews.current.keys()]) if (!moves.current.some((m) => m.id === key)) reviews.current.delete(key);
@@ -851,6 +872,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
               matchup={matchupName(session)}
               record={records[recordKey(session)]}
               practice={practice}
+              gain={<GameGain gain={gain} onRetry={retryGain} />}
               progress={{ done, total }}
               recap={recap}
               onReplay={replay}
@@ -873,12 +895,14 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
   if (!deck) return null;
   const leader = def(deck.leader);
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');
+  const hold = isAdventureDeck(id);
   return (
-    <button className={`deck-tile ${selected ? 'on' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
+    <button className={`deck-tile ${selected ? 'on' : ''}${hold ? ' op-deck-hold' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
       <img src={cardImage(leader)} alt="" />
+      {hold && <span className="op-hold-badge" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure">🧭 Cale</span>}
       <span className="deck-name">{deck.name}</span>
       <span className="deck-id">{DECKS[id] ? deck.id : leader.name}{note ? ` · ${note}` : ''}</span>
-      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (isAdventureDeck(id) ? '🧭 Deck d’aventure (cartes de la Cale)' : 'Deck perso')}</span>
+      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (hold ? 'Deck de la Cale (cartes de l’Aventure)' : 'Deck perso')}</span>
       <span className="deck-guide-btn" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
         onClick={(e) => { e.stopPropagation(); onGuide(id); }}>📖 Guide</span>
     </button>
@@ -909,9 +933,14 @@ export function DeckPicker({ selected, onPick, onGuide, note, onBuilder, onRando
   const { decks } = useMyDecks();
   const shown = (id: string) => !color || def(deckInfo(id)!.leader).colors.includes(color as never);
   // mes decks jouables (les decks incomplets restent dans l'éditeur)
-  const mine = decks.filter((d) => d.leader in CARDS && playable(d)).map((d) => d.id);
+  const mine = decks.filter((d) => d.leader in CARDS && playable(d));
   const unfinished = decks.length - mine.length;
-  const groups = [{ label: 'Mes decks', ids: () => mine }, ...DECK_GROUPS];
+  // les decks de la Cale (decks d'aventure) à part : seulement des cartes gagnées dans l'Aventure
+  const groups = [
+    { label: 'Mes decks', ids: () => mine.filter((d) => !isAdventureDeck(d)).map((d) => d.id) },
+    { label: '🧭 Mes decks de la Cale', ids: () => mine.filter((d) => isAdventureDeck(d)).map((d) => d.id) },
+    ...DECK_GROUPS,
+  ];
   return (
     <>
       <div className="deck-filter" role="group" aria-label="Couleur du Leader">

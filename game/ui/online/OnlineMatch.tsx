@@ -1,6 +1,6 @@
 // Partie en ligne : salle d'attente (code à transmettre), puis plateau. Le plateau reprend celui de la partie contre
 // l'IA, avec la vue envoyée par le serveur : pas de coach, pas de retour en arrière, pas de marques « sans intérêt »
-// (aides désactivées), et chaque choix part au serveur, qui arbitre.
+// (aides désactivées), et chaque choix part au serveur, qui arbitre. En fin de partie, son gain en Berry (tâche 2.5).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DECKS } from '../../engine/decks.ts';
 import { counterValue, def } from '../../engine/rules.ts';
@@ -14,10 +14,26 @@ import { Celebration, FxLayer, Intro } from '../Fx.tsx';
 import { ActionBar, ActionMenu, BattlePanel } from '../Interaction.tsx';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from '../Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from '../Panel.tsx';
+import { loadSummaries } from '../archiveClient.ts';
+import { GameGain, useGameGain } from '../economy/GameGain.tsx';
 import { UI_SCALES, ZOOM_DELAYS, useSettings } from '../settings.ts';
 import { setSoundEnabled, sfx } from '../sound.ts';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { cancelRoom, resignMatch, sendChoice, useMatch, type LiveView } from './api.ts';
+
+// La partie finie telle que le serveur l'a rangée dans « Mes parties » (c'est elle qui se réclame) : la plus récente en
+// ligne avec ces decks, ce résultat et ce nombre de tours
+async function archivedId(view: LiveView, game: GameState): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    const found = (await loadSummaries())
+      .filter((g) => g.mode === 'online' && g.config.myDeck === view.you.deck && g.config.aiDeck === view.opponent?.deck
+        && g.turns === game.turn && g.status === (game.winner === view.seat ? 'won' : 'lost'))
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+    if (found) return found.id;
+    if (attempt >= 2) throw new Error('Ta partie n’est pas encore rangée dans « Mes parties »');
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+}
 
 export function OnlineMatch({ id, onLeave }: { id: string; onLeave: () => void }) {
   const { view, connected, error, refresh } = useMatch(id);
@@ -78,9 +94,14 @@ function WaitingRoom({ view, onLeave }: { view: LiveView; onLeave: () => void })
       </div>
       {copied && <p className="good">{copied}</p>}
       <p className="op-muted"><span className="op-spinner" /> En attente de ton ami… La partie commence dès qu’il rejoint la salle{minutes !== null ? ` (encore ${minutes} min)` : ''}.</p>
-      <p className="op-small op-muted">Ton deck : {view.you.deckName ?? DECKS[view.you.deck]?.name ?? view.you.deck}</p>
+      <p className="op-small op-muted">Ton deck : {view.you.deckName ?? DECKS[view.you.deck]?.name ?? view.you.deck}{view.you.hold && <> <HoldMark /></>}</p>
     </div>
   );
+}
+
+// Repère d'un deck de la Cale (cartes gagnées dans l'Aventure, vérifiées par le serveur au début de la partie)
+function HoldMark() {
+  return <span className="op-hold-mark" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure, vérifiées au début de la partie">🧭 Cale</span>;
 }
 
 // ---------- Plateau ----------
@@ -133,6 +154,15 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       setCelebrate(true);
     }
   }, [over]);
+
+  // fin de partie : son gain, demandé une fois (une partie déjà réclamée renvoie le même détail)
+  const { gain, claim, retry: retryGain } = useGameGain();
+  const claimed = useRef(false);
+  useEffect(() => {
+    if (!over || claimed.current) return;
+    claimed.current = true;
+    claim(() => archivedId(view, game));
+  }, [over, view, game, claim]);
 
   // après avoir donné une DON!!, le menu de la carte reste ouvert pour en donner d'autres
   useEffect(() => {
@@ -290,7 +320,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">🌐 En ligne</div>
-          <div className="match op-small op-muted">{view.you.deckName ?? DECKS[view.you.deck]?.name} <span className="vs">contre</span> {oppName} · {view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}</div>
+          <div className="match op-small op-muted" title={`${view.you.deckName ?? DECKS[view.you.deck]?.name}${view.you.hold ? ' (deck de la Cale)' : ''} contre ${oppName} · ${view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}${view.opponent?.hold ? ' (deck de la Cale)' : ''}`}>{view.you.deckName ?? DECKS[view.you.deck]?.name}{view.you.hold && <> <HoldMark /></>} <span className="vs">contre</span> {oppName} · {view.opponent?.deckName ?? DECKS[view.opponent?.deck ?? '']?.name}{view.opponent?.hold && <> <HoldMark /></>}</div>
           <div className={`phase-pill ${game.active === seat ? 'pill-me' : 'pill-opp'}`}>Tour {game.turn || 1} · {who}{game.battle ? ' ⚔' : ''}</div>
           <span className={view.opponentOnline ? 'presence presence-on' : 'presence'} title={view.opponentOnline ? `${oppName} est connecté` : `${oppName} n’est pas connecté en ce moment`}>●</span>
           <div className="top-actions">
@@ -410,7 +440,8 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
         <div className="modal" onClick={() => setShowEnd(false)}>
           <div className="modal-box online-end" onClick={(e) => e.stopPropagation()}>
             <h2 className={won ? 'good' : 'danger'}>{won ? 'Victoire !' : 'Défaite'}</h2>
-            <p>{game.winReason} · {game.turn} tours</p>
+            <p>{game.winReason} · {game.turn} tours{view.you.hold && view.opponent?.hold ? ' · 🧭 partie avec decks de la Cale' : ''}</p>
+            <GameGain gain={gain} onRetry={retryGain} />
             <p className="op-small op-muted">La partie est rangée dans « Mes parties ». Le coach était désactivé pendant la partie ; depuis « Mes parties », tu peux la revoir et rejouer un moment contre l’IA.</p>
             <div className="modal-actions">
               <button className="op-btn op-btn-primary" onClick={onLeave}>Retour au menu</button>

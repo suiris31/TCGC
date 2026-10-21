@@ -2,6 +2,8 @@
 // le serveur (game/online/match.ts), envoi en temps réel de la vue de chaque joueur par un flux SSE (Server-Sent
 // Events). Le flux passe par le bloc nginx existant : pas de tampon (X-Accel-Buffering) et un signe de vie toutes les
 // 25 s, sous le délai de 120 s de nginx.
+// Un deck de la Cale (deck d'aventure, mode 'aventure') n'entre dans une partie que si son joueur possède encore toutes
+// ses cartes (holdErrors, relu dans la Cale au moment de créer la salle et au moment où la partie commence).
 //   POST /api/game/matches                 créer une salle { deck }
 //   POST /api/game/matches/join            rejoindre une salle { code, deck }
 //   GET  /api/game/matches/current         mes salles et parties en cours
@@ -18,7 +20,7 @@ import {
 import { rateLimit } from './auth.js';
 import { config } from './config.js';
 import { db } from './db.js';
-import { deckOf } from './game-decks.js';
+import { deckOf, holdErrors } from './game-decks.js';
 import { gameCards } from './game-cards.js';
 import { saveRecord } from './game-records.js';
 import { ENGINE } from './version.js';
@@ -48,8 +50,12 @@ function load(id) {
 
 // Partie dont le compte connecté est l'un des joueurs
 function mine(req) {
-  const m = load(req.params.id);
-  const seat = m ? seatOf(m, req.user.id) : null;
+  return mineOf(req.user.id, req.params.id);
+}
+
+function mineOf(userId, id) {
+  const m = load(id);
+  const seat = m ? seatOf(m, userId) : null;
   if (!m || seat === null) throw new MatchError('unknown_match', 'Partie introuvable', 404);
   return { m, seat };
 }
@@ -66,10 +72,28 @@ function requireCards() {
   if (!gameCards()) throw new MatchError('cards_loading', 'Informations des cartes en cours de téléchargement, réessaie dans un instant', 503);
 }
 
-// Deck personnalisé : relu dans la base (seulement ceux du compte) ; sa liste reste côté serveur
-function player(user, deck) {
+// Problèmes d'un deck de la Cale : cartes qui manquent dans la Cale de son joueur (échangées depuis, par exemple)
+function holdProblems(p) {
+  return p.hold ? holdErrors(p.userId, p.list.leader, p.list.cards) : [];
+}
+
+// Premier problème (et le nombre des autres) ; others : message pour l'autre joueur (« sa Cale » au lieu de « ta Cale »)
+function holdMessage(errors, others = false) {
+  const more = errors.length > 1 ? ` (et ${errors.length - 1} autre${errors.length > 2 ? 's' : ''})` : '';
+  return `${others ? errors[0].replace(/ta Cale/g, 'sa Cale') : errors[0]}${more}`;
+}
+
+// Deck personnalisé : relu dans la base (seulement ceux du compte) ; sa liste reste côté serveur. Un deck de la Cale est
+// refusé s'il lui manque des cartes.
+export function player(user, deck) {
   const list = typeof deck === 'string' && deck.startsWith('PERSO-') ? deckOf(user.id, deck) ?? undefined : undefined;
-  return { userId: user.id, name: user.pseudo, deck: checkDeck(deck, list), ...(list ? { list } : {}) };
+  const p = { userId: user.id, name: user.pseudo, deck: checkDeck(deck, list), ...(list ? { list } : {}), ...(list?.mode === 'aventure' ? { hold: true } : {}) };
+  const errors = holdProblems(p);
+  if (errors.length) {
+    throw new MatchError('hold_incomplete', `Il manque des cartes dans ta Cale pour jouer « ${list.name} » : ${holdMessage(errors)}. `
+      + 'Elles ont pu être échangées contre des Berry : corrige le deck dans « Mes decks » ou choisis-en un autre.', 409);
+  }
+  return p;
 }
 
 // ---------- Temps réel ----------
@@ -112,23 +136,65 @@ export function forgetUser(userId) {
   db.prepare('DELETE FROM game_matches WHERE host_id = ? OR guest_id = ?').run(userId, userId);
 }
 
+// ---------- Salles ----------
+
+function close(m, status, now) {
+  m.status = status;
+  m.code = null;
+  m.updatedAt = now.toISOString();
+  save(m);
+  broadcast(m);
+}
+
+// Créer une salle : le compte en est l'hôte
+export function openRoom(user, deck, now = new Date()) {
+  const host = player(user, deck);  // deck vérifié d'abord : un deck refusé ne ferme pas la salle en cours
+  // une seule salle en attente par compte : la précédente est fermée
+  for (const row of db.prepare("SELECT id FROM game_matches WHERE host_id = ? AND status = 'waiting'").all(user.id)) {
+    close(load(row.id), 'cancelled', now);
+  }
+  const m = createMatch(crypto.randomBytes(16).toString('base64url'), newCode(), host, now, ENGINE);
+  save(m);
+  return m;
+}
+
+// Rejoindre la salle d'un ami avec son code : la partie commence
+export function enterRoom(user, rawCode, deck, now = new Date()) {
+  const code = String(rawCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const row = CODE_RE.test(code) ? db.prepare("SELECT id FROM game_matches WHERE code = ? AND status = 'waiting'").get(code) : null;
+  if (!row) throw new MatchError('unknown_room', 'Aucune salle ouverte avec ce code', 404);
+  const m = load(row.id);
+  const guest = player(user, deck);
+  // l'hôte a pu échanger des cartes de son deck de la Cale depuis l'ouverture de la salle : elle se ferme
+  const hostErrors = guest.userId === m.host.userId ? [] : holdProblems(m.host);
+  if (hostErrors.length) {
+    close(m, 'cancelled', now);
+    throw new MatchError('host_hold_incomplete', `${m.host.name} n'a plus toutes les cartes de son deck de la Cale (${holdMessage(hostErrors, true)}) : `
+      + 'la salle est fermée. Demande-lui d’en ouvrir une nouvelle.', 409);
+  }
+  joinMatch(m, guest, now, crypto.randomInt(2 ** 31));
+  save(m);
+  broadcast(m);
+  return m;
+}
+
+// Abandonner : la partie est finie et rangée dans « Mes parties » des deux joueurs
+export function giveUp(user, id, log, now = new Date()) {
+  const { m, seat } = mineOf(user.id, id);
+  resign(m, seat, now);
+  save(m);
+  broadcast(m);
+  archive(m, log);
+  return m;
+}
+
 // ---------- Routes (le compte est déjà vérifié par requireUser) ----------
 
 export function onlineRoutes(app, { log }) {
   app.post('/api/game/matches', (req, res) => {
     rateLimit(`room:${req.user.id}`, 20, 10 * 60_000);
     requireCards();
-    const host = player(req.user, req.body?.deck);  // deck vérifié d'abord : un deck refusé ne ferme pas la salle en cours
-    // une seule salle en attente par compte : la précédente est fermée
-    for (const row of db.prepare("SELECT id FROM game_matches WHERE host_id = ? AND status = 'waiting'").all(req.user.id)) {
-      const old = load(row.id);
-      old.status = 'cancelled';
-      old.code = null;
-      save(old);
-      broadcast(old);
-    }
-    const m = createMatch(crypto.randomBytes(16).toString('base64url'), newCode(), host, new Date(), ENGINE);
-    save(m);
+    const m = openRoom(req.user, req.body?.deck);
     log(`Salle ${m.code} créée par ${req.user.pseudo}`);
     res.status(201).json(viewOf(m, 0));
   });
@@ -138,13 +204,7 @@ export function onlineRoutes(app, { log }) {
     rateLimit(`join:${req.user.id}`, 20, 10 * 60_000);
     rateLimit(`join-ip:${req.ip}`, 40, 10 * 60_000);
     requireCards();
-    const code = String(req.body?.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const row = CODE_RE.test(code) ? db.prepare("SELECT id FROM game_matches WHERE code = ? AND status = 'waiting'").get(code) : null;
-    if (!row) throw new MatchError('unknown_room', 'Aucune salle ouverte avec ce code', 404);
-    const m = load(row.id);
-    joinMatch(m, player(req.user, req.body?.deck), new Date(), crypto.randomInt(2 ** 31));
-    save(m);
-    broadcast(m);
+    const m = enterRoom(req.user, req.body?.code, req.body?.deck);
     log(`Partie en ligne : ${m.host.name} contre ${m.guest.name}`);
     res.json(viewOf(m, 1));
   });
@@ -158,7 +218,7 @@ export function onlineRoutes(app, { log }) {
       const seat = seatOf(m, req.user.id);
       const opp = seat === 0 ? m.guest : m.host;
       const me = seat === 0 ? m.host : m.guest;
-      return { id: m.id, status: m.status, code: seat === 0 ? m.code : null, opponent: opp?.name ?? null, deck: me.deck, deckName: me.list?.name ?? null };
+      return { id: m.id, status: m.status, code: seat === 0 ? m.code : null, opponent: opp?.name ?? null, deck: me.deck, deckName: me.list?.name ?? null, hold: me.hold === true };
     }));
   });
 
@@ -204,11 +264,7 @@ export function onlineRoutes(app, { log }) {
   });
 
   app.post('/api/game/matches/:id/resign', (req, res) => {
-    const { m, seat } = mine(req);
-    resign(m, seat, new Date());
-    save(m);
-    broadcast(m);
-    archive(m, log);
+    giveUp(req.user, req.params.id, log);
     res.json({ ok: true });
   });
 

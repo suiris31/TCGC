@@ -3,9 +3,16 @@
 // Les adversaires jouent leurs vrais decks (decks.ts, EAST_BLUE_REAL_DECKS ; branchés par la tâche 1.19, qui a mesuré la
 // difficulté de chaque chapitre : scripts/game/adventure-balance.ts) ; le joueur part avec ST-01.
 // Les identifiants des chapitres servent de clé en base : ne pas les changer.
+import { ECONOMY } from '../economy/config.ts';
 import type { Arc, Reward } from './types.ts';
 
 const boosters = (count: number): Reward[] => [{ kind: 'booster', set: 'OP03', count }];
+// Berry de la première victoire (étape 2, barème de game/economy/config.ts) : chapitre, dernier chapitre, défi bonus
+const berry = (amount: number): Reward => ({ kind: 'berry', amount });
+const { firstWin, firstWinFinal, firstWinBonus } = ECONOMY.adventure;
+// Défi ultime (Mihawk, décision de l'utilisateur du 21 octobre 2026) : imbattable ou presque avec les decks de l'époque,
+// il rapporte un display OP03 et de quoi en acheter un autre en boutique
+const DISPLAY = ECONOMY.shop.OP03;
 // Un membre d'équipage qui rejoint Luffy : une carte rouge, jouable tout de suite dans le deck de départ
 const recruit = (number: string): Reward => ({ kind: 'card', number, count: 1 });
 
@@ -51,7 +58,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Luffy', card: LUFFY, text: 'Aïe… Ça pique, mais je n’ai pas dit mon dernier mot !' },
         { who: 'Zoro', card: ZORO, text: 'Hé, chapeau de paille. Reviens quand tu veux : moi, je ne bouge pas d’ici.' },
       ],
-      rewards: [...boosters(2), recruit('OP01-025')],
+      rewards: [...boosters(2), recruit('OP01-025'), berry(firstWin)],
     },
     {
       id: 'eb-2-orange-town',
@@ -78,7 +85,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Zoro', card: ZORO, text: 'Relève-toi, capitaine. Ce clown fait plus de bruit que de mal.' },
         { who: 'Luffy', card: LUFFY, text: 'On recommence ! Cette fois, je lui écrase son chapeau de clown.' },
       ],
-      rewards: boosters(2),
+      rewards: [...boosters(2), berry(firstWin)],
     },
     {
       id: 'eb-3-sirop',
@@ -106,7 +113,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Usopp', card: USOPP, text: 'On ne peut pas abandonner le village… Luffy, on y retourne ?' },
         { who: 'Luffy', card: LUFFY, text: 'Évidemment ! Personne ne touche aux amis d’Usopp.' },
       ],
-      rewards: [...boosters(2), recruit('ST21-002')],
+      rewards: [...boosters(2), recruit('ST21-002'), berry(firstWin)],
     },
     {
       id: 'eb-4-baratie',
@@ -134,16 +141,17 @@ export const EAST_BLUE: Arc = {
         { who: 'Sanji', card: SANJI, text: 'Il a de la ressource, le bonhomme. Il en faudra plus pour fermer ma cuisine.' },
         { who: 'Luffy', card: LUFFY, text: 'Je n’ai pas fini ! Et en plus, j’ai encore faim.' },
       ],
-      rewards: [...boosters(2), recruit('OP10-005')],
+      rewards: [...boosters(2), recruit('OP10-005'), berry(firstWin)],
     },
     {
       id: 'eb-defi-mihawk',
       order: 5,
-      title: 'Défi : le plus grand épéiste',
+      title: 'Défi ultime : le plus grand épéiste',
       place: 'Baratie',
       map: { x: 0.62, y: 0.18 },
       opponent: { name: 'Mihawk', deck: 'META-MIHAWK-2026-10', level: 4 },
       optional: true,
+      rules: { note: 'Défi ultime : Mihawk joue un deck d’aujourd’hui avec l’IA entraînée, bien plus fort que les decks d’OP03. Il est fait pour être presque imbattable : la victoire rapporte un display entier et de quoi en acheter un autre.' },
       intro: [
         { who: '', text: 'Un bateau minuscule glisse vers le Baratie. À son bord, un seul homme et une épée immense.' },
         { who: 'Zoro', card: ZORO, text: 'C’est lui, le meilleur épéiste du monde. Luffy, celui-là, je m’en occupe seul.' },
@@ -160,7 +168,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Zoro', card: ZORO, text: 'Encore une fois. Je m’entraînerai jour et nuit s’il le faut.' },
         { who: 'Luffy', card: LUFFY, text: 'Il reviendra plus fort. Et nous aussi !' },
       ],
-      rewards: boosters(3),
+      rewards: [...boosters(DISPLAY.boostersPerDisplay), berry(DISPLAY.display)],
     },
     {
       id: 'eb-5-arlong-park',
@@ -188,7 +196,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Usopp', card: USOPP, text: 'J’ai les jambes en compote… mais on ne peut pas laisser Nami ici !' },
         { who: 'Luffy', card: LUFFY, text: 'Debout, tout le monde. On y retourne.' },
       ],
-      rewards: [...boosters(2), recruit('OP01-016')],
+      rewards: [...boosters(2), recruit('OP01-016'), berry(firstWin)],
     },
     {
       id: 'eb-defi-baggy',
@@ -215,7 +223,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Sanji', card: SANJI, text: 'Tout le monde debout. On va chercher notre capitaine.' },
         { who: 'Luffy', card: LUFFY, text: 'Je ne m’arrête pas ici. Pas avant Grand Line !' },
       ],
-      rewards: boosters(3),
+      rewards: [...boosters(3), berry(firstWinBonus)],
     },
     {
       id: 'eb-6-loguetown',
@@ -242,7 +250,7 @@ export const EAST_BLUE: Arc = {
         { who: 'Tashigi', card: 'ST06-006', text: 'Ce n’était pas si difficile, capitaine.' },
         { who: 'Luffy', card: LUFFY, text: 'Ne crie pas victoire trop vite. Je reviens tout de suite !' },
       ],
-      rewards: boosters(4),
+      rewards: [...boosters(4), berry(firstWinFinal)],
     },
   ],
 };

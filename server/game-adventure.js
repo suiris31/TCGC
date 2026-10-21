@@ -2,7 +2,9 @@
 // d'aventure. Tout est gardé et vérifié par le serveur, un navigateur ne peut s'attribuer ni victoire ni carte :
 // - une victoire ne compte qu'après avoir rejoué avec le moteur la partie enregistrée (game_records) : départ identique
 //   à celui d'une vraie partie, coups permis, vainqueur, adversaire et niveau du chapitre, deck d'aventure du joueur ;
-// - les boosters sont tirés ici à l'ouverture (aléatoire cryptographique) : le navigateur ne reçoit que le résultat.
+// - les boosters sont tirés ici à l'ouverture (aléatoire cryptographique) : le navigateur ne reçoit que le résultat ;
+// - les Berry d'une première victoire passent par credit (game-economy.js, raison « chapitre ») ; les coups de l'IA de
+//   la partie sont comparés à ceux de son niveau, comme pour le gain d'une partie.
 //   GET  /api/game/adventure                              mon état : arcs commencés, victoires, deck, boosters à ouvrir
 //   POST /api/game/adventure/:arcId/start                 commencer un arc (une seule fois) : deck de départ dans la Cale
 //   PUT  /api/game/adventure/deck                         choisir mon deck d'aventure { deckId }
@@ -10,38 +12,25 @@
 //   GET  /api/game/inventory                              ma Cale
 //   POST /api/game/boosters/:id/open                      ouvrir un booster gagné
 import crypto from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
-import zlib from 'node:zlib';
 // Les cartes d'abord : rules.ts et les fichiers de cartes s'importent l'un l'autre, et les fichiers de cartes lisent
 // des constantes de rules.ts dès leur chargement. Entrer par le moteur (archive.ts, engine.ts) avant les cartes fait
 // planter le démarrage du serveur quand ce module est le premier à charger le jeu (server/index.js).
-import { cardData } from '../game/engine/cards/index.ts';
+import '../game/engine/cards/index.ts';
 import { ARCS, findArc, findChapter } from '../game/adventure/arcs.ts';
 import { chapterStatuses } from '../game/adventure/progress.ts';
+import { LEVELS } from '../game/ai/search.ts';
 import { openBooster } from '../game/boosters/open.ts';
-import { replayRecord } from '../game/coach/archive.ts';
+import { ECONOMY } from '../game/economy/config.ts';
 import { deckErrors } from '../game/engine/deckRules.ts';
-import { CUSTOM_PREFIX, CUSTOM_SERIES, DECKS } from '../game/engine/decks.ts';
-import { newGame } from '../game/engine/engine.ts';
+import { CUSTOM_PREFIX, DECKS } from '../game/engine/decks.ts';
 import { rateLimit } from './auth.js';
 import { db, transaction } from './db.js';
 import { DECK_ID, deckOf, holdErrors, saveDeck } from './game-decks.js';
-import { RECORD_ID, recordBlob } from './game-records.js';
+import { credit } from './game-economy.js';
+import { RECORD_ID } from './game-records.js';
+import { checkShape, freshStart, invalidGame, readRecord, refuse, replayGame, requireCards, validList } from './game-verify.js';
 
 const BOOSTER_ID = /^[\w-]{1,40}$/;
-// Une partie normale fait quelques centaines de coups : au-delà, le rejeu coûterait trop cher au serveur
-const MAX_STEPS = 10_000;
-const MAX_JSON = 20 * 1024 * 1024;
-
-function refuse(code, message, status = 400) {
-  return Object.assign(new Error(message), { code, status, expose: true });
-}
-
-function requireCards() {
-  if (!Object.keys(cardData()).length) {
-    throw refuse('cards_loading', 'Informations des cartes en cours de téléchargement, réessaie dans un instant', 503);
-  }
-}
 
 // Nombre aléatoire dans [0, 1), cryptographique (48 bits)
 export const cryptoRand = () => crypto.randomBytes(6).readUIntBE(0, 6) / 2 ** 48;
@@ -164,46 +153,8 @@ export function chooseDeck(userId, deckId) {
 
 // ---------- Vérification d'une partie gagnée ----------
 
-function readRecord(userId, recordId) {
-  const blob = typeof recordId === 'string' && RECORD_ID.test(recordId) ? recordBlob(userId, recordId) : null;
-  if (!blob) throw refuse('unknown_record', 'Partie introuvable', 404);
-  try {
-    return JSON.parse(zlib.gunzipSync(blob, { maxOutputLength: MAX_JSON }).toString('utf8'));
-  } catch {
-    throw invalidGame('enregistrement illisible');
-  }
-}
-
-function invalidGame(detail) {
-  return refuse('invalid_game', `Partie invalide : ${detail}`);
-}
-
-const validList = (list) => list && typeof list === 'object' && typeof list.leader === 'string' && list.cards
-  && typeof list.cards === 'object' && Object.values(list.cards).every((n) => Number.isInteger(n) && n > 0 && n <= 50);
-
-// La partie commence exactement comme une partie créée par le moteur avec ces decks : même ordre des cartes mélangées,
-// mêmes mains, même premier joueur. Le hasard du moteur avance d'un pas fixe à chaque tirage, et le nombre de tirages
-// avant la première décision ne dépend pas du mélange : l'état du hasard au départ donne la graine de la partie.
-function freshStart(rec, aiDeckId) {
-  const { initial, human } = rec;
-  const ai = human === 0 ? 1 : 0;
-  const names = initial.players.map((p) => p?.name);
-  if (!names.every((n) => typeof n === 'string' && n.length <= 40) || !Number.isInteger(initial.rng)) return false;
-  const mine = initial.players[human];
-  const decks = [];
-  decks[human] = { id: mine.deckId, name: '', series: CUSTOM_SERIES, leader: mine.list.leader, cards: mine.list.cards };
-  decks[ai] = aiDeckId;
-  const first = rec.config.first === 'me' ? human : rec.config.first === 'ai' ? ai : 'random';
-  try {
-    const probe = newGame({ decks, names, first, seed: 0 });
-    const fresh = newGame({ decks, names, first, seed: (initial.rng - probe.rng) | 0 });
-    return isDeepStrictEqual(JSON.parse(JSON.stringify(fresh)), initial);
-  } catch {
-    return false;
-  }
-}
-
-// Rejoue la partie et dit si le joueur l'a gagnée ; refuse une partie qui ne compte pas pour ce chapitre
+// Rejoue la partie et dit si le joueur l'a gagnée ; refuse une partie qui ne compte pas pour ce chapitre. Lecture,
+// départ et rejeu : server/game-verify.js, commun avec l'économie des Berry.
 function verifyGame(userId, rec, chapter, deckId) {
   if (!rec || typeof rec !== 'object' || !rec.config || typeof rec.config !== 'object') throw invalidGame('enregistrement illisible');
   if (rec.mode === 'online' || rec.practice) throw refuse('not_adventure_game', "Cette partie n'est pas une partie de l'aventure");
@@ -211,11 +162,7 @@ function verifyGame(userId, rec, chapter, deckId) {
   if (config.aiDeck !== chapter.opponent.deck) throw refuse('wrong_opponent', "Cette partie n'a pas été jouée contre l'adversaire de ce chapitre");
   if (config.level !== chapter.opponent.level) throw refuse('wrong_level', "Cette partie n'a pas été jouée au niveau de ce chapitre");
   if (!deckId || config.myDeck !== deckId) throw refuse('wrong_deck', "Cette partie n'a pas été jouée avec ton deck d'aventure");
-  if ((human !== 0 && human !== 1) || !Array.isArray(rec.initial?.players) || rec.initial.players.length !== 2
-    || !Array.isArray(rec.steps) || !Array.isArray(rec.decisions)) {
-    throw invalidGame('enregistrement incomplet');
-  }
-  if (rec.steps.length > MAX_STEPS) throw invalidGame('trop de coups');
+  checkShape(rec);
   const mine = rec.initial.players[human];
   if (!validList(mine?.list) || mine.deckId !== deckId) throw refuse('wrong_deck', "Cette partie n'a pas été jouée avec ton deck d'aventure");
   // la liste jouée, telle qu'elle était au début de la partie : complète et faite de cartes de la Cale
@@ -224,24 +171,34 @@ function verifyGame(userId, rec, chapter, deckId) {
   const missing = holdErrors(userId, mine.list.leader, mine.list.cards);
   if (missing.length) throw refuse('wrong_deck', `Le deck de cette partie contient des cartes absentes de ta Cale (${missing[0]})`);
   if (!freshStart(rec, chapter.opponent.deck)) throw invalidGame("elle ne commence pas comme une partie du jeu");
-  let final;
-  try {
-    final = replayRecord(rec).final;
-  } catch (err) {
-    throw invalidGame(err.message);
-  }
+  const { level } = chapter.opponent;
+  const { final, agreement } = replayGame(rec, level);
   if (final.winner === null) throw refuse('game_not_over', "Cette partie n'est pas finie", 409);
-  return final.winner === human;
+  if (final.winner !== human) return false;
+  // une victoire rapporte des Berry : l'IA doit avoir joué comme à son niveau (étude 2.1, § 5.3 ; niveau 4 non vérifiable)
+  const min = ECONOMY.rules.aiAgreementMin[level];
+  if (agreement.forced > 0 || (agreement.free > 0 && agreement.agreed / agreement.free < min)) {
+    throw refuse('ai_mismatch', `Les coups de l’IA ne sont pas ceux du niveau ${LEVELS[level].name} : victoire non comptée`, 409);
+  }
+  return true;
 }
 
-// Récompenses d'une première victoire. Les Berry arrivent avec l'étape 2 : pas encore données.
-function grant(userId, rewards, source, at) {
+// Berry de la première victoire d'un chapitre : une seule fois par chapitre (raison « chapitre », référence = chapitre)
+function creditChapter(userId, chapter, amount, now, early = false) {
+  const label = `Chapitre gagné : ${chapter.title}${early ? ' (avant l’ouverture de la boutique)' : ''}`;
+  return credit(userId, 'chapitre', chapter.id, amount, { label, chapter: chapter.id, ...(early ? { early: true } : {}) }, now);
+}
+
+// Récompenses d'une première victoire
+function grant(userId, chapter, source, now) {
+  const at = now.toISOString();
   const given = [];
   const boosters = [];
-  for (const r of rewards) {
+  for (const r of chapter.rewards) {
     if (r.kind === 'booster') for (let i = 0; i < r.count; i++) boosters.push(addBooster(userId, r.set, source, at));
     else if (r.kind === 'card') addToHold(userId, r.number, 'base', r.count);
     else if (r.kind === 'deck' && DECKS[r.deck]) addDeckToHold(userId, DECKS[r.deck]);
+    else if (r.kind === 'berry' && Number.isInteger(r.amount) && r.amount > 0) creditChapter(userId, chapter, r.amount, now);
     else continue;
     given.push(r);
   }
@@ -279,9 +236,31 @@ export function chapterResult(userId, chapterId, recordId, now = new Date()) {
       ON CONFLICT(user_id, chapter) DO UPDATE SET wins = wins + 1, first_win_at = COALESCE(first_win_at, excluded.first_win_at)`)
       .run(userId, chapter.id, at);
     if (before?.first_win_at) return nothing(true);
-    return { won: true, firstWin: true, ...grant(userId, chapter.rewards, `chapitre ${chapter.id}`, at) };
+    return { won: true, firstWin: true, ...grant(userId, chapter, `chapitre ${chapter.id}`, now) };
   });
 }
+
+// Premières victoires d'avant l'économie (chapitres gagnés entre la mise en ligne des étapes 1 et 2) : leurs Berry
+// sont crédités une fois, au démarrage du serveur. Même raison et même référence qu'une victoire d'aujourd'hui : un
+// chapitre ne rapporte jamais deux fois, et un nouveau démarrage ne donne rien de plus. Renvoie le nombre de crédits.
+export function creditEarlyChapters(now = new Date()) {
+  const chapters = new Map(ARCS.flatMap((arc) => arc.chapters).map((c) => [c.id, c]));
+  const missing = db.prepare(`SELECT p.user_id, p.chapter FROM game_progress p
+    WHERE p.first_win_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM game_ledger l
+      WHERE l.user_id = p.user_id AND l.reason = 'chapitre' AND l.ref = p.chapter)
+    ORDER BY p.first_win_at`).all();
+  let n = 0;
+  transaction(() => {
+    for (const row of missing) {
+      const chapter = chapters.get(row.chapter);
+      const amount = (chapter?.rewards ?? []).reduce((sum, r) => sum + (r.kind === 'berry' ? r.amount : 0), 0);
+      if (!amount || creditChapter(row.user_id, chapter, amount, now, true).already) continue;
+      n++;
+    }
+  });
+  return n;
+}
+creditEarlyChapters();
 
 // ---------- Routes ----------
 
