@@ -10,38 +10,22 @@
 //   GET  /api/game/inventory                              ma Cale
 //   POST /api/game/boosters/:id/open                      ouvrir un booster gagné
 import crypto from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
-import zlib from 'node:zlib';
 // Les cartes d'abord : rules.ts et les fichiers de cartes s'importent l'un l'autre, et les fichiers de cartes lisent
 // des constantes de rules.ts dès leur chargement. Entrer par le moteur (archive.ts, engine.ts) avant les cartes fait
 // planter le démarrage du serveur quand ce module est le premier à charger le jeu (server/index.js).
-import { cardData } from '../game/engine/cards/index.ts';
+import '../game/engine/cards/index.ts';
 import { ARCS, findArc, findChapter } from '../game/adventure/arcs.ts';
 import { chapterStatuses } from '../game/adventure/progress.ts';
 import { openBooster } from '../game/boosters/open.ts';
-import { replayRecord } from '../game/coach/archive.ts';
 import { deckErrors } from '../game/engine/deckRules.ts';
-import { CUSTOM_PREFIX, CUSTOM_SERIES, DECKS } from '../game/engine/decks.ts';
-import { newGame } from '../game/engine/engine.ts';
+import { CUSTOM_PREFIX, DECKS } from '../game/engine/decks.ts';
 import { rateLimit } from './auth.js';
 import { db, transaction } from './db.js';
 import { DECK_ID, deckOf, holdErrors, saveDeck } from './game-decks.js';
-import { RECORD_ID, recordBlob } from './game-records.js';
+import { RECORD_ID } from './game-records.js';
+import { checkShape, freshStart, invalidGame, readRecord, refuse, replayGame, requireCards, validList } from './game-verify.js';
 
 const BOOSTER_ID = /^[\w-]{1,40}$/;
-// Une partie normale fait quelques centaines de coups : au-delà, le rejeu coûterait trop cher au serveur
-const MAX_STEPS = 10_000;
-const MAX_JSON = 20 * 1024 * 1024;
-
-function refuse(code, message, status = 400) {
-  return Object.assign(new Error(message), { code, status, expose: true });
-}
-
-function requireCards() {
-  if (!Object.keys(cardData()).length) {
-    throw refuse('cards_loading', 'Informations des cartes en cours de téléchargement, réessaie dans un instant', 503);
-  }
-}
 
 // Nombre aléatoire dans [0, 1), cryptographique (48 bits)
 export const cryptoRand = () => crypto.randomBytes(6).readUIntBE(0, 6) / 2 ** 48;
@@ -164,46 +148,8 @@ export function chooseDeck(userId, deckId) {
 
 // ---------- Vérification d'une partie gagnée ----------
 
-function readRecord(userId, recordId) {
-  const blob = typeof recordId === 'string' && RECORD_ID.test(recordId) ? recordBlob(userId, recordId) : null;
-  if (!blob) throw refuse('unknown_record', 'Partie introuvable', 404);
-  try {
-    return JSON.parse(zlib.gunzipSync(blob, { maxOutputLength: MAX_JSON }).toString('utf8'));
-  } catch {
-    throw invalidGame('enregistrement illisible');
-  }
-}
-
-function invalidGame(detail) {
-  return refuse('invalid_game', `Partie invalide : ${detail}`);
-}
-
-const validList = (list) => list && typeof list === 'object' && typeof list.leader === 'string' && list.cards
-  && typeof list.cards === 'object' && Object.values(list.cards).every((n) => Number.isInteger(n) && n > 0 && n <= 50);
-
-// La partie commence exactement comme une partie créée par le moteur avec ces decks : même ordre des cartes mélangées,
-// mêmes mains, même premier joueur. Le hasard du moteur avance d'un pas fixe à chaque tirage, et le nombre de tirages
-// avant la première décision ne dépend pas du mélange : l'état du hasard au départ donne la graine de la partie.
-function freshStart(rec, aiDeckId) {
-  const { initial, human } = rec;
-  const ai = human === 0 ? 1 : 0;
-  const names = initial.players.map((p) => p?.name);
-  if (!names.every((n) => typeof n === 'string' && n.length <= 40) || !Number.isInteger(initial.rng)) return false;
-  const mine = initial.players[human];
-  const decks = [];
-  decks[human] = { id: mine.deckId, name: '', series: CUSTOM_SERIES, leader: mine.list.leader, cards: mine.list.cards };
-  decks[ai] = aiDeckId;
-  const first = rec.config.first === 'me' ? human : rec.config.first === 'ai' ? ai : 'random';
-  try {
-    const probe = newGame({ decks, names, first, seed: 0 });
-    const fresh = newGame({ decks, names, first, seed: (initial.rng - probe.rng) | 0 });
-    return isDeepStrictEqual(JSON.parse(JSON.stringify(fresh)), initial);
-  } catch {
-    return false;
-  }
-}
-
-// Rejoue la partie et dit si le joueur l'a gagnée ; refuse une partie qui ne compte pas pour ce chapitre
+// Rejoue la partie et dit si le joueur l'a gagnée ; refuse une partie qui ne compte pas pour ce chapitre. Lecture,
+// départ et rejeu : server/game-verify.js, commun avec l'économie des Berry.
 function verifyGame(userId, rec, chapter, deckId) {
   if (!rec || typeof rec !== 'object' || !rec.config || typeof rec.config !== 'object') throw invalidGame('enregistrement illisible');
   if (rec.mode === 'online' || rec.practice) throw refuse('not_adventure_game', "Cette partie n'est pas une partie de l'aventure");
@@ -211,11 +157,7 @@ function verifyGame(userId, rec, chapter, deckId) {
   if (config.aiDeck !== chapter.opponent.deck) throw refuse('wrong_opponent', "Cette partie n'a pas été jouée contre l'adversaire de ce chapitre");
   if (config.level !== chapter.opponent.level) throw refuse('wrong_level', "Cette partie n'a pas été jouée au niveau de ce chapitre");
   if (!deckId || config.myDeck !== deckId) throw refuse('wrong_deck', "Cette partie n'a pas été jouée avec ton deck d'aventure");
-  if ((human !== 0 && human !== 1) || !Array.isArray(rec.initial?.players) || rec.initial.players.length !== 2
-    || !Array.isArray(rec.steps) || !Array.isArray(rec.decisions)) {
-    throw invalidGame('enregistrement incomplet');
-  }
-  if (rec.steps.length > MAX_STEPS) throw invalidGame('trop de coups');
+  checkShape(rec);
   const mine = rec.initial.players[human];
   if (!validList(mine?.list) || mine.deckId !== deckId) throw refuse('wrong_deck', "Cette partie n'a pas été jouée avec ton deck d'aventure");
   // la liste jouée, telle qu'elle était au début de la partie : complète et faite de cartes de la Cale
@@ -224,12 +166,7 @@ function verifyGame(userId, rec, chapter, deckId) {
   const missing = holdErrors(userId, mine.list.leader, mine.list.cards);
   if (missing.length) throw refuse('wrong_deck', `Le deck de cette partie contient des cartes absentes de ta Cale (${missing[0]})`);
   if (!freshStart(rec, chapter.opponent.deck)) throw invalidGame("elle ne commence pas comme une partie du jeu");
-  let final;
-  try {
-    final = replayRecord(rec).final;
-  } catch (err) {
-    throw invalidGame(err.message);
-  }
+  const { final } = replayGame(rec);
   if (final.winner === null) throw refuse('game_not_over', "Cette partie n'est pas finie", 409);
   return final.winner === human;
 }
