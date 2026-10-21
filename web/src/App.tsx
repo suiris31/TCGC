@@ -117,9 +117,15 @@ function readRoute(): SpecialRoute {
 function Gate() {
   const { user, uiLang, toastMessage } = useApp();
   const [route, setRoute] = useState(readRoute);
+  // page d'où l'on a ouvert les mentions légales (le jeu, le profil...) : leur bouton Retour y ramène
+  const [legalFrom, setLegalFrom] = useState('#');
 
   useEffect(() => {
-    const onHash = () => setRoute(readRoute());
+    const onHash = (e: HashChangeEvent) => {
+      const from = new URL(e.oldURL).hash;
+      if (window.location.hash === '#legal' && from !== '#legal') setLegalFrom(from || '#');
+      setRoute(readRoute());
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -131,7 +137,7 @@ function Gate() {
       ) : route?.kind === 'reset' ? (
         <ResetPage key={`${uiLang}-${route.token}`} token={route.token} />
       ) : route?.kind === 'legal' ? (
-        <LegalPage />
+        <LegalPage back={legalFrom} />
       ) : user === undefined ? (
         <div className="center splash"><div className="spinner" /></div>
       ) : user === null ? (

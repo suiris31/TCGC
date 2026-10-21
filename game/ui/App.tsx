@@ -999,6 +999,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
           <button className="op-link" onClick={onHistory}>📈 Mes parties</button>
           <button className="op-link" onClick={onBuilder}>🃏 Mes decks</button>
           <button className="op-link" onClick={onHelp}>Comment jouer ?</button>
+          <a className="op-link" href="#legal" title="Projet de fan non officiel : mentions légales et confidentialité">À propos</a>
           <label className="op-small op-muted">Taille de l’interface{' '}
             <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
               {UI_SCALES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
