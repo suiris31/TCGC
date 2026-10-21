@@ -873,12 +873,14 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
   if (!deck) return null;
   const leader = def(deck.leader);
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');
+  const hold = isAdventureDeck(id);
   return (
-    <button className={`deck-tile ${selected ? 'on' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
+    <button className={`deck-tile ${selected ? 'on' : ''}${hold ? ' op-deck-hold' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
       <img src={cardImage(leader)} alt="" />
+      {hold && <span className="op-hold-badge" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure">🧭 Cale</span>}
       <span className="deck-name">{deck.name}</span>
       <span className="deck-id">{DECKS[id] ? deck.id : leader.name}{note ? ` · ${note}` : ''}</span>
-      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (isAdventureDeck(id) ? '🧭 Deck d’aventure (cartes de la Cale)' : 'Deck perso')}</span>
+      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (hold ? 'Deck de la Cale (cartes de l’Aventure)' : 'Deck perso')}</span>
       <span className="deck-guide-btn" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
         onClick={(e) => { e.stopPropagation(); onGuide(id); }}>📖 Guide</span>
     </button>
@@ -909,9 +911,14 @@ export function DeckPicker({ selected, onPick, onGuide, note, onBuilder, onRando
   const { decks } = useMyDecks();
   const shown = (id: string) => !color || def(deckInfo(id)!.leader).colors.includes(color as never);
   // mes decks jouables (les decks incomplets restent dans l'éditeur)
-  const mine = decks.filter((d) => d.leader in CARDS && playable(d)).map((d) => d.id);
+  const mine = decks.filter((d) => d.leader in CARDS && playable(d));
   const unfinished = decks.length - mine.length;
-  const groups = [{ label: 'Mes decks', ids: () => mine }, ...DECK_GROUPS];
+  // les decks de la Cale (decks d'aventure) à part : seulement des cartes gagnées dans l'Aventure
+  const groups = [
+    { label: 'Mes decks', ids: () => mine.filter((d) => !isAdventureDeck(d)).map((d) => d.id) },
+    { label: '🧭 Mes decks de la Cale', ids: () => mine.filter((d) => isAdventureDeck(d)).map((d) => d.id) },
+    ...DECK_GROUPS,
+  ];
   return (
     <>
       <div className="deck-filter" role="group" aria-label="Couleur du Leader">

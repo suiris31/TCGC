@@ -1,9 +1,13 @@
 // Jouer avec un ami : créer une salle (le serveur donne un code à lui transmettre) ou rejoindre la sienne avec son
-// code. Chacun choisit son deck.
-import { useState } from 'react';
+// code. Chacun choisit son deck. Un deck de la Cale (deck d'aventure) se joue si son joueur possède encore toutes ses
+// cartes : le serveur le vérifie en entrant dans la partie ; l'écran prévient avant, d'après la Cale.
+import { useEffect, useState } from 'react';
 import { DECKS, isAdventureOnly, isCustomDeck } from '../../engine/decks.ts';
+import { holdByNumber, loadHold } from '../adventure/api.ts';
+import { holdProblems } from '../adventure/hold.ts';
 import { DeckPicker } from '../App.tsx';
 import { DeckGuideModal } from '../DeckGuide.tsx';
+import { deckInfo, isAdventureDeck, useMyDecks } from '../myDecks.ts';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { createRoom, joinRoom } from './api.ts';
 
@@ -26,6 +30,17 @@ export function Lobby({ initialCode, onOpen, onBack }: { initialCode?: string; o
   const [guide, setGuide] = useState<string | null>(null);
   const cardZoom = useCardZoom(1200);
   const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  useMyDecks();  // pour savoir si le deck choisi est un deck de la Cale
+  const holdDeck = isAdventureDeck(deck);
+  const [hold, setHold] = useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    if (!holdDeck || hold) return;
+    let cancelled = false;
+    loadHold().then((r) => { if (!cancelled) setHold(holdByNumber(r.cards)); }).catch(() => { /* le serveur vérifiera */ });
+    return () => { cancelled = true; };
+  }, [holdDeck, hold]);
+  const chosen = holdDeck ? deckInfo(deck) : undefined;
+  const missing = chosen && hold ? holdProblems(hold, chosen.leader, chosen.cards) : [];
 
   const pick = (id: string) => {
     setDeck(id);
@@ -64,6 +79,13 @@ export function Lobby({ initialCode, onOpen, onBack }: { initialCode?: string; o
       <section className="setup-section">
         <h2>Ton deck</h2>
         <DeckPicker selected={deck} onPick={pick} onGuide={setGuide} />
+        {holdDeck && (
+          <div className={`op-hold-note${missing.length ? ' op-hold-note-bad' : ''}`} role="status">
+            {missing.length
+              ? <><b>Il manque des cartes dans ta Cale pour ce deck</b> : {missing.slice(0, 3).join(' ; ')}{missing.length > 3 ? ` (et ${missing.length - 3} autres)` : ''}. Corrige-le dans « Mes decks » ou choisis-en un autre.</>
+              : <><b>🧭 Deck de la Cale</b> : seulement des cartes gagnées dans l’Aventure. Ton ami le verra, et le serveur vérifie au début de la partie que tu les as toujours.</>}
+          </div>
+        )}
       </section>
       {error && <p className="danger lobby-error">{error}</p>}
       <div className="setup-go">

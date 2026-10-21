@@ -11,6 +11,8 @@ export interface CurrentMatch {
   code: string | null;
   opponent: string | null;
   deck: string;
+  deckName?: string | null;
+  hold?: boolean;    // deck de la Cale
 }
 
 const API = `${import.meta.env.BASE_URL}api/game/matches`;

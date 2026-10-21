@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import { heuristicChooser } from '../ai/heuristic.ts';
 import { replayRecord } from '../coach/archive.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
-import { createMatch, joinMatch, MatchError, play, recordFor, resign, seatOf, viewOf, type Match } from '../online/match.ts';
+import { DECKS } from '../engine/decks.ts';
+import { checkDeck, createMatch, holdMatch, joinMatch, MatchError, play, recordFor, resign, seatOf, viewOf, type Match } from '../online/match.ts';
 
 const t0 = new Date('2026-10-08T18:00:00Z');
 const later = (min: number) => new Date(t0.getTime() + min * 60_000);
@@ -88,4 +89,27 @@ test('en ligne : abandon', () => {
   assert.equal(recordFor(m, 1, later(6)).status, 'lost');
   assert.equal(recordFor(m, 0, later(6)).status, 'won');
   fails(() => resign(m, 0, later(7)), 'not_playing');
+});
+
+test('en ligne : decks de la Cale repérés dans la vue et dans « Mes parties » ; adversaires de l’aventure refusés', () => {
+  const list = { ...DECKS['ST-01'], id: 'PERSO-cale0001', name: 'Ma Cale', series: 'PERSO' };
+  const m = createMatch('partie-cale', 'K7MQ2P', { ...host, deck: list.id, list, hold: true }, t0, 'test');
+  assert.equal(viewOf(m, 0).you.hold, true);
+  assert.equal(holdMatch(m), false);  // pas encore d'invité
+  joinMatch(m, guest, later(1), 7);
+  assert.equal(holdMatch(m), false);  // l'invité joue un deck du registre
+  assert.equal(viewOf(m, 1).opponent?.hold, true);
+  assert.equal(viewOf(m, 1).you.hold, undefined);
+  resign(m, 1, later(5));
+  assert.equal(recordFor(m, 0, later(6)).holdDeck, true);
+  assert.equal(recordFor(m, 0, later(6)).opponentHoldDeck, undefined);
+  assert.equal(recordFor(m, 1, later(6)).opponentHoldDeck, true);
+  assert.equal(recordFor(m, 1, later(6)).holdDeck, undefined);
+  // deux decks de la Cale : partie « avec decks de la Cale »
+  const both = createMatch('partie-cale-2', 'K7MQ2Q', { ...host, deck: list.id, list, hold: true }, t0, 'test');
+  joinMatch(both, { ...guest, deck: 'PERSO-cale0002', list: { ...list, id: 'PERSO-cale0002' }, hold: true }, later(1), 8);
+  assert.equal(holdMatch(both), true);
+  // les adversaires de l'aventure restent refusés en ligne
+  const adversary = Object.keys(DECKS).find((id) => DECKS[id].series === 'AVENTURE')!;
+  fails(() => checkDeck(adversary), 'invalid_deck');
 });
