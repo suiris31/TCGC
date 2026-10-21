@@ -6,7 +6,8 @@
 // - « Combattre » lance la partie sur le plateau du jeu (App, partie imposée) : ton deck d'aventure contre le deck et le
 //   niveau du chapitre. Une partie quittée ou coupée (onglet fermé) se reprend depuis le chapitre.
 // - Fin de partie : l'enregistrement final est envoyé, puis le serveur rejoue la partie et donne les récompenses de la
-//   première victoire (RewardsScreen) ; les boosters s'ouvrent tout de suite (BoosterOpening) ou plus tard. Le plateau
+//   première victoire (RewardsScreen), puis le gain de la partie en Berry (barème de l'IA du chapitre, bonus du jour,
+//   coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening) ou plus tard. Le plateau
 //   reste en place derrière l'écran de fin : le récap du coach reste accessible jusqu'au retour à la carte.
 // Rien ne se lance sans un choix explicite ; les refus et erreurs du serveur s'affichent tels quels (en français).
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -21,8 +22,9 @@ import { App } from '../App.tsx';
 import { flushQueue, loadRecord, loadSummaries, whenSaved } from '../archiveClient.ts';
 import { deckInfo, loadMyDecks, playable, useMyDecks } from '../myDecks.ts';
 import { useSettings } from '../settings.ts';
+import { useGameGain } from '../economy/GameGain.tsx';
 import { ShopScreen } from '../economy/Shop.tsx';
-import { useWallet, WalletBadge } from '../economy/Wallet.tsx';
+import { refreshWallet, useWallet, WalletBadge } from '../economy/Wallet.tsx';
 import { boosterSfx, setSoundEnabled } from '../sound.ts';
 import { AdventureDeckScreen } from './AdventureDeck.tsx';
 import { ArcSummary } from './ArcSummary.tsx';
@@ -91,6 +93,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   const [opening, setOpening] = useState<{ contents: BoosterContent[]; owned: Record<string, number> } | null>(null);
   const [openBusy, setOpenBusy] = useState(false);
   const [openError, setOpenError] = useState<string>();
+  const { gain, claim, retry: retryGain, reset: resetGain } = useGameGain();
 
   const reload = useCallback(async () => {
     try {
@@ -150,6 +153,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     setBoard(true);
     setOutcome(null);
     setSent(null);
+    resetGain();
   };
 
   const resume = async () => {
@@ -173,7 +177,9 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   };
 
   // ---------- Fin de partie ----------
-  const send = useCallback((chapterId: string, recordId: Promise<string>) => {
+  // then : après la réponse du serveur, réussie ou non (le gain de la partie se demande après le résultat du chapitre,
+  // pour que le solde affiché compte déjà ses Berry)
+  const send = useCallback((chapterId: string, recordId: Promise<string>, then?: () => void) => {
     setSent({ state: 'sending' });
     (async () => {
       const id = await recordId.catch(() => { throw new Error('La partie n’a pas pu être enregistrée'); });
@@ -188,6 +194,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       (value) => {
         setSent({ state: 'done', value });
         if (value.firstWin) {
+          void refreshWallet();
           boosterSfx('shine');
           const after = new Set(winsRef.current).add(chapterId);
           if (!arcFinished(ARC, winsRef.current) && arcFinished(ARC, after)) setFinale(true);
@@ -195,7 +202,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
         void reload();
       },
       (e: unknown) => setSent({ state: 'error', message: e instanceof AdventureApiError ? e.message : `${message(e)}. Vérifie ta connexion, puis réessaie.` }),
-    );
+    ).finally(then);
   }, [reload]);
 
   // La partie est finie (écran de victoire ou de défaite passé) : place au dialogue de fin et au résultat
@@ -203,8 +210,12 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     if (!match) return;
     setOutcome({ chapter: match.chapter, won, recordId: saved });
     setOpenError(undefined);
-    if (won) send(match.chapter, saved);
-    else setSent(null);
+    const gainOf = () => claim(() => saved.catch(() => { throw new Error('La partie n’a pas pu être enregistrée'); }));
+    if (won) send(match.chapter, saved, gainOf);
+    else {
+      setSent(null);
+      gainOf();
+    }
     setBoard(false);
   };
 
@@ -222,6 +233,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     setMatch(null);
     setOutcome(null);
     setSent(null);
+    resetGain();
     setOpening(null);
     setPicked(undefined);
     setScreen({ kind: 'map' });
@@ -264,7 +276,8 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     content = <Welcome busy={busy} error={error} onSail={() => void setSail()} onBack={onBack} />;
   } else if (outcome && chapterOf(outcome.chapter)) {
     content = (
-      <RewardsScreen chapter={chapterOf(outcome.chapter)!} won={outcome.won} result={sent} opening={openBusy} openError={openError}
+      <RewardsScreen chapter={chapterOf(outcome.chapter)!} won={outcome.won} result={sent} gain={gain} onRetryGain={retryGain}
+        opening={openBusy} openError={openError}
         onOpen={(ids) => void openBoosters(ids)} onLater={toMap}
         onResend={() => outcome.recordId && send(outcome.chapter, outcome.recordId)}
         onRecap={match ? () => setBoard(true) : undefined}
@@ -292,8 +305,10 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
         onFight={() => fight()} onResume={() => void resume()}
         onCount={() => {
           if (interrupted?.kind !== 'unsent') return;
-          setOutcome({ chapter: chapter.id, won: true, recordId: Promise.resolve(interrupted.id) });
-          send(chapter.id, Promise.resolve(interrupted.id));
+          const id = interrupted.id;
+          setOutcome({ chapter: chapter.id, won: true, recordId: Promise.resolve(id) });
+          resetGain();
+          send(chapter.id, Promise.resolve(id), () => claim(() => Promise.resolve(id)));
         }}
         onDeck={() => setScreen({ kind: 'deck' })} onBack={() => setScreen({ kind: 'map' })} />
     );
