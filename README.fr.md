@@ -65,8 +65,13 @@ ex. `mailto:toi@exemple.fr` ; par défaut la page GitHub du projet).
   l'appli, utilisée dans le lien ; jamais déduite de la requête). Sans eux, le lien « Mot de passe oublié ? » est masqué.
   `SMTP_URL=log` écrit les e-mails dans le journal au lieu de les envoyer (essais en local). Sur un serveur, mets ces
   réglages privés dans `/opt/tcgc/tcgc.env` (voir `deploy/tcgc.env.example`), lu par le service systemd.
-- **Mentions légales et politique de confidentialité** (`#legal`, liens sur l'écran de connexion, le profil et les
-  pages partagées) : l'éditeur, le contact et l'hébergeur viennent de `LEGAL_PUBLISHER`, `LEGAL_CONTACT` et `LEGAL_HOST`.
+- **Mentions légales et politique de confidentialité** (`#legal`, liens sur l'écran de connexion, le profil, les pages
+  partagées et l'onglet Jouer, « À propos ») : l'éditeur, le contact et l'hébergeur viennent de `LEGAL_PUBLISHER`,
+  `LEGAL_CONTACT` et `LEGAL_HOST`. Le contact est aussi l'adresse donnée aux ayants droit pour une demande de retrait.
+- **Interrupteurs de retrait** (variables d'environnement lues au démarrage, voir `server/takedown.js`) :
+  `TAKEDOWN_IMAGES=1` remplace chaque visuel de carte par une face dessinée par l'appli (nom, numéro, couleur),
+  `TAKEDOWN_GAME=1` ferme l'onglet Jouer (parties, decks et progression de l'Aventure gardés), `TAKEDOWN_PUBLIC=1` ferme
+  les pages de partage publiques. La collection des membres n'est jamais coupée. Rien n'est coupé par défaut.
 - Pas encore disponible : vérification de l'adresse e-mail.
 
 #### Sauvegarde hors du serveur
@@ -297,3 +302,12 @@ anglais) : ajouter une langue y est une contribution bienvenue.
 
 [MIT](LICENSE). Les données (catalogue, prix, visuels) ne font pas partie du dépôt : elles sont téléchargées
 par l'appli depuis leurs sources publiques et restent soumises aux conditions de ces sources.
+
+### Contenus de tiers
+
+TCGC est un projet de fan non officiel, sans lien avec Bandai, Shueisha ou Toei Animation. Le dépôt ne contient aucun
+contenu leur appartenant : ni visuels ni textes de cartes, ni logos, ni extraits du manga ou de l'anime. Les données et
+visuels des cartes sont téléchargés à l'exécution depuis leurs sources ; ils restent la propriété de leurs titulaires
+(ONE PIECE CARD GAME © Eiichiro Oda/Shueisha, Toei Animation, © BANDAI) et ne sont **pas** couverts par la licence MIT,
+qui ne porte que sur le code écrit pour TCGC. Si tu réutilises ce code, merci de garder ton projet gratuit et
+clairement non officiel.

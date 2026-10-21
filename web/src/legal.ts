@@ -24,11 +24,24 @@ export const LEGAL: Record<UiLang, { title: string; notSet: string; back: string
         ],
       },
       {
+        title: 'Projet de fan',
+        paragraphs: [
+          "TCGC est un projet de fan non officiel, gratuit et open source, fait par des joueurs pour des joueurs. Il n'est ni produit, ni approuvé, ni soutenu par Bandai, Shueisha ou Toei Animation. ONE PIECE, ONE PIECE CARD GAME, les noms des personnages et des lieux, les visuels et les textes des cartes appartiennent à leurs titulaires : © Eiichiro Oda/Shueisha, Toei Animation, © BANDAI.",
+          "Rien n'est à vendre : aucun achat, aucune publicité. Les boosters, les cartes et les récompenses du jeu sont virtuels, gratuits et sans valeur ; ils ne s'échangent pas et ne se revendent pas.",
+        ],
+        bullets: [
+          "Visuels des cartes du jeu et visuels VF : téléchargés sur le site officiel ONE PIECE CARD GAME par notre serveur, qui te les transmet (ton navigateur ne contacte pas ce site). Textes et caractéristiques des cartes : listes officielles, téléchargées de la même façon.",
+          "Le dépôt du code ne contient aucun visuel, texte de carte ou logo : la licence MIT ne couvre que notre code. Les dialogues, la carte du monde et les paquets de boosters du mode Aventure sont écrits et dessinés par nous, sans reprendre le manga ni l'anime.",
+          "Titulaire de droits : pour toute demande de retrait, écris à {contact}. Nous accusons réception sous 48 heures et retirons ce qui est visé.",
+        ],
+      },
+      {
         title: 'Données enregistrées',
         bullets: [
           'Compte : pseudo, adresse e-mail, mot de passe (haché avec scrypt, jamais stocké en clair), date d\'inscription.',
           'Ce que tu saisis : collection, recherches et prix cibles, réglages (source des prix, exemplaires à garder, lien de partage, échanges, notifications), et ton contact et ta région si tu participes aux échanges.',
-          "Jeu (onglet Jouer) : tes parties, avec chacune de tes décisions, ton temps de réflexion et l'analyse du coach, pour suivre ta progression. Les réglages d'affichage du jeu restent sur ton appareil.",
+          "Jeu (onglet Jouer) : tes parties, avec chacune de tes décisions, ton temps de réflexion et l'analyse du coach, pour suivre ta progression, et tes decks. Les réglages d'affichage du jeu restent sur ton appareil.",
+          "Mode Aventure : ta progression (chapitres gagnés et date de la première victoire, parties déjà comptées), ta Cale (les cartes gagnées et leur version), tes boosters gagnés, leur origine et leur contenu une fois ouverts, et ton deck d'aventure.",
           "Notifications : l'adresse technique d'abonnement de ton navigateur, seulement si tu les actives.",
           "Technique : un cookie de session pour rester connecté, et l'adresse IP dans les journaux du serveur, pour sa sécurité.",
         ],
@@ -83,11 +96,24 @@ export const LEGAL: Record<UiLang, { title: string; notSet: string; back: string
         ],
       },
       {
+        title: 'Fan project',
+        paragraphs: [
+          'TCGC is an unofficial, free and open-source fan project, made by players for players. It is not produced, endorsed or supported by Bandai, Shueisha or Toei Animation. ONE PIECE, ONE PIECE CARD GAME, character and place names, card images and card texts belong to their owners: © Eiichiro Oda/Shueisha, Toei Animation, © BANDAI.',
+          "Nothing is for sale: no purchases, no ads. The game's boosters, cards and rewards are virtual, free and worthless; they cannot be traded or sold.",
+        ],
+        bullets: [
+          "Game card images and French card images: downloaded from the official ONE PIECE CARD GAME site by our server, which passes them on to you (your browser does not contact that site). Card texts and stats: official card lists, downloaded the same way.",
+          "The code repository contains no card image, card text or logo: the MIT license only covers our code. The Adventure mode's dialogues, world map and booster packs are written and drawn by us, without copying the manga or the anime.",
+          'Rights holders: for any takedown request, write to {contact}. We acknowledge receipt within 48 hours and remove the content concerned.',
+        ],
+      },
+      {
         title: 'Data stored',
         bullets: [
           'Account: username, email address, password (hashed with scrypt, never stored in plain text), sign-up date.',
           'What you enter: collection, wishlist and target prices, settings (price source, copies to keep, share link, trades, notifications), and your contact and region if you take part in trades.',
-          "Game (Play tab): your games, with each of your decisions, your thinking time and the coach's analysis, to track your progress. The game's display settings stay on your device.",
+          "Game (Play tab): your games, with each of your decisions, your thinking time and the coach's analysis, to track your progress, and your decks. The game's display settings stay on your device.",
+          'Adventure mode: your progress (chapters won and date of the first win, games already counted), your Hold (“Cale”: the cards you won and their version), the boosters you won, where they come from and their contents once opened, and your adventure deck.',
           "Notifications: your browser's technical subscription address, only if you enable them.",
           'Technical: a session cookie to keep you logged in, and the IP address in the server logs, for security.',
         ],

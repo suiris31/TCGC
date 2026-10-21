@@ -277,7 +277,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     if (res.status === 401 && body.code === 'unauthorized') window.dispatchEvent(new Event(LOGGED_OUT_EVENT));
     // Le serveur renvoie un code d'erreur traduit ici ; à défaut, son message tel quel
     const key = `error.${body.code}`;
-    throw new Error(body.code && hasMessage(key) ? t(key, body) : body.error ?? t('error.http', { n: res.status }));
+    throw Object.assign(new Error(body.code && hasMessage(key) ? t(key, body) : body.error ?? t('error.http', { n: res.status })), { code: body.code as string | undefined });
   }
   return body as T;
 }
