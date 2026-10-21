@@ -2,7 +2,10 @@
 // l'adversaire de chaque chapitre à son niveau. Le deck du joueur est joué comme un deck personnalisé (c'est un deck
 // d'aventure) : l'IA adverse ne connaît pas sa liste, comme dans l'aventure. Premier joueur alterné, graines fixes.
 //   node --no-warnings scripts/game/adventure-balance.ts [parties par chapitre] [--chapitres id,id] [--joueur deck]
-//     [--niveau n] [--recrues] [--fils n] [--rapport fichier.md]
+//     [--niveau n] [--recrues] [--adversaire deck] [--fils n] [--rapport fichier.md]
+// --joueur prend un deck du registre ou un fichier .json { name, leader, cards } (un deck de la Cale amélioré par la
+// boutique, par exemple : tâche 2.7). --adversaire impose le deck adverse (registre ou fichier .json) aux chapitres
+// choisis, pour essayer une autre liste.
 // --niveau impose un niveau à tous les adversaires (pour comparer la force des listes sans le coût de la simulation).
 // --recrues : le deck du joueur reçoit les recrues (cartes données) des chapitres obligatoires d'avant, chacune à la
 // place d'un exemplaire de sa carte la plus faible (Karoo, puis Vivi), comme un joueur qui les met dans son deck.
@@ -26,13 +29,13 @@ import type { GameState, PlayerId } from '../../game/engine/types.ts';
 
 interface Job { chapter: string; index: number; seed: number; human: PlayerId; first: PlayerId }
 interface Done { chapter: string; index: number; won: boolean; turns: number; error?: string }
-interface Setup { player: string; level?: Level; recruits?: boolean }
+interface Setup { player: string; level?: Level; recruits?: boolean; opponent?: string }
 
 const MODEL_DIR = 'web/public/rl-model';
 
 // Deck du joueur, comme un deck d'aventure : liste secrète pour l'IA adverse
 function playerDeck(id: string, before?: Chapter): DeckList {
-  const d = DECKS[id];
+  const d = id.endsWith('.json') ? deckFile(id) : DECKS[id];
   if (!d) throw new Error(`deck inconnu : ${id}`);
   const cards = { ...d.cards };
   if (before) {
@@ -46,14 +49,21 @@ function playerDeck(id: string, before?: Chapter): DeckList {
       cards[num] = (cards[num] ?? 0) + 1;
     }
   }
-  return { ...d, id: `${CUSTOM_PREFIX}EQUILIBRAGE-${id}`, series: CUSTOM_SERIES, cards };
+  return { ...d, id: `${CUSTOM_PREFIX}EQUILIBRAGE-${d.id}`, series: CUSTOM_SERIES, cards };
+}
+
+function deckFile(path: string): DeckList {
+  const { name, leader, cards } = JSON.parse(readFileSync(path, 'utf8')) as Pick<DeckList, 'name' | 'leader' | 'cards'>;
+  const total = Object.values(cards).reduce((a, b) => a + b, 0);
+  if (total !== 50) throw new Error(`${path} : ${total} cartes au lieu de 50 (sans le Leader)`);
+  return { id: name.replace(/[^\w-]+/g, '-').toUpperCase(), name, series: CUSTOM_SERIES, leader, cards };
 }
 const WEAKEST = ['ST01-003', 'ST01-009'];
 
 // ---------- Fil de calcul : joue les parties qu'on lui donne ----------
 
 async function worker() {
-  const { player, level: forced, recruits } = workerData as Setup;
+  const { player, level: forced, recruits, opponent } = workerData as Setup;
   const chapters = new Map(EAST_BLUE.chapters.map((c) => [c.id, c]));
   const policies = new Map<string, Promise<RlPolicy | null>>();
   const policyFor = (deck: string) => {
@@ -67,12 +77,12 @@ async function worker() {
 
   async function play(job: Job): Promise<Done> {
     const chapter = chapters.get(job.chapter)!;
-    const { deck } = chapter.opponent;
+    const deck = opponent?.endsWith('.json') ? { ...deckFile(opponent), id: `${CUSTOM_PREFIX}ADVERSAIRE` } : opponent ?? chapter.opponent.deck;
     const level = forced ?? chapter.opponent.level;
     const ai = (job.human === 0 ? 1 : 0) as PlayerId;
     const mine = playerDeck(player, recruits ? chapter : undefined);
     const decks: [DeckList | string, DeckList | string] = job.human === 0 ? [mine, deck] : [deck, mine];
-    const policy = level === 4 ? await policyFor(deck) : null;
+    const policy = level === 4 ? await policyFor(typeof deck === 'string' ? deck : deck.id) : null;
     const cfg = level === 2 || level === 3 ? { samples: LEVELS[level].samples, margin: LEVELS[level].margin } : null;
     let s: GameState = newGame({ decks, names: ['Joueur', 'Adversaire'], seed: job.seed, first: job.first });
     let guard = 0;
@@ -138,6 +148,7 @@ async function main() {
   const report = arg('--rapport');
   const forced = arg('--niveau') ? (Number(arg('--niveau')) as Level) : undefined;
   const recruits = process.argv.includes('--recrues');
+  const opponent = arg('--adversaire');
   const chapters = [...EAST_BLUE.chapters].sort((a, b) => a.order - b.order).filter((c) => !only || only.includes(c.id));
   if (!chapters.length) throw new Error('aucun chapitre');
   playerDeck(player);
@@ -154,7 +165,7 @@ async function main() {
   await new Promise<void>((resolve, reject) => {
     let alive = 0;
     for (let i = 0; i < Math.min(threads, jobs.length); i++) {
-      const w = new Worker(fileURLToPath(import.meta.url), { workerData: { player, level: forced, recruits } satisfies Setup, execArgv: ['--no-warnings'] });
+      const w = new Worker(fileURLToPath(import.meta.url), { workerData: { player, level: forced, recruits, opponent } satisfies Setup, execArgv: ['--no-warnings'] });
       alive++;
       const feed = () => w.postMessage(next < jobs.length ? jobs[next++] : null);
       w.on('message', (m: Done | 'prêt') => {
@@ -186,7 +197,7 @@ async function main() {
     const lv = forced ?? (c.opponent.level as Level);
     const level = LEVELS[lv].name;
     const ai = lv === 4 && !existsSync(join(MODEL_DIR, 'model.onnx')) ? ' (IA simple : pas de modèle)' : '';
-    lines.push(`| ${c.order}${c.optional ? ' (défi)' : ''} | ${c.title} | ${c.opponent.name} | ${c.opponent.deck} | ${level}${ai} | ${wins}/${r.length} (${pct(wins / Math.max(1, r.length))}) | ${pct(lo)} à ${pct(hi)} | ${turns.toFixed(1)} |`);
+    lines.push(`| ${c.order}${c.optional ? ' (défi)' : ''} | ${c.title} | ${c.opponent.name} | ${opponent ?? c.opponent.deck} | ${level}${ai} | ${wins}/${r.length} (${pct(wins / Math.max(1, r.length))}) | ${pct(lo)} à ${pct(hi)} | ${turns.toFixed(1)} |`);
     for (const x of r) if (x.error) errors.push(`${c.id} partie ${x.index} : ${x.error}`);
   }
   if (errors.length) lines.push('', `Parties en erreur (comptées perdues) : ${errors.length}`, ...errors.slice(0, 10).map((e) => `- ${e}`));
