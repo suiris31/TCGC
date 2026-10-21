@@ -1,5 +1,6 @@
 // Decks jouables : Leader + 50 cartes (quantités par numéro de carte).
 // Les decks pour débutant ne sont pas détaillés par Bandai : listes vérifiées ailleurs (source indiquée).
+import { ADVENTURE_DECKS } from '../adventure/decks.ts';
 
 export interface DeckList {
   id: string;
@@ -193,7 +194,17 @@ export const DECKS: Record<string, DeckList> = {
       'ST01-010': 4, 'ST01-011': 2, 'ST01-012': 2, 'ST01-013': 2, 'ST01-014': 2, 'ST01-015': 2, 'ST01-016': 2, 'ST01-017': 2,
     },
   },
+  // Adversaires de l'arc East Blue (tâche 1.19) : listes dans game/adventure/decks.ts, toujours à la fin (l'ordre de
+  // DECKS sert aux graines des parties de vérification)
+  ...ADVENTURE_DECKS,
 };
+
+// Decks réservés à l'aventure (adversaires des chapitres) : jouables, mais absents du choix libre des decks, du tirage
+// « Aléatoire » et du salon en ligne
+export const ADVENTURE_SERIES = 'AVENTURE';
+export const isAdventureOnly = (id: string) => DECKS[id]?.series === ADVENTURE_SERIES;
+// Decks du registre proposés hors de l'aventure, dans l'ordre de DECKS
+export const freeDeckIds = () => Object.keys(DECKS).filter((id) => !isAdventureOnly(id));
 
 export function deckSize(deck: Pick<DeckList, 'cards'>) {
   return Object.values(deck.cards).reduce((sum, n) => sum + n, 0);

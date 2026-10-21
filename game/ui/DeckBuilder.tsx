@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CARDS, cardStatus, HIDDEN } from '../engine/cards/index.ts';
 import { anyNumber, DECK_SIZE, formatIssues, MAX_COPIES, playableErrors, type Regulations } from '../engine/deckRules.ts';
-import { DECKS, deckSize, type DeckList } from '../engine/decks.ts';
+import { DECKS, deckSize, isAdventureOnly, type DeckList } from '../engine/decks.ts';
 import { def } from '../engine/rules.ts';
 import type { CardDef, Color } from '../engine/types.ts';
 import { chooseAdventureDeck } from './adventure/api.ts';
@@ -111,7 +111,7 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
               <select value="" onChange={(e) => copy(e.target.value)}>
                 <option value="">Choisir…</option>
                 <optgroup label="Decks du méta">{Object.values(DECKS).filter((d) => d.series === 'META').map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>
-                <optgroup label="Decks pour débutant">{Object.values(DECKS).filter((d) => d.series !== 'META').map((d) => <option key={d.id} value={d.id}>{d.name} ({d.id})</option>)}</optgroup>
+                <optgroup label="Decks pour débutant">{Object.values(DECKS).filter((d) => d.series !== 'META' && !isAdventureOnly(d.id)).map((d) => <option key={d.id} value={d.id}>{d.name} ({d.id})</option>)}</optgroup>
                 {free.length > 0 && <optgroup label="Mes decks">{free.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>}
                 {adventure.length > 0 && <optgroup label="Mes decks d’aventure">{adventure.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>}
               </select>

@@ -153,8 +153,9 @@ test('aventure (serveur) : départ une seule fois, deck de départ dans la Cale,
 });
 
 test('aventure (serveur) : un deck d’aventure ne prend que des cartes de la Cale', () => {
-  const other = DECKS['ST-31']; // même Leader que le deck de départ, autres cartes
-  assert.equal(other.leader, STARTER.leader);
+  // même Leader que le deck de départ, autres cartes (celles de ST-21, absentes de la Cale)
+  const other = { leader: STARTER.leader, cards: DECKS['ST-21'].cards };
+  assert.ok(Object.keys(other.cards).every((n) => !STARTER.cards[n]));
   assert.throws(() => decks.saveDeck(A, 'PERSO-avessai1', { name: 'x', leader: other.leader, cards: other.cards, mode: 'aventure' }), /Cale/);
   const card = Object.keys(STARTER.cards).find((n) => STARTER.cards[n] === 4)!;
   assert.throws(() => decks.saveDeck(A, 'PERSO-avessai1', { name: 'x', leader: STARTER.leader, cards: { [card]: 5 }, mode: 'aventure' }), /5 dans le deck, 4 dans ta Cale/);
