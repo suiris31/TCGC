@@ -121,6 +121,9 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
   'OP11-066': (s, p, card) => (canAttack(s, p, card) ? 'end' : 'late'),
   'OP11-071': (s, p) => (knowsTop(s, p) && s.players[p].hand.length >= 3 ? 'late' : null),
   'ST36-005': (s, p) => (s.players[p].donRested > 0 && canAttack(s, p, s.players[p].leader) ? 'early' : null),
+  // OP03 jaune (tâche 1.13) : Napoleon s'épuise pour renforcer [Charlotte Linlin] pendant le tour adverse, en fin de tour
+  // s'il pouvait encore attaquer
+  'OP03-117': (s, p, card) => (canAttack(s, p, card) ? 'end' : 'late'),
   // Leader Mihawk : redresser 3 DON!! une fois ses Personnages joués (il ne pourra plus en jouer ce tour-ci)
   'OP14-020': (s, p) => (s.players[p].donRested > 0 && s.players.some((P) => P.chars.some((c) => fieldCost(s, c.uid) >= 5)) ? 'late' : null),
   // Captain John et Miss Buckingham Stussy (Xebec du méta) : en fin de tour, épuisés pendant le tour adverse
@@ -141,7 +144,31 @@ const ABILITY: Record<string, (s: GameState, p: PlayerId, card: FieldCard) => Ti
       && (hasBlocker(s, other(p), c) || others.some((a) => power(s, a.uid) >= power(s, c.uid))));
     return opens.length ? 'early' : null;
   },
+  // OP03 rouge (tâche 1.8) : Thatch (+2000, puis dans la Défausse) seulement si le bonus lui fait gagner une attaque ;
+  // Striker (épuiser 2 DON!! et le Lieu) avec les DON!! qui restent en fin de tour
+  'OP03-005': (s, p, card) => (canAttack(s, p, card)
+    && attackTargets(s, p, card).some((t) => power(s, t) > power(s, card.uid) && power(s, t) <= power(s, card.uid) + 2000) ? 'early' : null),
+  'OP03-020': (s, p) => (s.players[p].donActive >= 2 ? 'end' : null),
+  // Adversaires de l'aventure, liste A (tâche 1.15). Jango (OP15-026) : se défausser pour donner une DON!! adverse,
+  // seulement si une de ses cartes en tire parti ; Monkey D. Garp (ST06-012) : mettre KO avant les attaques ; Tashigi
+  // (ST06-006) : −2 de coût quand un Personnage adverse passe ainsi à 0 et qu'une de ses cartes en profite ; Leader
+  // Smoker (OP02-093) : une fois sa DON!! donnée, avant qu'il attaque
+  'OP15-026': (s, p, card) => (def(card.num).activateMain?.useful?.(s, p, card) ? 'late' : null),
+  'ST06-012': (s, p, card) => (def(card.num).activateMain?.useful?.(s, p, card) ? 'early' : null),
+  'ST06-006': (s, p) => (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) > 0 && fieldCost(s, c.uid) <= 2).length && costZeroPayoff(s, p) ? 'early' : null),
+  'OP02-093': (s, p, card) => (card.don >= 1 && canAttack(s, p, card) ? 'early' : null),
+  // Vrais decks de l'aventure (tâche 1.19). Leader Kuro (OP03-021) : se redresser seulement une fois qu'il a attaqué, pour
+  // attaquer une seconde fois (sinon l'IA payait 3 DON!! et 2 Personnages pour rien)
+  'OP03-021': (s, p, card) => (card.rested && def(card.num).activateMain?.useful?.(s, p, card) !== false ? 'early' : null),
 };
+
+// Une de ses cartes profite d'un Personnage de coût 0 : Smoker (OP02-102, ST06-004) prêt à attaquer, Kobby (ST06-002)
+// jouable
+function costZeroPayoff(s: GameState, p: PlayerId): boolean {
+  const P = s.players[p];
+  return P.chars.some((c) => (c.num === 'OP02-102' || c.num === 'ST06-004') && canAttack(s, p, c))
+    || P.hand.some((c) => c.num === 'ST06-002' && P.donActive >= 1);
+}
 
 function abilityTiming(s: GameState, p: PlayerId, uid: number): Timing {
   const f = findField(s, uid);
@@ -294,9 +321,33 @@ const EVENT_SCORE: Record<string, (s: GameState, p: PlayerId) => number | null> 
   'OP15-074': (s, p) => (s.players[p].hand.length <= 4 ? 1 : null),
   'OP15-077': (s, p) => (oppCharsWhere(s, p, (c) => c.rested && power(s, c.uid) <= 6000).length ? 1.5 : null),
   'OP15-078': (s, p) => (oppCharsWhere(s, p, (c) => !c.rested && power(s, c.uid) <= 5000 && hasBlocker(s, other(p), c)).length ? 1.5 : null),
+  // OP03 jaune (tâche 1.13) : Buzz Cut Mochi et Colonne foudroyante pour une cible qui vaut la carte (Colonne : pas au
+  // prix de sa dernière Vie) ; Tropical Torment dès que l'adversaire a 4 Vies ou plus (mainUseful)
+  'OP03-119': (s, p) => (oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 4 && fieldValue(s, c.uid) >= 3).length ? 3 : null),
+  'OP03-120': () => 2,
+  'OP03-121': (s, p) => (s.players[p].life.length >= 2 && oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 5 && fieldValue(s, c.uid) >= 4).length ? 3 : null),
   // Kaido du méta
   'OP07-077': (s, p) => (s.players[p].hand.length <= 5 ? 1.5 : null),
   'EB04-040': (s, p) => (s.players[p].donActive >= 6 && fieldCards(s, p).some((c) => def(c.num).names.includes('Kaido') && canAttack(s, p, c)) ? 2 : null),
+  // OP03 rouge (tâche 1.8). Flame Emperor : avec le Leader Ace prêt à attaquer ([Double attaque], +3000), ou pour abattre
+  // une grosse menace
+  'OP03-016': (s, p) => {
+    const threat = oppCharsWhere(s, p, (c) => power(s, c.uid) <= 8000 && fieldValue(s, c.uid) >= 5).length > 0;
+    return canAttack(s, p, s.players[p].leader) ? 6 + (threat ? 2 : 0) : threat ? 4 : null;
+  },
+  // Cross Fire : en [Principale] seulement s'il ouvre une mise KO, sinon gardé pour son [Contre]
+  'OP03-017': (s, p) => (enablesKo(s, p, 4000) ? 3 : null),
+  // Fire Fist : au moins une cible qui vaut l'Événement défaussé
+  'OP03-018': (s, p) => {
+    const n = oppCharsWhere(s, p, (c) => power(s, c.uid) <= 5000 && fieldValue(s, c.uid) >= 3).length;
+    return n ? 2 + Math.min(n, 2) : null;
+  },
+  // Fiery Doll : +4000 au Leader quand l'adversaire est presque battu, ou que son Leader ne passerait pas sans
+  'OP03-019': (s, p) => {
+    const L = s.players[p].leader;
+    const O = s.players[other(p)];
+    return canAttack(s, p, L) && (O.life.length <= 2 || power(s, L.uid) < power(s, O.leader.uid)) ? 2 : null;
+  },
 };
 
 // ---------- Plan d'attaque ----------
@@ -309,7 +360,7 @@ interface AttackPlan {
 }
 
 // Personnages qui gagnent [Initiative] avec des DON!! données (Sanji : 2)
-const RUSH_DON: Record<string, number> = { 'ST31-001': 2 };
+const RUSH_DON: Record<string, number> = { 'ST31-001': 2, 'ST01-004': 2 };
 
 // Événement clé gardé en réserve : Zoro redressé par « Luffy deviendra un jour le roi des pirates !! » attaque deux fois
 function keyReserve(s: GameState, p: PlayerId, st: Style): number {
@@ -480,6 +531,9 @@ function chooseBlocker(s: GameState, d: Decision): string {
 }
 
 function counterEventValue(s: GameState, p: PlayerId, num: string, targetUid: number): number {
+  // valeur donnée par la carte elle-même (briques qui la connaissent : defenderPower, bricks.ts)
+  const own = def(num).counterPower;
+  if (own) return own(s, p, targetUid);
   switch (num) {
     case 'OP13-019': return findField(s, targetUid)?.leader ? 3000 : 0;
     case 'OP12-098': return s.players[p].chars.some((c) => hasType(c.num, 'Revolutionary Army') && fieldCost(s, c.uid) >= 8) ? 4000 : 2000;
@@ -609,6 +663,20 @@ const TRIGGER_WORTH: Record<string, (s: GameState, p: PlayerId) => boolean> = {
   'OP12-039': (s, p) => s.battle !== null && s.active !== p,
   // « DON!! −1 : jouez cette carte » : sans DON!! sur le terrain, le [Déclenchement] ne ferait rien
   'OP05-073': (s, p) => donOnField(s, p) >= 1,
+  // OP03 jaune (tâche 1.13), Vie restante après la carte révélée. Kingbaum : placer une Vie dans la Défausse, pas la
+  // dernière ; Cracker, Smoothie, Slurp : il faut une carte à défausser ; Térébration : 2 cartes pour une Vie seulement
+  // quand il n'en reste plus (sinon son [Contre] +5000 vaut mieux en main) ; Buzz Cut Mochi : un Personnage à jouer ;
+  // Tropical Torment et Colonne foudroyante : un effet possible
+  'OP03-100': (s, p) => s.players[p].life.length >= 2,
+  'OP03-108': (s, p) => s.players[p].hand.length >= 1,
+  'OP03-110': (s, p) => s.players[p].hand.length >= 1,
+  'OP03-113': (s, p) => s.players[p].hand.length >= 1,
+  'OP03-118': (s, p) => s.players[p].life.length === 0 && s.players[p].hand.length >= 4,
+  'OP03-119': (s, p) => s.players[p].hand.some((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4 && Boolean(def(c.num).triggerEn)),
+  'OP03-120': (s, p) => s.players[other(p)].life.length >= 4,
+  'OP03-121': (s, p) => oppCharsWhere(s, p, (c) => fieldCost(s, c.uid) <= 5).length > 0,
+  // Hatchan (tâche 1.19) : « jouez cette carte » seulement avec un Leader {East Blue} (sinon elle irait dans la Défausse)
+  'OP03-033': (s, p) => leaderHasType(s, p, 'East Blue'),
 };
 
 const amountIn = (prompt: string) => Number(prompt.match(/[−-](\d+)/)?.[1] ?? 0);
@@ -653,6 +721,12 @@ function chooseEffect(s: GameState, d: Decision): string {
   const sourceNum = d.source !== undefined ? findField(s, d.source)?.card.num : undefined;
   if (d.tag === 'may' && sourceNum === 'OP13-031') return yesNo(P.chars.some((c) => c.uid !== d.source && (def(c.num).cost ?? 0) <= 5));
   if (d.tag === 'may' && sourceNum === 'OP06-033') return yesNo(O.chars.some((c) => c.rested));
+  // Leader Smoker (−1) et Tashigi (−2) : de préférence un Personnage adverse dont le coût tombe ainsi à 0 (tâche 1.15)
+  if (d.tag === 'oppCost' && (sourceNum === 'OP02-093' || sourceNum === 'ST06-006')) {
+    const down = sourceNum === 'OP02-093' ? 1 : 2;
+    const zero = cards.filter((o) => fieldCost(s, uidOf(o)) > 0 && fieldCost(s, uidOf(o)) <= down).sort((a, b) => fieldValue(s, uidOf(b)) - fieldValue(s, uidOf(a)));
+    if (zero.length) return zero[0].id;
+  }
   // Newgate (+3000 au Leader) et Linlin bleue (+1000) : défausser seulement si ça change l'issue du combat
   if (d.tag === 'may' && (sourceNum === 'OP17-040' || sourceNum === 'OP17-049') && s.battle) {
     const bonus = sourceNum === 'OP17-040' ? 3000 : 1000;
@@ -668,6 +742,34 @@ function chooseEffect(s: GameState, d: Decision): string {
     const targetIsChar = !findField(s, b.target)?.leader;
     const attackerIsChar = !findField(s, b.attacker)?.leader;
     return yesNo(s.active === p ? targetIsChar && atk < dp && atk >= dp - 2000 : attackerIsChar && atk >= dp && atk - 2000 < dp);
+  }
+  // OP03 rouge (tâche 1.8), questions de l'effet d'une de ses propres cartes (un effet résolu pendant les dégâts infligés à
+  // son Leader peut en poser d'autres à l'adversaire, avec ce Leader pour source)
+  const ownSource = d.source !== undefined && findField(s, d.source)?.player === p;
+  // Leader Portgas.D.Ace : défausser des Événements ou des Lieux (+1000 chacun) seulement autant qu'il en faut pour gagner
+  // le combat en attaquant, ou pour le repousser quand défendre vaut la peine (seuils des Contres)
+  if (d.tag === 'discard' && sourceNum === 'OP03-001' && ownSource && d.options.some((o) => o.id === 'none')) {
+    const b = s.battle;
+    if (!b) return 'none';
+    const atk = power(s, b.attacker);
+    const dp = power(s, b.target);
+    const left = P.hand.filter((c) => def(c.num).category === 'EVENT' || def(c.num).category === 'STAGE').length;
+    const st = styleFor(s, p);
+    const life = P.life.length;
+    const attacking = s.active === p;
+    const need = attacking ? Math.ceil((dp - atk) / 1000) : Math.floor((atk - dp) / 1000) + 1;
+    const worth = attacking ? need <= 2
+      : life <= st.counterLife || (life <= st.counterMid && need <= st.counterSmall + 1) || (need <= st.counterSmall && P.hand.length >= 5);
+    return need > 0 && need <= left && worth ? (byHand(false)[0] ?? d.options[0]).id : 'none';
+  }
+  // Marshall.D.Teach (OP03-012) : placer dans la Défausse seulement un Personnage qui y partira de toute façon à la fin du
+  // tour (Thatch), jamais Teach lui-même s'il y en a un autre
+  const expendable = (uid: number) => s.delayed.some((x) => x.action === 'trashChar' && x.uid === uid && x.turn === s.turn);
+  if (d.tag === 'may' && sourceNum === 'OP03-012' && ownSource) {
+    return yesNo(P.chars.some((c) => c.uid !== d.source && expendable(c.uid) && def(c.num).colors.includes('Red') && power(s, c.uid) >= 4000));
+  }
+  if (d.tag === 'trashOwn' && sourceNum === 'OP03-012' && ownSource) {
+    return (cards.find((o) => expendable(uidOf(o))) ?? byValue(false).find((o) => uidOf(o) !== d.source) ?? d.options[0]).id;
   }
   // Sasaki (défausser 2) et Basil Hawkins (défausser 1) : seulement avec une main fournie
   if (d.tag === 'may' && sourceNum === 'OP17-068') return yesNo(P.hand.length >= 4);
@@ -688,8 +790,24 @@ function chooseEffect(s: GameState, d: Decision): string {
   if (d.tag === 'may' && sourceNum === 'OP17-081') {
     return yesNo(P.trash.some((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 8 && !def(c.num).names.includes('Gerd')));
   }
+  // OP03 violette (tâche 1.19, proposé par 1.11) : DON!! −1 seulement si l'effet servira. Zambai : avec un Leader {Water
+  // Seven} (choix 211) ; Rob Lucci : un Personnage adverse redressé de coût 5 ou moins à épuiser ; Kaku : [Exil] utile
+  // seulement contre le Leader adverse qui a encore des Vies
+  if (d.tag === 'may' && sourceNum === 'OP03-063' && ownSource) return yesNo(leaderHasType(s, p, 'Water Seven'));
+  if (d.tag === 'may' && sourceNum === 'OP03-071' && ownSource) return yesNo(O.chars.some((c) => !c.rested && fieldCost(s, c.uid) <= 5));
+  if (d.tag === 'may' && sourceNum === 'OP03-059' && ownSource) return yesNo(s.battle?.target === O.leader.uid && O.life.length > 0);
   // Trafalgar Law (ST10-010) : DON!! −1 seulement si l'adversaire a 7 cartes ou plus
   if (d.tag === 'may' && sourceNum === 'ST10-010') return yesNo(O.hand.length >= 7);
+  // OP03 jaune (tâche 1.13) : Charlotte Oven (défausser une carte à [Déclenchement], +3000) et Charlotte Smoothie (une Vie
+  // en main, +2000, pas la dernière) seulement si le bonus fait passer l'attaque ; Streusen seulement s'il y a un
+  // Personnage de coût 1 ou moins à mettre KO
+  if (d.tag === 'may' && (sourceNum === 'OP03-105' || sourceNum === 'OP03-110') && s.battle && s.active === p && s.battle.attacker === d.source) {
+    const atk = power(s, s.battle.attacker);
+    const dp = power(s, s.battle.target);
+    const bonus = sourceNum === 'OP03-105' ? 3000 : 2000;
+    return yesNo(atk < dp && atk + bonus >= dp && (sourceNum === 'OP03-105' || P.life.length >= 2));
+  }
+  if (d.tag === 'may' && sourceNum === 'OP03-115' && findField(s, d.source!)?.player === p) return yesNo(O.chars.some((c) => fieldCost(s, c.uid) <= 1));
   // Kyo : défausser 2 cartes pour garder un Personnage seulement avec une main fournie
   if (d.tag === 'replace' && P.hand.length < 4 && d.options.some((o) => o.id.startsWith('replace:') && findField(s, uidOf(o))?.card.num === 'OP17-045')) {
     const other = d.options.find((o) => o.id.startsWith('replace:') && findField(s, uidOf(o))?.card.num !== 'OP17-045');
@@ -757,9 +875,28 @@ function chooseEffect(s: GameState, d: Decision): string {
       return (opp[0] ?? d.options.find((o) => o.id === 'none') ?? d.options[0]).id;
     }
     case 'oppToLife': {
-      const top = byValue(true)[0];
+      // les cartes adverses (Charlotte Katakuri OP03-123 peut aussi viser les siennes)
+      const top = byValue(true).filter((o) => findField(s, uidOf(o))?.player !== p)[0];
       return top && fieldValue(s, uidOf(top)) >= 5 ? top.id : 'none';
     }
+    case 'mayMill':
+      // placer des cartes de son deck dans sa Défausse : seulement si son Leader gagne à deck vide (Nami OP03-040)
+      return yesNo(def(P.leader.num).rules?.deckOut === 'win');
+    case 'lifeLook':
+      // regarder la Vie adverse d'abord (écarter un [Déclenchement] qu'on allait révéler), sinon la sienne
+      return (d.options.find((o) => o.id === 'opp') ?? d.options.find((o) => o.id === 'mine') ?? d.options[0]).id;
+    case 'lifeArrange': {
+      // sa Vie : garder au-dessus une carte à [Déclenchement] ; Vie adverse : envoyer dessous une carte à [Déclenchement]
+      const c = d.cards?.[0];
+      if (!c) return 'top';
+      const trigger = Boolean(triggerEffect(c.num));
+      return (c.owner === p ? trigger : !trigger) ? 'top' : 'bottom';
+    }
+    case 'trashOwn':
+      return (byValue(false)[0] ?? d.options[0]).id;
+    case 'oppDonTarget':
+      // DON!! données à une carte adverse (Krieg OP15-008) : la plus précieuse
+      return (byValue(true).filter((o) => findField(s, uidOf(o))?.player !== p)[0] ?? d.options[0]).id;
     case 'lifeSideOpp':
       return 'lifeBottom';
     case 'playFree': {

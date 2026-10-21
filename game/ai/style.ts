@@ -103,6 +103,23 @@ export const BASE_STYLES: Record<string, Partial<Style>> = {
   'META-XEBEC-2026-10': { keepBlockers: 1 },
   // Ener du méta (violet) : petits Personnages agressifs ([Initiative], [Double attaque]), Événements en guise de Contre
   'META-ENEL-2026-10': { leaderAggro: 3.5 },
+  // Deck de départ de l'aventure (tâche 1.19). Chapeaux de paille ST-01 (rouge) : petits Personnages agressifs, DON!!
+  // données par le Leader, comme le Luffy de ST-31
+  'ST-01': { leaderAggro: 4, overkill: 1, lethalBonus: 4 },
+  // Adversaires de l'aventure (tâche 1.19), d'après leur plan de jeu (game/docs/aventure-east-blue.md). Morgan et Baggy :
+  // decks simples des premiers chapitres, style par défaut
+  'AV-EB-MORGAN': {},
+  'AV-EB-BAGGY': {},
+  // Kuro (vert) : épuiser les Personnages adverses, puis mettre KO ceux qui sont épuisés
+  'AV-EB-KURO': { charKill: 1.3, restBlocker: 6 },
+  // Krieg (rouge/vert) : épuiser et mettre KO les Personnages épuisés ; le Leader affaiblit l'adversaire pendant son tour
+  'AV-EB-KRIEG': { charKill: 1.3, restBlocker: 6 },
+  // Arlong (vert/jaune) : des Personnages à [Déclenchement] : la Vie se reprend en cartes, contrer un peu moins
+  'AV-EB-ARLONG': { counterLife: 1, counterMid: 2, counterSmall: 1.5 },
+  // Baggy et Alvida (bleu) : renvois en main, plus de Personnages solides que la bande de Baggy seule
+  'AV-EB-BAGGY-ALVIDA': {},
+  // Smoker (noir) : baisser les coûts adverses et mettre KO les Personnages de coût 0, garder ses [Bloqueur]
+  'AV-EB-SMOKER': { charKill: 1.3, keepBlockers: 1 },
 };
 
 const TUNED = tuned as Record<string, Partial<Style>>;

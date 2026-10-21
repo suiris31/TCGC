@@ -437,6 +437,292 @@ questions-réponses Bandai, tournois).
      Personnage de coût 12 ou plus peut être à l'un ou l'autre joueur (choix 12). [Déclenchement] : n'importe quelle carte
      {Erbaf} (Personnage, Événement...).
 
+## OP03 et ST-01 : mécanismes (tâche 1.1), choix faits sans validation
+
+200. **Dégâts infligés** (« quand l'attaque de ... inflige des dégâts à la Vie adverse », Nami OP03-040) : un seul
+     déclenchement par attaque qui touche, même avec [Double attaque] (2 dégâts traités ensemble, règles 4-6-2-2 et
+     10-1-2) ; les cartes de Vie défaussées par [Exil] comptent. « Quand vous infligez des dégâts » (Gaimon OP03-043) :
+     aussi les dégâts d'un effet ; une carte de Vie placée dans la Défausse par un effet (Charlotte Linlin OP03-114) n'est
+     pas un dégât.
+201. **« L'adversaire ne peut pas activer le [Bloqueur] d'un Personnage de 2000 de puissance ou moins pendant ce
+     combat »** (Adio OP03-002, Usopp ST01-002) : la puissance est lue au moment où l'adversaire choisit son Bloqueur.
+202. **« Placez ce Personnage dans votre Défausse à la fin de ce tour »** (Thatch OP03-005) : ce n'est pas une mise KO
+     ([En cas de KO] non déclenché) ; si le Personnage a quitté le terrain avant, rien ne se passe, même s'il revient.
+203. **« Vous pouvez placer N cartes du dessus de votre deck dans votre Défausse »** (cartes bleues) : s'il en reste
+     moins, toutes celles qui restent. Quand il faut les placer pour payer (« ... Si vous le faites », Gaimon), il faut
+     en avoir au moins N.
+204. **« Sans effet de base »** (Helmeppo OP03-091) : aucun texte de carte, [Déclenchement] compris (règles 2-8-5 et
+     2-11-2) ; un mot-clé comme [Bloqueur] est un texte ; une carte dont l'effet est annulé n'en devient pas une (8-2-2).
+205. **« Le coût de ... devient 0 »** : le coût baisse de sa valeur du moment (comme « la puissance devient 0 », 4-12) ;
+     un bonus de coût reçu ensuite s'ajoute ; un coût déjà nul ne change pas.
+206. **Marshall D. Teach (OP03-012)** : le Personnage rouge de 4000 ou plus à placer dans la Défausse peut être Teach
+     lui-même (le texte ne dit pas « autre que ») ; il pioche alors, mais le +1000 ne s'applique pas.
+207. **Sham (OP03-027)** : « si vous n'avez pas de [Buchi] » : aucun Personnage [Buchi] sur son terrain ; tout l'effet
+     dépend du Leader {East Blue} (4-10-1).
+208. **Jango (OP03-028)** : le Leader {East Blue}, qui n'a pas de coût, peut être redressé (sinon le mot « Leader » du texte
+     ne servirait à rien) ; le coût de 6 ou moins ne vise que les Personnages.
+209. **Gaimon (OP03-043)** : « si vous le faites, placez ce Personnage dans votre Défausse » : seulement si les 3 cartes
+     ont été placées.
+210. **Gum Gum Super Marteau (OP03-055)** : le « Puis, vous pouvez placer 2 cartes » fait partie de l'effet payé par la
+     défausse : sans défausse, rien.
+211. **Zambai (OP03-063)** : le DON!! −1 se paie même sans Leader {Water Seven} (rien ne se passe alors) ; l'IA ne paie pas
+     dans ce cas.
+212. **Issho (OP03-078)** : les 2 cartes défaussées de la main adverse sont tirées au hasard (le joueur ne voit pas cette
+     main), comme les autres cartes de ce genre.
+213. **Kingbaum (OP03-100), Charlotte Chiffon (OP03-109)** : le joueur choisit la carte du dessus ou du dessous de sa
+     Vie ; elle devient publique dans la Défausse.
+214. **Charlotte Linlin (OP03-114)** : sans Leader {Équipage de Big Mom}, ni Vie ajoutée ni Vie adverse défaussée (4-10-1).
+215. **Diable Jambe (ST01-016), Monkey D. Luffy (ST01-012)** : « l'adversaire ne peut pas activer [Bloqueur] » quand la
+     carte attaque = [Imblocable] (même rappel de règle), pour le tour ou pour le combat.
+216. **Regarder la carte du dessus d'une Vie** (Charlotte Katakuri OP03-099, Shirley OP03-104) : le joueur choisit quelle
+     Vie, regarde la carte, puis la laisse au-dessus ou la place au-dessous ; elle reste face cachée, et seul celui qui l'a
+     regardée la connaît (tant qu'elle reste dans la Vie).
+
+## OP03 rouge (tâche 1.8), choix faits sans validation
+
+230. **Leader Portgas.D.Ace (OP03-001)** : quand il attaque ou est attaqué, les Événements et les Lieux se défaussent un
+     par un (« Aucun autre » pour s'arrêter) ; chaque carte donne son +1000 tout de suite (même total qu'à la fin). C'est
+     une défausse : les effets qui réagissent à une carte défaussée réagissent. L'effet se résout quand l'attaque est
+     déclarée, avant les [Bloqueur] : si le Leader attaqué est protégé par un de ses [Bloqueur], le bonus est perdu. Sans
+     Événement ni Lieu en main, rien n'est demandé.
+231. **Curiel (OP03-004)** : « le tour où il est joué » vaut aussi quand il est joué par un effet ; avec 1 DON!!, son
+     [Initiative] ne lui permet donc d'attaquer que des Personnages ce tour-là.
+232. **Marshall.D.Teach (OP03-012)** : le Personnage placé dans la Défausse pour payer quitte le terrain par un effet de
+     son joueur (Moby Dick OP08-056 y réagit), comme pour l'autre Teach (OP13-053). S'il se choisit lui-même, l'attaque
+     s'arrête (plus d'attaquant) et il pioche quand même (206).
+233. **Marco (OP03-013)** : une fois l'Événement défaussé, Marco est toujours rejoué (on ne paie pas pour ne rien faire) ;
+     rejoué pendant le tour adverse, son [Votre tour] [Jouée] ne met rien KO.
+234. **Lim (OP03-015)** : mis KO pendant le tour adverse, en combat ou par un effet ; le −2000 dure jusqu'à la fin de ce
+     tour.
+235. **Monkey.D.Garp (OP03-014)** : « carte Personnage rouge de coût 1 » : le coût imprimé de la carte en main ; son effet
+     [Jouée] se résout après l'effet de Garp, pendant l'attaque.
+236. **Flame Emperor (OP03-016)** : avec le Leader [Portgas.D.Ace], le [Double attaque] et le +3000 sont donnés même
+     sans Personnage à mettre KO (« jusqu'à 1 ») ; avec un autre Leader, rien du tout. Le [Déclenchement] ne dépend pas
+     du Leader.
+237. **Cross Fire (OP03-017)** : en [Contre], le −4000 peut viser n'importe quel Personnage adverse ; il ne protège que si
+     l'attaquant est un Personnage (l'IA ne le compte que dans ce cas).
+238. **Fire Fist (OP03-018)** : deux cibles différentes (la première est déjà dans la Défausse quand on choisit la
+     seconde) ; Fire Fist est déjà dans la Défausse quand on paie : il faut un autre Événement en main, sinon rien.
+239. **Striker (OP03-020)** : ② et « épuiser ce Lieu » se paient ensemble ; avec un autre Leader que [Portgas.D.Ace], payer
+     ne fait rien (l'IA ne le fait pas, l'interface le signale).
+240. **Baggy (OP03-008)** : « cartes <Tranche> » comprend un Leader <Tranche> qui attaque.
+## OP03 verte (tâche 1.9), choix faits sans validation
+
+260. **Kuro (OP03-021, Leader)** : l'effet n'est pas limité à une fois par tour. Les 2 Personnages {East Blue} épuisés
+     pour le payer doivent être redressés ; des Personnages joués ce tour conviennent. L'effet peut s'activer avec le
+     Leader déjà redressé : seul le Personnage adverse est alors épuisé.
+261. **Arlong (OP03-022, Leader)** : les 2 DON!! données se comptent au moment de l'attaque ; « coût de 4 ou moins » est
+     le coût imprimé de la carte en main, « ayant un [Déclenchement] » se lit dans le texte anglais.
+262. **Coûts facultatifs** (« vous pouvez ... : », Arlong, Krieg OP03-025, Out-of-the-Bag OP03-036, Tooth Attack
+     OP03-037) : la question n'est posée que si l'effet peut faire quelque chose (un Personnage à jouer, à mettre KO, une
+     carte [Kuro] à redresser). Payer pour rien est permis par les règles, mais ne sert à rien.
+263. **Jango (OP03-028)** : seuls les choix qui peuvent faire quelque chose sont proposés : redresser s'il y a un Leader
+     ou Personnage {East Blue} épuisé qui convient ; « épuisez ce Personnage et jusqu'à 1 Personnage adverse » s'il y a un
+     Personnage adverse redressé (épuiser Jango seul ne sert à rien). S'il n'en reste qu'un, il est pris d'office.
+264. **Sham (OP03-027)** : le [Buchi] joué par Sham résout son [Jouée] ensuite ; il peut mettre KO le Personnage que Sham
+     vient d'épuiser.
+265. **Buggy (OP03-032)** : « cartes <Tranche> » : le Leader ou le Personnage qui l'attaque ; seulement en combat (un effet
+     peut le mettre KO).
+266. **Out-of-the-Bag (OP03-036)** : « vos cartes [Kuro] » : le Leader ou un Personnage nommé [Kuro].
+267. **Hatchan (OP03-033)** : avec un Leader qui n'est pas {East Blue}, activer le [Déclenchement] ne fait rien et la carte
+     va dans la Défausse (règle 10-1-5-3) ; mieux vaut l'ajouter à sa main.
+268. **One, Two, Jango (OP03-039)** : le +1000 « pendant ce tour » ne sert qu'à attaquer (c'est le tour du joueur) : l'IA
+     ne joue la carte pour lui seul que si un de ses Personnages peut encore attaquer. L'effet, lui, peut viser
+     n'importe lequel de ses Personnages.
+269. **Nami (OP03-030)** : « carte verte » : une carte dont les couleurs comprennent le vert (une carte verte et jaune
+     compte) ; les Événements et Lieux {East Blue} verts comptent.
+## OP03 bleue (tâche 1.10), choix faits sans validation
+
+290. **Nami (OP03-040), victoire à deck vide** : le deck vide se constate comme la défaite habituelle (règle 9-2), une
+     fois l'effet en cours terminé, quelle qu'en soit la cause (pioche, cartes placées dans la Défausse par un effet ou
+     un coût) et pendant les deux tours ; avec un autre Leader, le même deck vide fait perdre. Un effet qui pioche plus
+     de cartes qu'il n'en reste pioche celles qui restent et va jusqu'au bout (Kaya défausse encore 2 cartes) avant la
+     victoire.
+291. **Usopp's Pirate Crew (OP03-042)** : « un [Usopp] bleu » : toute carte bleue au nom d'Usopp, Sniperking (OP03-122)
+     compris puisque son nom est aussi [Usopp] ; un Usopp d'une autre couleur (ST21-002, rouge) ne compte pas.
+292. **Gaimon (OP03-043)** : « quand vous infligez des dégâts » : chaque attaque de son Leader ou d'un de ses Personnages
+     qui touche, et les dégâts d'un effet (un déclenchement par traitement des dégâts, comme au numéro 200) ; pas les
+     dégâts qu'on subit. Gaimon doit encore être sur le terrain quand l'effet se résout. L'IA n'accepte qu'avec un
+     Leader qui gagne à deck vide (sinon elle perdrait Gaimon et 3 cartes pour rien).
+293. **Yosaku & Johnny (OP03-053)** : la condition [DON!! x1] reste vraie pendant le tour adverse tant que la DON!! est
+     donnée (elle ne revient qu'à la phase de Recharge suivante) : le +2000 compte aussi en défense, sans le +1000 de la
+     DON!! (qui ne vaut que pendant son propre tour).
+294. **Gum Gum Super Marteau (OP03-055)** : « jusqu'à 1 de vos Leaders gagne +4000 » : le bonus va à son Leader même
+     quand c'est un de ses Personnages qui est attaqué (il ne le protège donc pas) ; l'IA ne le compte que pour défendre
+     son Leader, avec une autre carte en main à défausser.
+295. **« Renvoyez (ou placez au-dessous du deck) jusqu'à 1 Personnage ... » sans « adverse »** (Zeff, Patty, Sniperking,
+     [Déclenchement] de Gum Gum Super Marteau, San Zen Sekai) : un Personnage de l'un ou l'autre joueur, les siens
+     compris. San Zen Sekai n'est proposé par l'IA et le coach que s'il vise un Personnage adverse (le jouer pour ses
+     propres Personnages reste permis). Nojiko dit « adverse » : seulement ceux de l'adversaire.
+296. **« Si vous avez 20 cartes ou moins dans votre deck »** (Carne, Patty, Yosaku & Johnny) : compté au moment où
+     l'effet se lit (la puissance de Carne et de Yosaku & Johnny suit le deck à chaque instant ; Patty : quand son effet
+     [Jouée] se résout).
+## OP03 violette (tâche 1.11), choix faits sans validation (à revoir si besoin)
+
+320. **Iceburg (Leader OP03-058), [Activation : Principale]** : le DON!! −1 et l'épuisement du Leader se paient ensemble ;
+     le Personnage {Galley-La Company} « de coût 5 ou moins » se lit sur son coût imprimé (il est en main) et il est joué
+     sans payer son coût. L'effet n'est proposé que s'il y a un tel Personnage à jouer, comme le Leader Luffy de ST-21 ou
+     Zéphyr : l'activer sans cela ne ferait que coûter une DON!!, et l'IA simple, qui active ces effets dès qu'elle le
+     peut, en perdrait une à chaque tour. De même, le Lieu **Galley-La Company (OP03-075)** n'est proposé qu'avec le
+     Leader [Iceburg] et une carte dans le deck DON!!. Iceburg ne peut pas attaquer : une DON!! qu'on lui donne ne sert à
+     rien (l'interface le signale).
+321. **Kaku (OP03-059)** : [Exil] seulement pendant ce combat ; il ne change rien si l'attaque ne touche pas la Vie
+     adverse, donc il ne rend pas utile une attaque trop faible. Comme pour tout DON!! −X (choix 28), les DON!! renvoyées
+     sont d'abord les épuisées, puis les redressées, puis celles données (Kaku peut alors perdre la sienne).
+322. **Paulie (OP03-066)** : « 8 DON!! ou plus sur votre terrain » se compte après la DON!! ajoutée (redressées, épuisées
+     et données, choix 44) ; sans le coût ➁, ni DON!! ni KO. Joué de la main, il y en a toujours au moins 8 (5 + 2 + 1) :
+     la condition compte quand il est joué par le Leader Iceburg.
+323. **Peepley Lulu (OP03-067)** : [DON!! x1] se vérifie au moment de l'attaque. **Tilestone (OP03-064), Minozebra
+     (OP03-068), Minorhinoceros (OP03-069)** : le type du Leader se lit quand l'effet [En cas de KO] se résout.
+324. **Monkey D. Luffy (OP03-070)** : le DON!! −1 et la défausse forment un seul coût (les deux ou rien) ; « Personnage
+     de coût 5 » : coût imprimé de 5 exactement.
+325. **Gum Gum Jet Rafale (OP03-072)** : le +3000 va à la carte attaquée (choix 20) ; il faut une autre carte en main à
+     défausser (l'Événement joué n'y est plus), sinon l'IA ne le compte pas parmi ses [Contre]. Coût « - » : 0.
+326. **Zambai (OP03-063), Hull Dismantler Slash (OP03-073)** : comme au choix 211, le DON!! −1 peut se payer sans Leader
+     {Water Seven} (rien ne se passe ensuite). L'IA simple répond oui à ces coûts facultatifs, comme à tous les autres
+     (King OP08-060, Jack OP17-069...) : la faire refuser sans Leader {Water Seven}, comme le prévoit le choix 211,
+     demande une règle dans `game/ai/heuristic.ts`, hors de cette tâche. Sans Leader {Water Seven}, Hull Dismantler Slash
+     est signalé inutile depuis la main (l'IA ne le joue pas). Rob Lucci (OP03-071) : de même, le DON!! −1 peut se payer
+     sans Personnage adverse à épuiser.
+327. **Top Knot (OP03-074)** : le Personnage va au-dessous du deck de son propriétaire ; les DON!! qui viennent de payer
+     l'Événement comptent pour le DON!! −2. [Déclenchement] de Hull Dismantler Slash et de Top Knot (« activez l'effet
+     [Principale] ») : le DON!! −X se paie de la même façon pendant le tour adverse.
+## OP03 noire (tâche 1.12), choix faits sans validation
+
+350. **« Vous pouvez [coût] : [effet] »** (Kaku OP03-080, Rob Lucci OP03-092, Wanze OP03-093, Charlotte Linlin
+     OP03-077) : la question n'est posée que si l'effet peut faire quelque chose (une cible, un Leader « CP », 1 Vie ou
+     moins, son propre tour pour l'[Initiative] de Rob Lucci). Les règles permettent de payer pour rien, mais personne
+     n'y a intérêt, et l'IA paierait.
+351. **Rob Lucci (Leader OP03-076)** : un Personnage adverse mis KO pendant son tour, quelle que soit la cause (combat ou
+     effet, le sien ou celui de l'adversaire). La question n'est posée que si le Leader est épuisé. Le [Une fois par tour]
+     compte seulement quand les 2 cartes sont défaussées : refuser laisse l'effet pour un KO suivant. Plusieurs
+     Personnages mis KO ensemble : une seule fois.
+352. **Charlotte Linlin (Leader OP03-077)** : la Vie (1 ou moins) est lue avant de payer, ce qui revient au même (payer
+     ne change pas la Vie) ; le ② épuise 2 DON!! redressées de la zone de Coût ; deck vide : pas de question.
+353. **Issho (OP03-078)** : le −3 vaut aussi pour les Personnages adverses joués ensuite, tant qu'Issho a sa DON!! et
+     que c'est son tour ; un coût qui passe sous 0 compte comme 0 (1-3-6-2).
+354. **Tempest Kick Sky Slicer (OP03-096)** : un seul KO au choix, parmi les Personnages adverses de coût 0 (coût
+     modifié, un coût négatif compris) et le Lieu adverse de coût 3 ou moins (coût imprimé). Le Lieu va dans la Défausse ;
+     ce n'est pas un Personnage mis KO (pas d'effet « quand un Personnage est mis KO »).
+355. **Six Pouvoirs Gun (OP03-097)** : le +3000 va à la carte attaquée, comme les autres [Contre] « jusqu'à 1 de vos
+     Leader ou Personnages » ; sans défausse, rien.
+356. **Spandam (OP03-086), Brandnew (OP03-089), Air Door (OP03-094)** : les cartes regardées et placées dans la Défausse
+     deviennent publiques ; la carte prise est révélée. [Déclenchement] d'Air Door : un Personnage dont les couleurs
+     comprennent le noir.
+357. **Soap Sheep (OP03-095)** : au [Déclenchement], c'est l'adversaire qui choisit la carte qu'il défausse.
+358. **Blueno (OP03-090)** : le Personnage joué épuisé depuis la Défausse déclenche son effet [Jouée] ; Blueno lui-même
+     (coût 5) ne peut pas se rejouer.
+359. **Enies Lobby (OP03-098)** : le Lieu peut s'épuiser sans Leader « CP » (rien ne se passe alors) ; l'IA ne le fait pas.
+## OP03 jaune (tâche 1.13), choix faits sans validation
+
+380. **Leader Charlotte Katakuri (OP03-099)** : « jusqu'à 1 » : le joueur peut ne regarder aucune Vie ; le +1000 pour le
+     combat s'applique quand même (« Puis »). La [DON!! x1] se compte au moment où il attaque.
+381. **Sanji (OP03-102), Charlotte Chiffon (OP03-109), Charlotte Linlin (OP03-114), Térébration (OP03-118)** : « ajoutez
+     jusqu'à 1 carte du dessus de votre deck au-dessus de votre Vie » se fait sans question (le joueur qui a payé le coût
+     la veut toujours) ; la carte ajoutée est face cachée ; deck vide : rien.
+382. **[Déclenchement] « vous pouvez [coût] : jouez cette carte »** (Kingbaum OP03-100, Charlotte Cracker OP03-108,
+     Charlotte Smoothie OP03-110, Charlotte Slurp OP03-113) : si le joueur active le [Déclenchement] sans pouvoir ou
+     vouloir payer (plus de Vie, main vide), la carte va dans la Défausse, pas dans sa main (10-1-5-3).
+383. **« Carte ayant [Déclenchement] »** (Charlotte Oven OP03-105, Streusen OP03-115, Buzz Cut Mochi OP03-119) : lu sur
+     le texte anglais de la carte, toutes catégories confondues pour Oven et Streusen.
+384. **Charlotte Cracker (OP03-108)** : la condition est lue en permanence : le +1000 et la [Double attaque] disparaissent
+     dès que les Vies s'égalisent, même au milieu d'un combat ; ils valent aussi pendant le tour adverse tant qu'une DON!!
+     lui est donnée.
+385. **Charlotte Pudding (OP03-112)** : [Sanji] désigne les cartes nommées exactement Sanji (pas Vinsmoke Sanji ni « Sanji
+     & Pudding ») ; « autre que [Charlotte Pudding] » ; une carte {Équipage de Big Mom} de n'importe quelle catégorie
+     (Événements compris).
+386. **Charlotte Linlin (OP03-114)** : avec un Leader {Équipage de Big Mom}, la carte du dessus de la Vie adverse va dans
+     sa Défausse sans question (« jusqu'à 1 », toujours à l'avantage du joueur) ; elle devient publique ; ce n'est pas un
+     dégât (pas de [Déclenchement], interprétation 200).
+387. **Coûts payables sans cible** (Streusen OP03-115, Colonne foudroyante OP03-121) : « jusqu'à 1 » : le joueur peut payer
+     même sans Personnage adverse à mettre KO ; l'IA ne le fait pas.
+388. **Shirahoshi (OP03-116)** : les 2 cartes défaussées sont choisies dans toute la main, cartes piochées comprises.
+389. **Napoleon (OP03-117)** : « jusqu'au début de votre prochain tour » est traité comme « jusqu'à la fin du prochain tour
+     adverse » (rien ne se passe entre les deux) ; il vise un Leader ou un Personnage nommé [Charlotte Linlin] ; ce n'est
+     pas [Une fois par tour], mais s'épuiser ne se fait qu'une fois.
+390. **Buzz Cut Mochi (OP03-119)** : le nombre de Vies est comparé au moment de l'effet ; son [Déclenchement] joue sans payer
+     son coût un Personnage de coût imprimé 4 ou moins ayant [Déclenchement].
+391. **Tropical Torment (OP03-120)** : son [Déclenchement] active l'effet [Principale] avec sa condition, lue du point de vue
+     du joueur qui révèle la carte (l'adversaire est celui qui attaque).
+392. **Charlotte Katakuri (OP03-123)** : il peut viser ses propres Personnages, lui compris ; le joueur qui utilise l'effet
+     choisit le dessus ou le dessous de la Vie du propriétaire ; la carte y est face visible (publique) ; ce n'est pas une
+     mise KO ([En cas de KO] non déclenché).
+## ST-01, deck de départ de l'Aventure (tâche 1.14), choix faits sans validation
+
+410. **Liste du deck ST-01** : Bandai annonce 51 cartes (Leader compris) sans le détail ; les sites se contredisent (un
+     site anglais en totalise 54, un site japonais 48). Retenue : la liste qui fait bien 50 cartes, Personnages
+     ST01-002 à ST01-010 en 4 exemplaires, ST01-011 à ST01-017 en 2 (source dans `engine/decks.ts`).
+411. **Roronoa Zoro (ST01-013)** : « [DON!! x1] +1000 » vaut aussi pendant le tour adverse : la DON!! reste donnée jusqu'à
+     la phase de Recharge de son propriétaire (seul le +1000 de la DON!! elle-même ne compte que pendant son tour).
+412. **Diable Jambe (ST01-016)** : le joueur choisit la carte quand il active l'Événement ; elle ne peut pas être bloquée
+     pour toutes ses attaques du tour (interprétation 215). L'Événement reste permis sans [Bloqueur] adverse redressé ou
+     sans carte qui peut encore attaquer, mais l'IA le garde alors et l'interface le signale comme inutile.
+413. **Thousand Sunny (ST01-017), Jinbe (ST01-005)** : le +1000 pour le tour peut aller à une carte qui a déjà attaqué ;
+     l'IA le donne à une carte qui peut encore attaquer, et le Thousand Sunny est signalé comme inutile quand aucune ne le
+     peut.
+414. **Guard Point (ST01-014)** : le +3000 du [Contre] va à la carte attaquée, sans question (comme les autres [Contre]
+     « jusqu'à 1 de vos Leader ou Personnages ... pendant ce combat »). Son [Déclenchement] (+1000 pour le tour) se choisit.
+415. **Monkey.D.Luffy (Leader ST01-001), Nami (ST01-007)** : « jusqu'à 1 DON!! épuisée » ; s'il n'y a qu'une carte
+     possible, la DON!! lui est donnée sans question (comme Nami ST21-009) ; sans DON!! épuisée, l'effet compte comme
+     utilisé pour le tour et ne fait rien.
+## Adversaires de l'aventure, liste A (tâche 1.15), choix faits sans validation
+
+430. **White Out (ST06-016)**, [Déclenchement] « aucun de vos Personnages ne peut être mis KO pour tout le tour » : une
+     protection du joueur pour le tour (en combat et par un effet, le sien compris), qui couvre aussi les Personnages
+     joués après l'effet ; elle ne protège pas le Leader (qui n'est jamais mis KO).
+431. **Kobby (Leader OP11-001)**, remplacement : les 3 cartes peuvent être n'importe lesquelles de la Défausse ; il faut en
+     avoir 3 pour le proposer. Le [Une fois par tour] compte quand le joueur accepte ; « quitter le terrain » comprend le
+     KO, le renvoi en main, sous le deck ou dans la Vie, par un effet adverse seulement (pas en combat).
+432. **Kobby (OP15-009)**, remplacement : vaut pour n'importe lequel de ses Personnages de 7000 de puissance de base ou
+     moins (Kobby compris), autant de fois que le joueur le veut (pas de [Une fois par tour]) ; chaque fois, −2000 au
+     Leader jusqu'à la fin du tour en cours (le plus souvent le tour adverse).
+433. **Les frères Nyaban (OP15-028)**, « 1 DON!! de la zone de Coût adverse » : une DON!! redressée s'il y en a (elle
+     manquera à l'adversaire pour payer un [Contre] ce tour-ci), sinon une épuisée. Le choix est fait d'office, c'est
+     toujours le plus utile.
+434. **Kobby (ST06-002)**, « vous pouvez défausser 1 carte : mettez KO un Personnage de coût 0 » : la défausse n'est
+     proposée que s'il y a une cible (défausser pour rien n'apporterait rien).
+435. **Jango (OP15-026)** : son effet [Activation : Principale] reste possible à tout moment, mais l'IA ne s'en sert que si
+     une de ses cartes tire parti des DON!! données aux Personnages adverses (Krieg OP15-001, Morge OP15-018, Dracule
+     Mihawk OP15-027...). Une DON!! ainsi donnée revient dans la zone de Coût de l'adversaire à sa phase de Recharge et
+     ne compte jamais pendant son tour.
+436. **Ripper (OP11-096)** : « un Personnage noir {Marine} autre que [Ripper] » : un Personnage qui ne s'appelle pas
+     Ripper (un deuxième Ripper ne compte pas).
+## Adversaires de l'aventure, liste B (tâche 1.16), choix faits sans validation
+
+Cartes de Baggy, Krieg et Arlong hors OP03 et ST-01 (`cards/aventure-b.ts`).
+
+460. **« Vous pouvez défausser 1 carte : ... »** (Alvida OP01-064, Arlong OP06-023) : la question n'est posée que si
+     l'effet peut faire quelque chose (une cible existe) ; défausser pour rien n'aurait aucun sens.
+461. **Baggy (OP16-041, Leader)** : « un de vos Personnages {Impel Down} quitte le terrain » = mis KO (en combat ou par
+     un effet) ou renvoyé en main, au-dessous du deck ou dans la Vie par un effet. Un Personnage placé dans la Défausse
+     pour payer un coût ou faute de place n'est pas compté (le moteur ne l'annonce pas). L'effet n'est proposé que s'il a
+     un [Prisonniers d'Impel Down] à jouer et 1 DON!! sur le Leader à ce moment-là ; c'est alors qu'il compte pour le
+     tour.
+462. **Cabaji (OP02-052)** : « si vous avez [Mohji] » = un Personnage nommé [Mohji] sur son terrain : Morge OP02-060 et
+     Morge OP09-053 (même nom en VO), pas « Morge et Cabaji » OP12-055 (un autre nom).
+463. **Maggy Ball spéciale (OP09-058)** : le texte français dit que l'adversaire choisit le Personnage qu'il doit
+     renvoyer ; le texte anglais officiel dit « jusqu'à 1 Personnage adverse » choisi par le joueur. On suit l'anglais.
+464. **Krieg (OP15-001, Leader)** : « si tous vos Personnages sont {East Blue} » est faux s'il n'a aucun Personnage. Le
+     −2000 vaut pendant tout le tour adverse, tant que le Leader a 1 DON!! et que la condition est vraie.
+465. **Krieg (OP15-008)** : il gagne [Initiative] même si aucune DON!! adverse n'a pu être donnée (« Puis, ... »).
+466. **Krieg (OP15-008)** : « pour chaque carte DON!! qui leur est attachée » = les DON!! attachées, au moment de
+     l'activation, au Personnage adverse qui a reçu celles de l'effet [Jouée] (y compris celles que son propriétaire lui
+     avait déjà données) ; 0 s'il a quitté le terrain. L'activation n'est proposée que le tour où Krieg a été joué.
+467. **« Et personne ne discute jamais mes ordres !! » (OP15-038)** : le [Contre] vise n'importe lequel de ses [Krieg]
+     (le Leader Krieg OP15-001 compris), pas forcément la carte attaquée ; l'IA ne l'utilise que si la carte attaquée est
+     un [Krieg].
+468. **Arlong (EB02-011)** : le « Puis, ... ne peut pas être épuisé » ne dépend pas du type du Leader (seule la DON!!
+     donnée en dépend).
+469. **Tour de passe-passe brouillard (OP09-059)** : le joueur choisit d'abord s'il défausse, puis combien de cartes (1
+     ou 2), puis lesquelles ; autant de cartes du dessus du deck vont dans la Défausse (moins s'il n'en reste pas
+     assez). L'IA ne défausse pas (sauf avec un Leader qui gagne à deck vide).
+470. **Cabaji (ST25-002), Alvida (OP12-042)** : « coût de base » = coût imprimé ; la carte elle-même (coût 4) ne compte
+     jamais parmi les 2 Personnages de coût 5 ou plus.
+471. **Baggy (OP16-048)** : le [Bloqueur] n'est proposé, quand l'adversaire attaque, que s'il a un [Prisonniers d'Impel
+     Down] redressé (un Bloqueur épuisé ne peut pas bloquer) ; l'effet compte alors pour le tour.
+472. **Baggy (ST25-004)** : l'effet peut être activé sans Leader [Baggy] (le coût est payé, rien n'est joué) ; l'IA et
+     les aides ne le proposent pas. **Baggy (OP02-058)** : « autre que [Baggy] » exclut toutes les cartes nommées [Baggy].
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

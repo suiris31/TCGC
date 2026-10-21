@@ -3,6 +3,7 @@
 import { db, transaction } from './db.js';
 import { cdnImage } from './images.js';
 import { priceInsight } from './insight.js';
+import { takedown } from './takedown.js';
 import { estimateEurSql, priceJoins, toEur, valueHistory } from './valuation.js';
 
 // Langues dans lesquelles on peut posséder une carte
@@ -116,7 +117,8 @@ export function formatCard(row, viewer) {
     setName: row.set_name,
     releaseDate: row.published_on?.slice(0, 10) ?? null,
     image: `img/${row.product_id}.jpg`,
-    imageLarge: cdnImage(row.product_id, 'in_1000x1000'),
+    // interrupteur de retrait : plus de visuel chargé chez TCGplayer, la face dessinée de server/takedown.js
+    imageLarge: takedown.images ? `img/${row.product_id}.jpg` : cdnImage(row.product_id, 'in_1000x1000'),
     // Visuel VF officiel quand la carte existe en français
     imageFr: row.fr_image ? `img-fr/${row.fr_image}.jpg` : null,
     imageFrLarge: row.fr_image ? `img-fr-hd/${row.fr_image}.webp` : null,

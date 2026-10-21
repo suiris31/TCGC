@@ -183,6 +183,15 @@ export function fieldCost(s: GameState, uid: number): number {
   if (!f || f.leader) return 0;
   const d = def(f.card.num);
   let c = (d.cost ?? 0) + (d.selfCost && !isNegated(s, uid) ? d.selfCost(s, f.player, f.card) : 0);
+  // effets permanents d'autres cartes (les siennes : costAura ; celles de l'adversaire : oppCostAura)
+  for (const src of allField(s, f.player)) {
+    const aura = def(src.num).costAura;
+    if (aura && !isNegated(s, src.uid)) c += aura(s, f.player, src, f.card);
+  }
+  for (const src of allField(s, other(f.player))) {
+    const aura = def(src.num).oppCostAura;
+    if (aura && !isNegated(s, src.uid)) c += aura(s, other(f.player), src, f.card);
+  }
   for (const m of s.mods) if (m.uid === uid && m.stat === 'cost') c += m.amount;
   return c;
 }
@@ -281,6 +290,9 @@ export function attackAbility(s: GameState, p: PlayerId, card: FieldCard): { can
   const P = s.players[p];
   const no = { can: false, charsOnly: false };
   if (card.rested || P.turns <= 1 || hasMod(s, card.uid, 'cantAttack') || !canBeRested(s, card.uid) || attackTax(s, card.uid) > P.hand.length) return no;
+  // « ne peut pas attaquer » écrit sur la carte (Iceburg OP03-058)
+  const own = def(card.num).cantAttack;
+  if (own && !isNegated(s, card.uid) && own(s, p, card)) return no;
   if (card.uid === P.leader.uid || card.playedTurn < s.turn) return { can: true, charsOnly: false };
   if (hasKeyword(s, p, card, 'Rush')) return { can: true, charsOnly: false };
   if (hasKeyword(s, p, card, 'Rush: Character')) return { can: true, charsOnly: true };
@@ -294,13 +306,32 @@ export function attackTargets(s: GameState, p: PlayerId, card: FieldCard): numbe
   if (!ability.can) return [];
   const O = s.players[other(p)];
   const lowCostBan = hasMod(s, card.uid, 'noAttackLowCost');
-  const chars = O.chars.filter((c) => c.rested && !(lowCostBan && baseCost(c.num) <= 7)).map((c) => c.uid);
+  // « ... peut aussi attaquer les Personnages redressés » (Kuzan OP11-084)
+  const anyChar = hasMod(s, card.uid, 'attackActive');
+  const chars = O.chars.filter((c) => (c.rested || anyChar) && !(lowCostBan && baseCost(c.num) <= 7)).map((c) => c.uid);
   const taunts = O.chars.filter((c) => def(c.num).taunt && !isNegated(s, c.uid) && def(c.num).taunt!(s, other(p), c));
   if (taunts.length) {
     const names = taunts.flatMap((c) => def(c.num).names);
     return chars.filter((uid) => def(findField(s, uid)!.card.num).names.some((n) => names.includes(n)));
   }
+  // « ne peut pas attaquer de Leader ... » (Curiel OP03-004 : le tour où il est joué)
+  const noLeader = def(card.num).cantAttackLeader;
+  if (noLeader && !isNegated(s, card.uid) && noLeader(s, p, card)) return chars;
   return ability.charsOnly ? chars : [O.leader.uid, ...chars];
+}
+
+// Le défenseur peut-il activer le [Bloqueur] de ce Personnage contre cet attaquant ? Non si un effet de l'attaquant
+// l'interdit pour ce combat (modification 'blockerBan' : « l'adversaire ne peut pas activer le [Bloqueur] d'un
+// Personnage de 2000 de puissance ou moins », Adio OP03-002 ; sans limite : aucun [Bloqueur])
+export function blockerAllowed(s: GameState, attacker: number, blocker: FieldCard): boolean {
+  for (const m of s.mods) {
+    if (m.uid !== attacker || m.stat !== 'blockerBan') continue;
+    const l = m.limit ?? {};
+    const pw = power(s, blocker.uid);
+    if ((l.powerMax === undefined || pw <= l.powerMax) && (l.powerMin === undefined || pw >= l.powerMin)
+      && (l.costMax === undefined || fieldCost(s, blocker.uid) <= l.costMax)) return false;
+  }
+  return true;
 }
 
 // Valeur de Contre d'une carte de la main de p
@@ -614,6 +645,8 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
   else P.chars = P.chars.filter((c) => c.uid !== uid);
   P.donRested += f.card.don;
   s.mods = s.mods.filter((m) => m.uid !== uid);
+  // un retrait différé (« placez ce Personnage dans votre Défausse à la fin de ce tour ») ne vise plus cette carte
+  if (s.delayed?.some((d) => d.uid === uid)) s.delayed = s.delayed.filter((d) => d.uid !== uid);
   const card: Card = { uid: f.card.uid, num: f.card.num };
   if (to === 'trash') P.trash.push(card);
   else if (to === 'hand') P.hand.push(card);
@@ -630,6 +663,8 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
 export function canBeKO(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId): boolean {
   const f = findField(s, uid);
   if (!f) return false;
+  // « aucun de vos Personnages ne peut être mis KO pour tout le tour » (protection du joueur, pas des cartes du moment)
+  if (s.players[f.player].noKoTurn === s.turn && !f.leader && !f.stage) return false;
   const own = def(f.card.num).cantBeKO;
   if (own && !isNegated(s, uid) && own(s, f.player, f.card, cause, by)) return false;
   for (const c of allField(s, f.player)) {

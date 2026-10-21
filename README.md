@@ -63,8 +63,13 @@ proxy), `PORT`, `PUBLIC_PATH` (e.g. `/tcgc` when served under a sub-path), `TRUS
   used in the link; never taken from the request). Without them, the "Forgot your password?" link is hidden.
   `SMTP_URL=log` writes the emails to the server log instead of sending them (local testing). On a server, put these
   private settings in `/opt/tcgc/tcgc.env` (see `deploy/tcgc.env.example`), read by the systemd service.
-- **Legal notice and privacy policy** (`#legal`, linked from the login screen, the profile and shared pages): the
-  publisher, contact and host come from `LEGAL_PUBLISHER`, `LEGAL_CONTACT` and `LEGAL_HOST`.
+- **Legal notice and privacy policy** (`#legal`, linked from the login screen, the profile, shared pages and the Play
+  tab, "About"): the publisher, contact and host come from `LEGAL_PUBLISHER`, `LEGAL_CONTACT` and `LEGAL_HOST`. The
+  contact is also the address given to rights holders for takedown requests.
+- **Takedown switches** (environment variables read at startup, see `server/takedown.js`): `TAKEDOWN_IMAGES=1` serves a
+  card face drawn by the app (name, number, color) instead of every card image, `TAKEDOWN_GAME=1` closes the Play tab
+  (games, decks and adventure progress are kept), `TAKEDOWN_PUBLIC=1` closes the public share pages. Members'
+  collections are never cut. Nothing is cut by default.
 - Not included: email address verification.
 
 #### Off-server backup
@@ -287,3 +292,11 @@ there is a welcome contribution.
 
 [MIT](LICENSE). The data (catalog, prices, images) is not part of this repository: the app downloads it from its
 public sources, and it remains subject to those sources' terms.
+
+### Third-party content
+
+TCGC is an unofficial fan project, not affiliated with Bandai, Shueisha or Toei Animation. This repository contains no
+content from them: no card images, card texts, logos or excerpts from the manga or the anime. Card data and images are
+downloaded at runtime from their sources; they remain the property of their owners (ONE PIECE CARD GAME © Eiichiro
+Oda/Shueisha, Toei Animation, © BANDAI) and are **not** covered by the MIT license, which only applies to the code
+written for TCGC. If you reuse this code, please keep your project free and clearly unofficial.

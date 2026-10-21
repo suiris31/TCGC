@@ -83,6 +83,9 @@ export interface PlayerState {
   // « vous ne pouvez pas ajouter de cartes de Vie à votre main avec vos propres effets pour tout le tour » (Atmos ST15-001)
   noLifeToHandTurn?: number;
   koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
+  // tour pendant lequel aucun de ses Personnages ne peut être mis KO, en combat ou par un effet, y compris ceux joués
+  // ensuite (White Out ST06-016)
+  noKoTurn?: number;
 }
 
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro
@@ -91,16 +94,27 @@ export interface PlayerState {
 // stat 'negated' : « annulez les effets de ce Personnage » (voir isNegated)
 // stat 'attackTax' : il ne peut attaquer que si son propriétaire défausse `amount` cartes à chaque attaque (Edward.Newgate
 // OP08-043, carte `num`)
+// stat 'attackActive' : il peut aussi attaquer les Personnages adverses redressés (Kuzan OP11-084)
+// stat 'blockerBan' (sur l'attaquant) : l'adversaire ne peut pas activer le [Bloqueur] des Personnages qui correspondent à
+// `limit` (« ... un Personnage [Bloqueur] de 2000 de puissance ou moins pendant ce combat », Adio OP03-002)
 export interface Modifier {
   uid: number;
   stat: 'power' | 'cost' | 'basePower' | 'cantAttack' | 'cantRest' | 'blocker' | 'keyword' | 'noAttackLowCost' | 'cantBeKO' | 'cantLeave'
-    | 'noRefresh' | 'negated' | 'noBlocker' | 'attackTax';
+    | 'noRefresh' | 'negated' | 'noBlocker' | 'attackTax' | 'blockerBan' | 'attackActive';
   num?: string;
   scope?: 'battle' | 'effect' | 'oppEffect';  // stat 'cantBeKO' : seulement en combat, par un effet, par un effet adverse
   keyword?: Keyword;  // stat 'keyword' : mot-clé accordé
+  limit?: BlockerLimit;  // stat 'blockerBan' : Bloqueurs visés (aucune limite : tous)
   amount: number;
   until: 'battle' | 'turn' | number;
   source: string;
+}
+
+// Bloqueurs qu'un attaquant empêche d'activer : puissance et coût actuels (bornes comprises)
+export interface BlockerLimit {
+  powerMax?: number;
+  powerMin?: number;
+  costMax?: number;
 }
 
 // Effet différé, appliqué à la fin d'un tour (ex. « redressez 1 DON!! à la fin de ce tour »)
@@ -108,9 +122,13 @@ export interface DelayedEffect {
   turn: number;
   player: PlayerId;
   // untapDon : redresser `amount` DON!! ; matchDon : renvoyer des DON!! au deck DON!! jusqu'à en avoir autant sur le
-  // terrain que l'adversaire (Black Maria)
-  action: 'untapDon' | 'matchDon';
+  // terrain que l'adversaire (Black Maria) ; trashChar / bottomChar : placer le Personnage `uid` dans la Défausse de son
+  // propriétaire / au-dessous de son deck (« Puis, placez ce Personnage dans votre Défausse à la fin de ce tour », Thatch
+  // OP03-005). Le retrait est oublié si la carte quitte le terrain avant (removeFromField).
+  action: 'untapDon' | 'matchDon' | 'trashChar' | 'bottomChar';
   amount: number;
+  uid?: number;
+  source?: string;  // carte dont l'effet est la cause (journal)
 }
 
 export interface Battle {
@@ -160,9 +178,13 @@ export interface Decision {
 export type EffectKind = 'onPlay' | 'whenAttacking' | 'onOpponentAttack' | 'activateMain' | 'onKO' | 'endOfTurn' | 'when' | 'system';
 
 // Événement de la partie, annoncé par le moteur (rules.ts, emit) : les effets « quand ... » des cartes y réagissent
+// 'damage' : des dégâts ont été infligés à la Vie d'un Leader (4-6), une fois par traitement des dégâts (2 dégâts d'une
+// [Double attaque] : un seul événement, count 2). player : joueur dont le Leader est touché ; by : joueur qui inflige ;
+// cause 'attack' : uid et num sont ceux de la carte qui attaque ; cause 'effect' : sourceNum, s'il est connu
 export interface GameEvent {
   type: 'gameStart' | 'turnStart' | 'mainStart' | 'turnEnd' | 'play' | 'ko' | 'rest' | 'attack' | 'block' | 'donReturned' | 'event'
-    | 'discard' | 'leave';  // 'leave' : Personnage sorti du terrain par un effet autrement que par KO (main, deck, Vie)
+    | 'discard' | 'leave'  // 'leave' : Personnage sorti du terrain par un effet autrement que par KO (main, deck, Vie)
+    | 'damage';
   player: PlayerId;          // joueur concerné : propriétaire de la carte, ou joueur qui agit
   uid?: number;              // carte concernée
   num?: string;
@@ -170,8 +192,8 @@ export interface GameEvent {
   by?: PlayerId;             // joueur dont l'effet (ou l'attaque) est la cause
   cause?: 'effect' | 'battle' | 'attack';
   sourceNum?: string;        // carte dont l'effet est la cause
-  count?: number;            // cartes défaussées, DON!! renvoyées
-  target?: number;           // 'attack' : carte attaquée
+  count?: number;            // cartes défaussées, DON!! renvoyées, dégâts infligés
+  target?: number;           // 'attack' : carte attaquée ; 'damage' : Leader touché
   timing?: 'main' | 'counter';  // 'event' : [Principale] ou [Contre]
 }
 
@@ -314,6 +336,16 @@ export interface CardBehavior {
   aura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number;
   // bonus ou malus de puissance donné en permanence par cette carte aux cartes adverses
   oppAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number;
+  // modification de coût donnée en permanence par cette carte (sur le terrain) aux Personnages du même joueur, elle
+  // comprise (« [Tour adverse] Tous vos Personnages {Marine} gagnent +2 de coût », Doll EB04-046)
+  costAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number;
+  // même chose pour les Personnages adverses (« [DON!! x1] [Votre tour] Tous les Personnages adverses reçoivent −3 de
+  // coût », Issho OP03-078)
+  oppCostAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number;
+  // « Ce Leader ne peut pas attaquer » (Iceburg OP03-058), tant que la condition est vraie
+  cantAttack?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
+  // « Ce Personnage ne peut pas attaquer de Leader ... » (« le tour où il est joué », Curiel OP03-004)
+  cantAttackLeader?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
   // « ne peut pas être mis KO » (en combat, par un effet ; `by` : joueur qui attaque ou dont l'effet met KO)
   cantBeKO?: (s: GameState, owner: PlayerId, self: FieldCard, cause: 'battle' | 'effect', by: PlayerId) => boolean;
   // « ne peut pas quitter le terrain à cause d'un effet adverse »
@@ -350,6 +382,9 @@ export interface CardBehavior {
   // l'effet [Contre] fait-il maintenant autre chose que donner de la puissance (épuiser, piocher) ? Il sert alors même
   // si l'attaque est déjà repoussée ou si la carte attaquée n'en profite pas
   counterExtra?: (s: GameState, owner: PlayerId) => boolean;
+  // puissance que l'Événement [Contre] apporterait à la carte attaquée `target` (estimation de l'IA ; donnée d'office
+  // par les briques qui la connaissent, voir defenderPower dans bricks.ts)
+  counterPower?: (s: GameState, owner: PlayerId, target: number) => number;
   onTrigger?: (ctx: EffectCtx) => void; // [Déclenchement] (le texte officiel est dans CardData.trigger)
   // Effet de remplacement quand un Personnage du même joueur va quitter le terrain à cause d'un effet adverse
   replaceRemoval?: {

@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AiWorker, rlDeckModels, rlModelAvailable } from '../ai/client.ts';
 import { heuristicChooser } from '../ai/heuristic.ts';
 import { LEVELS, type Analysis, type Level } from '../ai/search.ts';
-import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary } from '../coach/archive.ts';
+import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary, type Replayed } from '../coach/archive.ts';
 import { buildRecap, HINT, isReviewable, REVIEW, toReview, type Move, type MoveReview } from '../coach/review.ts';
 import { CARDS } from '../engine/cards/index.ts';
-import { DECKS } from '../engine/decks.ts';
+import { DECKS, freeDeckIds } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
 import { counterValue, def } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { Hand, OpponentHand, PlayerZone, type BoardUi } from './Board.tsx';
 import { type CardLook, type Preview } from './CardView.tsx';
-import { CoachHint, EndScreen, recordText, type RecordLine } from './Coach.tsx';
+import { CoachHint, EndScreen, RecapBody, recordText, type RecordLine } from './Coach.tsx';
 import { attackPreview, phaseLabel, readDecision, remainingActions, whyNot, type CardAction } from './decision.ts';
 import { Celebration, FxLayer, Intro } from './Fx.tsx';
 import { ActionBar, ActionMenu, BattlePanel } from './Interaction.tsx';
@@ -20,7 +20,7 @@ import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
 import { UI_SCALES, ZOOM_DELAYS, useSettings, type Settings } from './settings.ts';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
-import { deckInfo, deckLabel, playable, useMyDecks } from './myDecks.ts';
+import { deckInfo, deckLabel, isAdventureDeck, playable, useMyDecks } from './myDecks.ts';
 import { GUIDES } from './deckGuides.ts';
 import { CardZoom, useCardZoom } from './Zoom.tsx';
 import { setSoundEnabled, sfx } from './sound.ts';
@@ -67,10 +67,10 @@ interface Recording {
 }
 
 // Adversaire « Aléatoire » : un deck du registre (méta ou pour débutant) tiré au sort au lancement de chaque partie,
-// autre que le sien quand c'est possible
+// autre que le sien quand c'est possible (jamais un adversaire de l'aventure)
 const RANDOM_DECK = 'random';
 function randomDeck(myDeck: string) {
-  const pool = Object.keys(DECKS).filter((id) => id !== myDeck);
+  const pool = freeDeckIds().filter((id) => id !== myDeck);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -98,11 +98,37 @@ export interface OnlineEntry {
   resume?: { label: string; onResume: () => void };
 }
 
+// Partie lancée par un autre écran (mode Aventure) : decks et niveau imposés, pas d'écran de départ. La partie commence
+// dès l'affichage (le joueur l'a demandée), ou reprend une partie interrompue (resume, déjà rejouée). onEnd : la partie
+// est finie (après l'écran de victoire ou de défaite) ; saved donne l'identifiant de l'enregistrement final une fois
+// qu'il est sur le serveur. onLeave : « Quitter » pendant la partie, « Suite » après ; l'écran appelant décide (une
+// partie quittée en cours est enregistrée comme abandonnée quand App disparaît, et peut être reprise).
+export interface ConfiguredGame {
+  myDeck: string;
+  aiDeck: string;
+  level: Level;
+  opponentName: string;
+  resume?: { rec: GameRecord; replayed: Replayed };
+  onEnd: (end: { won: boolean; saved: Promise<string> }) => void;
+  onLeave: () => void;
+}
+
+// Accès au mode Aventure depuis l'écran de départ
+export interface AdventureEntry { onOpen: () => void }
+
 // notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
-// barre d'onglets)
-export function App({ notice, onImmersive, online }: { notice?: string; onImmersive?: (on: boolean) => void; online?: OnlineEntry }) {
+// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame)
+export function App({ notice, onImmersive, online, adventure, configured }: {
+  notice?: string;
+  onImmersive?: (on: boolean) => void;
+  online?: OnlineEntry;
+  adventure?: AdventureEntry;
+  configured?: ConfiguredGame;
+}) {
   const [settings, updateSettings] = useSettings();
-  const [config, setConfig] = useState<Config>({ myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
+  const [config, setConfig] = useState<Config>(() => configured
+    ? { myDeck: configured.myDeck, aiDeck: configured.aiDeck, first: 'random', level: configured.level }
+    : { myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
   const [session, setSession] = useState<Config>(config);
   const [thinking, setThinking] = useState(false);
   const [game, setGame] = useState<GameState | null>(null);
@@ -145,6 +171,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
   const pumping = useRef(false);
   const recorded = useRef(false);
   const celebrated = useRef(false);
+  const ended = useRef(false);
   const [reviewed, setReviewed] = useState(0);
 
   // Sauvegarde de la partie dans le dossier parties/ : mise à jour au fil des coups, puis à la fin quand le coach a
@@ -282,6 +309,17 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
     });
   }, [game, practice, session]);
 
+  // Partie imposée (Aventure) : finie et vue (écran de victoire ou de défaite passé), elle est enregistrée sur le serveur
+  // puis signalée, une seule fois (pas une partie reprise depuis un moment revu, qui ne compte pas)
+  useEffect(() => {
+    if (!configured || !game || game.winner === null || celebrate || practice || ended.current) return;
+    ended.current = true;
+    clearTimeout(saveTimer.current);
+    const rec = snapshot();
+    const saved = rec ? saveRecord(rec).then(() => rec.id) : Promise.reject(new Error('partie vide'));
+    configured.onEnd({ won: game.winner === HUMAN, saved });
+  }, [configured, game, celebrate, practice, snapshot]);
+
   const d = game?.decision ?? null;
   const humanTurn = Boolean(game && d && d.player === HUMAN && game.winner === null);
   const view = useMemo(() => (game && d && humanTurn ? readDecision(game, d) : null), [game, d, humanTurn]);
@@ -338,7 +376,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
 
   const start = () => {
     const aiDeck = config.aiDeck === RANDOM_DECK ? randomDeck(config.myDeck) : config.aiDeck;
-    if (![config.myDeck, aiDeck].every((id) => DECKS[id] || (deckInfo(id) && playable(deckInfo(id)!)))) return;
+    if (![config.myDeck, aiDeck].every((id) => DECKS[id] || (deckInfo(id) && playable(deckInfo(id)!)))) return false;
     closeRecording();
     const first = config.first === 'me' ? HUMAN : config.first === 'ai' ? AI : 'random';
     // deck personnalisé : sa liste complète (le moteur ne connaît que les decks du registre par leur identifiant)
@@ -349,7 +387,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
       ...(DECKS[config.myDeck] ? {} : { myDeckName: deckLabel(config.myDeck) }),
       ...(DECKS[aiDeck] ? {} : { aiDeckName: deckLabel(aiDeck) }),
     };
-    const initial = newGame({ decks: [source(config.myDeck), source(aiDeck)], names: ['Toi', 'IA'], first });
+    const initial = newGame({ decks: [source(config.myDeck), source(aiDeck)], names: ['Toi', configured?.opponentName ?? 'IA'], first });
     setSession(named);
     setGame(initial);
     startRecording(initial, named);
@@ -362,6 +400,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
     reviews.current = new Map();
     recorded.current = false;
     celebrated.current = false;
+    ended.current = false;
     setReviewed(0);
     resetUi();
     setIntro(true);
@@ -369,6 +408,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
       setHelp(true);
       updateSettings({ helpSeen: true });
     }
+    return true;
   };
 
   const choose = useCallback((id: string) => {
@@ -389,6 +429,8 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
   const back = useCallback(() => {
     const previous = undo[undo.length - 1];
     if (!previous) return;
+    // partie imposée (Aventure) finie : elle est déjà envoyée et comptée, on ne revient plus dessus
+    if (configured && game?.winner !== null) return;
     if (game) recording.current?.undos.push({ turn: game.turn, undone: game.history.length - previous.history.length });
     const last = moves.current[moves.current.length - 1];
     if (last) reviews.current.delete(last.id);
@@ -396,7 +438,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
     setUndo(undo.slice(0, -1));
     setGame(previous);
     resetUi();
-  }, [undo, game]);
+  }, [undo, game, configured]);
 
   const requestEnd = useCallback(() => {
     if (!game || !d || d.kind !== 'main') return;
@@ -461,10 +503,57 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
     resetUi();
   };
 
+  // Partie interrompue (Aventure) : on reprend l'enregistrement là où il s'était arrêté, sous le même identifiant, avec
+  // les décisions déjà analysées par le coach. Les retours en arrière d'avant l'interruption ne sont plus possibles.
+  const resumeInterrupted = (rec: GameRecord, replayed: Replayed) => {
+    const cfg: Config = {
+      myDeck: rec.config.myDeck, aiDeck: rec.config.aiDeck, level: rec.config.level as Level, first: rec.config.first,
+      ...(rec.config.myDeckName ? { myDeckName: rec.config.myDeckName } : {}), ...(rec.config.aiDeckName ? { aiDeckName: rec.config.aiDeckName } : {}),
+    };
+    const extra = new Map(rec.decisions.map((x) => [x.move, { ms: x.ms, hint: x.hint }]));
+    recording.current = { id: rec.id, startedAt: rec.startedAt, initial: rec.initial, config: cfg, undos: [...rec.undos], extra };
+    moves.current = replayed.moves;
+    nextMove.current = Math.max(nextMove.current, ...replayed.moves.map((m) => m.id + 1));
+    reviews.current = new Map(rec.reviews.map((r) => [r.id, r]));
+    setReviewed(reviews.current.size);
+    setConfig(cfg);
+    setSession(cfg);
+    setPractice(false);
+    setUndo([]);
+    setHint(null);
+    setShowEnd(true);
+    setCelebrate(false);
+    recorded.current = false;
+    celebrated.current = false;
+    ended.current = false;
+    setGame(replayed.final);
+    resetUi();
+    void pump();
+  };
+
+  // Partie imposée : lancée (ou reprise) dès l'affichage
+  const launched = useRef(false);
+  const [launchError, setLaunchError] = useState(false);
+  useEffect(() => {
+    if (!configured || launched.current) return;
+    launched.current = true;
+    if (configured.resume) resumeInterrupted(configured.resume.rec, configured.resume.replayed);
+    else if (!start()) setLaunchError(true);
+  });
+
   if (!game) {
+    if (configured) {
+      return (
+        <div className="opc-wait">
+          {launchError
+            ? <>Ton deck n’est pas jouable : complète-le dans « Mon deck ». <button className="op-btn op-btn-ghost" onClick={configured.onLeave}>Retour</button></>
+            : <><span className="op-spinner" /> Préparation de la partie…</>}
+        </div>
+      );
+    }
     return (
       <>
-        <SetupScreen notice={notice} online={online} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
+        <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
           settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => setHistory(true)} onBuilder={() => setBuilder(true)} />
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { setHistory(false); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
@@ -611,7 +700,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
             Tour {game.turn || 1} · {compact ? `${game.winner !== null ? 'fin' : game.active === HUMAN ? 'à toi' : 'IA'}${game.battle ? ' ⚔' : ''}` : phaseLabel(game, HUMAN)}
           </div>
           <div className="top-actions">
-            <button className="icon-btn" onClick={back} disabled={!undo.length} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
+            <button className="icon-btn" onClick={back} disabled={!undo.length || (Boolean(configured) && over)} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
             <button className="icon-btn hide-compact" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
             <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
             <div className="settings-wrap" onClick={(e) => e.stopPropagation()}>
@@ -646,7 +735,9 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
             </div>
             <button className="icon-btn" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
             <button className="icon-btn hide-compact" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
-            <button className="op-btn op-btn-ghost btn-small" onClick={leave}>Menu</button>
+            {configured
+              ? <button className="op-btn op-btn-ghost btn-small" onClick={configured.onLeave} title={over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre'}>{over ? 'Suite →' : 'Quitter'}</button>
+              : <button className="op-btn op-btn-ghost btn-small" onClick={leave}>Menu</button>}
           </div>
         </header>
 
@@ -735,7 +826,25 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
       {over && !celebrate && showEnd && (
         <div className="modal" onClick={() => setShowEnd(false)}>
           <div className="modal-wrap" onClick={(e) => e.stopPropagation()}>
-            <EndScreen
+            {configured ? (
+              <div className="modal-box recap">
+                <div className="recap-top">
+                  <h2 className={game.winner === HUMAN ? 'win' : 'loss'}>{game.winner === HUMAN ? 'Victoire !' : 'Défaite'}</h2>
+                  <p>{game.winReason ?? ''} · {game.turn} tours</p>
+                  {practice && <p className="op-small op-muted">Partie reprise depuis un moment revu : elle ne compte pas pour l’aventure.</p>}
+                </div>
+                {recap ? <RecapBody recap={recap} onReplay={replay} /> : (
+                  <div className="progress">
+                    <div className="op-small">Le coach analyse tes décisions… {done}/{total}</div>
+                    <div className="progress-bar"><span style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></div>
+                  </div>
+                )}
+                <div className="end-actions">
+                  <button className="op-btn op-btn-primary" onClick={configured.onLeave}>Suite de l’aventure →</button>
+                  <button className="op-btn op-btn-ghost" onClick={() => setShowEnd(false)}>Voir le plateau</button>
+                </div>
+              </div>
+            ) : <EndScreen
               won={game.winner === HUMAN}
               reason={game.winReason ?? ''}
               turns={game.turn}
@@ -749,7 +858,7 @@ export function App({ notice, onImmersive, online }: { notice?: string; onImmers
               onBoard={() => setShowEnd(false)}
               onMenu={leave}
               onHistory={() => { leave(); setHistory(true); }}
-            />
+            />}
           </div>
         </div>
       )}
@@ -769,7 +878,7 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
       <img src={cardImage(leader)} alt="" />
       <span className="deck-name">{deck.name}</span>
       <span className="deck-id">{DECKS[id] ? deck.id : leader.name}{note ? ` · ${note}` : ''}</span>
-      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? 'Deck perso'}</span>
+      <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (isAdventureDeck(id) ? '🧭 Deck d’aventure (cartes de la Cale)' : 'Deck perso')}</span>
       <span className="deck-guide-btn" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
         onClick={(e) => { e.stopPropagation(); onGuide(id); }}>📖 Guide</span>
     </button>
@@ -777,12 +886,13 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
 }
 
 // Choix d'un deck : decks rangés par sorte (méta, pour débutant, du plus récent au plus ancien), filtre par couleur du
-// Leader. L'ordre de DECKS ne change pas (il sert aux graines des parties de vérification).
+// Leader. L'ordre de DECKS ne change pas (il sert aux graines des parties de vérification). Les adversaires de l'aventure
+// n'y sont pas.
 const DECK_GROUPS: { label: string; ids: () => string[] }[] = [
-  { label: 'Decks du méta', ids: () => Object.keys(DECKS).filter((id) => DECKS[id].series === 'META') },
+  { label: 'Decks du méta', ids: () => freeDeckIds().filter((id) => DECKS[id].series === 'META') },
   {
     label: 'Decks pour débutant',
-    ids: () => Object.keys(DECKS).filter((id) => DECKS[id].series !== 'META').sort((a, b) => b.localeCompare(a, 'fr', { numeric: true })),
+    ids: () => freeDeckIds().filter((id) => DECKS[id].series !== 'META').sort((a, b) => b.localeCompare(a, 'fr', { numeric: true })),
   },
 ];
 const COLOR_FILTERS: [string, string][] = [['', 'Toutes'], ['Red', 'Rouge'], ['Green', 'Vert'], ['Blue', 'Bleu'], ['Purple', 'Violet'], ['Black', 'Noir'], ['Yellow', 'Jaune']];
@@ -840,9 +950,10 @@ export function DeckPicker({ selected, onPick, onGuide, note, onBuilder, onRando
   );
 }
 
-function SetupScreen({ notice, online, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory, onBuilder }: {
+function SetupScreen({ notice, online, adventure, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory, onBuilder }: {
   notice?: string;
   online?: OnlineEntry;
+  adventure?: AdventureEntry;
   config: Config;
   records: Records;
   onChange: (c: Config) => void;
@@ -889,6 +1000,7 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
           <button className="op-link" onClick={onHistory}>📈 Mes parties</button>
           <button className="op-link" onClick={onBuilder}>🃏 Mes decks</button>
           <button className="op-link" onClick={onHelp}>Comment jouer ?</button>
+          <a className="op-link" href="#legal" title="Projet de fan non officiel : mentions légales et confidentialité">À propos</a>
           <label className="op-small op-muted">Taille de l’interface{' '}
             <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
               {UI_SCALES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -897,6 +1009,15 @@ function SetupScreen({ notice, online, config, records, onChange, onStart, onHel
         </div>
         {notice && <p className="setup-notice">{notice}</p>}
       </header>
+      {adventure && (
+        <section className="online-entry op-adv-entry">
+          <div>
+            <h2>🗺️ Aventure</h2>
+            <p className="op-muted">Prends la mer à East Blue avec un deck de départ, affronte les adversaires de l’histoire et gagne des boosters pour améliorer ton deck.</p>
+          </div>
+          <button className="op-btn op-btn-primary" onClick={adventure.onOpen}>Partir à l’aventure</button>
+        </section>
+      )}
       {online && (
         <section className="online-entry">
           <div>

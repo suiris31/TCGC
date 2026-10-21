@@ -24,6 +24,8 @@ import { META_MIHAWK } from './meta-mihawk.ts';
 import { META_ROBIN } from './meta-robin.ts';
 import { META_SABO } from './meta-sabo.ts';
 import { META_XEBEC } from './meta-xebec.ts';
+import { OP03_ROUGE } from './op03-rouge.ts';
+import { OP03_NOIRE } from './op03-noire.ts';
 import { ST21 } from './st21.ts';
 import { ST22 } from './st22.ts';
 import { ST30 } from './st30.ts';
@@ -33,6 +35,13 @@ import { ST33 } from './st33.ts';
 import { ST34 } from './st34.ts';
 import { ST35 } from './st35.ts';
 import { ST36 } from './st36.ts';
+import { OP03_VERTE } from './op03-verte.ts';
+import { OP03_BLEUE } from './op03-bleue.ts';
+import { OP03_VIOLETTE } from './op03-violette.ts';
+import { OP03_JAUNE } from './op03-jaune.ts';
+import { ST01 } from './st01.ts';
+import { AVENTURE_A } from './aventure-a.ts';
+import { AVENTURE_B } from './aventure-b.ts';
 
 // Un fichier par deck : celui où ses cartes ont été codées (une carte reprise dans un autre deck n'est codée qu'une fois)
 const BEHAVIORS: Record<string, CardBehavior> = {
@@ -40,6 +49,15 @@ const BEHAVIORS: Record<string, CardBehavior> = {
   ...META_XEBEC, ...META_ENEL, ...META_KAIDO, ...ST21, ...ST22, ...ST30, ...FAM_SABO, ...FAM_META, ...FAM_KIDD, ...FAM_KAIDO,
   ...FAM_KATAKURI, ...FAM_KUZAN, ...FAM_WB, ...FAM_SH_RED, ...FAM_ZORO, ...FAM_SN_GREEN,
   ...FAM_ROBIN_PURPLE, ...FAM_ROBIN_YELLOW, ...FAM_LUFFY_ACE,
+  ...OP03_ROUGE,
+  ...OP03_VERTE,
+  ...OP03_BLEUE,
+  ...OP03_VIOLETTE,
+  ...OP03_NOIRE,
+  ...OP03_JAUNE,
+  ...ST01,
+  ...AVENTURE_A,
+  ...AVENTURE_B,
 };
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir

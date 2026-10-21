@@ -5,7 +5,7 @@
 import { buildRecord, type GameRecord } from '../coach/archive.ts';
 import type { Move } from '../coach/review.ts';
 import { playableErrors } from '../engine/deckRules.ts';
-import { DECKS, isCustomDeck, type DeckList } from '../engine/decks.ts';
+import { DECKS, isAdventureOnly, isCustomDeck, type DeckList } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
@@ -66,7 +66,8 @@ export const CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
 export const WAIT_MINUTES = 15;
 
 export function checkDeck(deck: unknown, list?: DeckList): string {
-  if (typeof deck === 'string' && DECKS[deck]) return deck;
+  // les adversaires de l'aventure ne se jouent pas en ligne
+  if (typeof deck === 'string' && DECKS[deck] && !isAdventureOnly(deck)) return deck;
   if (typeof deck === 'string' && isCustomDeck(deck) && list?.id === deck) {
     if (playableErrors(list.leader, list.cards).length) throw new MatchError('invalid_deck', 'Ce deck n’est pas jouable : ouvre-le dans l’éditeur pour voir pourquoi');
     return deck;

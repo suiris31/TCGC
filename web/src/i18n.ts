@@ -368,6 +368,8 @@ const fr = {
   'shared.msg.haveOnly': "Salut {pseudo} ! J'ai des cartes que tu cherches :",
   'shared.notFound.title': 'Lien introuvable',
   'shared.notFound.text': "Ce lien de partage n'existe pas ou a été désactivé par son propriétaire.",
+  'shared.closed.title': 'Page fermée',
+  'shared.closed.text': 'Les pages de partage sont fermées pour le moment. Le lien n’est pas perdu : il remarchera à leur réouverture.',
   'shared.cta': 'Toi aussi, scanne tes cartes One Piece et suis ta collection et sa valeur.',
   'shared.ctaButton': "Découvrir l'appli",
 
@@ -838,6 +840,8 @@ const en: { [K in MessageKey]: Entry } = {
   'shared.msg.haveOnly': "Hi {pseudo}! I have cards you're looking for:",
   'shared.notFound.title': 'Link not found',
   'shared.notFound.text': "This share link doesn't exist or was disabled by its owner.",
+  'shared.closed.title': 'Page closed',
+  'shared.closed.text': 'Share pages are closed for now. The link is not lost: it will work again when they reopen.',
   'shared.cta': 'Scan your own One Piece cards and track your collection and its value.',
   'shared.ctaButton': 'Try the app',
 

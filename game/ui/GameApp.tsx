@@ -1,6 +1,6 @@
 // Point d'entrée du jeu dans l'appli TCGC (onglet Jouer), chargé seulement quand on ouvre l'onglet : informations des
 // cartes demandées au serveur, parties enregistrées sur le compte connecté, style isolé du reste de l'appli.
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { loadCardData } from '../engine/cards/index.ts';
 import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
@@ -10,12 +10,19 @@ import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
 import './styles.css';
 
+// Atelier des écrans de l'aventure (#play/atelier) : chargé seulement quand on l'ouvre
+const Atelier = lazy(() => import('./adventure/Atelier.tsx').then((m) => ({ default: m.Atelier })));
+// Mode Aventure (#play/aventure) : chargé quand on l'ouvre
+const AdventureApp = lazy(() => import('./adventure/AdventureApp.tsx').then((m) => ({ default: m.AdventureApp })));
+
 // Version du programme de cette page ; celle du serveur arrive avec les cartes
 const ENGINE = typeof __ENGINE__ === 'string' ? __ENGINE__ : 'inconnue';
 
 // Le serveur a été mis à jour depuis l'ouverture de la page : ses cartes et son arbitre peuvent ne plus correspondre
 // au code de la page
 class Outdated extends Error {}
+// Le jeu est fermé par l'interrupteur de retrait du serveur (server/takedown.js)
+class Closed extends Error {}
 
 // Informations des cartes : une fois par visite (les fils de calcul de l'IA les reçoivent du module chargé ici)
 let cardsLoaded: Promise<void> | null = null;
@@ -28,16 +35,21 @@ async function fetchCards(): Promise<void> {
       if (engine !== ENGINE && engine !== 'inconnue' && ENGINE !== 'inconnue') throw new Outdated(engine);
       return loadCardData(cards);
     }
-    // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes
+    // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes, ou le jeu est fermé
+    if (res.status === 503 && (await res.json().catch(() => null))?.code === 'game_closed') throw new Closed();
     if (res.status !== 503 || attempt >= 40) throw new Error(`le serveur a répondu ${res.status}`);
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }
 
-type Mode = { kind: 'solo' } | { kind: 'lobby'; code?: string } | { kind: 'match'; id: string };
+type Mode = { kind: 'solo' } | { kind: 'lobby'; code?: string } | { kind: 'match'; id: string } | { kind: 'atelier'; page?: string } | { kind: 'adventure' };
 
-// Adresse de l'onglet : #play/salle/<code> (lien envoyé par un ami) ou #play/partie/<id> (partie en ligne ouverte)
+// Adresse de l'onglet : #play/salle/<code> (lien envoyé par un ami), #play/partie/<id> (partie en ligne ouverte) ou
+// #play/atelier[/<page>] (essais des écrans de l'aventure, sans lien visible) ou #play/aventure (mode Aventure)
 function modeFromHash(): Mode {
+  if (/^#play\/aventure(?:\/|$)/.test(window.location.hash)) return { kind: 'adventure' };
+  const atelier = window.location.hash.match(/^#play\/atelier(?:\/([\w-]+))?$/);
+  if (atelier) return { kind: 'atelier', page: atelier[1] };
   const room = window.location.hash.match(/^#play\/salle\/([A-Za-z0-9-]+)/);
   if (room) return { kind: 'lobby', code: room[1].toUpperCase() };
   const match = window.location.hash.match(/^#play\/partie\/([\w-]+)/);
@@ -46,6 +58,8 @@ function modeFromHash(): Mode {
 }
 
 function hashOf(mode: Mode): string {
+  if (mode.kind === 'atelier') return mode.page ? `#play/atelier/${mode.page}` : '#play/atelier';
+  if (mode.kind === 'adventure') return '#play/aventure';
   return mode.kind === 'match' ? `#play/partie/${mode.id}` : '#play';
 }
 
@@ -67,7 +81,7 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
       cardsLoaded = null;
       throw e;
     });
-    cardsLoaded.then(() => setState('ready'), (e: unknown) => setState(e instanceof Outdated ? 'outdated' : e instanceof Error ? e.message : String(e)));
+    cardsLoaded.then(() => setState('ready'), (e: unknown) => setState(e instanceof Outdated ? 'outdated' : e instanceof Closed ? 'closed' : e instanceof Error ? e.message : String(e)));
   }, []);
 
   // Tailles du jeu en rem : la taille du texte de la page ne change que pendant que le jeu est affiché
@@ -80,6 +94,13 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
   }, []);
 
   useEffect(() => () => onImmersive(false), [onImmersive]);
+
+  // #play/atelier tapé dans la barre d'adresse alors que l'onglet est ouvert (la page n'est pas rechargée)
+  useEffect(() => {
+    const onHash = () => { if (window.location.hash.startsWith('#play/atelier')) setModeState(modeFromHash()); };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   // partie en ligne ou salle en cours : proposée sur l'écran de départ
   useEffect(() => {
@@ -107,8 +128,16 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
           <Lobby initialCode={mode.code} onOpen={(id) => setMode({ kind: 'match', id })} onBack={() => setMode({ kind: 'solo' })} />
         ) : mode.kind === 'match' ? (
           <OnlineMatch key={mode.id} id={mode.id} onLeave={() => setMode({ kind: 'solo' })} />
+        ) : mode.kind === 'adventure' ? (
+          <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de l’aventure…</div>}>
+            <AdventureApp onBack={() => setMode({ kind: 'solo' })} />
+          </Suspense>
+        ) : mode.kind === 'atelier' ? (
+          <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de l’atelier…</div>}>
+            <Atelier page={mode.page} onPage={(page) => setMode({ kind: 'atelier', page })} onBack={() => setMode({ kind: 'solo' })} />
+          </Suspense>
         ) : (
-          <App notice={notice} onImmersive={immersive} online={{
+          <App notice={notice} onImmersive={immersive} adventure={{ onOpen: () => setMode({ kind: 'adventure' }) }} online={{
             onOpen: () => setMode({ kind: 'lobby' }),
             resume: current ? {
               label: current.status === 'playing'
@@ -124,6 +153,11 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
         <div className="opc-wait">
           Le jeu vient d’être mis à jour. Recharge la page pour jouer avec la nouvelle version.{' '}
           <button className="op-btn op-btn-primary" onClick={() => window.location.reload()}>Recharger</button>
+        </div>
+      ) : state === 'closed' ? (
+        <div className="opc-wait">
+          <p>Le jeu est fermé pour le moment. Ta collection reste disponible, et tes parties, tes decks, ta Cale et ta
+            progression sont gardés. <a className="op-link" href="#legal">En savoir plus</a></p>
         </div>
       ) : (
         <div className="opc-wait">Impossible de charger le jeu : {state}. Réessaie dans un moment.</div>

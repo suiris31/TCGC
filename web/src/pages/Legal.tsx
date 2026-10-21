@@ -6,7 +6,7 @@ import { LEGAL } from '../legal';
 import { useApp } from '../store';
 
 // Mentions légales et politique de confidentialité (#legal), accessibles sans compte
-export function LegalPage() {
+export function LegalPage({ back = '#' }: { back?: string }) {
   const { uiLang, setUiLang } = useApp();
   const [info, setInfo] = useState<{ publisher: string; contact: string; host: string } | null>(null);
   const texts = LEGAL[uiLang];
@@ -19,7 +19,7 @@ export function LegalPage() {
   return (
     <>
       <header className="topbar">
-        <a className="back-btn" href="#"><span aria-hidden="true">‹</span> {texts.back}</a>
+        <a className="back-btn" href={back}><span aria-hidden="true">‹</span> {texts.back}</a>
         <LangSwitch value={uiLang} onChange={setUiLang} compact label={t('stats.uiLang')} />
       </header>
       <div className="page legal">

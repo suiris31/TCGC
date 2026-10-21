@@ -5,10 +5,10 @@
 import { resolveDeck, type DeckSource } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, attackTax, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def, describe,
-  discardFromHand, donOnField, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated, knownFirst,
-  koCharacter, koSelfReplacement, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, restForAttack,
-  returnDon, reveal, shuffleDeck, triggerEffect, untapDon,
+  addMod, allField, attackTargets, attackTax, blockerAllowed, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def,
+  describe, discardFromHand, donOnField, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated,
+  knownFirst, koCharacter, koSelfReplacement, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, removeFromField,
+  restForAttack, returnDon, reveal, shuffleDeck, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
   Decision, EffectCtx, GameState, HistoryEntry, Modifier, Option, PendingEffect, PlayerId, PlayerState,
@@ -417,6 +417,18 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     const { s } = ctx;
     const P = s.players[ctx.me];
     const amount = Number(p.data?.amount ?? 1);
+    // dégâts infligés à la Vie : annoncés une fois le traitement fini (effets « quand l'attaque de ... inflige des dégâts
+    // à la Vie adverse », Nami OP03-040)
+    let dealt = 0;
+    const announce = () => {
+      if (!dealt) return;
+      const attacker = p.data?.attacker !== undefined ? findField(s, Number(p.data.attacker)) : null;
+      emit(s, {
+        type: 'damage', player: ctx.me, by: ctx.opp, count: dealt, target: P.leader.uid,
+        ...(attacker ? { cause: 'attack' as const, uid: attacker.card.uid, num: attacker.card.num } : { cause: 'effect' as const }),
+        ...(p.data?.sourceNum !== undefined ? { sourceNum: String(p.data.sourceNum) } : {}),
+      });
+    };
     for (let i = 0; i < amount; i++) {
       if (!P.life.length) {
         s.winner = ctx.opp;
@@ -424,6 +436,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
         log(s, null, s.winReason);
         return;
       }
+      dealt++;
       const lifeCard = P.life.shift()!;
       const card = { uid: lifeCard.uid, num: lifeCard.num };
       const d = def(card.num);
@@ -460,6 +473,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
       if (lifeCard.faceUp) reveal(s, [card.uid], 'both');  // carte de Vie face visible : publique
       log(s, ctx.me, `perd 1 Vie (il lui en reste ${P.life.length})`);
     }
+    announce();
   },
 };
 
@@ -576,6 +590,11 @@ function stepFlow(s: GameState) {
             const extra = donOnField(s, d.player) - donOnField(s, other(d.player));
             if (extra > 0) returnDon(s, d.player, extra);
           }
+          // « Puis, placez ce Personnage dans votre Défausse à la fin de ce tour » (Thatch OP03-005)
+          if ((d.action === 'trashChar' || d.action === 'bottomChar') && d.uid !== undefined) {
+            const f = removeFromField(s, d.uid, d.action === 'trashChar' ? 'trash' : 'deckBottom');
+            if (f) log(s, f.player, `${def(f.card.num).name} est placé ${d.action === 'trashChar' ? 'dans la Défausse' : 'au-dessous du deck'} de son propriétaire${d.source ? ` (${d.source})` : ''}`);
+          }
         }
         s.delayed = s.delayed.filter((x) => x.turn !== s.turn);
         return;
@@ -685,7 +704,8 @@ function stepBattle(s: GameState) {
   switch (b.step) {
     case 'block': {
       const defender = other(s.active);
-      const blockers = s.players[defender].chars.filter((c) => !c.rested && c.uid !== b.target && canBeRested(s, c.uid) && hasBlocker(s, defender, c));
+      const blockers = s.players[defender].chars.filter((c) => !c.rested && c.uid !== b.target && canBeRested(s, c.uid) && hasBlocker(s, defender, c)
+        && blockerAllowed(s, b.attacker, c));
       // [Imblocable] : l'adversaire ne peut pas bloquer (10-1-7)
       const unblockable = hasKeyword(s, s.active, findField(s, b.attacker)!.card, 'Unblockable');
       if (b.blocked || !blockers.length || unblockable) {
@@ -726,7 +746,7 @@ function stepBattle(s: GameState) {
           log(s, s.active, `l'attaque touche le Leader adverse (${atk} contre ${dp})${amount > 1 ? ' : [Double attaque], 2 dégâts' : ''}`);
           s.pending.push({
             kind: 'system', action: 'leaderDamage', source: b.target, num: target.card.num, controller: target.player, answers: [],
-            data: { amount, ...(banish ? { banish: 1 } : {}) },
+            data: { amount, attacker: b.attacker, ...(banish ? { banish: 1 } : {}) },
           });
         } else {
           log(s, s.active, `l'attaque gagne le combat (${atk} contre ${dp})`);
