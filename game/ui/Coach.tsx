@@ -1,4 +1,5 @@
 // Interface du coach : conseil pendant la partie et récap de fin de partie
+import type { ReactNode } from 'react';
 import type { Analysis } from '../ai/search.ts';
 import type { MoveReview, Recap, SideStats } from '../coach/review.ts';
 import type { Decision } from '../engine/types.ts';
@@ -189,14 +190,15 @@ export function RecapBody({ recap, onReplay }: { recap: Recap; onReplay?: (id: n
   );
 }
 
-// Fenêtre de fin de partie : résultat, bilan de la confrontation, puis le récap du coach
-export function EndScreen({ won, reason, turns, matchup, record, practice, progress, recap, onReplay, onRestart, onBoard, onMenu, onHistory }: {
+// Fenêtre de fin de partie : résultat, bilan de la confrontation, gains de la partie (Berry), puis le récap du coach
+export function EndScreen({ won, reason, turns, matchup, record, practice, gain, progress, recap, onReplay, onRestart, onBoard, onMenu, onHistory }: {
   won: boolean;
   reason: string;
   turns: number;
   matchup: string;
   record: RecordLine | undefined;
   practice: boolean;
+  gain?: ReactNode;
   progress: { done: number; total: number };
   recap: Recap | null;
   onReplay: (id: number) => void;
@@ -215,6 +217,8 @@ export function EndScreen({ won, reason, turns, matchup, record, practice, progr
           Bilan {matchup} : {recordText(record)}
         </p>
       </div>
+
+      {gain}
 
       {!recap && (
         <div className="progress">

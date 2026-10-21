@@ -1,8 +1,10 @@
 // Fin d'une partie de l'aventure (tâche 1.17) : le dialogue de victoire ou de défaite, puis ce que la partie a rapporté
-// une fois que le serveur l'a vérifiée (récompenses de la première victoire), avec les boosters gagnés à ouvrir tout de
-// suite ou plus tard (ils restent dans la Cale). Écran sans appel au serveur : AdventureApp envoie et ouvre.
+// une fois que le serveur l'a vérifiée (récompenses de la première victoire ; gain de la partie en Berry, tâche 2.5),
+// avec les boosters gagnés (chapitre, coffre de la semaine) à ouvrir tout de suite ou plus tard (ils restent dans la
+// Cale). Écran sans appel au serveur : AdventureApp envoie et ouvre.
 import type { Chapter, Reward } from '../../adventure/types.ts';
 import { DECKS } from '../../engine/decks.ts';
+import { GameGain, type GainState } from '../economy/GameGain.tsx';
 import type { ChapterResult } from './api.ts';
 import { CardArt, Dialogue, cardName } from './ChapterScreen.tsx';
 
@@ -45,7 +47,7 @@ function RewardItem({ reward }: { reward: Reward }) {
       return (
         <li className="op-adv-reward">
           <span className="op-adv-berry" aria-hidden="true">฿</span>
-          <span>{reward.amount} Berry</span>
+          <span><strong>{reward.amount.toLocaleString('fr-FR')} ฿</strong><br /><span className="op-muted op-small">dans ta bourse</span></span>
         </li>
       );
   }
@@ -66,6 +68,8 @@ export interface RewardsScreenProps {
   chapter: Chapter;
   won: boolean;
   result: SendState;
+  gain?: GainState;                     // gain de la partie en Berry (victoire ou défaite)
+  onRetryGain?: () => void;
   opening?: boolean;                    // boosters en cours d'ouverture (tirage sur le serveur)
   openError?: string;
   onOpen: (boosterIds: string[]) => void;
@@ -79,7 +83,8 @@ export interface RewardsScreenProps {
 export function RewardsScreen(p: RewardsScreenProps) {
   const { chapter, won, result } = p;
   const done = result?.state === 'done' ? result.value : null;
-  const boosters = done?.boosters ?? [];
+  const chest = p.gain?.state === 'done' ? p.gain.reward.chest : [];
+  const boosters = [...(done?.firstWin ? done.boosters : []), ...chest];
   const sets = [...new Set(boosters.map((b) => b.set))];
   return (
     <div className={`setup op-adv op-adv-end ${won ? 'op-adv-end-won' : 'op-adv-end-lost'}`}>
@@ -105,42 +110,45 @@ export function RewardsScreen(p: RewardsScreenProps) {
           {done?.won && !done.firstWin && <p className="op-muted">Chapitre déjà gagné : cette victoire compte dans ton bilan, sans nouvelle récompense.</p>}
           {done?.firstWin && (
             <>
-              {/* les boosters ont leur propre bloc juste en dessous */}
-              {done.rewards.some((r) => r.kind !== 'booster' || !boosters.length) && (
+              {/* les boosters ont leur propre bloc plus bas */}
+              {done.rewards.some((r) => r.kind !== 'booster' || !done.boosters.length) && (
                 <>
                   <h2>Tu gagnes</h2>
-                  <RewardList rewards={done.rewards.filter((r) => r.kind !== 'booster' || !boosters.length)} />
+                  <RewardList rewards={done.rewards.filter((r) => r.kind !== 'booster' || !done.boosters.length)} />
                 </>
-              )}
-              {boosters.length > 0 && (
-                <div className="op-adv-boosters">
-                  <div className="op-adv-boosters-packs">
-                    {sets.map((set) => <PackIcon key={set} set={set} count={boosters.filter((b) => b.set === set).length} />)}
-                  </div>
-                  <div className="op-adv-boosters-text">
-                    <strong>{boosters.length} booster{boosters.length > 1 ? 's' : ''} à ouvrir</strong>
-                    <span className="op-small op-muted">Ouvre-les maintenant, ou plus tard depuis ta Cale.</span>
-                  </div>
-                  <div className="op-adv-row">
-                    <button className="op-btn op-btn-primary" disabled={p.opening} onClick={() => p.onOpen(boosters.map((b) => b.id))}>
-                      {p.opening ? <><span className="op-spinner" /> Ouverture…</> : '🎁 Ouvrir maintenant'}
-                    </button>
-                    <button className="op-btn op-btn-ghost" disabled={p.opening} onClick={p.onLater}>Plus tard</button>
-                  </div>
-                  {p.openError && <p className="danger op-small">{p.openError}</p>}
-                  <p className="op-small op-muted op-adv-notice">{BOOSTER_NOTICE}</p>
-                </div>
               )}
             </>
           )}
         </section>
       ) : (
         <section className="op-adv-panel">
-          <p className="op-muted">Pas de récompense cette fois. Revois le récap du coach, ajuste ton deck, et retente ta chance !</p>
+          <p className="op-muted">Pas de récompense de chapitre cette fois. Revois le récap du coach, ajuste ton deck, et retente ta chance !</p>
           <div className="op-adv-row">
             <button className="op-btn op-btn-primary" onClick={p.onRetry}>⚔ Retenter le chapitre</button>
           </div>
         </section>
+      )}
+
+      {p.gain && <GameGain gain={p.gain} onRetry={p.onRetryGain ?? (() => undefined)} chestNote="À ouvrir ci-dessous, ou plus tard depuis ta Cale." />}
+
+      {boosters.length > 0 && (
+        <div className="op-adv-boosters">
+          <div className="op-adv-boosters-packs">
+            {sets.map((set) => <PackIcon key={set} set={set} count={boosters.filter((b) => b.set === set).length} />)}
+          </div>
+          <div className="op-adv-boosters-text">
+            <strong>{boosters.length} booster{boosters.length > 1 ? 's' : ''} à ouvrir</strong>
+            <span className="op-small op-muted">Ouvre-les maintenant, ou plus tard depuis ta Cale.</span>
+          </div>
+          <div className="op-adv-row">
+            <button className="op-btn op-btn-primary" disabled={p.opening} onClick={() => p.onOpen(boosters.map((b) => b.id))}>
+              {p.opening ? <><span className="op-spinner" /> Ouverture…</> : '🎁 Ouvrir maintenant'}
+            </button>
+            <button className="op-btn op-btn-ghost" disabled={p.opening} onClick={p.onLater}>Plus tard</button>
+          </div>
+          {p.openError && <p className="danger op-small">{p.openError}</p>}
+          <p className="op-small op-muted op-adv-notice">{BOOSTER_NOTICE}</p>
+        </div>
       )}
 
       <div className="op-adv-row op-adv-end-actions">

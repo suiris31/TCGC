@@ -28,6 +28,7 @@ import { flushQueue, keepForLater, loadSummaries, saveRecord, whenSaved } from '
 import { HistoryScreen } from './History.tsx';
 import { useDevice, useWakeLock } from './device.ts';
 import { cardImage } from './images.ts';
+import { GameGain, useGameGain } from './economy/GameGain.tsx';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
@@ -173,6 +174,10 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const celebrated = useRef(false);
   const ended = useRef(false);
   const [reviewed, setReviewed] = useState(0);
+  // Gain de la partie libre (Berry) : demandé au serveur une fois la partie finie et enregistrée (l'aventure le demande
+  // elle-même, avec le résultat du chapitre)
+  const { gain, claim, retry: retryGain, reset: resetGain } = useGameGain();
+  const claimed = useRef<string | null>(null);
 
   // Sauvegarde de la partie dans le dossier parties/ : mise à jour au fil des coups, puis à la fin quand le coach a
   // analysé tes décisions. Si l'onglet se ferme, une copie attend dans le navigateur jusqu'au lancement suivant.
@@ -309,6 +314,19 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     });
   }, [game, practice, session]);
 
+  // Partie libre finie : enregistrée tout de suite, puis son gain est demandé au serveur (une fois par partie ; pas une
+  // partie reprise depuis un moment revu, qui ne rapporte rien)
+  useEffect(() => {
+    const r = recording.current;
+    if (configured || !game || game.winner === null || practice || !r || claimed.current === r.id) return;
+    claimed.current = r.id;
+    clearTimeout(saveTimer.current);
+    const rec = snapshot();
+    if (!rec) return;
+    const saved = saveRecord(rec).then(() => rec.id);
+    claim(() => saved);
+  }, [configured, game, practice, snapshot, claim]);
+
   // Partie imposée (Aventure) : finie et vue (écran de victoire ou de défaite passé), elle est enregistrée sur le serveur
   // puis signalée, une seule fois (pas une partie reprise depuis un moment revu, qui ne compte pas)
   useEffect(() => {
@@ -391,6 +409,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     setSession(named);
     setGame(initial);
     startRecording(initial, named);
+    resetGain();
     setUndo([]);
     setShowEnd(true);
     setPractice(false);
@@ -498,6 +517,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     setCelebrate(false);
     celebrated.current = false;
     setHistory(false);
+    resetGain();
     startRecording(state, cfg, { from: rec.id, turn: state.turn });
     setGame(state);
     resetUi();
@@ -668,6 +688,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     const state = moves.current[index].state;
     const from = recording.current?.id ?? null;
     closeRecording();
+    resetGain();
     startRecording(state, session, { from, turn: state.turn });
     moves.current = moves.current.slice(0, index);
     for (const key of [...reviews.current.keys()]) if (!moves.current.some((m) => m.id === key)) reviews.current.delete(key);
@@ -851,6 +872,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
               matchup={matchupName(session)}
               record={records[recordKey(session)]}
               practice={practice}
+              gain={<GameGain gain={gain} onRetry={retryGain} />}
               progress={{ done, total }}
               recap={recap}
               onReplay={replay}
