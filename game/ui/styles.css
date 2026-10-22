@@ -1492,3 +1492,8 @@ table.op-stats th { color: var(--muted); font-weight: 600; }
   .op-counter-dialog-art.is-fresh, .op-dup-icon.is-fresh { animation: none; }
 }
 /* === fin 2.6 === */
+
+/* === Tâche R0.2 : atelier du plateau === */
+/* une page « plateau » de l'atelier occupe tout l'écran, comme une partie */
+.op-atelier-board { position: fixed; inset: 0; z-index: 1; background: var(--bg); }
+/* === fin R0.2 === */

@@ -1,10 +1,10 @@
 // Atelier (tâche 2.5) : le bloc des gains de fin de partie dans tous ses cas, avec des réponses de démonstration du
 // serveur (rien n'est réclamé ni enregistré). Ouvert par #play/atelier/gains.
 import { useEffect, useState } from 'react';
-import { ECONOMY } from '../../../economy/config.ts';
-import type { GameReward, Wallet } from '../../../economy/types.ts';
-import { GameGain, type GainState } from '../../economy/GameGain.tsx';
-import { showWallet } from '../../economy/Wallet.tsx';
+import { ECONOMY } from '../../economy/config.ts';
+import type { GameReward, Wallet } from '../../economy/types.ts';
+import { GameGain, type GainState } from '../economy/GameGain.tsx';
+import { showWallet } from '../economy/Wallet.tsx';
 
 export const title = 'Gains de fin de partie';
 

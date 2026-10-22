@@ -3,14 +3,14 @@
 // ouvrent sur place avec le générateur, sans serveur, et rien n'est enregistré. « Mon compte » : les vrais écrans,
 // reliés au compte connecté (à n'utiliser que sur un serveur d'essai).
 import { useState } from 'react';
-import { openBooster } from '../../../boosters/open.ts';
-import { BOOSTER_SETS } from '../../../boosters/sets/index.ts';
-import type { BoosterContent } from '../../../boosters/types.ts';
-import { DECKS } from '../../../engine/decks.ts';
-import type { HoldCard, WonBooster } from '../api.ts';
-import { AdventureDeckScreen } from '../AdventureDeck.tsx';
-import { BoosterOpening, ownedCounts } from '../BoosterOpening.tsx';
-import { HoldScreen, HoldView } from '../Hold.tsx';
+import { openBooster } from '../../boosters/open.ts';
+import { BOOSTER_SETS } from '../../boosters/sets/index.ts';
+import type { BoosterContent } from '../../boosters/types.ts';
+import { DECKS } from '../../engine/decks.ts';
+import type { HoldCard, WonBooster } from '../adventure/api.ts';
+import { AdventureDeckScreen } from '../adventure/AdventureDeck.tsx';
+import { BoosterOpening, ownedCounts } from '../adventure/BoosterOpening.tsx';
+import { HoldScreen, HoldView } from '../adventure/Hold.tsx';
 
 export const title = 'Cale et deck d’aventure';
 

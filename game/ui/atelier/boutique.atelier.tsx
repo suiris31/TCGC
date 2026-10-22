@@ -3,12 +3,12 @@
 // le générateur, sans serveur : rien n'est enregistré). « Solde qui change » : la pastille du solde et son animation.
 // « Ma boutique (mon compte) » : le vrai écran, relié au compte connecté (à n'utiliser que sur un serveur d'essai).
 import { useMemo, useState } from 'react';
-import { openBooster } from '../../../boosters/open.ts';
-import { ECONOMY } from '../../../economy/config.ts';
-import type { LedgerEntry, Purchase, Wallet } from '../../../economy/types.ts';
-import { AdventureApiError } from '../api.ts';
-import { ShopScreen, type ShopClient } from '../../economy/Shop.tsx';
-import { showWallet, useWallet, WalletBadge, WalletDetails } from '../../economy/Wallet.tsx';
+import { openBooster } from '../../boosters/open.ts';
+import { ECONOMY } from '../../economy/config.ts';
+import type { LedgerEntry, Purchase, Wallet } from '../../economy/types.ts';
+import { AdventureApiError } from '../adventure/api.ts';
+import { ShopScreen, type ShopClient } from '../economy/Shop.tsx';
+import { showWallet, useWallet, WalletBadge, WalletDetails } from '../economy/Wallet.tsx';
 
 export const title = 'Boutique et bourse';
 
