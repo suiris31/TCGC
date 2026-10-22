@@ -3,6 +3,7 @@
 // Ce module ne touche ni au disque ni au réseau : le serveur (server/game-online.js) s'occupe de la base et du temps
 // réel, ce qui permet de tout tester ici.
 import { buildRecord, type GameRecord } from '../coach/archive.ts';
+import { shownNumbers, visibleLooks, type DeckLooks } from '../data/looks.ts';
 import type { Move } from '../coach/review.ts';
 import { playableErrors } from '../engine/deckRules.ts';
 import { DECKS, isAdventureOnly, isCustomDeck, type DeckList } from '../engine/decks.ts';
@@ -19,6 +20,7 @@ export interface MatchPlayer {
   deck: string;      // identifiant : deck du registre, ou PERSO-... (deck personnalisé du joueur)
   list?: DeckList;   // deck personnalisé : sa liste, lue dans la base par le serveur ; jamais envoyée à l'adversaire
   hold?: boolean;    // deck de la Cale (deck d'aventure) : le serveur a vérifié que le joueur en possède toutes les cartes
+  looks?: DeckLooks; // visuels choisis du deck personnalisé (cosmétique : jamais dans le moteur)
 }
 
 export interface Match {
@@ -48,6 +50,9 @@ export interface MatchView {
   seq: number;                // numéro du coup attendu (à renvoyer avec le choix)
   state: GameState | null;    // vue expurgée
   expiresAt: string | null;
+  // visuels de chaque joueur (absent : visuels de base et DON!! standard) ; ceux de l'adversaire seulement pour les
+  // cartes que la vue montre déjà, sa liste restant secrète
+  looks?: { [seat in Seat]?: DeckLooks };
 }
 
 export class MatchError extends Error {
@@ -143,9 +148,20 @@ export function resign(m: Match, seat: Seat, now: Date) {
   m.updatedAt = m.endedAt = now.toISOString();
 }
 
+// Visuels envoyés à un joueur : les siens en entier, ceux de l'adversaire réduits aux cartes de sa vue
+function looksFor(seat: Seat, me: MatchPlayer, opp: MatchPlayer | null, state: GameState | null): MatchView['looks'] {
+  const theirs = opp?.looks && visibleLooks(opp.looks, shownNumbers(state));
+  const looks: NonNullable<MatchView['looks']> = {};
+  if (me.looks && Object.keys(me.looks).length) looks[seat] = me.looks;
+  if (theirs && Object.keys(theirs).length) looks[seat === 0 ? 1 : 0] = theirs;
+  return Object.keys(looks).length ? looks : undefined;
+}
+
 export function viewOf(m: Match, seat: Seat): MatchView {
   const me = seat === 0 ? m.host : m.guest!;
   const opp = seat === 0 ? m.guest : m.host;
+  const state = m.state ? viewFor(m.state, seat) : null;
+  const looks = looksFor(seat, me, opp, state);
   return {
     id: m.id,
     status: m.status,
@@ -154,8 +170,9 @@ export function viewOf(m: Match, seat: Seat): MatchView {
     you: { name: me.name, deck: me.deck, deckName: deckName(me), ...holdMark(me) },
     opponent: opp ? { name: opp.name, deck: opp.deck, deckName: deckName(opp), ...holdMark(opp) } : null,
     seq: m.state?.history.length ?? 0,
-    state: m.state ? viewFor(m.state, seat) : null,
+    state,
     expiresAt: m.expiresAt,
+    ...(looks ? { looks } : {}),
   };
 }
 
@@ -192,8 +209,12 @@ export function recordFor(m: Match, seat: Seat, now: Date): GameRecord & { mode:
     undos: [],
     abandoned: m.status !== 'over',
   });
+  // visuels des deux joueurs : la partie rangée contient déjà les deux decks (état de départ)
+  const looks: NonNullable<GameRecord['looks']> = {};
+  if (me.looks && Object.keys(me.looks).length) looks[seat] = me.looks;
+  if (opp.looks && Object.keys(opp.looks).length) looks[seat === 0 ? 1 : 0] = opp.looks;
   return {
-    ...rec, mode: 'online', opponent: opp.name,
+    ...rec, mode: 'online', opponent: opp.name, ...(Object.keys(looks).length ? { looks } : {}),
     ...(holdDeck(me) ? { holdDeck: true as const } : {}), ...(holdDeck(opp) ? { opponentHoldDeck: true as const } : {}),
   };
 }
