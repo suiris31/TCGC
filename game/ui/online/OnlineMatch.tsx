@@ -12,6 +12,7 @@ import { attackPreview, readDecision, remainingActions, whyNot, type CardAction 
 import { useDevice, useWakeLock } from '../device.ts';
 import { Celebration, FxLayer, Intro } from '../Fx.tsx';
 import { ActionBar, ActionMenu, BattlePanel } from '../Interaction.tsx';
+import { isEndTurnKey } from '../keys.ts';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from '../Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from '../Panel.tsx';
 import { loadSummaries } from '../archiveClient.ts';
@@ -144,6 +145,8 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
   const d = game.decision;
   // à moi de choisir, et mon dernier choix a déjà été pris en compte par le serveur
   const myTurn = Boolean(d && d.player === seat && !over && sentSeq !== view.seq);
+  // mon choix est parti, le serveur n'a pas encore répondu : la barre le dit, au lieu de redemander ce choix
+  const sending = Boolean(d && d.player === seat && !over && sentSeq === view.seq);
   const dv = useMemo(() => (myTurn && d ? readDecision(game, d, false) : null), [game, d, myTurn]);
 
   // fin de partie : écran de victoire ou de défaite, une fois
@@ -216,7 +219,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
         setGuide(null);
         setPanel(false);
         cardZoom.close();
-      } else if (e.key === 'Enter' && myTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
+      } else if (isEndTurnKey(e) && myTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
         requestEnd();
       }
     };
@@ -363,7 +366,18 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
         </div>
         <PlayerZone s={game} p={seat} me ui={ui} />
         <Hand s={game} p={seat} ui={ui} />
-        <ActionBar
+        {sending ? (
+          <div className="action-bar bar-wait">
+            <div className="bar-text"><span className="op-spinner" /> <strong>Envoi…</strong></div>
+          </div>
+        ) : over && !celebrate && !showEnd ? (
+          <div className="action-bar">
+            <div className="bar-text"><strong>{won ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{game.winReason}</span></div>
+            <div className="bar-buttons">
+              <button className="op-btn op-btn-primary" onClick={() => setShowEnd(true)}>Voir le résultat</button>
+            </div>
+          </div>
+        ) : <ActionBar
           s={game}
           d={over ? null : d}
           human={seat}
@@ -379,7 +393,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
           onEndTurn={requestEnd}
           touch={touch}
           onConfirmAttack={aimedOption ? () => { sfx('click'); choose(aimedOption.id); } : undefined}
-        />
+        />}
         <FxLayer game={game} human={seat} epoch={epoch} />
       </main>
 
