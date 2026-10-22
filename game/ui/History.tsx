@@ -76,18 +76,18 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
   const tabs: [Tab, string][] = [['progress', 'Progression'], ['axes', 'Axes de progrès'], ['games', 'Toutes les parties']];
   return (
     <div className="modal history-modal" onClick={onClose}>
-      <div className="modal-box history" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-box history" data-ui="history" onClick={(e) => e.stopPropagation()}>
         <header className="history-head">
           <h2>📈 Mes parties</h2>
           <nav className="history-tabs">
             {tabs.map(([key, label]) => (
-              <button key={key} className={tab === key && !open ? 'op-tab on' : 'op-tab'} onClick={() => { setTab(key); setOpen(null); }}>{label}</button>
+              <button key={key} className={tab === key && !open ? 'op-tab on' : 'op-tab'} data-ui={`history.tab-${key}`} onClick={() => { setTab(key); setOpen(null); }}>{label}</button>
             ))}
           </nav>
           <label className="icon-btn" title="Importer des parties de l’ancien OP Coach (fichiers .json de son dossier parties)">
             ⤒<input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void onImport([...(e.target.files ?? [])]); e.target.value = ''; }} />
           </label>
-          <button className="icon-btn" onClick={onClose} title="Fermer (Échap)">✕</button>
+          <button className="icon-btn" data-ui="history.close" onClick={onClose} title="Fermer (Échap)">✕</button>
         </header>
         <div className="history-body">
           {imported && <p className="op-muted">{imported}</p>}

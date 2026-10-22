@@ -57,7 +57,7 @@ export function Dialogue({ lines, onDone }: { lines: DialogueLine[]; onDone?: ()
   const narration = !line.who;
   return (
     <div className={`op-adv-dlg ${narration ? 'op-adv-dlg-narration' : ''}`}>
-      <button key={at} className="op-adv-bubble" onClick={next} aria-label="Réplique suivante">
+      <button key={at} className="op-adv-bubble" data-ui="chapter.bubble" onClick={next} aria-label="Réplique suivante">
         {!narration && (
           <span className="op-adv-portrait">
             {line.card ? <CardArt number={line.card} className="op-adv-portrait-img" fallback={line.who} /> : <span className="op-adv-art-none">{line.who.slice(0, 1)}</span>}
@@ -72,8 +72,8 @@ export function Dialogue({ lines, onDone }: { lines: DialogueLine[]; onDone?: ()
         <span className="op-adv-dots" aria-label={`Réplique ${at + 1} sur ${lines.length}`}>
           {lines.map((_, i) => <i key={i} className={i <= at ? 'on' : ''} />)}
         </span>
-        <button className="op-btn op-btn-ghost btn-small" onClick={finish}>Passer</button>
-        <button className="op-btn btn-small" onClick={next}>{at + 1 < lines.length ? 'Suivant ▸' : 'Terminer'}</button>
+        <button className="op-btn op-btn-ghost btn-small" data-ui="chapter.skip" onClick={finish}>Passer</button>
+        <button className="op-btn btn-small" data-ui="chapter.next" onClick={next}>{at + 1 < lines.length ? 'Suivant ▸' : 'Terminer'}</button>
       </div>
     </div>
   );
@@ -122,9 +122,9 @@ export function ChapterScreen(p: ChapterScreenProps) {
   const story = [...p.arc.chapters].filter((c) => !c.optional).sort((a, b) => a.order - b.order);
   const step = story.findIndex((c) => c.id === chapter.id);
   return (
-    <div className="setup op-adv op-adv-chapter">
+    <div className="setup op-adv op-adv-chapter" data-ui="chapter">
       <header className="op-adv-head">
-        <button className="op-btn op-btn-ghost btn-small" onClick={p.onBack}>← Carte</button>
+        <button className="op-btn op-btn-ghost btn-small" data-ui="chapter.back" onClick={p.onBack}>← Carte</button>
         <div className="op-adv-title">
           <span className="op-muted op-small">
             {chapter.optional ? '⚔ Défi bonus' : `Chapitre ${step + 1} sur ${story.length}`} · {chapter.place}
@@ -151,7 +151,7 @@ export function ChapterScreen(p: ChapterScreenProps) {
 
       <div className="op-adv-go">
         <div className="op-adv-go-text op-small">
-          {p.deckName && <span>Ton deck : <strong>{p.deckName}</strong> · <button className="op-link" onClick={p.onDeck}>Changer</button></span>}
+          {p.deckName && <span>Ton deck : <strong>{p.deckName}</strong> · <button className="op-link" data-ui="chapter.deck" onClick={p.onDeck}>Changer</button></span>}
           {p.blocked && <span className="op-warn">{p.blocked}</span>}
           {p.interrupted?.kind === 'resume' && <span className="op-muted">Partie interrompue {when(p.interrupted.at)} (tour {p.interrupted.turns || 1}) : tu peux la reprendre.</span>}
           {p.interrupted?.kind === 'unsent' && <span className="op-muted">Ta victoire du {when(p.interrupted.at)} n’a pas encore été comptée.</span>}
@@ -159,9 +159,9 @@ export function ChapterScreen(p: ChapterScreenProps) {
           {p.busy && <span className="op-muted"><span className="op-spinner" /> {p.busy}</span>}
         </div>
         <div className="op-adv-go-actions">
-          {p.interrupted?.kind === 'unsent' && <button className="op-btn op-btn-primary" disabled={Boolean(p.busy)} onClick={p.onCount}>Faire compter ma victoire</button>}
-          {p.interrupted?.kind === 'resume' && <button className="op-btn op-btn-primary" disabled={!can} onClick={p.onResume}>▶ Reprendre la partie</button>}
-          <button className={p.interrupted ? 'op-btn op-btn-ghost' : 'op-btn op-btn-primary btn-big'} disabled={!can} onClick={p.onFight}>
+          {p.interrupted?.kind === 'unsent' && <button className="op-btn op-btn-primary" data-ui="chapter.count" disabled={Boolean(p.busy)} onClick={p.onCount}>Faire compter ma victoire</button>}
+          {p.interrupted?.kind === 'resume' && <button className="op-btn op-btn-primary" data-ui="chapter.resume" disabled={!can} onClick={p.onResume}>▶ Reprendre la partie</button>}
+          <button className={p.interrupted ? 'op-btn op-btn-ghost' : 'op-btn op-btn-primary btn-big'} data-ui="chapter.fight" disabled={!can} onClick={p.onFight}>
             ⚔ {p.interrupted?.kind === 'resume' ? 'Nouvelle partie' : 'Combattre'}
           </button>
         </div>
