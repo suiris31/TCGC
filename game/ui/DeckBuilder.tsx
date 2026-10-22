@@ -253,6 +253,9 @@ export function DeckEditor({ initial, existing, hold, onBack, onHover, onPlay }:
   const first = useRef(true);
   const stored = useRef(existing);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // enregistrement prévu mais pas encore parti : fait tout de suite si l'éditeur se ferme (fond, Échap, changement
+  // d'onglet) ou si la page passe en arrière-plan, pour ne pas perdre la dernière modification
+  const pending = useRef<(() => void) | null>(null);
   const regs = useRegulations();
   const limit = (d: CardDef) => (hold ? holdLimit(hold.hold, d) : maxCopies(d));
 
@@ -261,6 +264,7 @@ export function DeckEditor({ initial, existing, hold, onBack, onHover, onPlay }:
   // enregistrement automatique, un instant après la dernière modification (le deck est enregistré dès son ouverture)
   useEffect(() => {
     clearTimeout(timer.current);
+    pending.current = null;
     if (!draft.name.trim()) {
       setSave('error');
       setSaveError('Donne un nom à ton deck pour l’enregistrer.');
@@ -274,14 +278,29 @@ export function DeckEditor({ initial, existing, hold, onBack, onHover, onPlay }:
     }
     setSave('pending');
     if (!stored.current && !Object.keys(draft.cards).length) return;
-    timer.current = setTimeout(() => {
+    const run = () => {
+      pending.current = null;
       setSave('saving');
       saveMyDeck(hold ? { ...draft, mode: 'aventure' } : draft)
         .then(() => { stored.current = true; setSave('saved'); setSaveError(null); }, (e: Error) => { setSave('error'); setSaveError(e.message); });
-    }, first.current ? 0 : 700);
+    };
+    pending.current = run;
+    timer.current = setTimeout(run, first.current ? 0 : 700);
     first.current = false;
     return () => clearTimeout(timer.current);
   }, [draft]);
+  useEffect(() => {
+    const flush = () => {
+      clearTimeout(timer.current);
+      pending.current?.();
+    };
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      flush();
+    };
+  }, []);
 
   const size = deckSize(draft);
   const holdIssues = hold ? holdProblems(hold.hold, draft.leader, draft.cards) : [];
@@ -310,6 +329,8 @@ export function DeckEditor({ initial, existing, hold, onBack, onHover, onPlay }:
     setDraft((d) => ({ ...d, leader, cards: Object.fromEntries(Object.entries(d.cards).filter(([n]) => fits(leader, n))) }));
   };
   const remove = async () => {
+    clearTimeout(timer.current);
+    pending.current = null;
     await deleteMyDeck(draft.id).catch(() => {});
     onBack();
   };
