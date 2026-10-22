@@ -122,3 +122,30 @@ test('en ligne (serveur) : partie avec un seul deck de la Cale : seul son joueur
   assert.equal(summary(B.id).holdDeck, undefined);
   assert.equal(summary(B.id).opponentHoldDeck, true);
 });
+
+test('en ligne (serveur) : les visuels choisis d’un deck arrivent chez l’adversaire sans trahir la liste, et restent avec la partie', () => {
+  db.prepare("INSERT OR IGNORE INTO sets (group_id, name) VALUES (1, 'ST-01: Starter Deck 1')").run();
+  db.prepare("INSERT OR IGNORE INTO cards (product_id, group_id, name, full_name, number) VALUES (498519, 1, 'DON!! Card', 'DON!! Card (Alternate Art)', 'DON!!')").run();
+  // ST01-012 en carte SP (version des boosters d'OP03), DON!! « Alternate Art »
+  const looks = { arts: { 'ST01-012': 'sp' }, don: '498519' };
+  const styled = decks.saveDeck(A.id, 'PERSO-visuel01', { name: 'Libre stylé', leader: STARTER.leader, cards: STARTER.cards, looks });
+  assert.deepEqual(styled.looks, looks);
+  const room = online.openRoom(A, styled.id, later(50));
+  assert.equal(room.host.list.looks, undefined, 'la liste jouée par le moteur n’a pas de visuels');
+  assert.deepEqual(room.host.looks, looks);
+  const m = online.enterRoom(B, room.code, 'ST-35', later(51));
+  // l'hôte voit ses visuels ; l'invité voit la DON!!, et la carte SP seulement quand elle est visible
+  assert.deepEqual(viewOf(m, 0).looks, { 0: looks });
+  const seen = viewOf(m, 1).looks?.[0];
+  assert.equal(seen?.don, '498519');
+  const visible = JSON.stringify(viewOf(m, 1).state).includes('"num":"ST01-012"');
+  assert.deepEqual(seen?.arts ?? {}, visible ? { 'ST01-012': 'sp' } : {});
+  online.giveUp(B, m.id, () => {}, later(52));
+  // la partie rangée garde les visuels des deux joueurs (elle contient déjà les deux decks)
+  const record = (userId: number) => {
+    const s = JSON.parse(records.recordSummariesJson(userId)).find((r: { startedAt: string }) => r.startedAt === m.startedAt);
+    return s.looks;
+  };
+  assert.deepEqual(record(A.id), { 0: looks });
+  assert.deepEqual(record(B.id), { 0: looks });
+});
