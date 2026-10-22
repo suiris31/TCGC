@@ -60,9 +60,9 @@ export function AdventureDeckScreen({ onBack }: { onBack: () => void }) {
   const close = () => { setEditing(null); zoom.close(); };
 
   return (
-    <div className="setup op-adeck">
+    <div className="setup op-adeck" data-ui="adventure-deck">
       <header className="op-adeck-head">
-        <button className="op-btn op-btn-ghost" onClick={onBack}>← Retour</button>
+        <button className="op-btn op-btn-ghost" data-ui="adventure-deck.back" onClick={onBack}>← Retour</button>
         <h1>🃏 Mon deck d’aventure</h1>
       </header>
       {!data && !error && <p className="op-muted"><span className="op-spinner" /> Chargement de ta Cale…</p>}

@@ -36,7 +36,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
   onHover?: (p: Preview | null) => void;
   onDropDon?: (uid: number) => void;
 }) {
-  if (hidden || card.num === HIDDEN) return <div className={`card card-${size} card-back`} data-uid={card.uid} />;
+  if (hidden || card.num === HIDDEN) return <div className={`card card-${size} card-back`} data-ui="table.card" data-uid={card.uid} />;
   const d = def(card.num);
   const f = findField(s, card.uid);
   const rested = f?.card.rested ?? false;
@@ -80,7 +80,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
   const dragOver = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } : undefined;
   const drop = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); onDropDon(card.uid); } : undefined;
   return (
-    <div className={classes} data-uid={card.uid} onClick={click} onDragOver={dragOver} onDrop={drop}
+    <div className={classes} data-ui="table.card" data-uid={card.uid} onClick={click} onDragOver={dragOver} onDrop={drop}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover?.(null); }}>
       <img src={cardImage(d)} alt={d.name} draggable={false} />

@@ -60,19 +60,19 @@ export function Lobby({ initialCode, onOpen, onBack }: { initialCode?: string; o
   };
 
   return (
-    <div className="setup lobby">
+    <div className="setup lobby" data-ui="lobby">
       <header className="setup-head">
         <h1>🌐 Jouer avec un ami</h1>
         <p className="op-muted">Crée une salle et envoie son code à ton ami, ou entre le code qu’il t’a donné.</p>
       </header>
       <div className="op-segmented lobby-tabs">
-        <button className={tab === 'create' ? 'seg on' : 'seg'} onClick={() => setTab('create')}>Créer une salle</button>
-        <button className={tab === 'join' ? 'seg on' : 'seg'} onClick={() => setTab('join')}>Rejoindre</button>
+        <button className={tab === 'create' ? 'seg on' : 'seg'} data-ui="lobby.tab-create" onClick={() => setTab('create')}>Créer une salle</button>
+        <button className={tab === 'join' ? 'seg on' : 'seg'} data-ui="lobby.tab-join" onClick={() => setTab('join')}>Rejoindre</button>
       </div>
       {tab === 'join' && (
         <section className="setup-section">
           <h2>Code de la salle</h2>
-          <input className="room-input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={8} placeholder="EX. K7MQ2P"
+          <input className="room-input" data-ui="lobby.code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={8} placeholder="EX. K7MQ2P"
             autoCapitalize="characters" autoComplete="off" spellCheck={false} inputMode="text" aria-label="Code de la salle" />
         </section>
       )}
@@ -89,8 +89,8 @@ export function Lobby({ initialCode, onOpen, onBack }: { initialCode?: string; o
       </section>
       {error && <p className="danger lobby-error">{error}</p>}
       <div className="setup-go">
-        <button className="op-btn op-btn-ghost" onClick={onBack}>← Retour</button>
-        <button className="op-btn op-btn-primary btn-big" onClick={go} disabled={busy || missing.length > 0 || (tab === 'join' && clean.length !== 6)}>
+        <button className="op-btn op-btn-ghost" data-ui="lobby.back" onClick={onBack}>← Retour</button>
+        <button className="op-btn op-btn-primary btn-big" data-ui="lobby.go" onClick={go} disabled={busy || missing.length > 0 || (tab === 'join' && clean.length !== 6)}>
           {busy ? '…' : tab === 'create' ? 'Créer la salle' : 'Rejoindre la partie'}
         </button>
       </div>

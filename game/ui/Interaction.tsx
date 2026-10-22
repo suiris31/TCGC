@@ -42,7 +42,7 @@ export function ActionMenu({ s, uid, anchor, actions, info, recommended, onActio
   const f = findField(s, uid);
   const num = f?.card.num ?? s.players.flatMap((P) => [...P.hand, ...P.trash]).find((c) => c.uid === uid)?.num;
   return (
-    <div ref={ref} className={`action-menu${sheet ? ' as-sheet' : ''}${details ? ' with-details' : ''}`} style={sheet ? undefined : { left: pos.left, top: pos.top }} onClick={(e) => e.stopPropagation()}>
+    <div ref={ref} data-ui="menu" className={`action-menu${sheet ? ' as-sheet' : ''}${details ? ' with-details' : ''}`} style={sheet ? undefined : { left: pos.left, top: pos.top }} onClick={(e) => e.stopPropagation()}>
       {details && num ? (
         <div className="sheet-card"><CardDetails s={s} num={num} uid={uid} /></div>
       ) : (
@@ -53,7 +53,7 @@ export function ActionMenu({ s, uid, anchor, actions, info, recommended, onActio
       )}
       {info && <p className="action-info">{info}</p>}
       {actions.map((a) => (
-        <button key={a.option.id + a.kind} className={`action ${a.useless ? 'action-useless' : ''} ${recommended === a.option.id || (a.kind === 'attack' && recommended?.startsWith(`attack:${uid}:`)) ? 'action-reco' : ''}`}
+        <button key={a.option.id + a.kind} data-ui={`menu.${a.kind}`} className={`action ${a.useless ? 'action-useless' : ''} ${recommended === a.option.id || (a.kind === 'attack' && recommended?.startsWith(`attack:${uid}:`)) ? 'action-reco' : ''}`}
           onClick={() => onAction(a)}>
           <span className="action-icon">{a.icon}</span>
           <span className="action-text">
@@ -63,7 +63,7 @@ export function ActionMenu({ s, uid, anchor, actions, info, recommended, onActio
           </span>
         </button>
       ))}
-      <button className="action action-cancel" onClick={onClose}><span className="action-icon">✕</span><span className="action-text">Fermer</span></button>
+      <button className="action action-cancel" data-ui="menu.close" onClick={onClose}><span className="action-icon">✕</span><span className="action-text">Fermer</span></button>
     </div>
   );
 }
@@ -135,8 +135,8 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
           <span className={preview ? (preview.ok ? 'good' : 'op-warn') : 'op-muted'}>{preview?.text ?? `Les cibles possibles brillent en rouge : le Leader adverse ou un Personnage adverse épuisé. ${touch ? 'Touche-en une pour voir le résultat.' : 'Survole-les pour voir le résultat.'}`}</span>
         </div>
         <div className="bar-buttons">
-          {onConfirmAttack && <button className="op-btn op-btn-primary btn-end" onClick={onConfirmAttack}>⚔ Attaquer</button>}
-          <button className="op-btn op-btn-ghost" onClick={onCancelTargeting}>{touch ? 'Annuler' : 'Annuler (Échap)'}</button>
+          {onConfirmAttack && <button className="op-btn op-btn-primary btn-end" data-ui="table.confirm-attack" onClick={onConfirmAttack}>⚔ Attaquer</button>}
+          <button className="op-btn op-btn-ghost" data-ui="table.cancel-target" onClick={onCancelTargeting}>{touch ? 'Annuler' : 'Annuler (Échap)'}</button>
         </div>
       </div>
     );
@@ -165,17 +165,17 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
       </div>
       <div className="bar-buttons">
         {onHint && d.options.length > 1 && (
-          <button className="op-btn op-btn-ghost btn-hint" onClick={onHint} disabled={hintState === 'loading'} title="Le coach simule la suite de la partie pour chaque choix">
+          <button className="op-btn op-btn-ghost btn-hint" data-ui="table.hint" onClick={onHint} disabled={hintState === 'loading'} title="Le coach simule la suite de la partie pour chaque choix">
             {hintState === 'loading' ? 'Le coach réfléchit…' : hintState === 'ready' ? '★ Conseil affiché' : '💡 Conseil'}
           </button>
         )}
         {others.map((o) => (
-          <button key={o.id} className={`op-btn ${BUTTON_STYLE[o.id] ?? 'btn-choice'} ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onButton(o.id)}>
+          <button key={o.id} data-ui={`table.option-${o.id}`} className={`op-btn ${BUTTON_STYLE[o.id] ?? 'btn-choice'} ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onButton(o.id)}>
             {o.label}{recommended === o.id && ' ★'}
           </button>
         ))}
         {end && (
-          <button className={`op-btn op-btn-primary btn-end ${recommended === 'end' ? 'btn-reco' : ''}`} onClick={onEndTurn} title="Entrée">
+          <button className={`op-btn op-btn-primary btn-end ${recommended === 'end' ? 'btn-reco' : ''}`} data-ui="table.end-turn" onClick={onEndTurn} title="Entrée">
             Fin du tour{recommended === 'end' && ' ★'}
           </button>
         )}
