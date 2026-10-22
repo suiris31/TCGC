@@ -1,8 +1,8 @@
-// Atelier : essais des écrans de l'aventure avec des données de démonstration, sans serveur ni partie. Ouvert par
-// l'adresse #play/atelier (aucun lien visible) ; #play/atelier/<page> ouvre directement une page (elle reste ouverte
-// après un rechargement).
-// Chaque tâche d'interface ajoute son fichier game/ui/adventure/atelier/<page>.atelier.tsx, chargé automatiquement,
-// qui exporte `title` (le nom de la page) et `render` (une fonction qui renvoie l'écran, et peut utiliser des hooks).
+// Atelier : essais des écrans du jeu avec des données de démonstration, sans serveur ni partie. Ouvert par l'adresse
+// #play/atelier (aucun lien visible) ; #play/atelier/<page> ouvre directement une page (elle reste ouverte après un
+// rechargement). Les pages « plateau-<état> » montrent le plateau sur des états fixés (plateau/etats.ts).
+// Chaque tâche d'interface ajoute son fichier game/ui/atelier/<page>.atelier.tsx, chargé automatiquement, qui exporte
+// `title` (le nom de la page) et `render` (une fonction qui renvoie l'écran, et peut utiliser des hooks).
 import { Component, type JSX, type ReactNode } from 'react';
 
 export interface AtelierPage {
@@ -10,7 +10,7 @@ export interface AtelierPage {
   render: () => JSX.Element;
 }
 
-const modules = import.meta.glob<Partial<AtelierPage> & { default?: AtelierPage }>('./atelier/*.atelier.tsx', { eager: true });
+const modules = import.meta.glob<Partial<AtelierPage> & { default?: AtelierPage }>('./*.atelier.tsx', { eager: true });
 
 // Nom d'une page : celui de son fichier, sans « .atelier.tsx » (« carte » pour carte.atelier.tsx)
 const PAGES = Object.entries(modules)
@@ -62,7 +62,7 @@ export function Atelier({ page, onPage, onBack }: { page?: string; onPage: (page
         </section>
       ) : (
         <p className="op-muted op-atelier-intro">
-          Essais des écrans de l’aventure avec des données de démonstration : rien n’est enregistré et aucune partie ne
+          Essais des écrans du jeu avec des données de démonstration : rien n’est enregistré et aucune partie ne
           se lance. Choisis une page ci-dessus{PAGES.length ? '' : ' (aucune pour l’instant)'}.
         </p>
       )}

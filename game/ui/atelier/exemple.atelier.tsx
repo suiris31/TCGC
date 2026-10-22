@@ -1,11 +1,11 @@
 // Page d'exemple de l'atelier (tâche 0) : les chapitres des arcs et leur état, d'après des victoires simulées. Sert de
 // modèle aux fichiers d'atelier des autres tâches : exporter `title` et `render`.
 import { useState } from 'react';
-import { ARCS } from '../../../adventure/arcs.ts';
-import { chapterStatuses, currentChapter, requiredChapters } from '../../../adventure/progress.ts';
-import type { ChapterStatus, Reward } from '../../../adventure/types.ts';
-import { LEVELS } from '../../../ai/search.ts';
-import { DECKS } from '../../../engine/decks.ts';
+import { ARCS } from '../../adventure/arcs.ts';
+import { chapterStatuses, currentChapter, requiredChapters } from '../../adventure/progress.ts';
+import type { ChapterStatus, Reward } from '../../adventure/types.ts';
+import { LEVELS } from '../../ai/search.ts';
+import { DECKS } from '../../engine/decks.ts';
 
 export const title = 'Chapitres (exemple)';
 

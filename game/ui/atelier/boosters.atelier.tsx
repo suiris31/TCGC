@@ -2,8 +2,8 @@
 // parallèle, deux boosters (récompense d'un chapitre) et un display, avec des données de démonstration. La Cale peut
 // être vide, à moitié remplie ou inconnue (pas de « Nouveau ! »), et les animations normales ou réduites.
 import { useMemo, useState } from 'react';
-import type { BoosterContent, PulledCard } from '../../../boosters/types.ts';
-import { BoosterOpening, ownedKey } from '../BoosterOpening.tsx';
+import type { BoosterContent, PulledCard } from '../../boosters/types.ts';
+import { BoosterOpening, ownedKey } from '../adventure/BoosterOpening.tsx';
 
 export const title = 'Ouverture des boosters';
 
