@@ -93,7 +93,10 @@ export function compare(before, after, out) {
   const shotsA = new Set(fs.readdirSync(before).filter((f) => SHOT.test(f)));
   const shotsB = new Set(fs.readdirSync(after).filter((f) => SHOT.test(f)));
   let identical = 0;
-  for (const f of [...new Set([...shotsA, ...shotsB])].sort()) {
+  // un dossier sans captures (la référence versionnée) : on ne compare que les rapports
+  const both = shotsA.size && shotsB.size ? [...new Set([...shotsA, ...shotsB])].sort() : [];
+  if (!both.length) lines.push('| (pas de captures des deux côtés) | |');
+  for (const f of both) {
     if (!shotsA.has(f) || !shotsB.has(f)) {
       lines.push(`| ${f} | ${shotsA.has(f) ? 'disparue après' : 'nouvelle'} |`);
       continue;

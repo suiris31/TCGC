@@ -131,6 +131,19 @@ voulu, ou une régression corrigée. Le nombre de cibles < 44 px et de textes < 
 
 Pour regarder deux captures côte à côte, ouvre-les dans deux onglets ; l'image `diff/` montre où chercher.
 
+## La référence de l'étape R
+
+`reference/` contient les rapports du commit de départ de l'étape (`refonte/etape-R` + repères `data-ui`, sans
+changement visible) : `rapport-<format>.json` et `rapport.md`. Les captures n'y sont pas (elles montrent les visuels
+des cartes, qui ne vont pas dans le dépôt) : pour comparer des images, refais un dossier « avant » sur le commit de
+départ de ta tâche. Les rapports, eux, se comparent directement :
+
+```bash
+npm run ui:tour -- --compare scripts/ui/reference <après>
+```
+
+(la partie « Captures » de la comparaison est alors vide).
+
 ## Les repères `data-ui`
 
 Convention `data-ui="<écran>.<élément>"` (`01-contrats.md`, § 14.4). On ne les renomme pas sans mettre à jour
