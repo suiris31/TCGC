@@ -1,0 +1,784 @@
+{
+  "outil": "ui:tour",
+  "version": 1,
+  "commit": "4603d89",
+  "format": {
+    "nom": "paysage",
+    "largeur": 844,
+    "hauteur": 390,
+    "facteur": 3,
+    "toucher": true
+  },
+  "parcours": [
+    "accueil",
+    "partie",
+    "aventure",
+    "decks",
+    "parties",
+    "salon"
+  ],
+  "ecrans": [
+    {
+      "id": "01-accueil",
+      "titre": "Accueil de « Jouer »",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 4297
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 12,
+        "petites": 6,
+        "liste": [
+          "97×20 [home.history] « 📈 Mes parties »",
+          "90×20 [home.decks] « 🃏 Mes decks »",
+          "109×20 [home.help] « Comment jouer ? »",
+          "58×20 a.op-link « À propos »",
+          "100×24 select « Normale Grande Très grande »",
+          "779×39 [home.adventure] « Partir à l’aventure »"
+        ]
+      },
+      "textes": {
+        "total": 17,
+        "petits": 0,
+        "min": 11.4,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "02-partie-mulligan",
+      "titre": "Partie rapide : main de départ",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 425
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 2,
+        "petites": 0,
+        "liste": []
+      },
+      "textes": {
+        "total": 3,
+        "petits": 0,
+        "min": 12.8,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "03-partie-mon-tour",
+      "titre": "Partie rapide : début de mon tour",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 390
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 11,
+        "petites": 11,
+        "liste": [
+          "29×29 [table.undo] « ↶ »",
+          "29×29 [table.panel] « 📜 »",
+          "29×29 [table.settings] « ⚙ »",
+          "29×29 [table.guide] « 📖 »",
+          "54×29 [table.leave] « Menu »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "93×33 [table.hint] « 💡 Conseil »",
+          "101×33 [table.end-turn] « Fin du tour »"
+        ]
+      },
+      "textes": {
+        "total": 44,
+        "petits": 14,
+        "min": 3.8,
+        "liste": [
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisée · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "10.3 px div.don-legend « # utilisables · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "10.3 px span.op-muted « Touche une carte qui brille pour voir c… »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "04-partie-carte-jouee",
+      "titre": "Partie rapide : une carte jouée",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 390
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 11,
+        "petites": 11,
+        "liste": [
+          "29×29 [table.undo] « ↶ »",
+          "29×29 [table.panel] « 📜 »",
+          "29×29 [table.settings] « ⚙ »",
+          "29×29 [table.guide] « 📖 »",
+          "54×29 [table.leave] « Menu »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "93×33 [table.hint] « 💡 Conseil »",
+          "101×33 [table.end-turn] « Fin du tour »"
+        ]
+      },
+      "textes": {
+        "total": 44,
+        "petits": 14,
+        "min": 3.8,
+        "liste": [
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisée · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisée · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "10.3 px span.op-muted « Touche une carte qui brille pour voir c… »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "05-partie-don",
+      "titre": "Partie rapide : une DON!! donnée au Leader",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 408
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 6,
+        "petites": 5,
+        "liste": [
+          "29×29 [table.undo] « ↶ »",
+          "29×29 [table.panel] « 📜 »",
+          "29×29 [table.settings] « ⚙ »",
+          "29×29 [table.guide] « 📖 »",
+          "54×29 [table.leave] « Menu »"
+        ]
+      },
+      "textes": {
+        "total": 27,
+        "petits": 0,
+        "min": 11.2,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "07-partie-defense",
+      "titre": "Partie rapide : l’IA attaque (blocage ou contre)",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 449
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 11,
+        "petites": 11,
+        "liste": [
+          "29×29 [table.undo] « ↶ »",
+          "29×29 [table.panel] « 📜 »",
+          "29×29 [table.settings] « ⚙ »",
+          "29×29 [table.guide] « 📖 »",
+          "54×29 [table.leave] « Menu »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "93×33 [table.hint] « 💡 Conseil »",
+          "190×33 [table.option-pass] « Ne pas contrer davantage »"
+        ]
+      },
+      "textes": {
+        "total": 52,
+        "petits": 14,
+        "min": 4.8,
+        "liste": [
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisées · réserve # »",
+          "10.3 px span.op-muted « · réserve # »",
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisée · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "10.4 px span.op-muted « Touche une carte de ta main qui brille … »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "08-partie-tour-suivant",
+      "titre": "Partie rapide : mon tour suivant",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 535
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 11,
+        "petites": 11,
+        "liste": [
+          "29×29 [table.undo] « ↶ »",
+          "29×29 [table.panel] « 📜 »",
+          "29×29 [table.settings] « ⚙ »",
+          "29×29 [table.guide] « 📖 »",
+          "54×29 [table.leave] « Menu »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "93×33 [table.hint] « 💡 Conseil »",
+          "101×33 [table.end-turn] « Fin du tour »"
+        ]
+      },
+      "textes": {
+        "total": 49,
+        "petits": 17,
+        "min": 3.8,
+        "liste": [
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisées · réserve # »",
+          "10.3 px span.op-muted « · réserve # »",
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "10.3 px div.don-legend « # utilisables · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "10.3 px span.op-muted « Touche une carte qui brille pour voir c… »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "09-partie-attaque-cible",
+      "titre": "Partie rapide : choix de la cible d’une attaque",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 535
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 11,
+        "petites": 11,
+        "liste": [
+          "29×29 [table.undo] « ↶ »",
+          "29×29 [table.panel] « 📜 »",
+          "29×29 [table.settings] « ⚙ »",
+          "29×29 [table.guide] « 📖 »",
+          "54×29 [table.leave] « Menu »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "101×33 [table.confirm-attack] « ⚔ Attaquer »",
+          "74×33 [table.cancel-target] « Annuler »"
+        ]
+      },
+      "textes": {
+        "total": 49,
+        "petits": 17,
+        "min": 3.8,
+        "liste": [
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisées · réserve # »",
+          "10.3 px span.op-muted « · réserve # »",
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "10.3 px div.don-legend « # utilisables · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "10.4 px span.good « # contre # : ça passe, il perd # Vie (i… »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "10-partie-attaque-faite",
+      "titre": "Partie rapide : attaque résolue",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 594
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 11,
+        "petites": 11,
+        "liste": [
+          "29×29 [table.undo] « ↶ »",
+          "29×29 [table.panel] « 📜 »",
+          "29×29 [table.settings] « ⚙ »",
+          "29×29 [table.guide] « 📖 »",
+          "54×29 [table.leave] « Menu »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "27×30 [table.pile] « # Deck »",
+          "27×30 [table.pile] « # Défausse »",
+          "93×33 [table.hint] « 💡 Conseil »",
+          "101×33 [table.end-turn] « Fin du tour »"
+        ]
+      },
+      "textes": {
+        "total": 49,
+        "petits": 17,
+        "min": 3.8,
+        "liste": [
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "4.8 px span.don-card.don-rested « DON!! »",
+          "10.3 px div.don-legend « # utilisable · # épuisées · réserve # »",
+          "10.3 px span.op-muted « · réserve # »",
+          "9.3 px span.pile-label « Deck »",
+          "9.3 px span.pile-label « Défausse »",
+          "10.1 px span.zone-label « # Vies »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "3.8 px span.don-card.don-drag « DON!! »",
+          "10.3 px div.don-legend « # utilisables · réserve # »",
+          "10.4 px span.op-muted « · réserve # »",
+          "10.3 px span.op-muted « Touche une carte qui brille pour voir c… »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "11-aventure-accueil",
+      "titre": "Aventure : accueil",
+      "adresse": "#play/aventure",
+      "page": {
+        "largeur": 844,
+        "hauteur": 428
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 2,
+        "petites": 1,
+        "liste": [
+          "62×33 [adventure.back] « ← Jeu »"
+        ]
+      },
+      "textes": {
+        "total": 8,
+        "petits": 0,
+        "min": 12.8,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "12-aventure-carte",
+      "titre": "Aventure : carte d’East Blue",
+      "adresse": "#play/aventure",
+      "page": {
+        "largeur": 844,
+        "hauteur": 390
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 17,
+        "petites": 6,
+        "liste": [
+          "62×33 [adventure.back] « ← Jeu »",
+          "71×33 button.op-wallet-badge.op-wallet-link « 👛 # ฿ »",
+          "97×33 [adventure.hold] « 🧰 Ma Cale »",
+          "109×33 [adventure.deck] « 🃏 Mon deck »",
+          "104×33 [adventure.shop] « 🏪 Boutique »",
+          "91×39 [adventure.go] « ⚓ Y aller »"
+        ]
+      },
+      "textes": {
+        "total": 27,
+        "petits": 7,
+        "min": 7.3,
+        "liste": [
+          "8.9 px text « RED LINE »",
+          "7.3 px text « Calm Belt »",
+          "10.8 px text « Marie-Joie »",
+          "10.8 px span « À jouer »",
+          "10.7 px span « Gagné »",
+          "10.8 px span « Verrouillé »",
+          "10.8 px span « Défi bonus »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "13-aventure-chapitre",
+      "titre": "Aventure : un chapitre",
+      "adresse": "#play/aventure",
+      "page": {
+        "largeur": 844,
+        "hauteur": 540
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 4,
+        "petites": 3,
+        "liste": [
+          "74×33 [chapter.back] « ← Carte »",
+          "65×33 [chapter.skip] « Passer »",
+          "89×33 [chapter.next] « Suivant ▸ »"
+        ]
+      },
+      "textes": {
+        "total": 18,
+        "petits": 2,
+        "min": 10.4,
+        "liste": [
+          "10.4 px b « OP# »",
+          "10.7 px i « ×# »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "14-aventure-cale",
+      "titre": "Aventure : la Cale",
+      "adresse": "#play/aventure",
+      "page": {
+        "largeur": 844,
+        "hauteur": 929
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 19,
+        "petites": 11,
+        "liste": [
+          "95×39 [hold.back] « ← Retour »",
+          "79×18 button.op-link.op-small « Taux de tirage »",
+          "214×39 button.op-btn.op-btn-ghost « ♻️ Échanger mes doublons »",
+          "120×39 button.op-btn.op-btn-ghost « 🏪 Comptoir »",
+          "821×36 input.db-search « Rechercher une carte »",
+          "130×36 select « Toutes couleurs Rouge Vert Bleu Violet … »",
+          "130×36 select « Tous types Leaders Personnages Événemen… »",
+          "130×36 select « Toutes raretés Commune (C) Leader (L) S… »",
+          "130×36 select « Toutes extensions ST# »",
+          "130×36 select « Toutes versions Normales Spéciales (par… »",
+          "115×36 select « Numéro Rareté Couleur Coût Exemplaires »"
+        ]
+      },
+      "textes": {
+        "total": 10,
+        "petits": 0,
+        "min": 12.8,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "15-aventure-mon-deck",
+      "titre": "Aventure : mon deck d’aventure",
+      "adresse": "#play/aventure",
+      "page": {
+        "largeur": 844,
+        "hauteur": 528
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 2,
+        "petites": 2,
+        "liste": [
+          "95×39 [adventure-deck.back] « ← Retour »",
+          "79×33 [decks.edit] « Modifier »"
+        ]
+      },
+      "textes": {
+        "total": 27,
+        "petits": 11,
+        "min": 10.4,
+        "liste": [
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.4 px span.curve-cost « # »",
+          "10.8 px span.curve-cost « #+ »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "16-boutique",
+      "titre": "Boutique",
+      "adresse": "#play/aventure",
+      "page": {
+        "largeur": 844,
+        "hauteur": 640
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 5,
+        "petites": 5,
+        "liste": [
+          "95×39 [shop.back] « ← Retour »",
+          "313×20 summary « Comment gagner des Berry ? »",
+          "212×18 button.op-link.op-small « Que contient un booster, un display ? »",
+          "87×39 button.op-btn.op-btn-primary « Acheter »",
+          "87×39 button.op-btn.op-btn-primary « Acheter »"
+        ]
+      },
+      "textes": {
+        "total": 33,
+        "petits": 1,
+        "min": 10.4,
+        "liste": [
+          "10.4 px b « OP# »"
+        ]
+      },
+      "erreurs": []
+    },
+    {
+      "id": "17-mes-decks",
+      "titre": "Mes decks",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 4890
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 10,
+        "petites": 4,
+        "liste": [
+          "29×29 [decks.close] « ✕ »",
+          "149×39 [decks.new] « ＋ Nouveau deck »",
+          "293×36 select « Choisir… Sabo (méta, octobre #) Mihawk … »",
+          "152×39 [decks.import] « Importer une liste »"
+        ]
+      },
+      "textes": {
+        "total": 13,
+        "petits": 0,
+        "min": 11.4,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "18-choix-du-leader",
+      "titre": "Mes decks : choix du Leader",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 4890
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 12,
+        "petites": 0,
+        "liste": []
+      },
+      "textes": {
+        "total": 18,
+        "petits": 0,
+        "min": 11.4,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "19-editeur",
+      "titre": "Éditeur de deck",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 4890
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 17,
+        "petites": 11,
+        "liste": [
+          "105×33 [editor.back] « ← Mes decks »",
+          "570×36 input.db-name « Nom du deck »",
+          "46×18 button.op-link.op-small « changer »",
+          "118×31 button.db-status.db-ko « ✖ # à corriger »",
+          "134×39 [editor.pane-cards] « Ajouter des cartes »",
+          "68×39 [editor.pane-deck] « Deck (#) »",
+          "46×39 [editor.pane-check] « Bilan »",
+          "471×36 input.db-search « Rechercher une carte »",
+          "120×36 select « Toutes Personnages Événements Lieux »",
+          "99×36 select « Tout coût Coût # Coût # Coût # Coût # C… »",
+          "90×36 label.db-check « Possédées »"
+        ]
+      },
+      "textes": {
+        "total": 18,
+        "petits": 0,
+        "min": 11.4,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "20-mes-parties",
+      "titre": "Mes parties",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 4890
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 4,
+        "petites": 4,
+        "liste": [
+          "267×31 [history.tab-progress] « Progression »",
+          "267×31 [history.tab-axes] « Axes de progrès »",
+          "267×31 [history.tab-games] « Toutes les parties »",
+          "29×29 [history.close] « ✕ »"
+        ]
+      },
+      "textes": {
+        "total": 19,
+        "petits": 0,
+        "min": 12.3,
+        "liste": []
+      },
+      "erreurs": []
+    },
+    {
+      "id": "21-salon",
+      "titre": "Salon en ligne",
+      "adresse": "#play",
+      "page": {
+        "largeur": 844,
+        "hauteur": 2281
+      },
+      "defilementHorizontal": false,
+      "debordements": [],
+      "cibles": {
+        "total": 10,
+        "petites": 9,
+        "liste": [
+          "194×39 [lobby.tab-create] « Créer une salle »",
+          "194×39 [lobby.tab-join] « Rejoindre »",
+          "71×31 button.deck-chip.on « Toutes »",
+          "75×31 button.deck-chip « Rouge »",
+          "60×31 button.deck-chip « Vert »",
+          "61×31 button.deck-chip « Bleu »",
+          "72×31 button.deck-chip « Violet »",
+          "62×31 button.deck-chip « Noir »",
+          "71×31 button.deck-chip « Jaune »"
+        ]
+      },
+      "textes": {
+        "total": 13,
+        "petits": 0,
+        "min": 13.4,
+        "liste": []
+      },
+      "erreurs": []
+    }
+  ],
+  "etapes": [
+    "carte jouée : Karoo (coût 1)",
+    "DON!! donnée au Leader",
+    "fin du tour sans confirmation",
+    "décision : pass",
+    "attaque du Leader adverse"
+  ],
+  "avertissements": [],
+  "echecs": [],
+  "totaux": {
+    "ecrans": 20,
+    "ciblesPetites": 133,
+    "textesPetits": 114,
+    "erreurs": 0,
+    "defilementHorizontal": []
+  },
+  "lanceLe": "2026-10-22T13:53:11.321Z",
+  "durees": {
+    "ouvertureOngletMs": 543,
+    "accueilMs": 11173,
+    "partieMs": 98851,
+    "aventureMs": 70200,
+    "decksMs": 33635,
+    "partiesMs": 12063,
+    "salonMs": 11624,
+    "totalMs": 237805
+  }
+}

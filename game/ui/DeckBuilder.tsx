@@ -97,15 +97,15 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
   };
   return (
     <div className="modal" onClick={onClose}>
-      <div className="modal-box history db" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-box history db" data-ui="decks" onClick={(e) => e.stopPropagation()}>
         <header className="history-head">
           <h2>🃏 Mes decks</h2>
           <span className="db-grow" />
-          <button className="icon-btn" onClick={onClose} title="Fermer (Échap)">✕</button>
+          <button className="icon-btn" data-ui="decks.close" onClick={onClose} title="Fermer (Échap)">✕</button>
         </header>
         <div className="history-body">
           <div className="db-actions">
-            <button className="op-btn op-btn-primary" onClick={() => setPicking('new')}>＋ Nouveau deck</button>
+            <button className="op-btn op-btn-primary" data-ui="decks.new" onClick={() => setPicking('new')}>＋ Nouveau deck</button>
             <label className="db-copy">
               <span className="op-small op-muted">Copier un deck</span>
               <select value="" onChange={(e) => copy(e.target.value)}>
@@ -116,7 +116,7 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
                 {adventure.length > 0 && <optgroup label="Mes decks d’aventure">{adventure.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>}
               </select>
             </label>
-            <button className="op-btn op-btn-ghost" onClick={() => setImporting(true)}>Importer une liste</button>
+            <button className="op-btn op-btn-ghost" data-ui="decks.import" onClick={() => setImporting(true)}>Importer une liste</button>
           </div>
           {notice && <p className="db-notice">{notice}</p>}
           {error && <p className="danger">Impossible de charger tes decks : vérifie ta connexion.</p>}
@@ -173,7 +173,7 @@ export function MyDeckTile({ deck, onOpen, onPlay, busy, chosen, onChoose }: {
         {isAdventureDeck(deck) && <span className="op-chip op-db-tag">{chosen ? '⚓ Deck de l’aventure' : '🧭 Aventure'}</span>}
       </div>
       <div className="db-tile-actions">
-        <button className="op-btn op-btn-ghost btn-small" onClick={onOpen} disabled={busy}>Modifier</button>
+        <button className="op-btn op-btn-ghost btn-small" data-ui="decks.edit" onClick={onOpen} disabled={busy}>Modifier</button>
         {ok && onChoose && !chosen && <button className="op-btn op-btn-primary btn-small" onClick={onChoose} disabled={busy}>Choisir</button>}
         {ok && onPlay && <button className="op-btn op-btn-primary btn-small" onClick={onPlay}>Jouer</button>}
       </div>
@@ -187,14 +187,14 @@ export function LeaderPicker({ onPick, onClose, onHover, only }: { onPick: (num:
     .sort((a, b) => CARDS[a].colors.join().localeCompare(CARDS[b].colors.join()) || CARDS[a].name.localeCompare(CARDS[b].name)), [only]);
   return (
     <div className="modal" onClick={onClose}>
-      <div className="modal-box db-leaders" onClick={(e) => e.stopPropagation()}>
-        <header className="db-row"><h3>Choisis ton Leader</h3><span className="db-grow" /><button className="icon-btn" onClick={onClose}>✕</button></header>
+      <div className="modal-box db-leaders" data-ui="leaders" onClick={(e) => e.stopPropagation()}>
+        <header className="db-row"><h3>Choisis ton Leader</h3><span className="db-grow" /><button className="icon-btn" data-ui="leaders.close" onClick={onClose}>✕</button></header>
         <p className="op-small op-muted">{only
           ? 'Seuls les Leaders de ta Cale que le jeu sait déjà jouer sont proposés : gagne des boosters pour en trouver d’autres.'
           : 'Seuls les Leaders que le jeu sait déjà jouer sont proposés.'}</p>
         <div className="db-leader-grid">
           {leaders.map((n) => (
-            <button key={n} className="db-leader" onClick={() => onPick(n)}
+            <button key={n} className="db-leader" data-ui="leaders.item" onClick={() => onPick(n)}
               onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover({ num: n, rect: e.currentTarget.getBoundingClientRect() }); }}
               onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover(null); }}>
               <img src={cardImage(CARDS[n])} alt="" />
@@ -338,10 +338,10 @@ export function DeckEditor({ initial, existing, hold, onBack, onHover, onPlay }:
   const saveText = { saved: 'Enregistré', saving: 'Enregistrement…', pending: stored.current ? 'Modifié' : 'Pas encore enregistré', error: 'Pas enregistré' }[save];
   return (
     <div className="modal" onClick={onBack}>
-      <div className="modal-box history db db-editor" onClick={(e) => e.stopPropagation()}
+      <div className="modal-box history db db-editor" data-ui="editor" onClick={(e) => e.stopPropagation()}
         style={{ ['--c1' as string]: COLOR_HEX[L.colors[0]] ?? '#666', ['--c2' as string]: COLOR_HEX[L.colors[1] ?? L.colors[0]] ?? '#666' }}>
         <header className="history-head db-head">
-          <button className="op-btn op-btn-ghost btn-small" onClick={onBack}>← Mes decks</button>
+          <button className="op-btn op-btn-ghost btn-small" data-ui="editor.back" onClick={onBack}>← Mes decks</button>
           <input className="db-name" value={draft.name} maxLength={40} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} aria-label="Nom du deck" />
           <span className={`op-small ${save === 'error' ? 'danger' : 'op-muted'}`} title={saveError ?? undefined}>{saveText}</span>
         </header>
@@ -371,7 +371,7 @@ export function DeckEditor({ initial, existing, hold, onBack, onHover, onPlay }:
         )}
         <nav className="history-tabs db-tabs">
           {([['cards', 'Ajouter des cartes'], ['deck', `Deck (${size})`], ['check', 'Bilan']] as [Pane, string][]).map(([p, label]) => (
-            <button key={p} className={pane === p ? 'seg on' : 'seg'} onClick={() => setPane(p)}>{label}</button>
+            <button key={p} className={pane === p ? 'seg on' : 'seg'} data-ui={`editor.pane-${p}`} onClick={() => setPane(p)}>{label}</button>
           ))}
         </nav>
         <div className="db-panes">

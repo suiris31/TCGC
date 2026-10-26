@@ -21,7 +21,8 @@
     "game:fingerprint": "node --no-warnings scripts/game/fingerprint.ts",
     "game:custom-smoke": "node --no-warnings scripts/game/custom-smoke.ts",
     "rl:bench": "node --no-warnings game/rl/bench.ts",
-    "rl:synthetic-catalog": "node --no-warnings game/rl/testing/synthetic-catalog.ts"
+    "rl:synthetic-catalog": "node --no-warnings game/rl/testing/synthetic-catalog.ts",
+    "ui:tour": "node scripts/ui/tour.mjs"
   },
   "engines": {
     "node": ">=22.13"

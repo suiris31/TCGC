@@ -250,7 +250,7 @@ export function Intro({ s, onDone }: { s: GameState; onDone: () => void }) {
   useTimeout(onDone, 1900);
   const [a, b] = s.players;
   return (
-    <div className="intro" onClick={onDone}>
+    <div className="intro" data-ui="table.intro" onClick={onDone}>
       <div className="intro-side intro-left"><img src={cardImage(def(a.leader.num))} alt="" /><span>{a.name}</span></div>
       <div className="intro-vs">VS</div>
       <div className="intro-side intro-right"><img src={cardImage(def(b.leader.num))} alt="" /><span>{b.name}</span></div>
@@ -264,7 +264,7 @@ export function Celebration({ won, onDone, sub }: { won: boolean; onDone: () => 
   useEffect(() => { sfx(won ? 'win' : 'lose'); }, [won]);
   useTimeout(onDone, 2600);
   return (
-    <div className={`celebration ${won ? 'cel-win' : 'cel-lose'}`} onClick={onDone}>
+    <div className={`celebration ${won ? 'cel-win' : 'cel-lose'}`} data-ui="table.celebration" onClick={onDone}>
       {won && <div className="confetti">{Array.from({ length: 40 }, (_, i) => <i key={i} style={{ ['--i' as string]: i }} />)}</div>}
       <div className="cel-title">{won ? 'Victoire !' : 'Défaite'}</div>
       <div className="cel-sub">{sub ?? (won ? 'Bien joué, capitaine.' : 'Le coach a préparé ton récap.')}</div>

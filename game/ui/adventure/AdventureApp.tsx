@@ -351,9 +351,9 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
 function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: string; onSail: () => void; onBack: () => void }) {
   const starter = ARC.starterDeck ? DECKS[ARC.starterDeck] : undefined;
   return (
-    <div className="setup op-adv op-adv-welcome">
+    <div className="setup op-adv op-adv-welcome" data-ui="adventure.welcome">
       <header className="op-adv-head">
-        <button className="op-btn op-btn-ghost btn-small" onClick={onBack}>← Jeu</button>
+        <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.back" onClick={onBack}>← Jeu</button>
       </header>
       <div className="op-adv-welcome-body">
         <div className="op-adv-welcome-ship" aria-hidden="true">⛵</div>
@@ -369,7 +369,7 @@ function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: strin
           </p>
         )}
         {error && <p className="danger">{error}</p>}
-        <button className="op-btn op-btn-primary btn-big" disabled={Boolean(busy)} onClick={onSail}>
+        <button className="op-btn op-btn-primary btn-big" data-ui="adventure.sail" disabled={Boolean(busy)} onClick={onSail}>
           {busy ? <><span className="op-spinner" /> {busy}</> : '⚓ Prendre la mer'}
         </button>
         <p className="op-small op-muted op-adv-fan">Projet de fan non officiel et gratuit, sans lien avec Bandai, Shueisha ou Toei Animation.</p>
@@ -401,20 +401,20 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
   const waiting = adv.boosters.length;
   const { wallet } = useWallet();
   return (
-    <div className="setup op-adv op-adv-map">
+    <div className="setup op-adv op-adv-map" data-ui="adventure.map">
       <header className="op-adv-head">
-        <button className="op-btn op-btn-ghost btn-small" onClick={onBack}>← Jeu</button>
+        <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.back" onClick={onBack}>← Jeu</button>
         <h1 className="op-adv-map-title">{ARC.title}</h1>
         <WalletBadge wallet={wallet} onClick={onShop} />
         <div className="op-adv-head-actions">
           {waiting > 0 && (
-            <button className="op-btn btn-small op-adv-gift" disabled={busy} onClick={onOpenBoosters} title="Ouvrir tes boosters gagnés (ils restent aussi dans ta Cale)">
+            <button className="op-btn btn-small op-adv-gift" data-ui="adventure.boosters" disabled={busy} onClick={onOpenBoosters} title="Ouvrir tes boosters gagnés (ils restent aussi dans ta Cale)">
               {busy ? <span className="op-spinner" /> : <PackIcon set={adv.boosters[0].set} />} {waiting} booster{waiting > 1 ? 's' : ''}<span className="op-adv-wide"> à ouvrir</span>
             </button>
           )}
-          <button className="op-btn op-btn-ghost btn-small" onClick={onHold}>🧰 Ma Cale</button>
-          <button className="op-btn op-btn-ghost btn-small" onClick={onDeck}>🃏 Mon deck</button>
-          <button className="op-btn op-btn-ghost btn-small" onClick={onShop}>🏪 Boutique</button>
+          <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.hold" onClick={onHold}>🧰 Ma Cale</button>
+          <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.deck" onClick={onDeck}>🃏 Mon deck</button>
+          <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.shop" onClick={onShop}>🏪 Boutique</button>
         </div>
       </header>
       <WorldMap arcs={ARCS} statuses={statuses} current={current} onPick={onPick} selected={picked} />
@@ -430,9 +430,9 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
             <span>Prochaine étape : <strong>{next.place}</strong> · {next.title}</span>
           ) : null}
         {next && !locked && !error && (
-          <button className="op-btn op-btn-primary" onClick={() => onChapter(next.id)}>⚓ Y aller</button>
+          <button className="op-btn op-btn-primary" data-ui="adventure.go" onClick={() => onChapter(next.id)}>⚓ Y aller</button>
         )}
-        {finished && !locked && !error && <button className="op-btn op-btn-ghost" onClick={onSummary}>📜 Bilan</button>}
+        {finished && !locked && !error && <button className="op-btn op-btn-ghost" data-ui="adventure.summary" onClick={onSummary}>📜 Bilan</button>}
       </div>
     </div>
   );

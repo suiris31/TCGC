@@ -737,7 +737,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   const menuActions = menu && view ? view.byCard.get(menu.uid) ?? [] : [];
 
   return (
-    <div className="game" onClick={() => setSettingsOpen(false)}>
+    <div className="game" data-ui="table" onClick={() => setSettingsOpen(false)}>
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">☠ OP Coach</div>
@@ -746,11 +746,11 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
             Tour {game.turn || 1} · {compact ? `${game.winner !== null ? 'fin' : game.active === HUMAN ? 'à toi' : 'IA'}${game.battle ? ' ⚔' : ''}` : phaseLabel(game, HUMAN)}
           </div>
           <div className="top-actions">
-            <button className="icon-btn" onClick={back} disabled={!undo.length || (Boolean(configured) && over)} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
-            <button className="icon-btn hide-compact" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
-            <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
+            <button className="icon-btn" data-ui="table.undo" onClick={back} disabled={!undo.length || (Boolean(configured) && over)} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
+            <button className="icon-btn hide-compact" data-ui="table.sound" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
+            <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} data-ui="table.panel" onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
             <div className="settings-wrap" onClick={(e) => e.stopPropagation()}>
-              <button className="icon-btn" onClick={() => setSettingsOpen((o) => !o)} title="Réglages">⚙</button>
+              <button className="icon-btn" data-ui="table.settings" onClick={() => setSettingsOpen((o) => !o)} title="Réglages">⚙</button>
               {settingsOpen && (
                 <div className="settings-menu">
                   <label>Vitesse de l’IA
@@ -779,11 +779,11 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
                 </div>
               )}
             </div>
-            <button className="icon-btn" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
-            <button className="icon-btn hide-compact" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
+            <button className="icon-btn" data-ui="table.guide" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
+            <button className="icon-btn hide-compact" data-ui="table.help" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
             {configured
-              ? <button className="op-btn op-btn-ghost btn-small" onClick={configured.onLeave} title={over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre'}>{over ? 'Suite →' : 'Quitter'}</button>
-              : <button className="op-btn op-btn-ghost btn-small" onClick={leave}>Menu</button>}
+              ? <button className="op-btn op-btn-ghost btn-small" data-ui="table.leave" onClick={configured.onLeave} title={over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre'}>{over ? 'Suite →' : 'Quitter'}</button>
+              : <button className="op-btn op-btn-ghost btn-small" data-ui="table.leave" onClick={leave}>Menu</button>}
           </div>
         </header>
 
@@ -820,13 +820,13 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
       <aside className={panel ? 'side side-open' : 'side'}>
         <div className="side-head only-compact">
           <strong>Journal et coach</strong>
-          <button className="icon-btn" onClick={() => setPanel(false)} title="Fermer">✕</button>
+          <button className="icon-btn" data-ui="table.panel-close" onClick={() => setPanel(false)} title="Fermer">✕</button>
         </div>
         <CardPreview s={game} preview={preview} />
         <div className="tabs">
-          <button className={tab === 'journal' ? 'op-tab on' : 'op-tab'} onClick={() => setTab('journal')}>Journal</button>
-          <button className={tab === 'coach' ? 'op-tab on' : 'op-tab'} onClick={() => setTab('coach')}>Coach{recommended ? ' ★' : ''}</button>
-          <button className={tab === 'choix' ? 'op-tab on' : 'op-tab'} onClick={() => setTab('choix')}>Tous les choix</button>
+          <button className={tab === 'journal' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-journal" onClick={() => setTab('journal')}>Journal</button>
+          <button className={tab === 'coach' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-coach" onClick={() => setTab('coach')}>Coach{recommended ? ' ★' : ''}</button>
+          <button className={tab === 'choix' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-choix" onClick={() => setTab('choix')}>Tous les choix</button>
         </div>
         {tab === 'journal' && <GameLog s={game} human={HUMAN} />}
         {tab === 'coach' && (
@@ -870,7 +870,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
       {intro && <Intro s={game} onDone={() => setIntro(false)} />}
       {over && celebrate && <Celebration won={game.winner === HUMAN} onDone={() => setCelebrate(false)} />}
       {over && !celebrate && showEnd && (
-        <div className="modal" onClick={() => setShowEnd(false)}>
+        <div className="modal" data-ui="end" onClick={() => setShowEnd(false)}>
           <div className="modal-wrap" onClick={(e) => e.stopPropagation()}>
             {configured ? (
               <div className="modal-box recap">
@@ -886,8 +886,8 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
                   </div>
                 )}
                 <div className="end-actions">
-                  <button className="op-btn op-btn-primary" onClick={configured.onLeave}>Suite de l’aventure →</button>
-                  <button className="op-btn op-btn-ghost" onClick={() => setShowEnd(false)}>Voir le plateau</button>
+                  <button className="op-btn op-btn-primary" data-ui="end.next" onClick={configured.onLeave}>Suite de l’aventure →</button>
+                  <button className="op-btn op-btn-ghost" data-ui="end.board" onClick={() => setShowEnd(false)}>Voir le plateau</button>
                 </div>
               </div>
             ) : <EndScreen
@@ -922,13 +922,13 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');
   const hold = isAdventureDeck(id);
   return (
-    <button className={`deck-tile ${selected ? 'on' : ''}${hold ? ' op-deck-hold' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
+    <button className={`deck-tile ${selected ? 'on' : ''}${hold ? ' op-deck-hold' : ''}`} data-ui={`deck.tile-${id}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
       <img src={cardImage(leader)} alt="" />
       {hold && <span className="op-hold-badge" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure">🧭 Cale</span>}
       <span className="deck-name">{deck.name}</span>
       <span className="deck-id">{DECKS[id] ? deck.id : leader.name}{note ? ` · ${note}` : ''}</span>
       <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (hold ? 'Deck de la Cale (cartes de l’Aventure)' : 'Deck perso')}</span>
-      <span className="deck-guide-btn" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
+      <span className="deck-guide-btn" data-ui="deck.guide" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
         onClick={(e) => { e.stopPropagation(); onGuide(id); }}>📖 Guide</span>
     </button>
   );
@@ -983,7 +983,7 @@ export function DeckPicker({ selected, onPick, onGuide, note, onBuilder, onRando
         <div className="deck-group">
           <h3>Au hasard</h3>
           <div className="deck-grid">
-            <button className={`deck-tile deck-random ${selected === RANDOM_DECK ? 'on' : ''}`} onClick={onRandom}>
+            <button className={`deck-tile deck-random ${selected === RANDOM_DECK ? 'on' : ''}`} data-ui="deck.random" onClick={onRandom}>
               <span className="deck-random-dice" aria-hidden="true">🎲</span>
               <span className="deck-name">Aléatoire</span>
               <span className="deck-id">Un deck du méta ou pour débutant, tiré au sort à chaque partie</span>
@@ -1046,14 +1046,14 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
     return r && r.wins + r.losses ? `${r.wins}V ${r.losses}D` : undefined;
   };
   return (
-    <div className="setup">
+    <div className="setup" data-ui="home">
       <header className="setup-head">
         <h1>☠ OP Coach</h1>
         <p className="op-muted">Entraîne-toi contre l’IA, et laisse le coach t’aider à progresser.</p>
         <div className="setup-links">
-          <button className="op-link" onClick={onHistory}>📈 Mes parties</button>
-          <button className="op-link" onClick={onBuilder}>🃏 Mes decks</button>
-          <button className="op-link" onClick={onHelp}>Comment jouer ?</button>
+          <button className="op-link" data-ui="home.history" onClick={onHistory}>📈 Mes parties</button>
+          <button className="op-link" data-ui="home.decks" onClick={onBuilder}>🃏 Mes decks</button>
+          <button className="op-link" data-ui="home.help" onClick={onHelp}>Comment jouer ?</button>
           <a className="op-link" href="#legal" title="Projet de fan non officiel : mentions légales et confidentialité">À propos</a>
           <label className="op-small op-muted">Taille de l’interface{' '}
             <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
@@ -1069,7 +1069,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
             <h2>🗺️ Aventure</h2>
             <p className="op-muted">Prends la mer à East Blue avec un deck de départ, affronte les adversaires de l’histoire et gagne des boosters pour améliorer ton deck.</p>
           </div>
-          <button className="op-btn op-btn-primary" onClick={adventure.onOpen}>Partir à l’aventure</button>
+          <button className="op-btn op-btn-primary" data-ui="home.adventure" onClick={adventure.onOpen}>Partir à l’aventure</button>
         </section>
       )}
       {online && (
@@ -1081,8 +1081,8 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
               : <p className="op-muted">Une partie en ligne contre un ami : crée une salle et envoie-lui son code, ou rejoins la sienne.</p>}
           </div>
           {online.resume
-            ? <button className="op-btn op-btn-primary" onClick={online.resume.onResume}>Reprendre</button>
-            : <button className="op-btn op-btn-primary" onClick={online.onOpen}>Jouer en ligne</button>}
+            ? <button className="op-btn op-btn-primary" data-ui="home.online-resume" onClick={online.resume.onResume}>Reprendre</button>
+            : <button className="op-btn op-btn-primary" data-ui="home.online" onClick={online.onOpen}>Jouer en ligne</button>}
         </section>
       )}
       <section className="setup-section">
@@ -1099,7 +1099,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
           <h2>Niveau de l’IA</h2>
           <div className="op-segmented">
             {([1, 2, 3, ...(rlReady ? [4] : [])] as Level[]).map((level) => (
-              <button key={level} className={config.level === level ? 'seg on' : 'seg'} onClick={() => onChange({ ...config, level })}>{LEVELS[level].name}</button>
+              <button key={level} className={config.level === level ? 'seg on' : 'seg'} data-ui={`home.level-${level}`} onClick={() => onChange({ ...config, level })}>{LEVELS[level].name}</button>
             ))}
           </div>
           <p className="op-muted op-small">
@@ -1115,7 +1115,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
           <h2>Qui commence ?</h2>
           <div className="op-segmented">
             {([['random', 'Au hasard'], ['me', 'Moi'], ['ai', 'L’IA']] as const).map(([value, label]) => (
-              <button key={value} className={config.first === value ? 'seg on' : 'seg'} onClick={() => onChange({ ...config, first: value })}>{label}</button>
+              <button key={value} className={config.first === value ? 'seg on' : 'seg'} data-ui={`home.first-${value}`} onClick={() => onChange({ ...config, first: value })}>{label}</button>
             ))}
           </div>
         </div>
@@ -1124,7 +1124,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
         {ready
           ? <span className="op-muted op-small">{random ? 'Ton adversaire sera tiré au sort au lancement de la partie.' : <>Ton bilan dans cette confrontation : {recordText(records[recordKey(config)])}</>}</span>
           : <span className="danger op-small">Choisis deux decks jouables (un deck perso incomplet se termine dans l’éditeur).</span>}
-        <button className="op-btn op-btn-primary btn-big" onClick={onStart} disabled={!ready}>Lancer la partie</button>
+        <button className="op-btn op-btn-primary btn-big" data-ui="home.start" onClick={onStart} disabled={!ready}>Lancer la partie</button>
       </div>
       {played.length > 0 && (
         <section className="setup-section">

@@ -74,7 +74,7 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
   if (counter) return <CounterScreen focus={counter.focus} onBack={() => { setCounter(null); void reload(); }} />;
   if (!data) {
     return (
-      <div className="setup op-hold">
+      <div className="setup op-hold" data-ui="hold">
         <HoldHead onBack={onBack} />
         {error
           ? <p className="danger">{error} <button className="op-btn op-btn-ghost btn-small" onClick={() => void reload()}>Réessayer</button></p>
@@ -94,7 +94,7 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
 function HoldHead({ onBack, summary }: { onBack: () => void; summary?: string }) {
   return (
     <header className="op-hold-head">
-      <button className="op-btn op-btn-ghost" onClick={onBack}>← Retour</button>
+      <button className="op-btn op-btn-ghost" data-ui="hold.back" onClick={onBack}>← Retour</button>
       <h1>🧰 Ma Cale</h1>
       {summary && <span className="op-muted op-small op-hold-summary">{summary}</span>}
     </header>
@@ -130,7 +130,7 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
   const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
   return (
-    <div className="setup op-hold">
+    <div className="setup op-hold" data-ui="hold">
       <HoldHead onBack={onBack} summary={sum.cards
         ? `${plural(sum.cards, 'carte')} · ${plural(sum.kinds, 'sorte')}${sum.special ? ` · ${plural(sum.special, 'version')} spéciale${sum.special > 1 ? 's' : ''}` : ''}`
         : undefined} />

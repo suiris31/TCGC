@@ -25,8 +25,8 @@ export function MulliganModal({ s, p, onChoose, onHover }: { s: GameState; p: Pl
       </div>
       <p className="op-small op-muted">Repère : {cheap} Personnage{cheap > 1 ? 's' : ''} de coût 4 ou moins (de quoi jouer dès les premiers tours).</p>
       <div className="modal-actions">
-        <button className="op-btn op-btn-primary btn-big" onClick={() => onChoose('keep')}>Garder cette main</button>
-        <button className="op-btn op-btn-ghost btn-big" onClick={() => onChoose('mulligan')}>Repiocher 5 cartes</button>
+        <button className="op-btn op-btn-primary btn-big" data-ui="mulligan.keep" onClick={() => onChoose('keep')}>Garder cette main</button>
+        <button className="op-btn op-btn-ghost btn-big" data-ui="mulligan.redraw" onClick={() => onChoose('mulligan')}>Repiocher 5 cartes</button>
       </div>
     </Modal>
   );
@@ -50,7 +50,7 @@ export function PickerModal({ s, d, picks, buttons, recommended, onChoose, onHov
           return (
             <div key={it.option.id} className={`pick ${recommended === it.option.id ? 'pick-reco' : ''}`}>
               <CardView s={s} card={card} size="pick" look={{ choose: true, recommended: recommended === it.option.id }} onClick={isTouch() ? undefined : () => onChoose(it.option.id)} onHover={onHover} />
-              <button className="op-btn btn-choice" onClick={() => onChoose(it.option.id)}>Choisir</button>
+              <button className="op-btn btn-choice" data-ui="picker.choose" onClick={() => onChoose(it.option.id)}>Choisir</button>
               <span className="op-small op-muted">{it.zone}</span>
             </div>
           );
@@ -58,7 +58,7 @@ export function PickerModal({ s, d, picks, buttons, recommended, onChoose, onHov
       </div>
       {buttons.length > 0 && (
         <div className="modal-actions">
-          {buttons.map((o) => <button key={o.id} className={`op-btn op-btn-ghost ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.label}</button>)}
+          {buttons.map((o) => <button key={o.id} data-ui={`picker.option-${o.id}`} className={`op-btn op-btn-ghost ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.label}</button>)}
         </div>
       )}
     </Modal>
@@ -81,8 +81,8 @@ export function TriggerModal({ s, d, onChoose, recommended }: { s: GameState; d:
         </div>
       </div>
       <div className="modal-actions">
-        <button className={`op-btn op-btn-primary ${recommended === 'trigger' ? 'btn-reco' : ''}`} onClick={() => onChoose('trigger')}>Activer le [Déclenchement]{recommended === 'trigger' && ' ★'}</button>
-        <button className={`op-btn op-btn-ghost ${recommended === 'hand' ? 'btn-reco' : ''}`} onClick={() => onChoose('hand')}>Prendre la carte en main{recommended === 'hand' && ' ★'}</button>
+        <button className={`op-btn op-btn-primary ${recommended === 'trigger' ? 'btn-reco' : ''}`} data-ui="trigger.activate" onClick={() => onChoose('trigger')}>Activer le [Déclenchement]{recommended === 'trigger' && ' ★'}</button>
+        <button className={`op-btn op-btn-ghost ${recommended === 'hand' ? 'btn-reco' : ''}`} data-ui="trigger.hand" onClick={() => onChoose('hand')}>Prendre la carte en main{recommended === 'hand' && ' ★'}</button>
       </div>
     </Modal>
   );
@@ -95,7 +95,7 @@ export function CostModal({ d, onChoose, recommended }: { d: Decision; onChoose:
       <p className="op-muted">{d.prompt.replace(/^Déclare un coût\s*/, '').replace(/^\(/, '').replace(/\)\s*:?$/, '') || 'La carte du dessus du deck adverse va être révélée : si son coût est celui que tu déclares, l’effet réussit.'}</p>
       <div className="cost-grid">
         {d.options.map((o) => (
-          <button key={o.id} className={`cost-btn ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.id.split(':')[1]}</button>
+          <button key={o.id} data-ui="cost.option" className={`cost-btn ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.id.split(':')[1]}</button>
         ))}
       </div>
     </Modal>
@@ -109,10 +109,10 @@ export function ConfirmEndModal({ remaining, onConfirm, onCancel, onNeverAsk }: 
       <p>Tu peux encore :</p>
       <ul>{remaining.map((r) => <li key={r}>{r}</li>)}</ul>
       <div className="modal-actions">
-        <button className="op-btn op-btn-primary" onClick={onConfirm}>Terminer quand même</button>
-        <button className="op-btn op-btn-ghost" onClick={onCancel}>Continuer mon tour</button>
+        <button className="op-btn op-btn-primary" data-ui="confirm-end.ok" onClick={onConfirm}>Terminer quand même</button>
+        <button className="op-btn op-btn-ghost" data-ui="confirm-end.cancel" onClick={onCancel}>Continuer mon tour</button>
       </div>
-      <button className="op-link op-small" onClick={onNeverAsk}>Ne plus me demander</button>
+      <button className="op-link op-small" data-ui="confirm-end.never" onClick={onNeverAsk}>Ne plus me demander</button>
     </Modal>
   );
 }
@@ -124,7 +124,7 @@ export function TrashModal({ s, p, onClose, onHover }: { s: GameState; p: Player
       <div className="trash-grid">
         {[...s.players[p].trash].reverse().map((c) => <CardView key={c.uid} s={s} card={c} size="small" onHover={onHover} />)}
       </div>
-      <div className="modal-actions"><button className="op-btn op-btn-ghost" onClick={onClose}>Fermer</button></div>
+      <div className="modal-actions"><button className="op-btn op-btn-ghost" data-ui="trash.close" onClick={onClose}>Fermer</button></div>
     </Modal>
   );
 }
@@ -201,7 +201,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           </dl>
         </section>
       </div>
-      <div className="modal-actions"><button className="op-btn op-btn-primary" onClick={onClose}>C’est parti</button></div>
+      <div className="modal-actions"><button className="op-btn op-btn-primary" data-ui="help.close" onClick={onClose}>C’est parti</button></div>
     </Modal>
   );
 }

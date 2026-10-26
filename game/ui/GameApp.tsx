@@ -185,7 +185,7 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
           }} />
         )
       ) : state === 'loading' ? (
-        <div className="opc-wait"><span className="op-spinner" /> Chargement du jeu…</div>
+        <div className="opc-wait" data-ui="game.loading"><span className="op-spinner" /> Chargement du jeu…</div>
       ) : state === 'outdated' ? (
         <div className="opc-wait">
           Le jeu vient d’être mis à jour. Recharge la page pour jouer avec la nouvelle version.{' '}

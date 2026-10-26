@@ -109,7 +109,7 @@ export function CardZoom({ s, preview, onClose }: { s?: GameState | null; previe
   );
   if (!preview.pinned) return box;
   return (
-    <div className="zoom-backdrop" onClick={(e) => { e.stopPropagation(); onClose?.(); }}>
+    <div className="zoom-backdrop" data-ui="zoom.close" onClick={(e) => { e.stopPropagation(); onClose?.(); }}>
       {box}
       <span className="zoom-close">Touche pour fermer</span>
     </div>
