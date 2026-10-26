@@ -1,9 +1,10 @@
 // Client des routes du mode Aventure (server/game-adventure.js) : les écrans passent par ces fonctions, ils n'appellent
 // pas fetch eux-mêmes. Le serveur garde et vérifie tout (progression, Cale, boosters) : ces fonctions ne font que
-// demander. Un refus arrive comme une AdventureApiError, avec le message du serveur (en français, à montrer tel quel)
-// et son code (pour réagir : 'chapter_locked', 'wrong_deck'...).
+// demander. Un refus arrive comme une ApiError (game/ui/api.ts), avec le message du serveur (en français, à montrer tel
+// quel) et son code (pour réagir : 'chapter_locked', 'wrong_deck'...).
 import type { Reward } from '../../adventure/types.ts';
 import type { BoosterContent } from '../../boosters/types.ts';
+import { ApiError, call as api } from '../api.ts';
 
 // Booster gagné, pas encore ouvert. source : ce qui l'a rapporté (« chapitre eb-2-orange-town », voir boosterChapter)
 export interface WonBooster { id: string; set: string; source: string; createdAt: string }
@@ -25,34 +26,20 @@ export interface HoldCard { number: string; variant: string; count: number }
 // alreadyOpened : booster déjà ouvert avant (même contenu, rien de plus dans la Cale)
 export interface OpenedBooster { content: BoosterContent; alreadyOpened?: boolean }
 
-export class AdventureApiError extends Error {
-  code: string;
-  status: number;
+// Ancien nom de l'erreur des appels (avant le client unique game/ui/api.ts) : toute ApiError en est une, pour que
+// `e instanceof AdventureApiError` continue de reconnaître les refus du serveur
+export class AdventureApiError extends ApiError {
   constructor(message: string, code: string, status: number) {
-    super(message);
-    this.code = code;
-    this.status = status;
+    super({ status, code, message });
+  }
+
+  static [Symbol.hasInstance](e: unknown) {
+    return e instanceof ApiError;
   }
 }
 
-const BASE = import.meta.env.BASE_URL;
-
-export async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${BASE}api/game/${path}`, {
-      method,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: 'no-store',
-    });
-  } catch {
-    throw new AdventureApiError('Le serveur ne répond pas : vérifie ta connexion', 'network', 0);
-  }
-  const data = await res.json().catch(() => null) as (T & { code?: string; error?: string }) | null;
-  if (!res.ok) throw new AdventureApiError(data?.error ?? `Le serveur a répondu ${res.status}`, data?.code ?? 'server', res.status);
-  return data as T;
-}
+// Appel d'une route du jeu, dans l'ordre d'avant le client unique (chemin, méthode, corps)
+export const call = <T>(path: string, method = 'GET', body?: unknown): Promise<T> => api<T>(method, path, body);
 
 // GET /api/game/adventure
 export const loadAdventure = () => call<AdventureState>('adventure');

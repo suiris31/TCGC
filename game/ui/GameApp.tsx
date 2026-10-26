@@ -4,6 +4,7 @@ import { Component, lazy, Suspense, useCallback, useEffect, useState, type React
 import { loadCardData } from '../engine/cards/index.ts';
 import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
+import { ApiError, call } from './api.ts';
 import { setArchiveUser } from './archiveClient.ts';
 import { currentMatches, type CurrentMatch } from './online/api.ts';
 import { Lobby } from './online/Lobby.tsx';
@@ -33,15 +34,16 @@ let cardsLoaded: Promise<void> | null = null;
 
 async function fetchCards(): Promise<void> {
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${import.meta.env.BASE_URL}api/game/catalog`, { cache: 'no-cache' });
-    if (res.ok) {
-      const { engine, cards } = (await res.json()) as { engine: string; cards: Record<string, CardData> };
+    try {
+      const { engine, cards } = await call<{ engine: string; cards: Record<string, CardData> }>('GET', 'catalog', undefined, { cache: 'no-cache' });
       if (engine !== ENGINE && engine !== 'inconnue' && ENGINE !== 'inconnue') throw new Outdated(engine);
       return loadCardData(cards);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes, ou le jeu est fermé
+      if (e.status === 503 && e.code === 'game_closed') throw new Closed();
+      if (e.status !== 503 || attempt >= 40) throw new Error(e.status ? `le serveur a répondu ${e.status}` : 'le serveur ne répond pas');
     }
-    // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes, ou le jeu est fermé
-    if (res.status === 503 && (await res.json().catch(() => null))?.code === 'game_closed') throw new Closed();
-    if (res.status !== 503 || attempt >= 40) throw new Error(`le serveur a répondu ${res.status}`);
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }
