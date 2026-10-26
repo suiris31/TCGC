@@ -1,0 +1,197 @@
+/* Kit du jeu (tâche R1.2) : boutons, fenêtres, gabarit d'écran, chargements, icônes. Toujours sous .opc, classes
+   préfixées op-kit- ; aucune couleur écrite en dur : seulement les variables de .opc (mélangées par color-mix pour les
+   transparences). Les durées et les z-index lisent les jetons de R1.1 (--dur-*, --z-*) quand ils existent, avec la
+   valeur actuelle du jeu par défaut. Toutes les cibles font au moins 44 px. */
+
+/* ---------- Icônes ---------- */
+.opc .op-icon { flex: none; display: inline-block; vertical-align: -0.2em; }
+
+/* ---------- Boutons ---------- */
+.opc .op-kit-btn,
+.opc .op-kit-icon-btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: max(44px, 2.75rem); min-width: max(44px, 2.75rem); margin: 0; padding: 0 1rem;
+  border: 1px solid transparent; border-radius: 10px; font: inherit; font-weight: 700; line-height: 1.2;
+  text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-fast, 0.12s), filter var(--dur-fast, 0.12s), background-color var(--dur-fast, 0.12s), border-color var(--dur-fast, 0.12s);
+}
+.opc .op-kit-icon-btn { width: max(44px, 2.75rem); padding: 0; font-size: 1.1rem; }
+.opc .op-kit-btn-big { min-height: max(52px, 3.4rem); padding: 0 1.6rem; font-size: 1.14rem; }
+.opc .op-kit-btn-wide { width: 100%; }
+.opc .op-kit-btn-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opc .op-kit-btn:focus-visible,
+.opc .op-kit-icon-btn:focus-visible,
+.opc .op-kit-menu-item:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.opc .op-kit-btn:disabled,
+.opc .op-kit-icon-btn:disabled { opacity: 0.45; cursor: default; }
+.opc .op-kit-btn.is-busy { opacity: 0.8; cursor: progress; }
+@media (hover: hover) {
+  .opc .op-kit-btn:hover:not(:disabled),
+  .opc .op-kit-icon-btn:hover:not(:disabled) { filter: brightness(1.1); }
+}
+.opc .op-kit-btn:active:not(:disabled),
+.opc .op-kit-icon-btn:active:not(:disabled) { transform: translateY(1px); }
+
+/* principal : l'action de l'écran ; secondaire : une autre action ; discret : sans fond ; danger : irréversible */
+.opc .op-kit-btn-primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 78%, var(--text)), var(--accent));
+  color: var(--accent-ink);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.opc .op-kit-btn-secondary { background: var(--surface-2); border-color: var(--line); color: var(--text); }
+.opc .op-kit-btn-quiet { background: transparent; color: var(--text); font-weight: 600; }
+@media (hover: hover) { .opc .op-kit-btn-quiet:hover:not(:disabled) { background: var(--surface); filter: none; } }
+.opc .op-kit-btn-danger { background: var(--surface); border-color: var(--red); color: var(--red); }
+@media (hover: hover) { .opc .op-kit-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--red) 18%, var(--surface)); filter: none; } }
+.opc .op-kit-icon-btn.is-pressed { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); border-color: var(--accent); color: var(--accent); }
+.opc .op-kit-badge {
+  position: absolute; top: 2px; right: 2px; min-width: 1.15rem; height: 1.15rem; padding: 0 0.25rem; border-radius: 999px;
+  background: var(--red); color: var(--text); font-size: 0.8rem; font-weight: 800; line-height: 1.15rem;
+}
+
+/* roue de chargement (boutons occupés, AsyncState) */
+.opc .op-kit-spinner {
+  flex: none; display: inline-block; width: 1.1em; height: 1.1em; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent); border-top-color: currentColor;
+  animation: op-kit-spin 0.8s linear infinite;
+}
+.opc .op-kit-spinner-big { width: 2.2rem; height: 2.2rem; border-width: 3px; color: var(--accent); }
+@keyframes op-kit-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Chargement, erreur, vide ---------- */
+.opc .op-kit-async {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;
+  min-height: 10rem; padding: 1.5rem 1rem; text-align: center; color: var(--muted);
+}
+.opc .op-kit-async p { margin: 0; max-width: 32rem; }
+.opc .op-kit-async-error { color: var(--text); }
+.opc .op-kit-async-error .op-icon { color: var(--red); }
+.opc .op-kit-async-title { color: var(--text); font-weight: 700; font-size: 1.1rem; }
+
+/* ---------- Fenêtres ---------- */
+.opc .op-kit-layer { position: fixed; inset: 0; z-index: var(--z-dialog, 50); display: grid; place-items: center; padding: 1rem; }
+.opc .op-kit-layer.is-reduced { inset: auto 0 0 0; padding: 0; display: block; pointer-events: none; }
+.opc .op-kit-backdrop {
+  position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(2px);
+  animation: op-kit-fade var(--dur, 0.15s) ease-out;
+}
+.opc .op-kit-backdrop[hidden], .opc .op-kit-dialog[hidden] { display: none; }
+.opc .op-kit-dialog {
+  position: relative; display: flex; flex-direction: column; width: min(36rem, 100%); max-height: min(88vh, 100%);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; color: var(--text);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--bg) 85%, transparent); outline: none;
+  animation: op-kit-pop var(--dur, 0.18s) ease-out;
+}
+.opc .op-kit-dialog-small { width: min(26rem, 100%); }
+.opc .op-kit-dialog-wide { width: min(74rem, 100%); }
+.opc .op-kit-dialog-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.6rem 0.4rem 1.25rem; }
+.opc .op-kit-dialog-title { flex: 1; min-width: 0; margin: 0; font-size: 1.2rem; font-weight: 800; line-height: 1.25; }
+.opc .op-kit-dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0.4rem 1.25rem 1.1rem; }
+.opc .op-kit-dialog-body > :first-child { margin-top: 0; }
+.opc .op-kit-dialog-body > :last-child { margin-bottom: 0; }
+.opc .op-kit-dialog-actions {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; padding: 0.8rem 1.25rem;
+  border-top: 1px solid var(--line);
+}
+@keyframes op-kit-fade { from { opacity: 0; } }
+@keyframes op-kit-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes op-kit-up { from { transform: translateY(40px); opacity: 0; } }
+
+/* téléphone : une fiche qui monte du bas, les boutons collés en bas */
+.opc .op-kit-layer.is-sheet { place-items: end stretch; padding: 0; }
+.opc .op-kit-layer.is-sheet .op-kit-dialog {
+  width: 100%; max-height: 92dvh; border-radius: 18px 18px 0 0; border-bottom: 0;
+  animation: op-kit-up var(--dur, 0.18s) ease-out;
+}
+.opc .op-kit-layer.is-sheet .op-kit-dialog-head { padding-left: 1rem; padding-top: 0.4rem; }
+.opc .op-kit-layer.is-sheet .op-kit-dialog-body { padding: 0.3rem 1rem 0.9rem; }
+.opc .op-kit-layer.is-sheet .op-kit-dialog-actions { padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom, 0px)); }
+.opc .op-kit-layer.is-sheet .op-kit-dialog-actions > * { flex: 1 1 auto; }
+.opc .op-kit-layer.is-sheet:not(.is-reduced) .op-kit-dialog:not(:has(.op-kit-dialog-actions)) .op-kit-dialog-body {
+  padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* fenêtre réduite : un bandeau en bas de l'écran, qui laisse voir le plateau */
+.opc .op-kit-reduced {
+  pointer-events: auto; display: flex; align-items: center; gap: 0.75rem; margin: 0 auto; width: min(36rem, 100%);
+  padding: 0.5rem 0.6rem 0.5rem 1rem; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-2); border: 1px solid var(--accent); border-bottom: 0; border-radius: 14px 14px 0 0;
+  box-shadow: 0 -10px 30px color-mix(in srgb, var(--bg) 70%, transparent);
+  animation: op-kit-up var(--dur, 0.18s) ease-out;
+}
+.opc .op-kit-reduced-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+
+/* ---------- Écrans ---------- */
+.opc .op-kit-screen { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--bg); }
+.opc .op-kit-screen-head {
+  position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+  background: var(--bg-2); border-bottom: 1px solid var(--line);
+}
+.opc .op-kit-back { flex: none; max-width: 40%; padding: 0 0.75rem 0 0.5rem; }
+.opc .op-kit-screen-titles { flex: 1; min-width: 0; }
+.opc .op-kit-screen-title { margin: 0; font-size: 1.45rem; font-weight: 800; line-height: 1.2; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opc .op-kit-screen-subtitle { margin: 0; color: var(--muted); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opc .op-kit-screen-actions { flex: none; display: flex; align-items: center; gap: 0.25rem; }
+.opc .op-kit-screen-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 1rem; }
+.opc .op-kit-screen-bar {
+  flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; padding: 0.7rem 1rem;
+  background: var(--bg-2); border-top: 1px solid var(--line);
+}
+.opc .op-kit-screen.is-compact .op-kit-screen-head { padding-left: 0.4rem; padding-right: 0.4rem; gap: 0.25rem; }
+.opc .op-kit-screen.is-compact .op-kit-screen-title {
+  font-size: 1.15rem; white-space: normal; overflow-wrap: break-word;
+}
+.opc .op-kit-screen.is-compact .op-kit-back { max-width: 34%; padding: 0 0.4rem 0 0.25rem; gap: 0.25rem; }
+.opc .op-kit-screen.is-compact .op-kit-screen-body { padding: 0.75rem; }
+.opc .op-kit-screen.is-compact .op-kit-screen-bar { padding: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
+.opc .op-kit-screen.is-compact .op-kit-screen-bar > .op-kit-btn { flex: 1 1 auto; }
+
+/* menu « ⋯ » */
+.opc .op-kit-menu-wrap { position: relative; }
+.opc .op-kit-menu {
+  position: absolute; right: 0; top: calc(100% + 0.3rem); z-index: var(--z-menu, 40); min-width: 14rem; max-width: calc(100vw - 1rem);
+  display: flex; flex-direction: column; padding: 0.3rem; background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 16px 40px color-mix(in srgb, var(--bg) 80%, transparent);
+  animation: op-kit-fade var(--dur-fast, 0.12s) ease-out;
+}
+.opc .op-kit-menu-item {
+  display: flex; align-items: center; gap: 0.6rem; min-height: max(44px, 2.75rem); padding: 0 0.8rem; margin: 0;
+  border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.opc .op-kit-menu-item:disabled { opacity: 0.45; cursor: default; }
+.opc .op-kit-menu-item.is-danger { color: var(--red); }
+@media (hover: hover) { .opc .op-kit-menu-item:hover:not(:disabled) { background: var(--surface-2); } }
+.opc .op-kit-menu-pad { width: 1.25em; flex: none; }
+
+/* ---------- Mouvement réduit ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .opc .op-kit-backdrop, .opc .op-kit-dialog, .opc .op-kit-reduced, .opc .op-kit-menu { animation: none; }
+  .opc .op-kit-btn, .opc .op-kit-icon-btn { transition: none; }
+}
+.opc.is-reduced-motion .op-kit-backdrop, .opc.is-reduced-motion .op-kit-dialog,
+.opc.is-reduced-motion .op-kit-reduced, .opc.is-reduced-motion .op-kit-menu { animation: none; }
+.opc.is-reduced-motion .op-kit-btn, .opc.is-reduced-motion .op-kit-icon-btn { transition: none; }
+
+/* ---------- Page « kit » de l'atelier (#play/atelier/kit) ---------- */
+.opc .op-kit-demo-section { display: flex; flex-direction: column; gap: 0.6rem; }
+.opc .op-kit-demo-section h2 { margin: 0; }
+.opc .op-kit-demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.opc .op-kit-demo-narrow { max-width: 22rem; }
+.opc .op-kit-demo-log { padding: 0.5rem 0.8rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 0.9rem; }
+.opc .op-kit-demo-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.opc .op-kit-demo-icons li { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; padding: 0.7rem 0.4rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); text-align: center; }
+.opc .op-kit-demo-code { font-size: 0.8rem; color: var(--muted); background: none; padding: 0; }
+.opc .op-kit-demo-inline { margin: 0; }
+.opc .op-kit-demo-frame { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
+.opc .op-kit-demo-async { min-height: 12rem; }
+.opc .op-kit-demo-screen { height: 26rem; }
+.opc .op-kit-demo-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opc .op-kit-demo-lines { margin: 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.opc .op-kit-demo-form { display: flex; flex-direction: column; gap: 0.8rem; }
+.opc .op-kit-demo-form label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 600; }
+.opc .op-kit-demo-form input:not([type]), .opc .op-kit-demo-form select {
+  min-height: max(44px, 2.75rem); padding: 0 0.7rem; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit;
+}
+.opc .op-kit-demo-form .op-kit-demo-check { flex-direction: row; align-items: center; min-height: max(44px, 2.75rem); }
+.opc .op-kit-demo-check input { width: 1.3rem; height: 1.3rem; }
