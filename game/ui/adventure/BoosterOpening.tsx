@@ -3,14 +3,14 @@
 // trié par rareté (« Nouveau ! », doubles). Plusieurs boosters (un display) : « Un par un » ou « Tout ouvrir », avec un
 // récapitulatif groupé.
 // Ni appel au serveur ni Cale : l'écran reçoit le contenu déjà tiré (le tirage se fait sur le serveur) et les cartes que
-// le joueur avait avant l'ouverture. Il respecte le réglage des sons du jeu et « réduire les animations » du système.
+// le joueur avait avant l'ouverture. Il respecte le réglage des sons du jeu et « Animations réduites ».
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { DISPLAY_SIZE } from '../../boosters/open.ts';
 import type { BoosterContent, PulledCard } from '../../boosters/types.ts';
 import { cardData } from '../../engine/cards/index.ts';
 import { useDevice } from '../device.ts';
 import { cardImage } from '../images.ts';
-import { useSettings } from '../settings.ts';
+import { useReducedMotion, useSettings } from '../settings.ts';
 import { boosterSfx, setSoundEnabled, type BoosterSfx } from '../sound.ts';
 
 export interface BoosterOpeningProps {
@@ -19,7 +19,7 @@ export interface BoosterOpeningProps {
   // information, aucune carte n'est marquée « Nouveau ! »
   owned?: Record<string, number>;
   onDone: () => void;
-  // false : ouverture sobre, sans mouvement, comme quand le système demande de réduire les animations
+  // false : ouverture sobre, sans mouvement, comme avec « Animations réduites »
   animations?: boolean;
 }
 
@@ -417,19 +417,6 @@ type Stage =
   | { kind: 'recap' };
 
 interface Action { label: string; run: () => void; disabled?: boolean }
-
-function useReducedMotion(): boolean {
-  const query = '(prefers-reduced-motion: reduce)';
-  const [reduced, setReduced] = useState(() => typeof matchMedia === 'function' && matchMedia(query).matches);
-  useEffect(() => {
-    if (typeof matchMedia !== 'function') return;
-    const m = matchMedia(query);
-    const update = () => setReduced(m.matches);
-    m.addEventListener('change', update);
-    return () => m.removeEventListener('change', update);
-  }, []);
-  return reduced;
-}
 
 // Minuteries de l'écran (sons et étapes à venir), annulées quand on passe à la suite ou qu'on quitte l'écran
 function useTimers() {

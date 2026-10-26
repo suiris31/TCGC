@@ -18,14 +18,15 @@ import { ActionBar, ActionMenu, BattlePanel } from './Interaction.tsx';
 import { isEndTurnKey } from './keys.ts';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from './Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
-import { currentRoute, goBack, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
-import { UI_SCALES, ZOOM_DELAYS, useSettings, type Settings } from './settings.ts';
+import { currentRoute, goBack, HOME, navigate, useLayer, useLeaveGuard, useRoute } from './routes.ts';
+import { useSettings } from './settings.ts';
+import { SettingsPanel } from './SettingsPanel.tsx';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
 import { deckInfo, deckLabel, isAdventureDeck, playable, useMyDecks } from './myDecks.ts';
 import { GUIDES } from './deckGuides.ts';
 import { CardZoom, useCardZoom } from './Zoom.tsx';
-import { setSoundEnabled, sfx } from './sound.ts';
+import { sfx } from './sound.ts';
 import { flushQueue, keepForLater, loadSummaries, saveRecord, whenSaved } from './archiveClient.ts';
 import { HistoryScreen } from './History.tsx';
 import { useDevice, useWakeLock } from './device.ts';
@@ -182,10 +183,11 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   }, [targeting]);
   useWakeLock(game !== null && game.winner === null);
 
-  useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
-  useEffect(() => { document.documentElement.style.setProperty('--ui', String(settings.uiScale)); }, [settings.uiScale]);
   const cardZoom = useCardZoom(settings.zoomDelay);
   const [guide, setGuide] = useState<string | null>(null);
+  // anciennes fenêtres de l'aide et du guide : le Retour les ferme aussi (les réglages, fenêtre du kit, le font d'office)
+  useLayer(help, () => setHelp(false));
+  useLayer(guide !== null, () => setGuide(null));
 
   // Décisions du joueur et leur analyse par le coach, faite en arrière-plan pendant la partie
   const moves = useRef<Move[]>(fixture?.moves ?? []);
@@ -629,7 +631,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     return (
       <>
         <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
-          settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
+          onSettings={() => setSettingsOpen(true)} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { showScreen(null); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
         {builder && (
@@ -637,6 +639,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
             onPlay={(id) => { showScreen(null); cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); }} />
         )}
         {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
+        {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
       </>
     );
   }
@@ -770,7 +773,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   const menuActions = menu && view ? view.byCard.get(menu.uid) ?? [] : [];
 
   return (
-    <div className="game" data-ui="table" onClick={() => setSettingsOpen(false)}>
+    <div className="game" data-ui="table">
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">☠ OP Coach</div>
@@ -782,36 +785,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
             <button className="icon-btn" data-ui="table.undo" onClick={back} disabled={!undo.length || (Boolean(configured) && over)} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
             <button className="icon-btn hide-compact" data-ui="table.sound" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
             <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} data-ui="table.panel" onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
-            <div className="settings-wrap" onClick={(e) => e.stopPropagation()}>
-              <button className="icon-btn" data-ui="table.settings" onClick={() => setSettingsOpen((o) => !o)} title="Réglages">⚙</button>
-              {settingsOpen && (
-                <div className="settings-menu">
-                  <label>Vitesse de l’IA
-                    <select value={settings.speed} onChange={(e) => updateSettings({ speed: Number(e.target.value) })}>
-                      <option value={1500}>lente</option>
-                      <option value={900}>normale</option>
-                      <option value={350}>rapide</option>
-                    </select>
-                  </label>
-                  <label>Taille de l’interface
-                    <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
-                      {UI_SCALES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                  </label>
-                  {!touch && (
-                    <label>Détail d’une carte survolée
-                      <select value={settings.zoomDelay} onChange={(e) => updateSettings({ zoomDelay: Number(e.target.value) })}>
-                        {ZOOM_DELAYS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
-                    </label>
-                  )}
-                  <label className="op-toggle"><input type="checkbox" checked={settings.autoCoach} onChange={(e) => updateSettings({ autoCoach: e.target.checked })} /> Conseil du coach automatique (★)</label>
-                  <label className="op-toggle"><input type="checkbox" checked={settings.confirmEnd} onChange={(e) => updateSettings({ confirmEnd: e.target.checked })} /> Confirmer la fin du tour s’il reste des actions</label>
-                  <label className="op-toggle"><input type="checkbox" checked={settings.sound} onChange={(e) => updateSettings({ sound: e.target.checked })} /> Sons</label>
-                  <button className="op-link only-compact" onClick={() => { setSettingsOpen(false); setHelp(true); }}>Comment jouer ? (aide et mots-clés)</button>
-                </div>
-              )}
-            </div>
+            <button className="icon-btn" data-ui="table.settings" onClick={() => setSettingsOpen(true)} title="Réglages" aria-label="Réglages">⚙</button>
             <button className="icon-btn" data-ui="table.guide" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
             <button className="icon-btn hide-compact" data-ui="table.help" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
             {configured
@@ -895,6 +869,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
       )}
       {trashOf !== null && <TrashModal s={game} p={trashOf} onClose={() => setTrashOf(null)} onHover={onHover} />}
       {help && !intro && <HelpModal onClose={() => setHelp(false)} />}
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
       {guide && (
         <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover}
           alt={guide === session.myDeck ? session.aiDeck : session.myDeck} altLabel={guide === session.myDeck ? 'Voir le deck de l’IA' : 'Voir ton deck'} onSwitch={setGuide} />
@@ -1051,7 +1026,7 @@ export function DeckPicker({ selected, onPick, onGuide, note, onBuilder, onRando
   );
 }
 
-function SetupScreen({ notice, online, adventure, config, records, onChange, onStart, onHelp, help, closeHelp, settings, updateSettings, onGuide, onHistory, onBuilder }: {
+function SetupScreen({ notice, online, adventure, config, records, onChange, onStart, onHelp, help, closeHelp, onSettings, onGuide, onHistory, onBuilder }: {
   notice?: string;
   online?: OnlineEntry;
   adventure?: AdventureEntry;
@@ -1062,8 +1037,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
   onHelp: () => void;
   help: boolean;
   closeHelp: () => void;
-  settings: Settings;
-  updateSettings: (patch: Partial<Settings>) => void;
+  onSettings: () => void;
   onGuide: (id: string) => void;
   onHistory: () => void;
   onBuilder: () => void;
@@ -1102,11 +1076,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
           <button className="op-link" data-ui="home.decks" onClick={onBuilder}>🃏 Mes decks</button>
           <button className="op-link" data-ui="home.help" onClick={onHelp}>Comment jouer ?</button>
           <a className="op-link" href="#legal" title="Projet de fan non officiel : mentions légales et confidentialité">À propos</a>
-          <label className="op-small op-muted">Taille de l’interface{' '}
-            <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
-              {UI_SCALES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </label>
+          <button className="op-link" data-ui="home.settings" onClick={onSettings}>⚙ Réglages</button>
         </div>
         {notice && <p className="setup-notice">{notice}</p>}
       </header>

@@ -16,10 +16,11 @@ import { isEndTurnKey } from '../keys.ts';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from '../Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from '../Panel.tsx';
 import { loadSummaries } from '../archiveClient.ts';
-import { useLeaveGuard } from '../routes.ts';
+import { useLayer, useLeaveGuard } from '../routes.ts';
 import { GameGain, useGameGain } from '../economy/GameGain.tsx';
-import { UI_SCALES, ZOOM_DELAYS, useSettings } from '../settings.ts';
-import { setSoundEnabled, sfx } from '../sound.ts';
+import { useSettings } from '../settings.ts';
+import { SettingsPanel } from '../SettingsPanel.tsx';
+import { sfx } from '../sound.ts';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { cancelRoom, resignMatch, sendChoice, useMatch, type LiveView } from './api.ts';
 
@@ -125,6 +126,9 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [help, setHelp] = useState(false);
   const [guide, setGuide] = useState<string | null>(null);
+  // anciennes fenêtres de l'aide et du guide : le Retour les ferme aussi (les réglages, fenêtre du kit, le font d'office)
+  useLayer(help, () => setHelp(false));
+  useLayer(guide !== null, () => setGuide(null));
   const [panel, setPanel] = useState(false);
   const [tab, setTab] = useState<'journal' | 'choix'>('journal');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -137,8 +141,6 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
   const [epoch, setEpoch] = useState(0);
   const keepMenu = useRef<number | null>(null);
 
-  useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
-  useEffect(() => { document.documentElement.style.setProperty('--ui', String(settings.uiScale)); }, [settings.uiScale]);
   useEffect(() => setAimed(null), [targeting]);
   useWakeLock(game.winner === null);
 
@@ -322,7 +324,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
   };
 
   return (
-    <div className="game" onClick={() => setSettingsOpen(false)}>
+    <div className="game">
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">🌐 En ligne</div>
@@ -332,28 +334,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
           <div className="top-actions">
             <button className="icon-btn hide-compact" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
             <button className="icon-btn only-compact" onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal et tous les choix">📜</button>
-            <div className="settings-wrap" onClick={(e) => e.stopPropagation()}>
-              <button className="icon-btn" onClick={() => setSettingsOpen((o) => !o)} title="Réglages">⚙</button>
-              {settingsOpen && (
-                <div className="settings-menu">
-                  <label>Taille de l’interface
-                    <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
-                      {UI_SCALES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                  </label>
-                  {!touch && (
-                    <label>Détail d’une carte survolée
-                      <select value={settings.zoomDelay} onChange={(e) => updateSettings({ zoomDelay: Number(e.target.value) })}>
-                        {ZOOM_DELAYS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
-                    </label>
-                  )}
-                  <label className="op-toggle"><input type="checkbox" checked={settings.confirmEnd} onChange={(e) => updateSettings({ confirmEnd: e.target.checked })} /> Confirmer la fin du tour s’il reste des actions</label>
-                  <label className="op-toggle"><input type="checkbox" checked={settings.sound} onChange={(e) => updateSettings({ sound: e.target.checked })} /> Sons</label>
-                  <button className="op-link only-compact" onClick={() => { setSettingsOpen(false); setHelp(true); }}>Comment jouer ? (aide et mots-clés)</button>
-                </div>
-              )}
-            </div>
+            <button className="icon-btn" data-ui="table.settings" onClick={() => setSettingsOpen(true)} title="Réglages" aria-label="Réglages">⚙</button>
             <button className="icon-btn" onClick={() => setGuide(view.you.deck)} title="Guide de ton deck (et de celui de ton adversaire)">📖</button>
             <button className="icon-btn hide-compact" onClick={() => setHelp(true)} title="Aide et mots-clés">?</button>
             <button className="op-btn op-btn-ghost btn-small" onClick={() => (over ? onLeave() : setLeaving(true))}>Menu</button>
@@ -433,6 +414,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       )}
       {trashOf !== null && <TrashModal s={game} p={trashOf} onClose={() => setTrashOf(null)} onHover={onHover} />}
       {help && !intro && <HelpModal onClose={() => setHelp(false)} />}
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
       {guide && (
         <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover}
           alt={guide === view.you.deck ? (DECKS[view.opponent?.deck ?? ''] ? view.opponent?.deck : undefined) : view.you.deck} altLabel={guide === view.you.deck ? 'Voir le deck de ton adversaire' : 'Voir ton deck'} onSwitch={setGuide} />

@@ -11,11 +11,6 @@
 .pill-me { background: var(--accent-a16); border-color: var(--accent-a60); color: var(--accent); }
 .pill-opp { background: var(--blue-a12); border-color: var(--blue-a50); color: var(--blue-soft); }
 .top-actions { display: flex; align-items: center; gap: 0.429rem; }
-.settings-wrap { position: relative; }
-.settings-menu { position: absolute; right: 0; top: 2.857rem; z-index: var(--z-menu); width: 21.429rem; padding: 0.857rem; display: flex; flex-direction: column; gap: 0.714rem; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 40px var(--black-a50); }
-.settings-menu label { display: flex; justify-content: space-between; align-items: center; gap: 0.571rem; font-size: 0.929rem; }
-.settings-menu .op-toggle { justify-content: flex-start; }
-.settings-menu select { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px 0.429rem; }
 .opp-hand { display: flex; justify-content: center; align-items: center; height: calc(var(--cw) * 0.55); }
 .card.card-opp-hand { width: calc(var(--cw) * 0.36); height: calc(var(--cw) * 0.5); margin-left: -8px; border-radius: 4px; box-shadow: 0 2px 6px var(--black-a40); }
 .opp-hand-count { margin-left: 0.857rem; font-size: 0.857rem; color: var(--muted); }
@@ -141,7 +136,6 @@
   .phase-pill { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
   .top-actions { gap: 0.25rem; }
   .top-actions .btn-small { height: 2.2rem; padding: 0 0.6rem; }
-  .settings-menu { position: fixed; left: 0.5rem; right: 0.5rem; top: calc(3rem + env(safe-area-inset-top, 0px)); width: auto; z-index: var(--z-drawer-menu); }
   /* journal, coach et tous les choix : tiroir qui monte du bas */
   .side { position: fixed; left: 0; right: 0; bottom: 0; height: min(78dvh, 40rem); z-index: var(--z-drawer); border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; padding-bottom: calc(0.7rem + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -20px 50px var(--black-a60); transform: translateY(105%); visibility: hidden; transition: transform 0.25s ease-out, visibility 0.25s; }
   .side.side-open { transform: none; visibility: visible; }
