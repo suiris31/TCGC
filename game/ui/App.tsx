@@ -18,6 +18,7 @@ import { ActionBar, ActionMenu, BattlePanel } from './Interaction.tsx';
 import { isEndTurnKey } from './keys.ts';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from './Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
+import { currentRoute, goBack, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
 import { UI_SCALES, ZOOM_DELAYS, useSettings, type Settings } from './settings.ts';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
@@ -207,8 +208,22 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   const gameRef = useRef<GameState | null>(null);
   const shownAt = useRef(Date.now());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [history, setHistory] = useState(false);
-  const [builder, setBuilder] = useState(false);
+  // Mes parties (#play/parties), Mes decks (#play/decks) et la partie (#play/jeu) ont leur adresse, sauf pour une
+  // partie imposée (aventure) ou un plateau d'atelier, qui gardent celle de leur écran
+  const routed = !configured && !fixture;
+  const route = useRoute();
+  const history = routed && route.name === 'parties';
+  const builder = routed && route.name === 'decks';
+  const showScreen = (name: 'parties' | 'decks' | null) => {
+    if (!routed) return;
+    const now = currentRoute().name;
+    if (name) {
+      if (now !== name) navigate({ name });
+    } else if (now === 'parties' || now === 'decks') goBack(HOME);
+  };
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  // Retour du navigateur pendant la partie : « Quitter la partie ? » (la partie est enregistrée)
+  useLeaveGuard(!fixture && game !== null && game.winner === null, () => setConfirmLeave(true));
 
   const snapshot = useCallback((abandoned = false): GameRecord | null => {
     const r = recording.current;
@@ -249,6 +264,22 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
 
   // Partie en cours quand on quitte le jeu (autre page de l'appli) : enregistrée comme abandonnée
   useEffect(() => () => closeRecording(), [closeRecording]);
+
+  // L'adresse quitte la partie (« Menu », Retour après la fin) : la partie se ferme comme avec « Menu ». #play/jeu
+  // ouvert sans partie (rechargement) : l'écran de départ
+  const shownRoute = useRef(route.name);
+  useEffect(() => {
+    if (!routed) return;
+    const was = shownRoute.current;
+    shownRoute.current = route.name;
+    if (was === 'jeu' && route.name !== 'jeu' && gameRef.current) {
+      closeRecording();
+      setGame(null);
+    }
+  }, [routed, route.name, closeRecording]);
+  useEffect(() => {
+    if (routed && currentRoute().name === 'jeu' && !gameRef.current) navigate(HOME, { replace: true });
+  }, []);
 
   // Écran de départ : bilan relu sur le serveur, une fois la dernière partie enregistrée
   const inGame = game !== null;
@@ -446,6 +477,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     setReviewed(0);
     resetUi();
     setIntro(true);
+    if (routed) navigate({ name: 'jeu' });
     if (!settings.helpSeen) {
       setHelp(true);
       updateSettings({ helpSeen: true });
@@ -500,8 +532,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
         setHelp(false);
         setSettingsOpen(false);
         setGuide(null);
-        setHistory(false);
-        setBuilder(false);
+        showScreen(null);
         setPanel(false);
         cardZoom.close();
       } else if (isEndTurnKey(e) && humanTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
@@ -540,7 +571,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     setShowEnd(true);
     setCelebrate(false);
     celebrated.current = false;
-    setHistory(false);
+    if (routed) navigate({ name: 'jeu' }, { replace: true });
     resetGain();
     startRecording(state, cfg, { from: rec.id, turn: state.turn });
     setGame(state);
@@ -598,12 +629,12 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     return (
       <>
         <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
-          settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => setHistory(true)} onBuilder={() => setBuilder(true)} />
+          settings={settings} updateSettings={updateSettings} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
-        {history && <HistoryScreen onClose={() => { setHistory(false); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
+        {history && <HistoryScreen onClose={() => { showScreen(null); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
         {builder && (
-          <DeckBuilderScreen onClose={() => { setBuilder(false); cardZoom.close(); }} onHover={cardZoom.onHover}
-            onPlay={(id) => { setBuilder(false); cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); }} />
+          <DeckBuilderScreen onClose={() => { showScreen(null); cardZoom.close(); }} onHover={cardZoom.onHover}
+            onPlay={(id) => { showScreen(null); cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); }} />
         )}
         {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
       </>
@@ -728,8 +759,10 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   };
 
   const special = view?.special;
+  // « Menu » : retour à l'écran d'avant la partie (l'adresse quitte #play/jeu, la partie se ferme alors)
   const leave = () => {
     if (fixture) return fixture.onLeave();
+    if (routed && currentRoute().name === 'jeu') return goBack(HOME);
     closeRecording();
     setGame(null);
   };
@@ -868,6 +901,20 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
       )}
       {cardZoom.zoom && <CardZoom s={game} preview={cardZoom.zoom} onClose={cardZoom.close} />}
       {intro && <Intro s={game} onDone={() => setIntro(false)} />}
+      {confirmLeave && !over && (
+        <div className="modal" data-ui="leave" onClick={() => setConfirmLeave(false)}>
+          <div className="modal-box modal-confirm" onClick={(e) => e.stopPropagation()}>
+            <h3>Quitter la partie ?</h3>
+            <p>{configured
+              ? 'La partie est enregistrée : tu pourras la reprendre depuis le chapitre.'
+              : 'La partie est enregistrée : tu la retrouveras dans « Mes parties ».'}</p>
+            <div className="modal-actions">
+              <button className="op-btn op-btn-ghost" data-ui="leave.yes" onClick={() => { setConfirmLeave(false); if (configured) configured.onLeave(); else leave(); }}>Quitter</button>
+              <button className="op-btn op-btn-primary" data-ui="leave.no" onClick={() => setConfirmLeave(false)}>Continuer la partie</button>
+            </div>
+          </div>
+        </div>
+      )}
       {over && celebrate && <Celebration won={game.winner === HUMAN} onDone={() => setCelebrate(false)} />}
       {over && !celebrate && showEnd && (
         <div className="modal" data-ui="end" onClick={() => setShowEnd(false)}>
@@ -904,7 +951,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
               onRestart={start}
               onBoard={() => setShowEnd(false)}
               onMenu={leave}
-              onHistory={() => { leave(); setHistory(true); }}
+              onHistory={() => (routed ? navigate({ name: 'parties' }, { replace: true }) : leave())}
             />}
           </div>
         </div>

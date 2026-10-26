@@ -16,6 +16,7 @@ import { isEndTurnKey } from '../keys.ts';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from '../Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from '../Panel.tsx';
 import { loadSummaries } from '../archiveClient.ts';
+import { useLeaveGuard } from '../routes.ts';
 import { GameGain, useGameGain } from '../economy/GameGain.tsx';
 import { UI_SCALES, ZOOM_DELAYS, useSettings } from '../settings.ts';
 import { setSoundEnabled, sfx } from '../sound.ts';
@@ -142,6 +143,8 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
   useWakeLock(game.winner === null);
 
   const over = game.winner !== null;
+  // Retour du navigateur pendant la partie : la même question que « Menu » (revenir plus tard, abandonner)
+  useLeaveGuard(!over, () => setLeaving(true));
   const d = game.decision;
   // à moi de choisir, et mon dernier choix a déjà été pris en compte par le serveur
   const myTurn = Boolean(d && d.player === seat && !over && sentSeq !== view.seq);
