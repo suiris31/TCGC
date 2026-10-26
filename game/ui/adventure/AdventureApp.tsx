@@ -23,7 +23,9 @@ import { App } from '../App.tsx';
 import { flushQueue, loadRecord, loadSummaries, whenSaved } from '../archiveClient.ts';
 import { deckInfo, loadMyDecks, playable, useMyDecks } from '../myDecks.ts';
 import { goBack, goUp, navigate, useRoute, type AdventureScreen } from '../routes.ts';
+import { IconButton } from '../kit/index.ts';
 import { useSettings } from '../settings.ts';
+import { SettingsPanel } from '../SettingsPanel.tsx';
 import { useGameGain } from '../economy/GameGain.tsx';
 import { ShopScreen } from '../economy/Shop.tsx';
 import { refreshWallet, useWallet, WalletBadge } from '../economy/Wallet.tsx';
@@ -128,6 +130,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   const wins = useMemo(() => (adv ? wonChapters(adv) : new Set<string>()), [adv]);
   const winsRef = useRef(wins);
   winsRef.current = wins;
+  const [settingsOpen, setSettingsOpen] = useState(false);   // réglages du jeu, ouverts depuis la carte
   const [finale, setFinale] = useState(false);       // bilan de l'arc, montré à la carte après la victoire qui le termine
   const statuses = useMemo(() => chapterStatuses(ARC, wins) as Record<string, ChapterStatus>, [wins]);
   const current = currentChapter(ARC, wins);
@@ -348,9 +351,10 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       <>
         <MapScreen adv={adv} statuses={statuses} current={current} picked={picked} onPick={onPick} busy={openBusy} error={openError}
           finished={arcFinished(ARC, wins)} onBack={onBack} onHold={() => setScreen({ kind: 'hold' })} onDeck={() => setScreen({ kind: 'deck' })}
-          onShop={() => setScreen({ kind: 'shop' })}
+          onShop={() => setScreen({ kind: 'shop' })} onSettings={() => setSettingsOpen(true)}
           onChapter={openChapter} onOpenBoosters={() => void openBoosters(adv.boosters.map((b) => b.id))} onSummary={() => setFinale(true)} />
         {finale && !opening && <ArcSummary arc={ARC} adv={adv} onClose={() => setFinale(false)} />}
+        {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       </>
     );
   }
@@ -409,7 +413,7 @@ function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: strin
   );
 }
 
-function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPick, onBack, onHold, onDeck, onShop, onChapter, onOpenBoosters, onSummary }: {
+function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPick, onBack, onHold, onDeck, onShop, onSettings, onChapter, onOpenBoosters, onSummary }: {
   adv: AdventureState;
   statuses: Record<string, ChapterStatus>;
   current?: string;
@@ -422,6 +426,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
   onHold: () => void;
   onDeck: () => void;
   onShop: () => void;
+  onSettings: () => void;
   onChapter: (id: string) => void;
   onOpenBoosters: () => void;
   onSummary: () => void;
@@ -437,6 +442,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
         <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.back" onClick={onBack}>← Jeu</button>
         <h1 className="op-adv-map-title">{ARC.title}</h1>
         <WalletBadge wallet={wallet} onClick={onShop} />
+        <IconButton icon="settings" label="Réglages" variant="quiet" data-ui="adventure.settings" onClick={onSettings} />
         <div className="op-adv-head-actions">
           {waiting > 0 && (
             <button className="op-btn btn-small op-adv-gift" data-ui="adventure.boosters" disabled={busy} onClick={onOpenBoosters} title="Ouvrir tes boosters gagnés (ils restent aussi dans ta Cale)">

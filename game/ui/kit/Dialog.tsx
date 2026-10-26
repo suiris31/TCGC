@@ -6,13 +6,16 @@
 // - `reducible` : un bouton « Voir le plateau » la réduit en un bandeau en bas de l'écran, d'où on la rouvre (son
 //   contenu reste monté : rien n'est perdu) ;
 // - sur téléphone (`useDevice().compact`), elle devient une fiche qui monte du bas ;
-// - `history` : point d'accroche du Retour du navigateur (R1.3 le branche sur `pushLayer` / `popLayer` de R1.4).
+// - Retour du navigateur (ou d'Android) : une fenêtre fermable ajoute une entrée d'historique (`pushLayer` de
+//   routes.ts), le Retour la ferme au lieu de quitter l'écran (tâche R1.3). `history` remplace ce lien (atelier), et
+//   `history={false}` s'en passe.
 // Sans `onClose`, la fenêtre ne se ferme pas d'elle-même (ni Échap, ni fond, ni Retour) : la décision est attendue.
 // Elle est rendue dans le conteneur du jeu (`.opc`), au-dessus de tout ; les événements React remontent quand même
 // au composant qui l'ouvre (comme pour tout portail).
 import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useDevice } from '../device.ts';
+import { popLayer, pushLayer } from '../routes.ts';
 import { Button, IconButton } from './Button.tsx';
 import { initialFocus, isTabbable, nextFocus, openLayers as layers, TABBABLE } from './logic.ts';
 
@@ -22,6 +25,18 @@ export interface DialogHistory {
   push(onBack: () => void): void;
   /** la fenêtre se ferme autrement (bouton, Échap, fond) : retire son entrée */
   pop(): void;
+}
+
+// Lien par défaut : la couche des fenêtres de la table de routes (une entrée par fenêtre ouverte)
+export function routeHistory(): DialogHistory {
+  let layer = 0;
+  return {
+    push(onBack) { layer = pushLayer(onBack); },
+    pop() {
+      if (layer) popLayer(layer);
+      layer = 0;
+    },
+  };
 }
 
 const tabbables = (root: HTMLElement | null) =>
@@ -50,7 +65,8 @@ export function Dialog({ title, onClose, children, actions, size = 'normal', red
   closeOnBackdrop?: boolean;
   /** fenêtre qui demande une confirmation (`role="alertdialog"`) */
   alert?: boolean;
-  history?: DialogHistory;
+  /** lien avec le Retour du navigateur ; par défaut la table de routes, `false` : aucun */
+  history?: DialogHistory | false;
   className?: string;
   'data-ui'?: string;
 }) {
@@ -123,9 +139,11 @@ export function Dialog({ title, onClose, children, actions, size = 'normal', red
 
   // Historique : une entrée tant que la fenêtre est ouverte ; le Retour la ferme. Lu à l'ouverture seulement (un
   // objet `history` recréé à chaque rendu n'ajoute pas d'entrée)
-  const hist = useRef(history);
-  hist.current = history;
-  const linked = Boolean(history) && closable;
+  const routed = useRef<DialogHistory | null>(null);
+  const chosen = history === false ? undefined : history ?? (routed.current ??= routeHistory());
+  const hist = useRef(chosen);
+  hist.current = chosen;
+  const linked = Boolean(chosen) && closable;
   useEffect(() => {
     const h = hist.current;
     if (!linked || !h) return;

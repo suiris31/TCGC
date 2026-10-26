@@ -10,7 +10,8 @@ import { currentMatches, type CurrentMatch } from './online/api.ts';
 import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
 import { goBack, goUp, HOME, navigate, useRoute } from './routes.ts';
-import { useSettings } from './settings.ts';
+import { useReducedMotion, useSettings } from './settings.ts';
+import { setSoundEnabled } from './sound.ts';
 // Styles du jeu, un fichier par sujet ; l'ordre compte (cascade) : tokens et base d'abord
 import './styles/tokens.css';
 import './styles/base.css';
@@ -29,6 +30,7 @@ import './styles/boosters.css';
 import './styles/adventure.css';
 import './styles/shop.css';
 import './styles/atelier.css';
+import './styles/settings.css';
 
 // Atelier des écrans du jeu (#play/atelier) : chargé seulement quand on l'ouvre
 const Atelier = lazy(() => import('./atelier/Atelier.tsx').then((m) => ({ default: m.Atelier })));
@@ -122,15 +124,18 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   };
 
   // Tailles du jeu en rem : la taille du texte de la page ne change que pendant que le jeu est affiché. La taille de
-  // l'interface choisie (--ui) s'applique dès l'ouverture, aventure comprise ; la partie et le salon la suivent ensuite
+  // l'interface choisie (--ui) s'applique à tous les écrans du jeu, et change dès qu'on la règle
   useEffect(() => {
     document.documentElement.classList.add('opc-on');
-    document.documentElement.style.setProperty('--ui', String(settings.uiScale));
     return () => {
       document.documentElement.classList.remove('opc-on');
       document.documentElement.style.removeProperty('--ui');
     };
   }, []);
+  useEffect(() => { document.documentElement.style.setProperty('--ui', String(settings.uiScale)); }, [settings.uiScale]);
+  // son et animations réduites : réglés une fois pour tout le jeu (styles/settings.css)
+  useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => () => onImmersive(false), [onImmersive]);
 
@@ -154,7 +159,7 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   }, [onImmersive]);
 
   return (
-    <div className={full ? 'opc opc-full' : 'opc'}>
+    <div className={`opc${full ? ' opc-full' : ''}${reducedMotion ? ' is-reduced-motion' : ''}`}>
       {state === 'ready' ? (
         route.name === 'ami' || route.name === 'salle' ? (
           // la partie ouverte remplace le salon dans l'historique : le Retour depuis la partie ramène à l'accueil

@@ -7,8 +7,8 @@
 //   les boutons, deux doigts ou Ctrl + molette. Sur un petit écran, la vue est assez grande pour toucher les îles.
 // - Quand un chapitre s'ouvre, le bateau navigue jusqu'à son île. Il garde sa dernière position dans le navigateur :
 //   en revenant sur la carte après une victoire, on le voit partir de l'île gagnée (et du village de Fuchsia au tout
-//   début). Un appui sur la carte l'amène tout de suite ; avec « réduire les animations » (réglage du système), il est
-//   posé directement. Les sons suivent le réglage du jeu.
+//   début). Un appui sur la carte l'amène tout de suite ; avec « Animations réduites » (réglage du jeu, par
+//   défaut celui du système), il est posé directement. Les sons suivent le réglage du jeu.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import type { Arc, Chapter, ChapterStatus } from '../../adventure/types.ts';
 import {
@@ -16,7 +16,7 @@ import {
   segmentsPath, sideTrips, smoothSegments, voyage, type Point, type Rect, type Region, type Segment, type Stop,
 } from '../../adventure/world.ts';
 import { useDevice } from '../device.ts';
-import { useSettings } from '../settings.ts';
+import { useReducedMotion, useSettings } from '../settings.ts';
 import { sfx } from '../sound.ts';
 
 export interface WorldMapProps {
@@ -236,20 +236,6 @@ function useSize(ref: RefObject<HTMLDivElement | null>): Size | null {
     return () => observer.disconnect();
   }, [ref]);
   return size;
-}
-
-const REDUCE = '(prefers-reduced-motion: reduce)';
-
-function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(REDUCE).matches === true);
-  useEffect(() => {
-    const m = window.matchMedia?.(REDUCE);
-    if (!m) return;
-    const update = () => setReduced(m.matches);
-    m.addEventListener('change', update);
-    return () => m.removeEventListener('change', update);
-  }, []);
-  return reduced;
 }
 
 // ---------- Position du bateau ----------
