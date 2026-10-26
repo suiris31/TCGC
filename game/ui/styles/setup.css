@@ -1,0 +1,54 @@
+/* Écran de départ de la partie rapide : choix des decks, niveau de l'IA, premier joueur, liens (guide d'un deck,
+   Mes decks, Mes parties). */
+.setup { height: 100%; overflow: auto; max-width: 78.571rem; margin: 0 auto; padding: 2.286rem 1.714rem 4.286rem; display: flex; flex-direction: column; gap: 1.571rem; }
+.setup-head { text-align: center; }
+.setup-head h1 { margin: 0; font-size: 2.429rem; color: var(--accent); letter-spacing: 0.5px; }
+.setup-head p { margin: 0.429rem 0; }
+.setup h2 { font-size: 1.071rem; margin: 0 0 0.714rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.deck-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.857rem; }
+.deck-filter { display: flex; flex-wrap: wrap; gap: 0.429rem; margin-bottom: 0.571rem; }
+.deck-chip { height: 2.143rem; padding: 0 0.857rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 700; }
+.deck-chip[style] { border-left: 0.429rem solid var(--c1); }
+.deck-chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.deck-group + .deck-group { margin-top: 0.857rem; }
+.deck-group h3 { margin: 0 0 0.429rem; font-size: 0.929rem; color: var(--muted); font-weight: 700; }
+.deck-tile { position: relative; display: flex; flex-direction: column; align-items: stretch; padding: 0 0 0.571rem; border-radius: 14px; overflow: hidden; border: 2px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--c1), var(--c2)) border-box; text-align: left; transition: transform 0.15s, box-shadow 0.2s; opacity: 0.75; }
+@media (hover: hover) { .deck-tile:hover { transform: translateY(-3px); opacity: 1; } }
+.deck-tile.on { opacity: 1; box-shadow: 0 0 0 3px var(--accent), 0 10px 30px var(--black-a45); transform: translateY(-3px); }
+.deck-tile img { width: 100%; height: 9.286rem; object-fit: cover; object-position: center 22%; }
+.deck-random { --c1: var(--accent); --c2: var(--accent); }
+.deck-random-dice { display: grid; place-items: center; height: 9.286rem; font-size: 3.5rem; background: var(--surface-2); }
+.deck-name { padding: 0.571rem 0.714rem 0; font-weight: 800; }
+.deck-id { padding: 0 0.714rem; font-size: 0.857rem; color: var(--muted); }
+.setup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.714rem; }
+.op-segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.286rem; padding: 0.286rem; background: var(--surface); border-radius: 12px; border: 1px solid var(--line); }
+.seg { height: 2.714rem; border: 0; border-radius: 9px; background: none; color: var(--muted); font-weight: 700; }
+.seg.on { background: var(--accent); color: var(--accent-ink); }
+.setup-go { display: flex; align-items: center; justify-content: space-between; gap: 1.143rem; padding: 1.143rem 1.286rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+/* Liens sous les decks : guide d'un deck, Mes decks, Mes parties */
+.setup-links { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 0.4rem; }
+.setup-links select { background: var(--surface); border: 1px solid var(--line); border-radius: 0.4rem; padding: 0.1rem 0.4rem; }
+.deck-styles { padding: 0 0.7rem; font-size: 0.78rem; color: var(--text-cool); }
+.deck-guide-btn { margin: 0.4rem 0.6rem 0; padding: 0.25rem 0.5rem; border-radius: 0.5rem; text-align: center; font-size: 0.85rem; font-weight: 700; background: var(--white-a07); border: 1px solid var(--line); }
+@media (hover: hover) { .deck-guide-btn:hover { border-color: var(--accent); color: var(--accent); } }
+@media (max-width: 1250px) {
+  .deck-grid { grid-template-columns: repeat(3, 1fr); }
+}
+/* Téléphone en portrait */
+@media (max-width: 900px) and (orientation: portrait) {
+  .setup { padding: calc(1rem + env(safe-area-inset-top, 0px)) 0.8rem 2rem; gap: 1.1rem; }
+  .setup-head h1 { font-size: 1.8rem; }
+  .setup-links { flex-wrap: wrap; gap: 0.5rem 1.2rem; }
+  .deck-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .deck-tile img, .deck-random-dice { height: 5.2rem; }
+  .deck-random-dice { font-size: 2.4rem; }
+  .deck-name { padding: 0.4rem 0.45rem 0; font-size: 0.85rem; }
+  .deck-id { padding: 0 0.45rem; font-size: 0.72rem; }
+  .deck-styles { display: none; }
+  .deck-guide-btn { margin: 0.35rem 0.4rem 0; padding: 0.2rem 0.3rem; font-size: 0.75rem; }
+  .setup-row { grid-template-columns: 1fr; gap: 1.1rem; }
+  .setup-go { flex-direction: column; align-items: stretch; padding: 0.9rem; text-align: center; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .setup { padding: calc(0.8rem + env(safe-area-inset-top, 0px)) 1rem 1.5rem; gap: 1rem; }
+}

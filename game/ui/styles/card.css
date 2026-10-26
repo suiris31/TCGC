@@ -1,0 +1,70 @@
+/* Cartes : tailles, états (jouable, à choisir, cible, choisie…), pastilles (puissance, coût, DON!!) ; fiche de détail
+   d'une carte (au survol, ou épinglée sur un écran tactile). */
+.card { position: relative; flex-shrink: 0; width: var(--cw); height: var(--ch); border-radius: 7px; background: var(--surface); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s, filter 0.2s; box-shadow: 0 3px 8px var(--black-a45); }
+.card img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
+.card-hand { width: var(--hw); height: calc(var(--hw) * 1.396); }
+.card-small { width: 5.857rem; height: 8.143rem; }
+.card-pick { width: clamp(8.571rem, 11vw, 12.143rem); height: calc(clamp(8.571rem, 11vw, 12.143rem) * 1.396); }
+.card-big { width: 16.429rem; height: 22.929rem; }
+.card-back { background: repeating-linear-gradient(45deg, var(--back-1), var(--back-1) 0.429rem, var(--back-2) 0.429rem, var(--back-2) 0.857rem); border: 2px solid var(--back-edge); }
+.card-rested { transform: rotate(90deg); margin: 0 calc((var(--ch) - var(--cw)) / 2); }
+.is-clickable { cursor: pointer; }
+.is-actionable { box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent-a55); animation: glow-gold 2.2s ease-in-out infinite; }
+@media (hover: hover) { .is-actionable:hover { transform: translateY(-6px) scale(1.04); } }
+@media (hover: hover) { .card-rested.is-actionable:hover { transform: rotate(90deg) scale(1.04); } }
+.is-choose { box-shadow: 0 0 0 3px var(--blue), 0 0 18px var(--blue-a65); animation: glow-blue 1.6s ease-in-out infinite; }
+@media (hover: hover) { .is-choose:hover { transform: translateY(-6px) scale(1.04); } }
+.is-target { box-shadow: 0 0 0 3px var(--red), 0 0 22px var(--red-a75); animation: glow-red 1s ease-in-out infinite; cursor: crosshair; }
+@media (hover: hover) { .is-target:hover { transform: scale(1.07); } }
+@media (hover: hover) { .card-rested.is-target:hover { transform: rotate(90deg) scale(1.07); } }
+.is-selected { box-shadow: 0 0 0 3px var(--white), 0 0 24px var(--white-a55) !important; animation: none; }
+.is-dim { filter: grayscale(0.55) brightness(0.62); }
+.is-drop { outline: 3px dashed var(--green); outline-offset: 3px; }
+@keyframes glow-gold { 50% { box-shadow: 0 0 0 2px var(--accent), 0 0 26px var(--accent-a85); } }
+@keyframes glow-blue { 50% { box-shadow: 0 0 0 3px var(--blue), 0 0 30px var(--blue-a95); } }
+@keyframes glow-red { 50% { box-shadow: 0 0 0 3px var(--red), 0 0 34px var(--red-a100); } }
+.badge { position: absolute; font-size: 0.786rem; font-weight: 900; padding: 1px 0.429rem; border-radius: 7px; background: var(--ink-a92); border: 1px solid var(--white-a15); }
+.badge-power { bottom: 0.286rem; right: 0.286rem; font-size: 0.929rem; }
+.card-rested .badge-power { transform: rotate(-90deg); }
+.badge-cost { top: 0.286rem; left: 0.286rem; min-width: 1.429rem; text-align: center; }
+.badge-cost.cheaper { color: var(--green); border-color: var(--green); }
+.badge-cost.too-expensive { color: var(--red-soft); }
+.badge-counter { left: 50%; bottom: 26%; transform: translateX(-50%); background: var(--green); color: var(--on-green); border: 0; font-size: 0.929rem; }
+.badge-star { top: -10px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--accent-ink); border: 0; font-size: 0.929rem; box-shadow: 0 0 12px var(--accent-a90); }
+.don-chips { position: absolute; top: 0.286rem; right: 0.286rem; display: flex; gap: 2px; align-items: center; }
+.don-chips i { width: 0.643rem; height: 0.643rem; transform: rotate(45deg); background: linear-gradient(135deg, var(--don-light), var(--don-chip)); box-shadow: 0 0 4px var(--accent-a90); }
+.don-chips b { font-size: 0.714rem; color: var(--accent); margin-left: 2px; }
+.status-icons { position: absolute; left: 3px; bottom: 0.286rem; display: flex; gap: 1px; font-size: 0.929rem; filter: drop-shadow(0 1px 2px var(--black)); }
+.up { color: var(--green); }
+.down { color: var(--red-soft); }
+/* Fenêtre de détail d'une carte */
+.card-zoom { position: fixed; z-index: var(--z-zoom); display: flex; gap: 1rem; max-width: min(46rem, calc(100vw - 2rem)); padding: 0.9rem; background: var(--zoom-bg); border: 1px solid var(--line-strong); border-radius: 1.1rem; box-shadow: 0 24px 60px var(--black-a70); pointer-events: none; animation: pop 0.15s ease-out; }
+.card-zoom img { width: min(19rem, 38vh); height: auto; align-self: flex-start; border-radius: 0.8rem; }
+.zoom-text { display: flex; flex-direction: column; gap: 0.4rem; min-width: 15rem; max-width: 24rem; }
+.zoom-name { font-size: 1.35rem; }
+.zoom-meta, .zoom-types { color: var(--muted); font-size: 0.9rem; }
+.zoom-stats { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; font-size: 0.95rem; }
+.zoom-stats b { color: var(--accent); }
+.zoom-effect { margin: 0.2rem 0 0; font-size: 1rem; line-height: 1.45; white-space: pre-line; }
+.zoom-state { margin-top: 0.3rem; padding: 0.5rem 0.7rem; border-radius: 0.7rem; background: var(--surface); font-size: 0.92rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.zoom-state-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.zoom-mod { color: var(--text-ice); }
+.kw-type { color: var(--blue-soft); }
+/* carte touchée sur un écran tactile : fiche épinglée, fermée au toucher suivant */
+.zoom-backdrop { position: fixed; inset: 0; z-index: var(--z-zoom-backdrop); background: var(--backdrop-a55); animation: op-fade 0.15s ease-out; }
+.card-zoom.zoom-pinned { pointer-events: auto; }
+.zoom-close { position: fixed; left: 0; right: 0; bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px)); z-index: var(--z-zoom-close); text-align: center; color: var(--muted); font-size: 0.85rem; pointer-events: none; }
+@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+  .zoom-effect { font-size: 0.93rem; }
+  /* carte touchée : fiche en bas de l'écran (la position calculée pour la souris est ignorée) */
+  .card-zoom.zoom-pinned { left: 0 !important; right: 0; top: auto !important; bottom: 0; max-width: none; max-height: 88dvh; overflow: auto; border-radius: 18px 18px 0 0; padding: 0.8rem 0.8rem calc(2.4rem + env(safe-area-inset-bottom, 0px)); animation: sheet-up 0.18s ease-out; }
+  .card-zoom.zoom-pinned img { width: 9rem; }
+  .card-zoom .zoom-text { min-width: 0; }
+  .card-big { width: 11rem; height: 15.36rem; }
+}
+@media (max-width: 900px) and (orientation: portrait) {
+  .card-pick { width: calc((min(100vw, 40rem) - 3.5rem) / 3.2); height: calc((min(100vw, 40rem) - 3.5rem) / 3.2 * 1.396); }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .card-pick { width: calc((100dvh - 11rem) / 1.396 * 0.7); height: calc((100dvh - 11rem) * 0.7); }
+}

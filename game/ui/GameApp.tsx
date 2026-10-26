@@ -11,7 +11,24 @@ import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
 import { goBack, goUp, HOME, navigate, useRoute } from './routes.ts';
 import { useSettings } from './settings.ts';
-import './styles.css';
+// Styles du jeu, un fichier par sujet ; l'ordre compte (cascade) : tokens et base d'abord
+import './styles/tokens.css';
+import './styles/base.css';
+import './styles/setup.css';
+import './styles/table.css';
+import './styles/card.css';
+import './styles/fx.css';
+import './styles/modals.css';
+import './styles/guide.css';
+import './styles/coach.css';
+import './styles/history.css';
+import './styles/builder.css';
+import './styles/online.css';
+import './styles/map.css';
+import './styles/boosters.css';
+import './styles/adventure.css';
+import './styles/shop.css';
+import './styles/atelier.css';
 
 // Atelier des écrans du jeu (#play/atelier) : chargé seulement quand on l'ouvre
 const Atelier = lazy(() => import('./atelier/Atelier.tsx').then((m) => ({ default: m.Atelier })));

@@ -1,0 +1,89 @@
+/* Effets de la partie : flèches, cartes qui partent, nombres flottants, fil des actions, bandeaux, mise en avant
+   d'une carte, célébration de fin, présentation des Leaders. */
+.fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: var(--z-fx); }
+.fx-arrow { position: absolute; inset: 0; }
+.fx-arrow line { stroke-width: 5; stroke-linecap: round; stroke-dasharray: 14 10; animation: dash 0.6s linear infinite; filter: drop-shadow(0 0 6px currentColor); }
+.arrow-mine { color: var(--accent); }
+.arrow-opp { color: var(--red); }
+.fx-arrow line, .fx-arrow path { stroke: currentColor; fill: currentColor; }
+@keyframes dash { to { stroke-dashoffset: -24; } }
+.fx-ghost { position: absolute; border-radius: 7px; overflow: hidden; }
+.fx-ghost img { width: 100%; height: 100%; object-fit: cover; }
+.ghost-label { position: absolute; inset: 40% 0 auto; text-align: center; font-weight: 900; font-size: 1.286rem; text-shadow: 0 2px 6px var(--black); }
+.ghost-ko { animation: ko 1s ease-in forwards; }
+.ghost-ko .ghost-label { color: var(--red-bright); font-size: 1.857rem; }
+.ghost-leave { animation: leave 1s ease-in forwards; }
+@keyframes ko { 0% { transform: none; filter: brightness(1.6) saturate(0.4); } 15% { transform: translateX(-6px) rotate(-3deg); } 30% { transform: translateX(6px) rotate(3deg); filter: brightness(0.8) sepia(1) hue-rotate(-30deg) saturate(4); } 100% { transform: translateY(40px) rotate(12deg) scale(0.8); opacity: 0; } }
+@keyframes leave { 0% { opacity: 1; } 100% { transform: translateY(-30px) scale(0.85); opacity: 0; } }
+.fx-float { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 1.429rem; white-space: nowrap; text-shadow: 0 2px 6px var(--black), 0 0 12px var(--black-a80); animation: float-up 1.4s ease-out forwards; }
+.float-good { color: var(--green-bright); }
+.float-bad { color: var(--red-bright); font-size: 1.714rem; }
+.float-don { color: var(--accent); font-size: 1.143rem; }
+@keyframes float-up { 0% { transform: translate(-50%, -30%) scale(0.6); opacity: 0; } 15% { transform: translate(-50%, -60%) scale(1.15); opacity: 1; } 100% { transform: translate(-50%, -160%) scale(1); opacity: 0; } }
+.fx-ticker { position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 0.357rem; overflow: hidden; }
+.tick { padding: 0.357rem 0.714rem; border-radius: 10px; background: var(--bg-a92); border-left: 3px solid; font-size: 0.893rem; animation: tick-in 0.25s ease-out, tick-out 0.5s ease-in 2.7s forwards; box-shadow: 0 6px 18px var(--black-a40); }
+.tick-who { display: inline-block; margin-right: 0.429rem; padding: 0 0.429rem; border-radius: 5px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; background: var(--white-a08); }
+.ticker-narrow { justify-content: flex-end; gap: 0.2rem; }
+.ticker-narrow .tick { padding: 0.2rem 0.5rem; font-size: 0.78rem; }
+.tick-me { border-color: var(--accent); }
+.tick-me b { color: var(--accent); }
+.tick-opp { border-color: var(--blue); }
+.tick-opp b { color: var(--blue-soft); }
+@keyframes tick-in { from { transform: translateX(-20px); opacity: 0; } }
+@keyframes tick-out { to { opacity: 0; transform: translateX(-10px); } }
+.fx-banner { position: absolute; left: 0; right: 0; top: 42%; display: flex; flex-direction: column; align-items: center; padding: 1rem 0; animation: banner 1.4s ease-in-out forwards; }
+.fx-banner span { font-size: 2.857rem; font-weight: 900; letter-spacing: 1px; text-shadow: 0 4px 20px var(--black-a80); }
+.fx-banner small { font-size: 1rem; color: var(--muted); }
+.banner-mine { background: linear-gradient(90deg, transparent, var(--accent-a25), transparent); }
+.banner-mine span { color: var(--accent); }
+.banner-opp { background: linear-gradient(90deg, transparent, var(--blue-a22), transparent); }
+.banner-opp span { color: var(--blue-soft); }
+@keyframes banner { 0% { opacity: 0; transform: scaleY(0.4); } 15% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.fx-spot { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 0.571rem; animation: spot 1.7s ease-in-out forwards; }
+.fx-spot img { width: 15rem; border-radius: 12px; box-shadow: 0 0 0 3px var(--accent), 0 20px 60px var(--black-a80), 0 0 60px var(--accent-a50); }
+.fx-spot span { padding: 0.286rem 0.857rem; border-radius: 8px; background: var(--bg-a92); font-weight: 800; }
+@keyframes spot { 0% { opacity: 0; transform: translate(-50%, -45%) scale(0.6); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); } 25% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -55%) scale(0.9); } }
+.fx-enter { animation: enter 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+@keyframes enter { 0% { transform: translateY(-40px) scale(1.4); opacity: 0; filter: brightness(2); } 60% { opacity: 1; } 100% { filter: none; } }
+.card-rested.fx-enter { animation: none; }
+.fx-draw { animation: draw 0.6s ease-out; }
+@keyframes draw { from { transform: translateY(60px) scale(0.8); opacity: 0; } }
+.fx-shake { animation: shake 0.45s ease-in-out; }
+@keyframes shake { 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+.fx-hit img { animation: hit 0.6s ease-out; }
+@keyframes hit { 0% { filter: brightness(2.2) saturate(0) sepia(1) hue-rotate(-40deg) saturate(6); } 100% { filter: none; } }
+.celebration { position: fixed; inset: 0; z-index: var(--z-celebration); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.714rem; cursor: pointer; animation: op-fade 0.3s ease-out; }
+.cel-win { background: radial-gradient(circle at 50% 45%, var(--accent-a45), var(--night-a92) 60%); }
+.cel-lose { background: radial-gradient(circle at 50% 45%, var(--lose-glow), var(--night-a94) 60%); }
+.cel-title { font-size: 6rem; font-weight: 900; letter-spacing: 2px; animation: cel 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.3); text-shadow: 0 8px 40px var(--black-a80); }
+.cel-win .cel-title { color: var(--accent); }
+.cel-lose .cel-title { color: var(--text-lose); }
+.cel-sub { font-size: 1.286rem; color: var(--muted); }
+@keyframes cel { from { transform: scale(0.3); opacity: 0; } }
+.confetti { position: absolute; inset: 0; overflow: hidden; }
+.confetti i { position: absolute; top: -20px; left: calc(var(--i) * 2.5%); width: 0.714rem; height: 1.143rem; background: hsl(calc(var(--i) * 37deg), 85%, 62%); animation: confetti 2.6s linear calc(var(--i) * -0.07s) infinite; }
+@keyframes confetti { to { transform: translateY(110vh) rotate(720deg); } }
+.intro { position: fixed; inset: 0; z-index: var(--z-intro); display: flex; align-items: center; justify-content: center; gap: 2.857rem; background: radial-gradient(circle at 50% 50%, var(--intro-core), var(--intro-edge)); animation: intro-out 1.9s ease-in forwards; cursor: pointer; }
+.intro-side { display: flex; flex-direction: column; align-items: center; gap: 0.714rem; font-weight: 900; font-size: 1.429rem; }
+.intro-side img { width: clamp(11.429rem, 18vw, 18.571rem); border-radius: 14px; box-shadow: 0 20px 60px var(--black-a70); }
+.intro-left { animation: intro-left 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+.intro-left img { box-shadow: 0 0 0 3px var(--accent), 0 20px 60px var(--black-a70); }
+.intro-right { animation: intro-right 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+.intro-right img { box-shadow: 0 0 0 3px var(--blue), 0 20px 60px var(--black-a70); }
+.intro-vs { font-size: 4.571rem; font-weight: 900; color: var(--accent); text-shadow: 0 0 30px var(--accent-a70); animation: cel 0.7s 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; }
+@keyframes intro-left { from { transform: translateX(-60vw) rotate(-12deg); } }
+@keyframes intro-right { from { transform: translateX(60vw) rotate(12deg); } }
+@keyframes intro-out { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.btn-hint { height: 2.714rem; }
+@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+  .cel-title { font-size: 3.6rem; }
+  .intro { gap: 1rem; }
+  .intro-side { font-size: 1rem; }
+  .intro-side img { width: 30vw; }
+  .intro-vs { font-size: 2.6rem; }
+  .fx-spot img { width: 10rem; }
+  .fx-banner span { font-size: 2rem; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .cel-title { font-size: 3rem; }
+}
