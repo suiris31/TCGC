@@ -7,16 +7,16 @@
 import { useMemo, useState } from 'react';
 import { findChapter } from '../../adventure/arcs.ts';
 import { BOOSTER_SETS } from '../../boosters/sets/index.ts';
-import type { BoosterContent } from '../../boosters/types.ts';
 import { ECONOMY } from '../../economy/config.ts';
 import { cardData } from '../../engine/cards/index.ts';
 import type { Category, Color } from '../../engine/types.ts';
 import { CounterScreen, counterPrice } from '../economy/Counter.tsx';
 import { DuplicatesDialog, duplicateCount } from '../economy/Duplicates.tsx';
 import { berry } from '../economy/Wallet.tsx';
+import { useBoosterOpening } from '../economy/useBoosterOpening.ts';
 import { EffectText } from '../Zoom.tsx';
-import { boosterChapter, holdByNumber, loadHold, openWonBooster, type HoldCard, type WonBooster } from './api.ts';
-import { BoosterOpening, ownedCounts } from './BoosterOpening.tsx';
+import { boosterChapter, holdByNumber, type HoldCard, type WonBooster } from './api.ts';
+import { BoosterOpening } from './BoosterOpening.tsx';
 import { CardImage } from './CardImage.tsx';
 import {
   boosterRates, chanceText, filterChoices, filterHold, holdEntries, holdSummary, NO_FILTER, RARITY_LABELS, SORT_LABELS, sortHold, versionName,
@@ -42,35 +42,14 @@ function boosterOrigin(b: WonBooster): string {
 
 export function HoldScreen({ onBack }: { onBack: () => void }) {
   const { data, error, reload } = useHoldState();
-  const [opened, setOpened] = useState<{ contents: BoosterContent[]; owned: Record<string, number> } | null>(null);
-  const [opening, setOpening] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  // Ouverture (tâche R3.6) : chaque booster est tiré sur le serveur au moment où on l'ouvre ; ceux qu'on n'ouvre pas
+  // restent ici. La Cale est relue après.
+  const opening = useBoosterOpening({ onDone: () => void reload() });
   // comptoir ouvert (focus : la carte d'où l'on vient) ; fenêtre d'échange des doublons
   const [counter, setCounter] = useState<{ focus?: string } | null>(null);
   const [duplicates, setDuplicates] = useState(false);
 
-  // Ouvre les boosters un par un sur le serveur, puis montre l'ouverture. « Nouveau ! » se compte d'après la Cale lue
-  // juste avant (01-contrats.md, § 6).
-  const open = async (ids: string[]) => {
-    setOpening(true);
-    setNotice(null);
-    const contents: BoosterContent[] = [];
-    try {
-      const owned = ownedCounts((await loadHold()).cards);
-      try {
-        for (const id of ids) contents.push((await openWonBooster(id)).content);
-      } catch (e) {
-        setNotice(`${contents.length ? `${contents.length} booster${contents.length > 1 ? 's' : ''} ouvert${contents.length > 1 ? 's' : ''}, puis : ` : ''}${(e as Error).message}`);
-      }
-      if (contents.length) setOpened({ contents, owned });
-    } catch (e) {
-      setNotice((e as Error).message);
-    }
-    setOpening(false);
-    void reload();
-  };
-
-  if (opened) return <BoosterOpening content={opened.contents} owned={opened.owned} onDone={() => setOpened(null)} />;
+  if (opening.props) return <BoosterOpening {...opening.props} />;
   if (counter) return <CounterScreen focus={counter.focus} onBack={() => { setCounter(null); void reload(); }} />;
   if (!data) {
     return (
@@ -84,8 +63,9 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
   }
   return (
     <>
-      <HoldView cards={data.cards} boosters={data.adventure.boosters} onBack={onBack} onOpen={open} opening={opening}
-        notice={notice ?? error} onDuplicates={() => setDuplicates(true)} onCounter={(focus) => setCounter({ focus })} />
+      <HoldView cards={data.cards} boosters={data.adventure.boosters} onBack={onBack} opening={opening.busy}
+        onOpen={(ids) => void opening.start(data.adventure.boosters.filter((b) => ids.includes(b.id)))}
+        notice={opening.error ?? error} onDuplicates={() => setDuplicates(true)} onCounter={(focus) => setCounter({ focus })} />
       {duplicates && <DuplicatesDialog onClose={() => setDuplicates(false)} onExchanged={() => void reload()} />}
     </>
   );
@@ -173,8 +153,9 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
           <div className="op-hold-actions">
             {onDuplicates && (
               <button className="op-btn op-btn-ghost" onClick={onDuplicates} disabled={extra === 0}
+                aria-label={extra ? `Échanger mes doublons : ${plural(extra, 'exemplaire')} en trop` : undefined}
                 title={extra ? `${plural(extra, 'exemplaire')} au-delà de ${ECONOMY.duplicates.keep} : à échanger contre des Berry` : `Aucune carte en plus de ${ECONOMY.duplicates.keep} exemplaires`}>
-                ♻️ Échanger mes doublons{extra > 0 && <span className="op-hold-actions-count">{extra}</span>}
+                ♻️ Échanger mes doublons{extra > 0 && <> <span className="op-hold-actions-count" aria-hidden="true">{extra}</span></>}
               </button>
             )}
             {onCounter && (

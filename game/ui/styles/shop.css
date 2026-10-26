@@ -57,9 +57,10 @@
 .op-shop-buy { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; text-align: right; }
 .op-shop-price { font-size: 1.25rem; font-weight: 800; color: var(--accent); white-space: nowrap; }
 /* Contenu d'un booster et d'un display */
-.modal-box.op-shop-contents { max-width: 40rem; }
+.op-kit-dialog.op-shop-contents { width: min(40rem, 100%); }
+.op-shop-contents .op-kit-dialog-body { display: flex; flex-direction: column; gap: var(--space-3); }
 /* Confirmation et achat */
-.modal-box.op-shop-dialog { max-width: 28rem; align-items: center; text-align: center; }
+.op-shop-dialog .op-kit-dialog-body { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; }
 .op-shop-dialog p { margin: 0; line-height: 1.45; }
 .op-shop-stack { position: relative; display: inline-flex; justify-content: center; height: 5.4rem; }
 .op-shop-stack .op-adv-pack { width: 3.3rem; }
@@ -127,7 +128,7 @@
 }
 /* Cale : boutons des doublons et du comptoir */
 .op-hold-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.op-hold-actions-count { display: inline-block; margin-left: 0.4rem; min-width: 1.4rem; padding: 0 0.35rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 0.8rem; font-weight: 800; text-align: center; }
+.op-hold-actions-count { display: inline-block; margin-left: 0.15rem; min-width: 1.4rem; padding: 0 0.35rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 0.8rem; font-weight: 800; text-align: center; }
 .op-hold-zoom-counter { align-self: flex-start; }
 /* Boutique : entrée du comptoir */
 .op-shop-counter-link { display: flex; align-items: center; gap: 0.8rem; width: 100%; padding: 0.7rem 0.9rem; border-radius: 12px; border: 1px dashed var(--accent-a55); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, transform 0.12s; }
