@@ -7,31 +7,27 @@ import { buildRecap, HINT, isReviewable, REVIEW, toReview, type Move, type MoveR
 import { CARDS } from '../engine/cards/index.ts';
 import { DECKS, freeDeckIds } from '../engine/decks.ts';
 import { act, newGame } from '../engine/engine.ts';
-import { counterValue, def } from '../engine/rules.ts';
+import { def } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
-import { Hand, OpponentHand, PlayerZone, type BoardUi } from './Board.tsx';
-import { type CardLook, type Preview } from './CardView.tsx';
-import { CoachHint, EndScreen, RecapBody, recordText, type RecordLine } from './Coach.tsx';
-import { attackPreview, phaseLabel, readDecision, remainingActions, whyNot, type CardAction } from './decision.ts';
-import { Celebration, FxLayer, Intro } from './Fx.tsx';
-import { ActionBar, ActionMenu, BattlePanel } from './Interaction.tsx';
-import { isEndTurnKey } from './keys.ts';
-import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from './Modals.tsx';
-import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
-import { currentRoute, goBack, HOME, navigate, useLayer, useLeaveGuard, useRoute } from './routes.ts';
+import { EndScreen, RecapBody, recordText, type RecordLine } from './Coach.tsx';
+import { phaseLabel } from './decision.ts';
+import { HelpModal } from './Modals.tsx';
+import { currentRoute, goBack, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
 import { useSettings } from './settings.ts';
 import { SettingsPanel } from './SettingsPanel.tsx';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
 import { deckInfo, deckLabel, isAdventureDeck, playable, useMyDecks } from './myDecks.ts';
 import { GUIDES } from './deckGuides.ts';
-import { CardZoom, useCardZoom } from './Zoom.tsx';
-import { sfx } from './sound.ts';
+import { CardZoom } from './Zoom.tsx';
 import { flushQueue, keepForLater, loadSummaries, saveRecord, whenSaved } from './archiveClient.ts';
 import { HistoryScreen } from './History.tsx';
-import { useDevice, useWakeLock } from './device.ts';
 import { cardImage } from './images.ts';
 import { GameGain, useGameGain } from './economy/GameGain.tsx';
+import { CoachTab } from './table/SidePanel.tsx';
+import { LeaveDialog, stop, TableScreen } from './table/TableScreen.tsx';
+import { useGameKeys } from './table/useGameKeys.ts';
+import { useTable } from './table/useTable.ts';
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
@@ -122,83 +118,33 @@ export interface ConfiguredGame {
 // Accès au mode Aventure depuis l'écran de départ
 export interface AdventureEntry { onOpen: () => void }
 
-// Plateau sur un état fixé (atelier, #play/atelier/plateau-<état>) : pas d'écran de départ, ni IA, ni coach, ni
-// enregistrement, ni serveur. Tes choix sont joués sur place ; le tour de l'IA attend. aim : attaque choisie et cible
-// visée (le résultat prévu s'affiche) ; moves et reviews : décisions passées et leur analyse (récap de fin) ;
-// onLeave : « Menu ».
-export interface BoardFixture {
-  state: GameState;
-  aim?: { attacker: number; target: number };
-  moves?: Move[];
-  reviews?: MoveReview[];
-  onLeave: () => void;
-}
-
 // notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
-// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame) ; fixture : plateau sur
-// un état fixé, pour l'atelier (voir BoardFixture)
-export function App({ notice, onImmersive, online, adventure, configured, fixture }: {
+// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame)
+export function App({ notice, onImmersive, online, adventure, configured }: {
   notice?: string;
   onImmersive?: (on: boolean) => void;
   online?: OnlineEntry;
   adventure?: AdventureEntry;
   configured?: ConfiguredGame;
-  fixture?: BoardFixture;
 }) {
   const [settings, updateSettings] = useSettings();
   const [config, setConfig] = useState<Config>(() => configured
     ? { myDeck: configured.myDeck, aiDeck: configured.aiDeck, first: 'random', level: configured.level }
-    : fixture ? { myDeck: fixture.state.players[HUMAN].deckId, aiDeck: fixture.state.players[AI].deckId, first: 'me', level: 1 }
     : { myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
   const [session, setSession] = useState<Config>(config);
   const [thinking, setThinking] = useState(false);
-  const [game, setGame] = useState<GameState | null>(fixture?.state ?? null);
+  const [game, setGame] = useState<GameState | null>(null);
   const [undo, setUndo] = useState<GameState[]>([]);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [trashOf, setTrashOf] = useState<PlayerId | null>(null);
-  const [showEnd, setShowEnd] = useState(true);
   const [records, setRecords] = useState<Records>({});
   const [practice, setPractice] = useState(false);
   const [hint, setHint] = useState<{ for: GameState; analysis: Analysis | null } | null>(null);
-  const [menu, setMenu] = useState<{ uid: number; rect: DOMRect } | null>(null);
-  const [targeting, setTargeting] = useState<{ attacker: number } | null>(fixture?.aim ? { attacker: fixture.aim.attacker } : null);
-  const [hoverUid, setHoverUid] = useState<number | null>(fixture?.aim?.target ?? null);
-  const [dragging, setDragging] = useState(false);
-  const [confirmEnd, setConfirmEnd] = useState(false);
-  const [help, setHelp] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [celebrate, setCelebrate] = useState(false);
-  const [intro, setIntro] = useState(false);
-  const [epoch, setEpoch] = useState(0);
-  const [tab, setTab] = useState<'journal' | 'coach' | 'choix'>('journal');
-  const keepMenu = useRef<number | null>(null);
-  // Téléphone : le journal, le coach et tous les choix sont dans un tiroir (panel) ; sur écran tactile, la cible
-  // d'attaque touchée (aimed) montre le résultat prévu et attend la confirmation
-  const { compact, touch } = useDevice();
-  const [panel, setPanel] = useState(false);
-  const [aimed, setAimed] = useState<number | null>(null);
-  // nouvelle attaque : aucune cible visée (sauf celle de l'état fixé, au premier affichage)
-  const firstAim = useRef(fixture?.aim?.target ?? null);
-  useEffect(() => {
-    setAimed(firstAim.current);
-    firstAim.current = null;
-  }, [targeting]);
-  useWakeLock(game !== null && game.winner === null);
-
-  const cardZoom = useCardZoom(settings.zoomDelay);
-  const [guide, setGuide] = useState<string | null>(null);
-  // anciennes fenêtres de l'aide et du guide : le Retour les ferme aussi (les réglages, fenêtre du kit, le font d'office)
-  useLayer(help, () => setHelp(false));
-  useLayer(guide !== null, () => setGuide(null));
 
   // Décisions du joueur et leur analyse par le coach, faite en arrière-plan pendant la partie
-  const moves = useRef<Move[]>(fixture?.moves ?? []);
-  const reviews = useRef(new Map<number, MoveReview>(fixture?.reviews?.map((r) => [r.id, r])));
-  const nextMove = useRef(1 + Math.max(0, ...(fixture?.moves ?? []).map((m) => m.id)));
+  const moves = useRef<Move[]>([]);
+  const reviews = useRef(new Map<number, MoveReview>());
+  const nextMove = useRef(1);
   const pumping = useRef(false);
-  // état fixé : ni bilan, ni écran de victoire ou de défaite animé (le récap s'affiche directement)
-  const recorded = useRef(Boolean(fixture));
-  const celebrated = useRef(Boolean(fixture));
+  const recorded = useRef(false);
   const ended = useRef(false);
   const [reviewed, setReviewed] = useState(0);
   // Gain de la partie libre (Berry) : demandé au serveur une fois la partie finie et enregistrée (l'aventure le demande
@@ -214,8 +160,8 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const recordMode = useRef(configured?.mode);
   // Mes parties (#play/parties), Mes decks (#play/decks) et la partie (#play/jeu) ont leur adresse, sauf pour une
-  // partie imposée (aventure) ou un plateau d'atelier, qui gardent celle de leur écran
-  const routed = !configured && !fixture;
+  // partie imposée (aventure), qui garde celle de son écran
+  const routed = !configured;
   const route = useRoute();
   const history = routed && route.name === 'parties';
   const builder = routed && route.name === 'decks';
@@ -228,7 +174,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   };
   const [confirmLeave, setConfirmLeave] = useState(false);
   // Retour du navigateur pendant la partie : « Quitter la partie ? » (la partie est enregistrée)
-  useLeaveGuard(!fixture && game !== null && game.winner === null, () => setConfirmLeave(true));
+  useLeaveGuard(game !== null && game.winner === null, () => setConfirmLeave(true));
 
   const snapshot = useCallback((abandoned = false): GameRecord | null => {
     const r = recording.current;
@@ -287,29 +233,6 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     if (routed && currentRoute().name === 'jeu' && !gameRef.current) navigate(HOME, { replace: true });
   }, []);
 
-  // Écran de départ : bilan relu sur le serveur, une fois la dernière partie enregistrée
-  const inGame = game !== null;
-  // une partie, ou une fenêtre ouverte sur l'écran de départ (guide, Mes parties, aide), occupe tout l'écran
-  const fullScreen = inGame || history || guide !== null || help;
-  useEffect(() => onImmersive?.(fullScreen), [fullScreen, onImmersive]);
-  useEffect(() => {
-    if (inGame) return;
-    let cancelled = false;
-    whenSaved().then(loadSummaries).then((list) => { if (!cancelled) setRecords(recordsOf(list)); }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [inGame]);
-
-  useEffect(() => {
-    if (fixture) return;
-    flushQueue();
-    const onHide = () => {
-      const rec = snapshot();
-      if (rec) keepForLater(rec);
-    };
-    window.addEventListener('pagehide', onHide);
-    return () => window.removeEventListener('pagehide', onHide);
-  }, [snapshot, fixture]);
-
   const pump = useCallback(async () => {
     if (pumping.current) return;
     pumping.current = true;
@@ -327,9 +250,57 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     }
   }, []);
 
+  const d = game?.decision ?? null;
+  const humanTurn = Boolean(game && d && d.player === HUMAN && game.winner === null);
+  const hintNow = hint && hint.for === game ? hint : null;
+  useEffect(() => {
+    if (humanTurn) shownAt.current = Date.now();
+  }, [game, humanTurn]);
+  const recommended = hintNow?.analysis?.best ?? null;
+
+  // Ton choix : joué par le moteur, noté pour le récap (temps de réflexion, conseil affiché), puis analysé par le coach
+  const choose = useCallback((id: string) => {
+    if (!game) return;
+    const moveId = nextMove.current++;
+    const advice = hint && hint.for === game && hint.analysis ? hint.analysis.best : undefined;
+    recording.current?.extra.set(moveId, { ms: Date.now() - shownAt.current, hint: advice });
+    moves.current = [...moves.current, { id: moveId, state: game, choice: id }];
+    setUndo((u) => [...u.slice(-80), game]);
+    setGame(act(game, id));
+    void pump();
+  }, [game, pump, hint]);
+
+  // Le plateau (contrôleur commun, table/) : l'aide, les réglages, le guide et la carte en grand servent aussi à
+  // l'écran de départ
+  const table = useTable({ state: game, seat: HUMAN, active: humanTurn, choose, aids: true, recommended });
+  const { help, setHelp, guide, setGuide } = table;
+  const cardZoom = table.board.zoom;
+
+  // Écran de départ : bilan relu sur le serveur, une fois la dernière partie enregistrée
+  const inGame = game !== null;
+  // une partie, ou une fenêtre ouverte sur l'écran de départ (guide, Mes parties, aide), occupe tout l'écran
+  const fullScreen = inGame || history || guide !== null || help;
+  useEffect(() => onImmersive?.(fullScreen), [fullScreen, onImmersive]);
+  useEffect(() => {
+    if (inGame) return;
+    let cancelled = false;
+    whenSaved().then(loadSummaries).then((list) => { if (!cancelled) setRecords(recordsOf(list)); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [inGame]);
+
+  useEffect(() => {
+    flushQueue();
+    const onHide = () => {
+      const rec = snapshot();
+      if (rec) keepForLater(rec);
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => window.removeEventListener('pagehide', onHide);
+  }, [snapshot]);
+
   // L'IA joue ses décisions (calculées dans un fil séparé), avec un délai minimum pour qu'on puisse suivre
   useEffect(() => {
-    if (fixture || !game || game.winner !== null || game.decision?.player !== AI) return;
+    if (!game || game.winner !== null || game.decision?.player !== AI) return;
     const current = game;
     const d = current.decision!;
     const started = Date.now();
@@ -354,16 +325,12 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
       clearTimeout(timer);
       setThinking(false);
     };
-  }, [game, settings.speed, session.level, fixture]);
+  }, [game, settings.speed, session.level]);
 
-  // Fin de partie : le résultat compte dans le bilan (sauf une partie reprise depuis un moment revu), puis l'écran
-  // de victoire ou de défaite avant le récap
+  // Fin de partie : le résultat compte dans le bilan (sauf une partie reprise depuis un moment revu) ; l'écran de
+  // victoire ou de défaite, puis le récap, sont ceux du plateau (useTable)
   useEffect(() => {
     if (!game || game.winner === null) return;
-    if (!celebrated.current) {
-      celebrated.current = true;
-      setCelebrate(true);
-    }
     if (recorded.current || practice) return;
     recorded.current = true;
     const won = game.winner === HUMAN;
@@ -389,6 +356,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
 
   // Partie imposée (Aventure) : finie et vue (écran de victoire ou de défaite passé), elle est enregistrée sur le serveur
   // puis signalée, une seule fois (pas une partie reprise depuis un moment revu, qui ne compte pas)
+  const { celebrate } = table;
   useEffect(() => {
     if (!configured || !game || game.winner === null || celebrate || practice || ended.current) return;
     ended.current = true;
@@ -397,15 +365,6 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     const saved = rec ? saveRecord(rec).then(() => rec.id) : Promise.reject(new Error('partie vide'));
     configured.onEnd({ won: game.winner === HUMAN, saved });
   }, [configured, game, celebrate, practice, snapshot]);
-
-  const d = game?.decision ?? null;
-  const humanTurn = Boolean(game && d && d.player === HUMAN && game.winner === null);
-  const view = useMemo(() => (game && d && humanTurn ? readDecision(game, d) : null), [game, d, humanTurn]);
-  const hintNow = hint && hint.for === game ? hint : null;
-  useEffect(() => {
-    if (humanTurn) shownAt.current = Date.now();
-  }, [game, humanTurn]);
-  const recommended = hintNow?.analysis?.best ?? null;
 
   // Conseil automatique du coach à chacune de tes décisions
   const askHint = useCallback(() => {
@@ -417,23 +376,8 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     });
   }, [game]);
   useEffect(() => {
-    if (!fixture && settings.autoCoach && game && humanTurn && d && d.options.length > 1 && !(hint && hint.for === game)) askHint();
-  }, [fixture, settings.autoCoach, game, humanTurn, d, hint, askHint]);
-
-  // Après avoir donné une DON!!, le menu de la carte reste ouvert pour en donner d'autres
-  useEffect(() => {
-    const uid = keepMenu.current;
-    keepMenu.current = null;
-    if (uid === null || !view?.byCard.has(uid)) return;
-    const el = document.querySelector<HTMLElement>(`.table [data-uid="${uid}"]`);
-    if (el) setMenu({ uid, rect: el.getBoundingClientRect() });
-  }, [view]);
-
-  // la fenêtre de détail se ferme si la carte survolée a disparu
-  useEffect(() => {
-    const z = cardZoom.zoom;
-    if (z?.uid !== undefined && !document.querySelector(`[data-uid="${z.uid}"]`)) cardZoom.close();
-  }, [game, cardZoom]);
+    if (settings.autoCoach && game && humanTurn && d && d.options.length > 1 && !(hint && hint.for === game)) askHint();
+  }, [settings.autoCoach, game, humanTurn, d, hint, askHint]);
 
   const reviewable = game ? moves.current.filter((m) => isReviewable(m, HUMAN)) : [];
   const total = reviewable.length;
@@ -443,14 +387,6 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     () => (game && over && done === total ? buildRecap(game, moves.current, reviews.current, HUMAN) : null),
     [game, over, done, total, reviewed],
   );
-
-  const resetUi = () => {
-    setMenu(null);
-    setTargeting(null);
-    setHoverUid(null);
-    setConfirmEnd(false);
-    setEpoch((e) => e + 1);
-  };
 
   const start = () => {
     const aiDeck = config.aiDeck === RANDOM_DECK ? randomDeck(config.myDeck) : config.aiDeck;
@@ -471,18 +407,14 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     startRecording(initial, named);
     resetGain();
     setUndo([]);
-    setShowEnd(true);
     setPractice(false);
     setHint(null);
-    setCelebrate(false);
     moves.current = [];
     reviews.current = new Map();
     recorded.current = false;
-    celebrated.current = false;
     ended.current = false;
     setReviewed(0);
-    resetUi();
-    setIntro(true);
+    table.restart({ intro: true });
     if (routed) navigate({ name: 'jeu' });
     if (!settings.helpSeen) {
       setHelp(true);
@@ -490,21 +422,6 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     }
     return true;
   };
-
-  const choose = useCallback((id: string) => {
-    if (!game) return;
-    const moveId = nextMove.current++;
-    const advice = hint && hint.for === game && hint.analysis ? hint.analysis.best : undefined;
-    recording.current?.extra.set(moveId, { ms: Date.now() - shownAt.current, hint: advice });
-    moves.current = [...moves.current, { id: moveId, state: game, choice: id }];
-    setUndo((u) => [...u.slice(-80), game]);
-    setGame(act(game, id));
-    setMenu(null);
-    setTargeting(null);
-    setHoverUid(null);
-    setPanel(false);
-    if (!fixture) void pump();
-  }, [game, pump, hint, fixture]);
 
   const back = useCallback(() => {
     const previous = undo[undo.length - 1];
@@ -517,41 +434,11 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     moves.current = moves.current.slice(0, -1);
     setUndo(undo.slice(0, -1));
     setGame(previous);
-    resetUi();
-  }, [undo, game, configured]);
+    table.reset();
+  }, [undo, game, configured, table]);
 
-  const requestEnd = useCallback(() => {
-    if (!game || !d || d.kind !== 'main') return;
-    const remaining = remainingActions(game, d);
-    if (settings.confirmEnd && remaining.length) setConfirmEnd(true);
-    else choose('end');
-  }, [game, d, settings.confirmEnd, choose]);
-
-  // Raccourcis clavier
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'SELECT') return;
-      if (e.key === 'Escape') {
-        setMenu(null);
-        setTargeting(null);
-        setConfirmEnd(false);
-        setHelp(false);
-        setSettingsOpen(false);
-        setGuide(null);
-        showScreen(null);
-        setPanel(false);
-        cardZoom.close();
-      } else if (isEndTurnKey(e) && humanTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
-        requestEnd();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        back();
-      } else if (e.key === '?') {
-        setHelp((h) => !h);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [humanTurn, d, menu, targeting, confirmEnd, requestEnd, back, cardZoom]);
+  // Raccourcis clavier (Échap ferme aussi Mes parties et Mes decks)
+  useGameKeys(table, { undo: back, escape: () => showScreen(null) });
 
   // Rejouer un moment d'une partie archivée (depuis « Mes parties ») : comme « Revoir ce moment » du récap
   const resumeArchived = (rec: GameRecord, moveId: number) => {
@@ -574,14 +461,11 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     setPractice(true);
     setUndo([]);
     setHint(null);
-    setShowEnd(true);
-    setCelebrate(false);
-    celebrated.current = false;
     if (routed) navigate({ name: 'jeu' }, { replace: true });
     resetGain();
     startRecording(state, cfg, { from: rec.id, turn: state.turn });
     setGame(state);
-    resetUi();
+    table.restart();
   };
 
   // Partie interrompue (Aventure) : on reprend l'enregistrement là où il s'était arrêté, sous le même identifiant, avec
@@ -602,13 +486,10 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     setPractice(false);
     setUndo([]);
     setHint(null);
-    setShowEnd(true);
-    setCelebrate(false);
     recorded.current = false;
-    celebrated.current = false;
     ended.current = false;
     setGame(replayed.final);
-    resetUi();
+    table.restart();
     void pump();
   };
 
@@ -635,7 +516,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     return (
       <>
         <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
-          onSettings={() => setSettingsOpen(true)} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
+          onSettings={() => table.setSettingsOpen(true)} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { showScreen(null); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
         {builder && (
@@ -643,105 +524,10 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
             onPlay={(id) => { showScreen(null); cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); }} />
         )}
         {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
-        {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
+        {table.settingsOpen && <SettingsPanel onClose={() => table.setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
       </>
     );
   }
-
-  // ---------- Apparence des cartes : ce qu'on peut en faire, cibles, conseils ----------
-  const looks = new Map<number, CardLook>();
-  const recommendedUid = (() => {
-    if (!recommended || !view) return null;
-    if (recommended.startsWith('attack:')) return Number(recommended.split(':')[1]);
-    for (const [uid, actions] of view.byCard) if (actions.some((a) => a.option.id === recommended)) return uid;
-    return null;
-  })();
-  if (view && humanTurn) {
-    if (targeting) {
-      looks.set(targeting.attacker, { selected: true });
-      for (const o of view.attacks.get(targeting.attacker) ?? []) {
-        looks.set(o.target!, { target: true, recommended: recommended === o.id, selected: aimed === o.target });
-      }
-    } else {
-      for (const [uid, actions] of view.byCard) {
-        const useful = actions.some((a) => !a.useless);
-        const choosing = actions.every((a) => a.kind === 'choose');
-        const counter = actions.find((a) => a.kind === 'counter' || a.kind === 'cevent');
-        const num = game.players[HUMAN].hand.find((c) => c.uid === uid)?.num;
-        looks.set(uid, {
-          actionable: useful && !choosing,
-          choose: choosing,
-          recommended: recommendedUid === uid,
-          selected: menu?.uid === uid,
-          drop: dragging && actions.some((a) => a.kind === 'don'),
-          badge: counter && num ? (counter.kind === 'counter' ? `+${counterValue(game, HUMAN, num)}` : 'Contre') : undefined,
-        });
-      }
-      if (d?.kind === 'main') {
-        for (const c of game.players[HUMAN].hand) if (!view.byCard.has(c.uid)) looks.set(c.uid, { dim: true });
-      }
-    }
-  }
-
-  const onCard = (uid: number, el: HTMLElement, num: string) => {
-    if (view && humanTurn && targeting) {
-      const option = (view.attacks.get(targeting.attacker) ?? []).find((o) => o.target === uid);
-      if (option && touch && aimed !== uid) {
-        // écran tactile : premier toucher sur une cible = résultat prévu, l'attaque part avec « Attaquer »
-        sfx('click');
-        setAimed(uid);
-      } else if (option) {
-        sfx('click');
-        choose(option.id);
-      } else if (uid === targeting.attacker) {
-        setTargeting(null);
-      }
-      return;
-    }
-    if (view && humanTurn && (view.byCard.has(uid) || (d && whyNot(game, d, uid)))) {
-      sfx('click');
-      cardZoom.close();
-      setMenu({ uid, rect: el.getBoundingClientRect() });
-      return;
-    }
-    // écran tactile : toute autre carte (adversaire, carte sans action) s'ouvre en grand
-    if (touch) cardZoom.onHover({ num, uid, rect: el.getBoundingClientRect(), pinned: true });
-  };
-
-  const onAction = (uid: number, a: CardAction) => {
-    if (a.kind === 'attack') {
-      setMenu(null);
-      setTargeting({ attacker: uid });
-      return;
-    }
-    if (a.kind === 'don') keepMenu.current = uid;
-    choose(a.option.id);
-  };
-
-  const onHover = (p: Preview | null) => {
-    setPreview(p);
-    setHoverUid(p?.uid ?? null);
-    cardZoom.onHover(p);
-  };
-
-  const ui: BoardUi = {
-    looks,
-    onCard,
-    onHover,
-    onTrash: setTrashOf,
-    onDropDon: (uid) => {
-      setDragging(false);
-      if (d?.options.some((o) => o.id === `don:${uid}`)) choose(`don:${uid}`);
-    },
-    donDraggable: Boolean(humanTurn && d?.kind === 'main' && d.options.some((o) => o.id.startsWith('don:'))),
-    onDonDrag: setDragging,
-  };
-
-  const aimUid = touch ? aimed : hoverUid;
-  const targetPreview = targeting && aimUid !== null && (view?.attacks.get(targeting.attacker) ?? []).some((o) => o.target === aimUid)
-    ? attackPreview(game, targeting.attacker, aimUid)
-    : null;
-  const aimedOption = targeting && aimed !== null ? (view?.attacks.get(targeting.attacker) ?? []).find((o) => o.target === aimed) : undefined;
 
   // Replay depuis le récap
   const replay = (id: number) => {
@@ -758,184 +544,84 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
     setPractice(true);
     setUndo([]);
     setHint(null);
-    setShowEnd(true);
-    setCelebrate(false);
-    celebrated.current = false;
     setGame(state);
-    resetUi();
+    table.restart();
   };
 
-  const special = view?.special;
   // « Menu » : retour à l'écran d'avant la partie (l'adresse quitte #play/jeu, la partie se ferme alors)
   const leave = () => {
-    if (fixture) return fixture.onLeave();
     if (routed && currentRoute().name === 'jeu') return goBack(HOME);
     closeRecording();
     setGame(null);
   };
-  const pickerOpen = Boolean(view && view.picks.length && !special);
-  const menuActions = menu && view ? view.byCard.get(menu.uid) ?? [] : [];
+  const won = game.winner === HUMAN;
 
   return (
-    <div className="game" data-ui="table">
-      <main className="table">
-        <header className="op-topbar">
-          <div className="op-brand">☠ OP Coach</div>
-          <div className="match op-small op-muted">{deckLabel(session.myDeck, session.myDeckName)} <span className="vs">contre</span> {deckLabel(session.aiDeck, session.aiDeckName)} · IA {LEVELS[session.level].name}</div>
-          <div className={`phase-pill ${game.active === HUMAN ? 'pill-me' : 'pill-opp'}`}>
-            Tour {game.turn || 1} · {compact ? `${game.winner !== null ? 'fin' : game.active === HUMAN ? 'à toi' : 'IA'}${game.battle ? ' ⚔' : ''}` : phaseLabel(game, HUMAN)}
-          </div>
-          <div className="top-actions">
-            <button className="icon-btn" data-ui="table.undo" onClick={back} disabled={!undo.length || (Boolean(configured) && over)} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
-            <button className="icon-btn hide-compact" data-ui="table.sound" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
-            <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} data-ui="table.panel" onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
-            <button className="icon-btn" data-ui="table.settings" onClick={() => setSettingsOpen(true)} title="Réglages" aria-label="Réglages">⚙</button>
-            <button className="icon-btn" data-ui="table.guide" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
-            <button className="icon-btn hide-compact" data-ui="table.help" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
-            {configured
-              ? <button className="op-btn op-btn-ghost btn-small" data-ui="table.leave" onClick={configured.onLeave} title={over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre'}>{over ? 'Suite →' : 'Quitter'}</button>
-              : <button className="op-btn op-btn-ghost btn-small" data-ui="table.leave" onClick={leave}>Menu</button>}
-          </div>
-        </header>
-
-        <OpponentHand s={game} p={AI} />
-        <PlayerZone s={game} p={AI} me={false} ui={ui} />
-        <div className="op-center">
-          {practice && <div className="practice">Entraînement depuis un moment revu : cette partie ne compte pas dans ton bilan.</div>}
-          <BattlePanel s={game} human={HUMAN} />
-        </div>
-        <PlayerZone s={game} p={HUMAN} me ui={ui} />
-        <Hand s={game} p={HUMAN} ui={ui} />
-        <ActionBar
-          s={game}
-          d={d}
-          human={HUMAN}
-          thinking={thinking}
-          aiName="L’IA"
-          targeting={targeting}
-          preview={targetPreview}
-          hasCardActions={Boolean(view && [...view.byCard.values()].some((acts) => acts.some((a) => !a.useless)))}
-          buttons={view && !special && !pickerOpen ? view.buttons : []}
-          recommended={recommended}
-          onButton={(id) => { sfx('click'); choose(id); }}
-          onCancelTargeting={() => setTargeting(null)}
-          onEndTurn={requestEnd}
-          onHint={() => { setTab('coach'); if (compact) setPanel(true); if (!hintNow) askHint(); }}
-          hintState={hintNow ? (hintNow.analysis ? 'ready' : 'loading') : 'idle'}
-          touch={touch}
-          onConfirmAttack={aimedOption ? () => { sfx('click'); choose(aimedOption.id); } : undefined}
-        />
-        <FxLayer game={game} human={HUMAN} epoch={epoch} />
-      </main>
-
-      <aside className={panel ? 'side side-open' : 'side'}>
-        <div className="side-head only-compact">
-          <strong>Journal et coach</strong>
-          <button className="icon-btn" data-ui="table.panel-close" onClick={() => setPanel(false)} title="Fermer">✕</button>
-        </div>
-        <CardPreview s={game} preview={preview} />
-        <div className="tabs">
-          <button className={tab === 'journal' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-journal" onClick={() => setTab('journal')}>Journal</button>
-          <button className={tab === 'coach' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-coach" onClick={() => setTab('coach')}>Coach{recommended ? ' ★' : ''}</button>
-          <button className={tab === 'choix' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-choix" onClick={() => setTab('choix')}>Tous les choix</button>
-        </div>
-        {tab === 'journal' && <GameLog s={game} human={HUMAN} />}
-        {tab === 'coach' && (
-          <div className="tab-body">
-            {over ? (
-              <button className="op-btn op-btn-primary" onClick={() => setShowEnd(true)}>Voir le récap du coach</button>
-            ) : humanTurn && d ? (
-              <CoachHint decision={d} analysis={hintNow?.analysis ?? null} loading={Boolean(hintNow && !hintNow.analysis)} onAsk={askHint} onChoose={choose} />
-            ) : (
-              <p className="op-muted op-small">Le coach t’aide pendant tes décisions. Active le conseil automatique dans les réglages (⚙) pour voir une ★ sur le meilleur choix.</p>
-            )}
-            <p className="op-small op-muted">Le coach analyse aussi chacune de tes décisions en arrière-plan : le récap de fin de partie te montrera tes erreurs et tes meilleurs coups.</p>
-          </div>
-        )}
-        {tab === 'choix' && (
-          <div className="tab-body">
-            {humanTurn && d ? <DecisionBox decision={d} focus={null} notes={{}} onChoose={choose} onClearFocus={() => undefined} /> : <p className="op-muted op-small">Pas de décision à prendre pour l’instant.</p>}
-          </div>
-        )}
-      </aside>
-
-      {menu && view && d && (menuActions.length > 0 || whyNot(game, d, menu.uid)) && (
-        <ActionMenu s={game} uid={menu.uid} anchor={menu.rect} actions={menuActions} info={menuActions.length ? null : whyNot(game, d, menu.uid)} recommended={recommended}
-          onAction={(a) => onAction(menu.uid, a)} onClose={() => setMenu(null)} sheet={compact} details={touch || compact} />
+    <TableScreen
+      table={table}
+      opponent="L’IA"
+      thinking={thinking}
+      top={{
+        brand: '☠ OP Coach',
+        match: <>{deckLabel(session.myDeck, session.myDeckName)} <span className="vs">contre</span> {deckLabel(session.aiDeck, session.aiDeckName)} · IA {LEVELS[session.level].name}</>,
+        rival: 'IA',
+        phase: phaseLabel(game, HUMAN),
+        undo: { onClick: back, disabled: !undo.length || (Boolean(configured) && over) },
+        leave: configured
+          ? { label: over ? 'Suite →' : 'Quitter', title: over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre', onClick: configured.onLeave }
+          : { label: 'Menu', onClick: leave },
+      }}
+      decks={{ mine: session.myDeck, theirs: session.aiDeck, theirsName: 'l’IA' }}
+      coach={<CoachTab table={table} analysis={hintNow?.analysis ?? null} loading={Boolean(hintNow && !hintNow.analysis)} onAsk={askHint} />}
+      center={practice && <div className="practice">Entraînement depuis un moment revu : cette partie ne compte pas dans ton bilan.</div>}
+      hint={{ state: hintNow ? (hintNow.analysis ? 'ready' : 'loading') : 'idle', ask: askHint }}
+      leave={confirmLeave && !over && (
+        <LeaveDialog onStay={() => setConfirmLeave(false)} text={configured
+          ? 'La partie est enregistrée : tu pourras la reprendre depuis le chapitre.'
+          : 'La partie est enregistrée : tu la retrouveras dans « Mes parties ».'}>
+          <button className="op-btn op-btn-ghost" data-ui="leave.yes" onClick={() => { setConfirmLeave(false); if (configured) configured.onLeave(); else leave(); }}>Quitter</button>
+          <button className="op-btn op-btn-primary" data-ui="leave.no" onClick={() => setConfirmLeave(false)}>Continuer la partie</button>
+        </LeaveDialog>
       )}
-      {humanTurn && special === 'mulligan' && <MulliganModal s={game} p={HUMAN} onChoose={choose} onHover={onHover} />}
-      {humanTurn && special === 'trigger' && d && <TriggerModal s={game} d={d} onChoose={choose} recommended={recommended} />}
-      {humanTurn && special === 'declareCost' && d && <CostModal d={d} onChoose={choose} recommended={recommended} />}
-      {humanTurn && pickerOpen && d && view && <PickerModal s={game} d={d} picks={view.picks} buttons={view.buttons} recommended={recommended} onChoose={choose} onHover={onHover} />}
-      {confirmEnd && d && (
-        <ConfirmEndModal remaining={remainingActions(game, d)} onConfirm={() => { setConfirmEnd(false); choose('end'); }} onCancel={() => setConfirmEnd(false)}
-          onNeverAsk={() => { updateSettings({ confirmEnd: false }); setConfirmEnd(false); choose('end'); }} />
-      )}
-      {trashOf !== null && <TrashModal s={game} p={trashOf} onClose={() => setTrashOf(null)} onHover={onHover} />}
-      {help && !intro && <HelpModal onClose={() => setHelp(false)} />}
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
-      {guide && (
-        <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover}
-          alt={guide === session.myDeck ? session.aiDeck : session.myDeck} altLabel={guide === session.myDeck ? 'Voir le deck de l’IA' : 'Voir ton deck'} onSwitch={setGuide} />
-      )}
-      {cardZoom.zoom && <CardZoom s={game} preview={cardZoom.zoom} onClose={cardZoom.close} />}
-      {intro && <Intro s={game} onDone={() => setIntro(false)} />}
-      {confirmLeave && !over && (
-        <div className="modal" data-ui="leave" onClick={() => setConfirmLeave(false)}>
-          <div className="modal-box modal-confirm" onClick={(e) => e.stopPropagation()}>
-            <h3>Quitter la partie ?</h3>
-            <p>{configured
-              ? 'La partie est enregistrée : tu pourras la reprendre depuis le chapitre.'
-              : 'La partie est enregistrée : tu la retrouveras dans « Mes parties ».'}</p>
-            <div className="modal-actions">
-              <button className="op-btn op-btn-ghost" data-ui="leave.yes" onClick={() => { setConfirmLeave(false); if (configured) configured.onLeave(); else leave(); }}>Quitter</button>
-              <button className="op-btn op-btn-primary" data-ui="leave.no" onClick={() => setConfirmLeave(false)}>Continuer la partie</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {over && celebrate && <Celebration won={game.winner === HUMAN} onDone={() => setCelebrate(false)} />}
-      {over && !celebrate && showEnd && (
-        <div className="modal" data-ui="end" onClick={() => setShowEnd(false)}>
-          <div className="modal-wrap" onClick={(e) => e.stopPropagation()}>
-            {configured ? (
-              <div className="modal-box recap">
-                <div className="recap-top">
-                  <h2 className={game.winner === HUMAN ? 'win' : 'loss'}>{game.winner === HUMAN ? 'Victoire !' : 'Défaite'}</h2>
-                  <p>{game.winReason ?? ''} · {game.turn} tours</p>
-                  {practice && <p className="op-small op-muted">Partie reprise depuis un moment revu : elle ne compte pas pour l’aventure.</p>}
-                </div>
-                {recap ? <RecapBody recap={recap} onReplay={replay} /> : (
-                  <div className="progress">
-                    <div className="op-small">Le coach analyse tes décisions… {done}/{total}</div>
-                    <div className="progress-bar"><span style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></div>
-                  </div>
-                )}
-                <div className="end-actions">
-                  <button className="op-btn op-btn-primary" data-ui="end.next" onClick={configured.onLeave}>Suite de l’aventure →</button>
-                  <button className="op-btn op-btn-ghost" data-ui="end.board" onClick={() => setShowEnd(false)}>Voir le plateau</button>
-                </div>
+      end={(
+        <div className="modal-wrap" onClick={stop}>
+          {configured ? (
+            <div className="modal-box recap">
+              <div className="recap-top">
+                <h2 className={won ? 'win' : 'loss'}>{won ? 'Victoire !' : 'Défaite'}</h2>
+                <p>{game.winReason ?? ''} · {game.turn} tours</p>
+                {practice && <p className="op-small op-muted">Partie reprise depuis un moment revu : elle ne compte pas pour l’aventure.</p>}
               </div>
-            ) : <EndScreen
-              won={game.winner === HUMAN}
-              reason={game.winReason ?? ''}
-              turns={game.turn}
-              matchup={matchupName(session)}
-              record={records[recordKey(session)]}
-              practice={practice}
-              gain={<GameGain gain={gain} onRetry={retryGain} />}
-              progress={{ done, total }}
-              recap={recap}
-              onReplay={replay}
-              onRestart={start}
-              onBoard={() => setShowEnd(false)}
-              onMenu={leave}
-              onHistory={() => (routed ? navigate({ name: 'parties' }, { replace: true }) : leave())}
-            />}
-          </div>
+              {recap ? <RecapBody recap={recap} onReplay={replay} /> : (
+                <div className="progress">
+                  <div className="op-small">Le coach analyse tes décisions… {done}/{total}</div>
+                  <div className="progress-bar"><span style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></div>
+                </div>
+              )}
+              <div className="end-actions">
+                <button className="op-btn op-btn-primary" data-ui="end.next" onClick={configured.onLeave}>Suite de l’aventure →</button>
+                <button className="op-btn op-btn-ghost" data-ui="end.board" onClick={() => table.setShowEnd(false)}>Voir le plateau</button>
+              </div>
+            </div>
+          ) : <EndScreen
+            won={won}
+            reason={game.winReason ?? ''}
+            turns={game.turn}
+            matchup={matchupName(session)}
+            record={records[recordKey(session)]}
+            practice={practice}
+            gain={<GameGain gain={gain} onRetry={retryGain} />}
+            progress={{ done, total }}
+            recap={recap}
+            onReplay={replay}
+            onRestart={start}
+            onBoard={() => table.setShowEnd(false)}
+            onMenu={leave}
+            onHistory={() => (routed ? navigate({ name: 'parties' }, { replace: true }) : leave())}
+          />}
         </div>
       )}
-    </div>
+    />
   );
 }
 
