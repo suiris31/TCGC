@@ -69,7 +69,7 @@ export interface GameRecord {
   undos: { turn: number; undone: number }[];  // retours en arrière (Ctrl+Z) et nombre de coups annulés
   stats: GameStats;
   log: LogEntry[];
-  mode?: 'solo' | 'online';       // partie en ligne contre un autre joueur (absent : contre l'IA)
+  mode?: 'solo' | 'online' | 'aventure';  // en ligne contre un autre joueur, chapitre de l'Aventure (absent : contre l'IA, voir playMode)
   opponent?: string;              // partie en ligne : pseudo de l'adversaire
   holdDeck?: true;                // partie en ligne : mon deck était un deck de la Cale (game/online/match.ts)
   opponentHoldDeck?: true;        // partie en ligne : celui de l'adversaire aussi
@@ -78,6 +78,19 @@ export interface GameRecord {
 
 // Version légère, sans l'état de départ, les coups ni le journal (liste des parties)
 export type GameSummary = Omit<GameRecord, 'initial' | 'steps' | 'log'>;
+
+// Mode d'une partie : contre l'IA (partie rapide), un chapitre de l'Aventure ou en ligne. Les parties d'aventure
+// enregistrées avant le champ mode se reconnaissent à leur adversaire, un deck de l'aventure (AV-<arc>-<nom>, jamais
+// proposé ailleurs)
+export type PlayMode = 'solo' | 'aventure' | 'online';
+export function playMode(g: Pick<GameSummary, 'mode' | 'config'>): PlayMode {
+  if (g.mode === 'online') return 'online';
+  return g.mode === 'aventure' || g.config.aiDeck.startsWith('AV-') ? 'aventure' : 'solo';
+}
+
+// Partie qui compte dans le bilan de la partie rapide : terminée, contre l'IA, hors entraînement
+export const inQuickRecord = (g: Pick<GameSummary, 'mode' | 'config' | 'practice' | 'status'>) =>
+  !g.practice && (g.status === 'won' || g.status === 'lost') && playMode(g) === 'solo';
 
 const other = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0);
 
@@ -141,6 +154,7 @@ export interface RecordInput {
   undos: { turn: number; undone: number }[];
   abandoned?: boolean;
   looks?: GameRecord['looks'];                           // visuels choisis des decks (facultatif)
+  mode?: 'aventure';                                     // partie d'un chapitre de l'Aventure (facultatif)
 }
 
 // Chaque appel au moteur ajoute exactement une entrée à l'historique : les coups de la partie sont l'historique de
@@ -196,6 +210,7 @@ export function buildRecord(x: RecordInput): GameRecord {
     undos: x.undos,
     stats: gameStats(s, own, x.human),
     log: s.log,
+    ...(x.mode ? { mode: x.mode } : {}),
     ...(x.looks && Object.keys(x.looks).length ? { looks: x.looks } : {}),
   };
 }

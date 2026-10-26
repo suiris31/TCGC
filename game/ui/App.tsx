@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AiWorker, rlDeckModels, rlModelAvailable } from '../ai/client.ts';
 import { heuristicChooser } from '../ai/heuristic.ts';
 import { LEVELS, type Analysis, type Level } from '../ai/search.ts';
-import { buildRecord, recordId, replayRecord, type GameRecord, type GameSummary, type Replayed } from '../coach/archive.ts';
+import { buildRecord, inQuickRecord, recordId, replayRecord, type GameRecord, type GameSummary, type Replayed } from '../coach/archive.ts';
 import { buildRecap, HINT, isReviewable, REVIEW, toReview, type Move, type MoveReview } from '../coach/review.ts';
 import { CARDS } from '../engine/cards/index.ts';
 import { DECKS, freeDeckIds } from '../engine/decks.ts';
@@ -84,11 +84,12 @@ const recordKey = (c: Pick<Config, 'myDeck' | 'aiDeck' | 'level'>) => `${c.myDec
 const matchupName = (c: Pick<Config, 'myDeck' | 'aiDeck' | 'level'>) =>
   `${deckLabel(c.myDeck)} contre ${deckLabel(c.aiDeck)} (${LEVELS[c.level].name})`;
 
-// Calculé à partir des parties enregistrées sur le compte : parties terminées, hors entraînement
+// Calculé à partir des parties enregistrées sur le compte : parties terminées contre l'IA, hors entraînement (ni
+// l'aventure, ni le jeu en ligne)
 function recordsOf(list: GameSummary[]): Records {
   const out: Records = {};
   for (const g of list) {
-    if (g.practice || g.mode === 'online' || (g.status !== 'won' && g.status !== 'lost')) continue;
+    if (!inQuickRecord(g)) continue;
     const key = recordKey({ myDeck: g.config.myDeck, aiDeck: g.config.aiDeck, level: g.config.level as Level });
     const line = out[key] ?? { wins: 0, losses: 0 };
     out[key] = g.status === 'won' ? { ...line, wins: line.wins + 1 } : { ...line, losses: line.losses + 1 };
@@ -113,6 +114,7 @@ export interface ConfiguredGame {
   level: Level;
   opponentName: string;
   resume?: { rec: GameRecord; replayed: Replayed };
+  mode?: 'aventure';   // noté dans les parties enregistrées (« Mes parties » les range à part)
   onEnd: (end: { won: boolean; saved: Promise<string> }) => void;
   onLeave: () => void;
 }
@@ -210,6 +212,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
   const gameRef = useRef<GameState | null>(null);
   const shownAt = useRef(Date.now());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const recordMode = useRef(configured?.mode);
   // Mes parties (#play/parties), Mes decks (#play/decks) et la partie (#play/jeu) ont leur adresse, sauf pour une
   // partie imposée (aventure) ou un plateau d'atelier, qui gardent celle de leur écran
   const routed = !configured && !fixture;
@@ -235,6 +238,7 @@ export function App({ notice, onImmersive, online, adventure, configured, fixtur
       id: r.id, engine: ENGINE, startedAt: r.startedAt, now: new Date().toISOString(), endedAt: r.endedAt,
       config: r.config, human: HUMAN, practice: r.practice, initial: r.initial, current,
       moves: moves.current, reviews: reviews.current, extra: r.extra, undos: r.undos, abandoned,
+      mode: recordMode.current,
     });
     return rec.decisions.length ? rec : null; // quittée avant ton premier choix : rien à garder
   }, []);

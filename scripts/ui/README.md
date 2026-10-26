@@ -158,7 +158,7 @@ Convention `data-ui="<écran>.<élément>"` (`01-contrats.md`, § 14.4). On ne l
 | fenêtres du plateau | `mulligan.keep`, `mulligan.redraw`, `picker.choose`, `picker.option-<id>`, `trigger.activate`, `trigger.hand`, `cost.option`, `confirm-end.ok`, `confirm-end.cancel`, `confirm-end.never`, `trash.close`, `help.close`, `zoom.close`, fin d'une partie d'aventure `end`, `end.next`, `end.board` |
 | aventure | `adventure.welcome`, `adventure.sail`, `adventure.map`, `adventure.back`, `adventure.settings`, `adventure.boosters`, `adventure.hold`, `adventure.deck`, `adventure.shop`, `adventure.go`, `adventure.summary` ; `chapter`, `chapter.back`, `chapter.bubble`, `chapter.skip`, `chapter.next`, `chapter.deck`, `chapter.fight`, `chapter.resume`, `chapter.count` ; `hold`, `hold.back` ; `adventure-deck`, `adventure-deck.back` ; `shop`, `shop.back` |
 | decks | `decks`, `decks.close`, `decks.new`, `decks.import`, `decks.edit`, `leaders`, `leaders.item`, `leaders.close`, `editor`, `editor.back`, `editor.pane-<…>` |
-| parties | `history`, `history.close`, `history.tab-<progress\|axes\|games>` |
+| parties | `history` (fenêtre du kit, fermée par son `dialog.close`), `history.tab-<progress\|axes\|games>`, `history.mode-<all\|solo\|aventure\|online>` |
 | réglages (`SettingsPanel`, R1.3) | `settings.panel`, `settings.sound`, `settings.scale`, `settings.motion`, `settings.speed`, `settings.confirm-end`, `settings.coach`, `settings.zoom`, `settings.help`, `settings.done` ; fenêtres du kit : `dialog.close`, `dialog.reduce`, `dialog.reopen` |
 | salon | `lobby`, `lobby.tab-create`, `lobby.tab-join`, `lobby.code`, `lobby.back`, `lobby.go` |
 | atelier | `atelier.board` (page « plateau », avec `data-state="<état>"` ; prête quand elle contient `.game`) |
