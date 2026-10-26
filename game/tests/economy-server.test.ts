@@ -255,7 +255,9 @@ test('économie (serveur) : achats simultanés par les routes, jamais au-delà d
 });
 
 test('économie (serveur) : l’historique se lit par pages de 20', () => {
-  for (let i = 0; i < 25; i++) eco.credit(C, 'correction', `page-${i}`, 1, { label: `Ligne ${i}` });
+  // date fixée : sans elle, le porte-monnaie de C passerait au jour réel et le test des gains décroissants (bonus du
+  // « lendemain », 22 octobre 2026) échouerait à partir de ce jour-là
+  for (let i = 0; i < 25; i++) eco.credit(C, 'correction', `page-${i}`, 1, { label: `Ligne ${i}` }, T(TUESDAY));
   const first = eco.history(C);
   assert.equal(first.entries.length, 20);
   assert.equal(first.entries[0].label, 'Ligne 24');

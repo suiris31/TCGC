@@ -3,6 +3,7 @@
 // capture et une ligne du rapport (erreurs, défilement horizontal, cibles < 44 px, textes < 11 px).
 //
 //   npm run ui:tour -- --port 3501 [--db data/tcgc-test.db] [--out <dossier>] [--only partie,aventure]
+//   npm run ui:tour -- --port 3501 --only atelier        (pages « plateau » de l'atelier, hors parcours par défaut)
 //   npm run ui:tour -- --compare <dossier avant> <dossier après> [--out <dossier>]
 //
 // Mode d'emploi : scripts/ui/README.md.
@@ -91,6 +92,14 @@ const SCREENS = {
   '21-salon': 'Salon en ligne',
 };
 const PARCOURS = ['accueil', 'partie', 'aventure', 'decks', 'parties', 'salon'];
+// Parcours joués seulement quand --only les demande (la référence de l'étape ne les contient pas)
+const EXTRA = ['atelier'];
+
+// Pages « plateau » de l'atelier (#play/atelier/plateau-<état>, tâche R0.2), lues dans game/ui/atelier : toutes sous le
+// numéro 30, suivi du nom de l'état (un nouvel état ne renumérote pas les autres)
+const ATELIER_STATES = fs.readdirSync(path.join(ROOT, 'game/ui/atelier'))
+  .map((f) => f.match(/^plateau-(.+)\.atelier\.tsx$/)?.[1]).filter(Boolean).sort();
+for (const s of ATELIER_STATES) SCREENS[`30-plateau-${s}`] = `Atelier : plateau, état « ${s} »`;
 
 const ui = (name) => `[data-ui="${name}"]`;
 
@@ -392,6 +401,17 @@ class Tour {
     await this.tap(ui('lobby.back'));
     await this.waitUi(ui('home'));
   }
+
+  // Chaque page « plateau » de l'atelier, ouverte par son adresse (état fixé : ni IA, ni hasard)
+  async atelier() {
+    for (const s of ATELIER_STATES) {
+      await this.page.navigate('about:blank');
+      await this.page.navigate(`${this.base}/#play/atelier/plateau-${s}`);
+      await this.waitUi(`${ui('atelier.board')} .game`, `atelier : plateau-${s}`, 60000);
+      await this.waitGone(ui('table.intro'));
+      await this.capture(`30-plateau-${s}`);
+    }
+  }
 }
 
 // Erreur relevée, sans l'adresse du serveur ni les chiffres variables (pour comparer deux lancements)
@@ -478,7 +498,7 @@ function parseArgs(argv) {
     else if (k === '--help' || k === '-h') a.help = true;
     else throw new Error(`option inconnue : ${k} (voir scripts/ui/README.md)`);
   }
-  for (const p of a.only) if (!PARCOURS.includes(p)) throw new Error(`parcours inconnu : ${p} (parcours : ${PARCOURS.join(', ')})`);
+  for (const p of a.only) if (![...PARCOURS, ...EXTRA].includes(p)) throw new Error(`parcours inconnu : ${p} (parcours : ${[...PARCOURS, ...EXTRA].join(', ')})`);
   for (const f of a.formats) if (!FORMATS[f]) throw new Error(`format inconnu : ${f} (formats : ${Object.keys(FORMATS).join(', ')})`);
   if (!Number.isInteger(a.port) || a.port < 1024) throw new Error('--port : un numéro de port (par exemple 3501)');
   return a;
@@ -582,7 +602,7 @@ async function main() {
       try {
         await signup(page, server.base, name);
         page.drain();
-        for (const p of PARCOURS.filter((x) => args.only.includes(x))) {
+        for (const p of [...PARCOURS, ...EXTRA].filter((x) => args.only.includes(x))) {
           const t = Date.now();
           try {
             await tour[p]();

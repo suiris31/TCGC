@@ -367,14 +367,14 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
         <PlayerZone s={game} p={seat} me ui={ui} />
         <Hand s={game} p={seat} ui={ui} />
         {sending ? (
-          <div className="action-bar bar-wait">
+          <div className="action-bar bar-wait" data-ui="table.sending">
             <div className="bar-text"><span className="op-spinner" /> <strong>Envoi…</strong></div>
           </div>
         ) : over && !celebrate && !showEnd ? (
           <div className="action-bar">
             <div className="bar-text"><strong>{won ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{game.winReason}</span></div>
             <div className="bar-buttons">
-              <button className="op-btn op-btn-primary" onClick={() => setShowEnd(true)}>Voir le résultat</button>
+              <button data-ui="table.reopen-end" className="op-btn op-btn-primary" onClick={() => setShowEnd(true)}>Voir le résultat</button>
             </div>
           </div>
         ) : <ActionBar
