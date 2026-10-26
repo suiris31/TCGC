@@ -389,7 +389,7 @@ class Tour {
     await this.tap(ui('home.history'));
     await this.waitUi(ui('history'), 'Mes parties');
     await this.capture('20-mes-parties', { pause: 800 });
-    await this.tap(ui('history.close'));
+    await this.tap(`${ui('history')} ${ui('dialog.close')}`);
     await this.waitUi(ui('home'));
   }
 

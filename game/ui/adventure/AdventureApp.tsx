@@ -367,6 +367,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
             level: playing.opponent.level,
             opponentName: playing.opponent.name,
             resume: match.resume,
+            mode: 'aventure',
             onEnd,
             onLeave: onLeaveBoard,
           }} />
