@@ -70,14 +70,13 @@ function demoClient(start: Wallet, history: LedgerEntry[]): ShopClient {
       state.done.set(purchaseId, result);
       return result;
     },
-    openBoosters: async (ids, progress) => {
-      const contents = [];
-      for (const _ of ids) {
+    // chaque booster est tiré au moment où on l'ouvre (tâche R3.6)
+    opener: {
+      owned: async () => ({}),
+      open: async () => {
         await new Promise((r) => setTimeout(r, 40));
-        contents.push(openBooster('OP03', Math.random));
-        progress(contents.length);
-      }
-      return { contents, owned: {} };
+        return openBooster('OP03', Math.random);
+      },
     },
   };
 }

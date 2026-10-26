@@ -8,7 +8,8 @@
 //   niveau du chapitre. Une partie quittée ou coupée (onglet fermé) se reprend depuis le chapitre.
 // - Fin de partie : l'enregistrement final est envoyé, puis le serveur rejoue la partie et donne les récompenses de la
 //   première victoire (RewardsScreen), puis le gain de la partie en Berry (barème de l'IA du chapitre, bonus du jour,
-//   coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening) ou plus tard. Le plateau
+//   coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening, chacun tiré au
+//   moment où on l'ouvre : useBoosterOpening) ou plus tard. Le plateau
 //   reste en place derrière l'écran de fin : le récap du coach reste accessible jusqu'au retour à la carte.
 // Rien ne se lance sans un choix explicite ; les refus et erreurs du serveur s'affichent tels quels (en français).
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -16,7 +17,6 @@ import { ARCS, findChapter } from '../../adventure/arcs.ts';
 import { arcFinished, chapterStatuses, currentChapter, requiredChapters } from '../../adventure/progress.ts';
 import type { ChapterStatus } from '../../adventure/types.ts';
 import { rlModelAvailable } from '../../ai/client.ts';
-import type { BoosterContent } from '../../boosters/types.ts';
 import { replayRecord, type GameRecord, type Replayed } from '../../coach/archive.ts';
 import { DECKS } from '../../engine/decks.ts';
 import { App } from '../App.tsx';
@@ -28,12 +28,13 @@ import { useSettings } from '../settings.ts';
 import { SettingsPanel } from '../SettingsPanel.tsx';
 import { useGameGain } from '../economy/GameGain.tsx';
 import { ShopScreen } from '../economy/Shop.tsx';
+import { useBoosterOpening } from '../economy/useBoosterOpening.ts';
 import { refreshWallet, useWallet, WalletBadge } from '../economy/Wallet.tsx';
 import { boosterSfx, setSoundEnabled } from '../sound.ts';
 import { AdventureDeckScreen } from './AdventureDeck.tsx';
 import { ArcSummary } from './ArcSummary.tsx';
-import { AdventureApiError, loadAdventure, loadHold, openWonBooster, sendChapterResult, startArc, wonChapters, type AdventureState } from './api.ts';
-import { BoosterOpening, ownedCounts } from './BoosterOpening.tsx';
+import { AdventureApiError, loadAdventure, sendChapterResult, startArc, wonChapters, type AdventureState, type WonBooster } from './api.ts';
+import { BoosterOpening } from './BoosterOpening.tsx';
 import { ChapterScreen, type Interrupted } from './ChapterScreen.tsx';
 import { HoldScreen } from './Hold.tsx';
 import { PackIcon, RewardsScreen, type SendState } from './RewardsScreen.tsx';
@@ -100,9 +101,11 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   const [board, setBoard] = useState(false);          // plateau affiché (partie en cours, ou récap du coach)
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [sent, setSent] = useState<SendState>(null);
-  const [opening, setOpening] = useState<{ contents: BoosterContent[]; owned: Record<string, number> } | null>(null);
-  const [openBusy, setOpenBusy] = useState(false);
-  const [openError, setOpenError] = useState<string>();
+  // ouverture des boosters (récompenses ou bouton de la carte) ; à la fin, retour à la carte
+  const boosterOpening = useBoosterOpening({ onDone: () => toMap() });
+  const opening = boosterOpening.props;
+  const openBusy = boosterOpening.busy;
+  const openError = boosterOpening.error;
   const { gain, claim, retry: retryGain, reset: resetGain } = useGameGain();
 
   const reload = useCallback(async () => {
@@ -233,7 +236,6 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   const onEnd = ({ won, saved }: { won: boolean; saved: Promise<string> }) => {
     if (!match) return;
     setOutcome({ chapter: match.chapter, won, recordId: saved });
-    setOpenError(undefined);
     const gainOf = () => claim(() => saved.catch(() => { throw new Error('La partie n’a pas pu être enregistrée'); }));
     if (won) send(match.chapter, saved, gainOf);
     else {
@@ -259,7 +261,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     setOutcome(null);
     setSent(null);
     resetGain();
-    setOpening(null);
+    boosterOpening.close();
     setPicked(undefined);
     setBoard(false);
   };
@@ -275,23 +277,16 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   }, [chapterId]);
 
   // ---------- Boosters ----------
-  // La Cale est lue AVANT l'ouverture (« Nouveau ! ») ; chaque booster est tiré par le serveur
-  const openBoosters = async (ids: string[]) => {
-    setOpenBusy(true);
-    setOpenError(undefined);
-    const contents: BoosterContent[] = [];
-    try {
-      const owned = ownedCounts((await loadHold()).cards);
-      try {
-        for (const id of ids) contents.push((await openWonBooster(id)).content);
-      } finally {
-        if (contents.length) setOpening({ contents, owned });
-      }
-    } catch (e) {
-      setOpenError(`${message(e)}${contents.length ? ' (les boosters non ouverts restent dans ta Cale)' : ''}`);
-    } finally {
-      setOpenBusy(false);
-    }
+  // Boosters connus de l'écran : ceux de la partie (chapitre, coffre de la semaine) et ceux de la Cale
+  const openBoosters = (ids: string[]) => {
+    const known = new Map<string, WonBooster>();
+    const list = [
+      ...(sent?.state === 'done' ? sent.value.boosters : []),
+      ...(gain?.state === 'done' ? gain.reward.chest : []),
+      ...(adv?.boosters ?? []),
+    ];
+    for (const b of list) known.set(b.id, b);
+    void boosterOpening.start(ids.flatMap((id) => known.get(id) ?? []));
   };
 
   // ---------- Affichage ----------
@@ -312,7 +307,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     content = (
       <RewardsScreen chapter={chapterOf(outcome.chapter)!} won={outcome.won} result={sent} gain={gain} onRetryGain={retryGain}
         opening={openBusy} openError={openError}
-        onOpen={(ids) => void openBoosters(ids)} onLater={toMap}
+        onOpen={openBoosters} onLater={toMap}
         onResend={() => outcome.recordId && send(outcome.chapter, outcome.recordId)}
         onRecap={match ? () => setBoard(true) : undefined}
         onRetry={() => { const id = outcome.chapter; resetMatch(); if (chapterId === id) prepareChapter(id); else openChapter(id); }}
@@ -352,7 +347,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
         <MapScreen adv={adv} statuses={statuses} current={current} picked={picked} onPick={onPick} busy={openBusy} error={openError}
           finished={arcFinished(ARC, wins)} onBack={onBack} onHold={() => setScreen({ kind: 'hold' })} onDeck={() => setScreen({ kind: 'deck' })}
           onShop={() => setScreen({ kind: 'shop' })} onSettings={() => setSettingsOpen(true)}
-          onChapter={openChapter} onOpenBoosters={() => void openBoosters(adv.boosters.map((b) => b.id))} onSummary={() => setFinale(true)} />
+          onChapter={openChapter} onOpenBoosters={() => openBoosters(adv.boosters.map((b) => b.id))} onSummary={() => setFinale(true)} />
         {finale && !opening && <ArcSummary arc={ARC} adv={adv} onClose={() => setFinale(false)} />}
         {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       </>
@@ -377,9 +372,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
           }} />
         </div>
       )}
-      {opening && (
-        <BoosterOpening content={opening.contents} owned={opening.owned} onDone={toMap} />
-      )}
+      {opening && <BoosterOpening {...opening} />}
     </>
   );
 }

@@ -4,6 +4,7 @@
 .op-bo-head { display: flex; align-items: center; gap: 0.8rem; padding: calc(0.6rem + env(safe-area-inset-top, 0px)) 1rem 0.3rem; }
 .op-bo-title { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.8rem; }
 .op-bo-title strong { font-size: 1.3rem; color: var(--accent); }
+.op-bo-stop { flex: none; }
 .op-bo-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .op-bo-main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; padding: 0.5rem 1rem; text-align: center; }
 .op-bo-hint { margin: 0; max-width: 30rem; color: var(--muted); font-size: 0.93rem; }
@@ -118,6 +119,7 @@
 .op-bo-recap-head { max-width: 60rem; margin: 0 auto 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; }
 .op-bo-recap-head h2 { margin: 0; font-size: 1.7rem; color: var(--accent); }
 .op-bo-recap-head p { margin: 0; }
+.op-bo-recap-head .op-bo-left { padding: var(--space-1) var(--space-3); border-radius: var(--radius-m); background: var(--accent-a14); color: var(--accent); }
 .op-bo-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; }
 .op-chip.op-bo-chip { border-color: var(--glow); font-weight: 700; }
 .op-segmented.op-bo-filter { grid-template-columns: repeat(var(--n), auto); }
