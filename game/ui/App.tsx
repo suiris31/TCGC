@@ -118,22 +118,37 @@ export interface ConfiguredGame {
 // Accès au mode Aventure depuis l'écran de départ
 export interface AdventureEntry { onOpen: () => void }
 
+// Plateau sur un état fixé (atelier, #play/atelier/plateau-<état>) : pas d'écran de départ, ni IA, ni coach, ni
+// enregistrement, ni serveur. Tes choix sont joués sur place ; le tour de l'IA attend. aim : attaque choisie et cible
+// visée (le résultat prévu s'affiche) ; moves et reviews : décisions passées et leur analyse (récap de fin) ;
+// onLeave : « Menu ».
+export interface BoardFixture {
+  state: GameState;
+  aim?: { attacker: number; target: number };
+  moves?: Move[];
+  reviews?: MoveReview[];
+  onLeave: () => void;
+}
+
 // notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
-// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame)
-export function App({ notice, onImmersive, online, adventure, configured }: {
+// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame) ; fixture : plateau sur
+// un état fixé, pour l'atelier (voir BoardFixture)
+export function App({ notice, onImmersive, online, adventure, configured, fixture }: {
   notice?: string;
   onImmersive?: (on: boolean) => void;
   online?: OnlineEntry;
   adventure?: AdventureEntry;
   configured?: ConfiguredGame;
+  fixture?: BoardFixture;
 }) {
   const [settings, updateSettings] = useSettings();
   const [config, setConfig] = useState<Config>(() => configured
     ? { myDeck: configured.myDeck, aiDeck: configured.aiDeck, first: 'random', level: configured.level }
+    : fixture ? { myDeck: fixture.state.players[HUMAN].deckId, aiDeck: fixture.state.players[AI].deckId, first: 'me', level: 1 }
     : { myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
   const [session, setSession] = useState<Config>(config);
   const [thinking, setThinking] = useState(false);
-  const [game, setGame] = useState<GameState | null>(null);
+  const [game, setGame] = useState<GameState | null>(fixture?.state ?? null);
   const [undo, setUndo] = useState<GameState[]>([]);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [trashOf, setTrashOf] = useState<PlayerId | null>(null);
@@ -142,8 +157,8 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const [practice, setPractice] = useState(false);
   const [hint, setHint] = useState<{ for: GameState; analysis: Analysis | null } | null>(null);
   const [menu, setMenu] = useState<{ uid: number; rect: DOMRect } | null>(null);
-  const [targeting, setTargeting] = useState<{ attacker: number } | null>(null);
-  const [hoverUid, setHoverUid] = useState<number | null>(null);
+  const [targeting, setTargeting] = useState<{ attacker: number } | null>(fixture?.aim ? { attacker: fixture.aim.attacker } : null);
+  const [hoverUid, setHoverUid] = useState<number | null>(fixture?.aim?.target ?? null);
   const [dragging, setDragging] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [help, setHelp] = useState(false);
@@ -158,7 +173,12 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const { compact, touch } = useDevice();
   const [panel, setPanel] = useState(false);
   const [aimed, setAimed] = useState<number | null>(null);
-  useEffect(() => setAimed(null), [targeting]);
+  // nouvelle attaque : aucune cible visée (sauf celle de l'état fixé, au premier affichage)
+  const firstAim = useRef(fixture?.aim?.target ?? null);
+  useEffect(() => {
+    setAimed(firstAim.current);
+    firstAim.current = null;
+  }, [targeting]);
   useWakeLock(game !== null && game.winner === null);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
@@ -167,12 +187,13 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const [guide, setGuide] = useState<string | null>(null);
 
   // Décisions du joueur et leur analyse par le coach, faite en arrière-plan pendant la partie
-  const moves = useRef<Move[]>([]);
-  const reviews = useRef(new Map<number, MoveReview>());
-  const nextMove = useRef(1);
+  const moves = useRef<Move[]>(fixture?.moves ?? []);
+  const reviews = useRef(new Map<number, MoveReview>(fixture?.reviews?.map((r) => [r.id, r])));
+  const nextMove = useRef(1 + Math.max(0, ...(fixture?.moves ?? []).map((m) => m.id)));
   const pumping = useRef(false);
-  const recorded = useRef(false);
-  const celebrated = useRef(false);
+  // état fixé : ni bilan, ni écran de victoire ou de défaite animé (le récap s'affiche directement)
+  const recorded = useRef(Boolean(fixture));
+  const celebrated = useRef(Boolean(fixture));
   const ended = useRef(false);
   const [reviewed, setReviewed] = useState(0);
   // Gain de la partie libre (Berry) : demandé au serveur une fois la partie finie et enregistrée (l'aventure le demande
@@ -242,6 +263,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   }, [inGame]);
 
   useEffect(() => {
+    if (fixture) return;
     flushQueue();
     const onHide = () => {
       const rec = snapshot();
@@ -249,7 +271,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     };
     window.addEventListener('pagehide', onHide);
     return () => window.removeEventListener('pagehide', onHide);
-  }, [snapshot]);
+  }, [snapshot, fixture]);
 
   const pump = useCallback(async () => {
     if (pumping.current) return;
@@ -270,7 +292,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
 
   // L'IA joue ses décisions (calculées dans un fil séparé), avec un délai minimum pour qu'on puisse suivre
   useEffect(() => {
-    if (!game || game.winner !== null || game.decision?.player !== AI) return;
+    if (fixture || !game || game.winner !== null || game.decision?.player !== AI) return;
     const current = game;
     const d = current.decision!;
     const started = Date.now();
@@ -295,7 +317,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
       clearTimeout(timer);
       setThinking(false);
     };
-  }, [game, settings.speed, session.level]);
+  }, [game, settings.speed, session.level, fixture]);
 
   // Fin de partie : le résultat compte dans le bilan (sauf une partie reprise depuis un moment revu), puis l'écran
   // de victoire ou de défaite avant le récap
@@ -358,8 +380,8 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     });
   }, [game]);
   useEffect(() => {
-    if (settings.autoCoach && game && humanTurn && d && d.options.length > 1 && !(hint && hint.for === game)) askHint();
-  }, [settings.autoCoach, game, humanTurn, d, hint, askHint]);
+    if (!fixture && settings.autoCoach && game && humanTurn && d && d.options.length > 1 && !(hint && hint.for === game)) askHint();
+  }, [fixture, settings.autoCoach, game, humanTurn, d, hint, askHint]);
 
   // Après avoir donné une DON!!, le menu de la carte reste ouvert pour en donner d'autres
   useEffect(() => {
@@ -443,8 +465,8 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     setTargeting(null);
     setHoverUid(null);
     setPanel(false);
-    void pump();
-  }, [game, pump, hint]);
+    if (!fixture) void pump();
+  }, [game, pump, hint, fixture]);
 
   const back = useCallback(() => {
     const previous = undo[undo.length - 1];
@@ -707,6 +729,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
 
   const special = view?.special;
   const leave = () => {
+    if (fixture) return fixture.onLeave();
     closeRecording();
     setGame(null);
   };

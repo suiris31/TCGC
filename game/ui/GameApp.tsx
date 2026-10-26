@@ -11,8 +11,8 @@ import { OnlineMatch } from './online/OnlineMatch.tsx';
 import { useSettings } from './settings.ts';
 import './styles.css';
 
-// Atelier des écrans de l'aventure (#play/atelier) : chargé seulement quand on l'ouvre
-const Atelier = lazy(() => import('./adventure/Atelier.tsx').then((m) => ({ default: m.Atelier })));
+// Atelier des écrans du jeu (#play/atelier) : chargé seulement quand on l'ouvre
+const Atelier = lazy(() => import('./atelier/Atelier.tsx').then((m) => ({ default: m.Atelier })));
 // Mode Aventure (#play/aventure) : chargé quand on l'ouvre
 const AdventureApp = lazy(() => import('./adventure/AdventureApp.tsx').then((m) => ({ default: m.AdventureApp })));
 

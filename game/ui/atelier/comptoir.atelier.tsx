@@ -4,14 +4,14 @@
 // entre l'aperçu et l'échange (refus, nouvel aperçu). « Mon compte » : les vrais écrans, reliés au compte connecté (à
 // n'utiliser que sur un serveur d'essai).
 import { useMemo, useState } from 'react';
-import { BOOSTER_SETS } from '../../../boosters/sets/index.ts';
-import { ECONOMY, type Rarity } from '../../../economy/config.ts';
-import type { CounterPurchase, DuplicateLine, DuplicatesExchange, DuplicatesPreview, Wallet } from '../../../economy/types.ts';
-import { cardData } from '../../../engine/cards/index.ts';
-import { CounterScreen, type CounterClient } from '../../economy/Counter.tsx';
-import { DuplicatesDialog, type DuplicatesClient } from '../../economy/Duplicates.tsx';
-import { AdventureApiError, type HoldCard } from '../api.ts';
-import { HoldScreen, HoldView } from '../Hold.tsx';
+import { BOOSTER_SETS } from '../../boosters/sets/index.ts';
+import { ECONOMY, type Rarity } from '../../economy/config.ts';
+import type { CounterPurchase, DuplicateLine, DuplicatesExchange, DuplicatesPreview, Wallet } from '../../economy/types.ts';
+import { cardData } from '../../engine/cards/index.ts';
+import { CounterScreen, type CounterClient } from '../economy/Counter.tsx';
+import { DuplicatesDialog, type DuplicatesClient } from '../economy/Duplicates.tsx';
+import { AdventureApiError, type HoldCard } from '../adventure/api.ts';
+import { HoldScreen, HoldView } from '../adventure/Hold.tsx';
 
 export const title = 'Comptoir et doublons';
 
