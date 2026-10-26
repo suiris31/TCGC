@@ -11,7 +11,7 @@ import { CardThumb } from './DeckGuide.tsx';
 import { loadRecord, loadSummaries } from './archiveClient.ts';
 import { isTouch } from './device.ts';
 import { GameGain, useGameGain } from './economy/GameGain.tsx';
-import { Dialog, type DialogHistory } from './kit/index.ts';
+import { Dialog } from './kit/index.ts';
 import { deckLabel, isAdventureDeck } from './myDecks.ts';
 import { goUp, HOME, navigate, useRoute } from './routes.ts';
 
@@ -26,9 +26,6 @@ const NONE: Record<Filter, string> = {
   aventure: 'Aucune partie d’aventure',
   online: 'Aucune partie en ligne',
 };
-// Mes parties a sa propre adresse (#play/parties) : le Retour du navigateur la ferme déjà, la fenêtre n'ajoute pas
-// d'entrée d'historique
-const OWN_ADDRESS: DialogHistory = { push() {}, pop() {} };
 
 const LEVEL = ['', 'Débutant', 'Confirmé', 'Expert', 'IA entraînée'];
 const STATUS: Record<GameSummary['status'], [string, string]> = {
@@ -65,7 +62,8 @@ function minutesText(m: number | null) {
 }
 
 // Mes parties (#play/parties) ; le détail d'une partie a son adresse (#play/parties/<id>) : le Retour revient à la liste.
-// Les parties se filtrent par mode : contre l'IA, Aventure, en ligne.
+// Les parties se filtrent par mode : contre l'IA, Aventure, en ligne. La fenêtre a sa propre adresse : elle n'ajoute pas
+// d'entrée d'historique (`history={false}`), le Retour du navigateur la ferme déjà.
 export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => void; onResume: (rec: GameRecord, move: number) => void; onHover: Hover }) {
   const [list, setList] = useState<GameSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +97,7 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
   };
   const tabs: [Tab, string][] = [['progress', 'Progression'], ['axes', 'Axes de progrès'], ['games', 'Toutes les parties']];
   return (
-    <Dialog title="📈 Mes parties" onClose={close} size="wide" className="history op-history" history={OWN_ADDRESS} data-ui="history">
+    <Dialog title="📈 Mes parties" onClose={close} size="wide" className="history op-history" history={false} data-ui="history">
       <div className="op-history-bar">
         <nav className="history-tabs" aria-label="Vue">
           {tabs.map(([key, label]) => (
