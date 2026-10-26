@@ -1,0 +1,167 @@
+/* Ouverture des boosters : paquet, éventail, révélation des cartes, récapitulatif. */
+.op-bo { position: fixed; inset: 0; z-index: var(--z-boosters); display: flex; flex-direction: column; overflow: hidden; color: var(--text); background: radial-gradient(ellipse 75% 60% at 50% 40%, var(--bo-bg-2) 0%, var(--table-mid) 58%, var(--bo-bg-0) 100%); animation: op-fade 0.25s ease-out; }
+.opc:not(.opc-full) .op-bo { bottom: calc(var(--tabbar-h, 64px) + var(--safe-bottom, 0px)); }
+.op-bo-head { display: flex; align-items: center; gap: 0.8rem; padding: calc(0.6rem + env(safe-area-inset-top, 0px)) 1rem 0.3rem; }
+.op-bo-title { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.8rem; }
+.op-bo-title strong { font-size: 1.3rem; color: var(--accent); }
+.op-bo-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.op-bo-main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; padding: 0.5rem 1rem; text-align: center; }
+.op-bo-hint { margin: 0; max-width: 30rem; color: var(--muted); font-size: 0.93rem; }
+.op-bo-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; padding: 0.5rem 1rem calc(0.9rem + env(safe-area-inset-bottom, 0px)); }
+.op-bo-actions .op-btn { min-width: 11rem; }
+/* paquet et éventail : les boutons juste en dessous */
+.op-bo-at-choose, .op-bo-at-pack, .op-bo-at-burst { justify-content: center; }
+.op-bo-at-choose .op-bo-main, .op-bo-at-pack .op-bo-main, .op-bo-at-burst .op-bo-main { flex: 0 1 auto; }
+/* Couleurs de chaque genre de carte : lueur (--glow) et halo (--halo) */
+.op-bo-t-common { --glow: var(--muted-a60); --halo: 0; }
+.op-bo-t-rare { --glow: var(--rarity-rare); --halo: 0.3; }
+.op-bo-t-leader { --glow: var(--rarity-leader); --halo: 0.55; }
+.op-bo-t-super { --glow: var(--accent); --halo: 0.6; }
+.op-bo-t-secret { --glow: var(--rarity-secret); --halo: 0.75; }
+.op-bo-t-super.op-bo-foil, .op-bo-t-leader.op-bo-foil { --glow: var(--rarity-foil); }
+/* Le paquet : enveloppe brillante, bande sertie à déchirer en haut, rose des vents et code de l'extension */
+.op-bo-pack { position: relative; display: block; height: min(27rem, calc(100dvh - 17rem)); aspect-ratio: 61 / 100; padding: 0; border: 0; background: none; container-type: inline-size; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; filter: drop-shadow(0 1.4rem 2rem var(--black-a60)); animation: op-bo-float 3.4s ease-in-out infinite; }
+.op-bo-pack:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 0.8rem; }
+.op-bo-pack.is-tearing { animation: none; }
+.op-bo-pack-top, .op-bo-pack-body { position: absolute; left: 0; right: 0; overflow: hidden; }
+.op-bo-pack-top { top: 0; z-index: var(--z-raise); height: 14%; border-radius: 0.7rem 0.7rem 0 0; border-bottom: 2px dashed var(--accent-ink-a55); background: linear-gradient(180deg, var(--foil-3) 0%, var(--foil-1) 55%, var(--foil-2) 100%); transform-origin: 0 100%; transform: rotate(calc(var(--tear, 0) * -10deg)) translate(calc(var(--tear, 0) * 10%), calc(var(--tear, 0) * -25%)); transition: transform 0.12s; }
+.op-bo-pack-top::before, .op-bo-pack-body::after { content: ""; position: absolute; left: 0; right: 0; background: repeating-linear-gradient(90deg, var(--black-a22) 0 2px, transparent 2px 5px); }
+.op-bo-pack-top::before { top: 0; height: 45%; }
+.op-bo-pack-body { top: 14%; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw; padding-bottom: 6cqw; border-radius: 0 0 0.7rem 0.7rem; background: radial-gradient(ellipse 80% 50% at 28% 18%, var(--white-a28), transparent 60%), radial-gradient(circle at 50% 40%, var(--accent-a25), transparent 45%), linear-gradient(165deg, var(--p1) 0%, var(--p2) 70%, var(--bo-pack-dark) 100%); }
+.op-bo-pack-body::after { bottom: 0; height: 6%; background: repeating-linear-gradient(90deg, var(--black-a22) 0 2px, transparent 2px 5px), linear-gradient(180deg, var(--foil-2), var(--foil-1)); }
+.op-bo-pack-body::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 35%, var(--white-a42) 47%, transparent 58%), repeating-linear-gradient(45deg, var(--white-a05) 0 6px, transparent 6px 12px); background-size: 300% 100%, auto; animation: op-bo-sheen 3.6s ease-in-out infinite; }
+.op-bo-emblem { width: 50%; height: auto; filter: drop-shadow(0 0.4rem 0.6rem var(--black-a45)); }
+.op-bo-pack-set { font-size: 20cqw; font-weight: 900; line-height: 1; letter-spacing: 0.03em; color: var(--don-light); text-shadow: 0 0.6cqw 0 var(--bo-set-shadow), 0 1.6cqw 3cqw var(--black-a60); }
+.op-bo-pack-kind { margin-right: -0.45em; font-size: 6cqw; font-weight: 800; letter-spacing: 0.45em; text-transform: uppercase; color: var(--white); }
+.op-bo-pack-count { font-size: 5cqw; color: var(--white-a75); }
+.op-bo-pack-light { position: absolute; left: -25%; right: -25%; top: -6%; z-index: var(--z-raise-2); height: 36%; opacity: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, var(--pack-light), var(--pack-glow) 35%, transparent 70%); }
+.op-bo-pack.is-opening { animation: op-bo-shake 0.3s ease-in-out; }
+.op-bo-pack.is-opening .op-bo-pack-top { animation: op-bo-tear 0.55s ease-in 0.1s forwards; }
+.op-bo-pack.is-opening .op-bo-pack-light { animation: op-bo-light 0.75s ease-out 0.15s forwards; }
+.op-bo-pack.is-opening .op-bo-pack-body { animation: op-bo-drop 0.45s ease-in 0.45s forwards; }
+@keyframes op-bo-float { 50% { transform: translateY(-0.4rem) rotate(0.6deg); } }
+@keyframes op-bo-shake { 20% { transform: rotate(-2.5deg); } 45% { transform: rotate(2.5deg) scale(1.03); } 70% { transform: rotate(-1.2deg); } }
+@keyframes op-bo-tear { to { transform: rotate(-30deg) translate(35%, -180%); opacity: 0; } }
+@keyframes op-bo-light { 0% { opacity: 0; transform: scale(0.4); } 35% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(2.2); } }
+@keyframes op-bo-drop { to { transform: translateY(40%) scale(0.92); opacity: 0; } }
+@keyframes op-bo-sheen { 0% { background-position: 130% 0, 0 0; } 55%, 100% { background-position: -30% 0, 0 0; } }
+/* Plusieurs paquets en éventail */
+.op-bo-fan { position: relative; width: min(30rem, 88vw); height: min(22rem, calc(100dvh - 19rem)); }
+.op-bo-fan .op-bo-mini { position: absolute; left: 50%; bottom: 2%; height: 86%; translate: -50% 0; transform: translateX(calc(var(--k) * 26%)) rotate(calc(var(--k) * 7deg)); transform-origin: 50% 120%; animation: none; filter: drop-shadow(0 0.8rem 1.2rem var(--black-a55)); }
+.op-bo-fan.is-bursting .op-bo-mini { animation: op-bo-burst 0.65s ease-in calc(var(--j) * 110ms) forwards; }
+.op-bo-fan.is-bursting .op-bo-pack-top { animation: op-bo-tear 0.45s ease-in calc(var(--j) * 110ms) forwards; }
+.op-bo-fan-count { position: absolute; right: 4%; bottom: 6%; z-index: var(--z-raise-2); padding: 0.15rem 0.8rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 900; font-size: 1.3rem; box-shadow: 0 0.4rem 1rem var(--black-a50); }
+@keyframes op-bo-burst { 45% { scale: 1.08; filter: brightness(1.5) drop-shadow(0 0 1.5rem var(--burst)); } 100% { scale: 1.25; opacity: 0; filter: brightness(2.4); } }
+/* Révélation : la carte en grand, la bande des cartes du booster, les boutons */
+.op-bo-at-reveal { --big-h: min(30rem, calc(100dvh - 19.5rem), calc((100vw - 2rem) * 1.4)); display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto; grid-template-areas: "show" "strip" "actions"; justify-items: center; align-items: center; row-gap: 0.7rem; }
+.op-bo-show { grid-area: show; position: relative; display: flex; flex-direction: column; align-items: center; }
+.op-bo-at-reveal .op-bo-strip { grid-area: strip; }
+.op-bo-at-reveal .op-bo-actions { grid-area: actions; justify-self: stretch; }
+.op-bo-stage { position: relative; display: grid; place-items: center; }
+.op-bo-big { position: relative; display: block; height: var(--big-h); aspect-ratio: 5 / 7; padding: 0; border: 0; background: none; perspective: 1600px; -webkit-tap-highlight-color: transparent; }
+.op-bo-flip-inner { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; }
+.op-bo-face { position: absolute; inset: 0; display: block; overflow: hidden; border-radius: 4.5% / 3.2%; background: var(--surface); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.op-bo-face img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* dos des cartes du jeu */
+.op-bo-back { transform: rotateY(180deg); background: repeating-linear-gradient(45deg, var(--back-1), var(--back-1) 0.429rem, var(--back-2) 0.429rem, var(--back-2) 0.857rem); border: 2px solid var(--back-edge); }
+.op-bo-back::after { content: ""; position: absolute; left: 50%; top: 50%; width: 40%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 2px solid var(--accent-a40); box-shadow: inset 0 0 0 0.35rem var(--accent-a10); }
+.op-bo-big .op-bo-front { box-shadow: 0 1rem 2.4rem var(--black-a60); }
+.op-bo-show:not(.op-bo-t-common) .op-bo-big .op-bo-front { box-shadow: 0 0 0 2px var(--glow), 0 0 1.6rem var(--glow), 0 1rem 2.4rem var(--black-a60); }
+.op-bo-show.op-bo-t-leader .op-bo-big .op-bo-front, .op-bo-show.op-bo-t-super .op-bo-big .op-bo-front, .op-bo-show.op-bo-t-secret .op-bo-big .op-bo-front { animation: op-bo-pulse 2.2s ease-in-out var(--fx, 0ms) infinite; }
+.op-bo-halo { position: absolute; inset: -20%; border-radius: 50%; opacity: var(--halo); pointer-events: none; background: radial-gradient(circle, var(--glow) 0%, transparent 62%); }
+.op-bo-rays { position: absolute; left: 50%; top: 50%; width: calc(var(--big-h) * 1.5); aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; opacity: 0.45; pointer-events: none; background: repeating-conic-gradient(var(--glow) 0deg 4deg, transparent 4deg 15deg); -webkit-mask-image: radial-gradient(circle, var(--black) 15%, transparent 68%); mask-image: radial-gradient(circle, var(--black) 15%, transparent 68%); animation: op-bo-spin 16s linear infinite; }
+.op-bo-t-secret .op-bo-rays { opacity: 0.6; background: repeating-conic-gradient(var(--ray-red) 0deg 4deg, transparent 4deg 10deg, var(--ray-gold) 10deg 14deg, transparent 14deg 20deg, var(--ray-green) 20deg 24deg, transparent 24deg 30deg, var(--ray-blue) 30deg 34deg, transparent 34deg 40deg, var(--ray-purple) 40deg 44deg, transparent 44deg 50deg, var(--ray-pink) 50deg 54deg, transparent 54deg 60deg); }
+.op-bo-sparks { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.op-bo-sparks i { position: absolute; left: -0.35rem; top: -0.35rem; width: 0.7rem; height: 0.7rem; border-radius: 50%; opacity: 0; background: radial-gradient(circle, var(--white) 0%, var(--glow) 45%, transparent 70%); animation: op-bo-spark 1.1s ease-out calc(var(--fx) + var(--t)) both; }
+.op-bo-flash { position: fixed; inset: 0; z-index: var(--z-raise-3); opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 45%, var(--white-a95), var(--flash-warm) 40%, transparent 75%); animation: op-bo-flash 1.1s ease-out var(--fx) both; }
+.op-bo-holo { position: absolute; inset: 0; pointer-events: none; opacity: 0.4; mix-blend-mode: color-dodge; background: linear-gradient(115deg, transparent 20%, var(--holo-pink) 36%, var(--holo-cyan) 50%, var(--holo-yellow) 64%, transparent 80%); background-size: 280% 280%; animation: op-bo-holo 3.4s ease-in-out infinite alternate; }
+.op-bo-new { position: absolute; top: -0.5rem; right: -0.6rem; z-index: var(--z-raise-2); padding: 0.15rem 0.6rem; border-radius: 999px; rotate: 8deg; white-space: nowrap; background: linear-gradient(180deg, var(--new-light), var(--new-dark)); color: var(--on-green); font-weight: 900; font-size: 0.9rem; box-shadow: 0 0.3rem 0.8rem var(--black-a50); }
+.op-bo-caption { max-width: 90vw; min-height: 1.5em; margin: 0.6rem 0 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; font-size: 1.05rem; }
+.op-bo-caption span { margin-left: 0.35rem; color: var(--muted); font-size: 0.9em; }
+/* une carte qui vient d'être retournée : sortie du paquet, suspense (belles cartes), retournement, puis ses effets */
+.op-bo-show.is-rise .op-bo-stage { animation: op-bo-rise 0.38s ease-out both; }
+.op-bo-show.is-suspense .op-bo-big { animation: op-bo-suspense var(--suspense) ease-in var(--lead) both; }
+.op-bo-show.is-suspense .op-bo-back { animation: op-bo-charge var(--suspense) ease-in var(--lead) both; }
+.op-bo-show.is-fresh .op-bo-flip-inner { animation: op-bo-flip 0.52s cubic-bezier(0.25, 0.8, 0.3, 1) var(--delay) both; }
+.op-bo-show.is-fresh .op-bo-halo { animation: op-bo-halo 0.7s ease-out var(--fx) both; }
+.op-bo-show.is-fresh .op-bo-rays { animation: op-bo-rays 0.8s ease-out var(--fx) both, op-bo-spin 16s linear infinite; }
+.op-bo-show.is-fresh .op-bo-new { animation: op-bo-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.5) var(--fx) both; }
+.op-bo-show.is-fresh .op-bo-caption { animation: op-fade 0.3s ease-out var(--fx) both; }
+@keyframes op-bo-rise { from { opacity: 0; transform: translateY(35%) scale(0.75); } }
+@keyframes op-bo-suspense { 20% { transform: rotate(-1.5deg) scale(1.02); } 40% { transform: rotate(1.5deg) scale(1.03); } 60% { transform: rotate(-2deg) scale(1.04); } 80% { transform: rotate(2deg) scale(1.05); } }
+@keyframes op-bo-charge { to { box-shadow: 0 0 0 3px var(--glow), 0 0 2.5rem var(--glow); filter: brightness(1.35); } }
+@keyframes op-bo-flip { 0% { transform: rotateY(180deg); } 55% { transform: rotateY(80deg) scale(1.08); } 100% { transform: none; } }
+@keyframes op-bo-halo { from { opacity: 0; scale: 0.5; } }
+@keyframes op-bo-rays { from { opacity: 0; scale: 0.3; } }
+@keyframes op-bo-spin { to { rotate: 360deg; } }
+@keyframes op-bo-spark { 0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(0.4); } 8%, 70% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1.3); } }
+@keyframes op-bo-flash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes op-bo-holo { from { background-position: 100% 100%; } to { background-position: 0 0; } }
+@keyframes op-bo-pop { from { opacity: 0; scale: 0.2; } }
+@keyframes op-bo-pulse { 50% { box-shadow: 0 0 0 3px var(--glow), 0 0 2.8rem var(--glow), 0 1rem 2.4rem var(--black-a60); } }
+.op-bo-strip { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 4.3rem)); justify-content: center; gap: 0.45rem; width: 100%; padding: 0 1rem; }
+.op-bo-thumb { position: relative; display: block; aspect-ratio: 5 / 7; padding: 0; border: 0; border-radius: 0.3rem; background: none; perspective: 700px; transition: translate 0.15s; -webkit-tap-highlight-color: transparent; }
+.op-bo-thumb:disabled { opacity: 1; }
+.op-bo-thumb .op-bo-face { border-radius: 0.3rem; }
+.op-bo-thumb .op-bo-back::after { border-width: 1px; box-shadow: none; }
+.op-bo-thumb.is-down .op-bo-flip-inner { transform: rotateY(180deg); }
+.op-bo-thumb.is-flipping .op-bo-flip-inner { animation: op-bo-flip 0.45s ease-out var(--wait) both; }
+.op-bo-thumb.is-flipping .op-bo-dot { animation: op-fade 0.2s ease-out var(--wait) both; }
+.op-bo-thumb.is-up:not(.op-bo-t-common) .op-bo-front { box-shadow: 0 0 0 2px var(--glow), 0 0 0.7rem var(--glow); }
+.op-bo-thumb.is-on { outline: 2px solid var(--white); outline-offset: 3px; }
+@media (hover: hover) { .op-bo-thumb.is-up:hover { translate: 0 -3px; } }
+.op-bo-dot { position: absolute; top: -0.25rem; right: -0.25rem; width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px var(--bg); }
+.op-bo-blank { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; width: 100%; height: 100%; padding: 0.4rem; text-align: center; font-size: 0.8rem; background: linear-gradient(160deg, var(--surface-2), var(--bg-2)); }
+.op-bo-blank small { color: var(--muted); }
+/* Récapitulatif */
+.op-bo-recap { flex: 1; min-height: 0; overflow-y: auto; padding: 0.3rem 1rem 1rem; }
+.op-bo-recap-head { max-width: 60rem; margin: 0 auto 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; }
+.op-bo-recap-head h2 { margin: 0; font-size: 1.7rem; color: var(--accent); }
+.op-bo-recap-head p { margin: 0; }
+.op-bo-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; }
+.op-chip.op-bo-chip { border-color: var(--glow); font-weight: 700; }
+.op-segmented.op-bo-filter { grid-template-columns: repeat(var(--n), auto); }
+.op-bo-filter .seg { padding: 0 0.9rem; }
+.op-bo-empty { text-align: center; }
+.op-bo-sections { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 1.2rem 2rem; max-width: 80rem; margin: 0 auto; }
+.op-bo-section { min-width: 0; }
+.op-bo-section h3 { margin: 0 0 0.6rem; font-size: 0.95rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.op-bo-section h3 span { margin-left: 0.3rem; color: var(--text); }
+.op-bo-grid { display: flex; flex-wrap: wrap; gap: 1rem 0.8rem; }
+.op-bo-tile { position: relative; display: flex; flex-direction: column; gap: 0.35rem; width: 8.5rem; min-width: 0; padding: 0; border: 0; background: none; text-align: left; animation: op-bo-tile 0.4s ease-out calc(min(var(--i), 40) * 30ms) both; }
+.op-bo-tile-card { position: relative; display: block; aspect-ratio: 5 / 7; overflow: hidden; border-radius: 4.5% / 3.2%; background: var(--surface); box-shadow: 0 0.4rem 1rem var(--black-a50); transition: translate 0.15s; }
+.op-bo-tile:not(.op-bo-t-common) .op-bo-tile-card { box-shadow: 0 0 0 2px var(--glow), 0 0 1rem var(--glow); }
+@media (hover: hover) { .op-bo-tile:hover .op-bo-tile-card { translate: 0 -3px; } }
+.op-bo-tile-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.op-bo-tile .op-bo-new { top: -0.45rem; right: -0.4rem; padding: 0.1rem 0.5rem; font-size: 0.75rem; }
+.op-bo-count { position: absolute; left: 0.35rem; bottom: 0.35rem; padding: 0 0.5rem; border-radius: 999px; background: var(--ink-a92); border: 1px solid var(--accent); color: var(--accent); font-weight: 900; }
+.op-bo-tile-text { display: flex; flex-direction: column; min-width: 0; font-size: 0.86rem; line-height: 1.25; }
+.op-bo-tile-text b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.op-bo-tile-text small { color: var(--muted); font-size: 0.78rem; }
+@keyframes op-bo-tile { from { opacity: 0; transform: translateY(0.9rem) scale(0.92); } }
+.op-bo-zoom { position: fixed; inset: 0; z-index: var(--z-raise-3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; padding: 1rem; background: var(--backdrop-a88); cursor: pointer; animation: op-fade 0.15s ease-out; }
+.op-bo-zoom-card { position: relative; display: block; height: min(36rem, calc(100dvh - 9rem), calc((100vw - 2rem) * 1.4)); aspect-ratio: 5 / 7; overflow: hidden; border-radius: 4.5% / 3.2%; box-shadow: 0 1.5rem 3rem var(--black-a70); animation: pop 0.18s ease-out; }
+.op-bo-zoom:not(.op-bo-t-common) .op-bo-zoom-card { box-shadow: 0 0 0 2px var(--glow), 0 0 2rem var(--glow); }
+.op-bo-zoom-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.op-bo-zoom p { margin: 0; text-align: center; }
+/* Animations réduites (réglage du système, ou animations={false}) : tout s'affiche sans mouvement */
+.op-bo-calm *, .op-bo-calm *::before, .op-bo-calm *::after { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+.op-bo-calm .op-bo-rays, .op-bo-calm .op-bo-sparks, .op-bo-calm .op-bo-flash { display: none; }
+@media (max-width: 900px) and (orientation: portrait) {
+  .op-bo-at-reveal { --big-h: min(30rem, calc(100dvh - 23rem), calc((100vw - 3rem) * 1.4)); row-gap: 0.5rem; }
+  .op-bo-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 24rem; gap: 0.35rem; }
+  .op-bo-grid { gap: 0.8rem 0.5rem; }
+  .op-bo-tile { width: calc((100vw - 3rem) / 3); }
+  .op-bo-actions .op-btn { flex: 1 1 0; min-width: 0; padding: 0 0.6rem; }
+  .op-bo-pack { height: min(27rem, calc(100dvh - 16rem), calc((100vw - 4rem) / 0.61)); }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .op-bo-head { padding-top: calc(0.3rem + env(safe-area-inset-top, 0px)); padding-bottom: 0; }
+  .op-bo-at-reveal { --big-h: calc(100dvh - 7rem); grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "show strip" "show actions"; column-gap: 1.2rem; padding: 0 1rem; }
+  .op-bo-strip { grid-template-columns: repeat(6, minmax(0, 3.4rem)); }
+  .op-bo-actions { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+  .op-bo-pack { height: calc(100dvh - 11rem); }
+  .op-bo-fan { height: calc(100dvh - 10rem); }
+  .op-bo-tile { width: 6.4rem; }
+  .op-bo-zoom-card { height: calc(100dvh - 6rem); }
+}
