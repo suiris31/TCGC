@@ -2,6 +2,7 @@
 // Le navigateur ne reçoit que sa vue de la partie (le serveur garde l'état complet) et n'envoie que ses choix.
 import { useEffect, useState } from 'react';
 import type { MatchView } from '../../online/match.ts';
+import { ApiError, apiUrl, call as api } from '../api.ts';
 
 export type LiveView = MatchView & { opponentOnline: boolean };
 
@@ -15,29 +16,19 @@ export interface CurrentMatch {
   hold?: boolean;    // deck de la Cale
 }
 
-const API = `${import.meta.env.BASE_URL}api/game/matches`;
-
-export class OnlineError extends Error {
-  code: string;
-  status: number;
+// Ancien nom de l'erreur des appels (avant le client unique game/ui/api.ts) : toute ApiError en est une
+export class OnlineError extends ApiError {
   constructor(code: string, message: string, status: number) {
-    super(message);
-    this.code = code;
-    this.status = status;
+    super({ status, code, message });
+  }
+
+  static [Symbol.hasInstance](e: unknown) {
+    return e instanceof ApiError;
   }
 }
 
-async function call<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: 'no-store',
-  });
-  const data = await res.json().catch(() => null) as (T & { code?: string; error?: string }) | null;
-  if (!res.ok) throw new OnlineError(data?.code ?? 'server', data?.error ?? `Le serveur a répondu ${res.status}`, res.status);
-  return data as T;
-}
+// Routes /api/game/matches... : GET sans corps, POST avec
+const call = <T>(path: string, body?: unknown) => api<T>(body === undefined ? 'GET' : 'POST', `matches${path}`, body);
 
 export const createRoom = (deck: string) => call<MatchView>('', { deck });
 export const joinRoom = (code: string, deck: string) => call<MatchView>('/join', { code, deck });
@@ -56,7 +47,7 @@ export function useMatch(id: string): { view: LiveView | null; connected: boolea
   const [tick, setTick] = useState(0);
   useEffect(() => {
     let closed = false;
-    const source = new EventSource(`${API}/${encodeURIComponent(id)}/events`);
+    const source = new EventSource(apiUrl(`matches/${encodeURIComponent(id)}/events`));
     source.onopen = () => setConnected(true);
     source.onmessage = (e) => {
       if (closed) return;

@@ -1,6 +1,7 @@
 // Decks personnalisés du compte (éditeur de decks) : gardés par le serveur (server/game-decks.js), copiés ici pour
 // l'écran de départ, l'éditeur et le lancement d'une partie. Tous les écrans partagent la même copie.
 import { useEffect, useState } from 'react';
+import { call as api } from './api.ts';
 import { playableErrors } from '../engine/deckRules.ts';
 import type { DeckLooks } from '../data/looks.ts';
 import { CUSTOM_PREFIX, DECKS, type DeckList } from '../engine/decks.ts';
@@ -17,23 +18,12 @@ export interface MyDeck extends DeckList {
   looks?: DeckLooks; // visuels choisis (version de chaque carte, DON!!) ; absent ou {} : visuels de base, DON!! standard
 }
 
-const BASE = import.meta.env.BASE_URL;
 let decks: MyDeck[] = [];
 let state: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((f) => f());
 
-async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}api/game/${path}`, {
-    method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: 'no-store',
-  });
-  const data = await res.json().catch(() => null) as (T & { error?: string }) | null;
-  if (!res.ok) throw new Error(data?.error ?? `Le serveur a répondu ${res.status}`);
-  return data as T;
-}
+const call = <T>(path: string, method = 'GET', body?: unknown) => api<T>(method, path, body);
 
 export async function loadMyDecks(): Promise<MyDeck[]> {
   state = 'loading';
