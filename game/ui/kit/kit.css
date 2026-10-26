@@ -1,7 +1,7 @@
 /* Kit du jeu (tâche R1.2) : boutons, fenêtres, gabarit d'écran, chargements, icônes. Toujours sous .opc, classes
    préfixées op-kit- ; aucune couleur écrite en dur : seulement les variables de .opc (mélangées par color-mix pour les
-   transparences). Les durées et les z-index lisent les jetons de R1.1 (--dur-*, --z-*) quand ils existent, avec la
-   valeur actuelle du jeu par défaut. Toutes les cibles font au moins 44 px. */
+   transparences). Les durées et les z-index passent par les jetons de styles/tokens.css (--dur-*, --z-*). Toutes les
+   cibles font au moins 44 px. */
 
 /* ---------- Icônes ---------- */
 .opc .op-icon { flex: none; display: inline-block; vertical-align: -0.2em; }
@@ -13,7 +13,7 @@
   min-height: max(44px, 2.75rem); min-width: max(44px, 2.75rem); margin: 0; padding: 0 1rem;
   border: 1px solid transparent; border-radius: 10px; font: inherit; font-weight: 700; line-height: 1.2;
   text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent;
-  transition: transform var(--dur-fast, 0.12s), filter var(--dur-fast, 0.12s), background-color var(--dur-fast, 0.12s), border-color var(--dur-fast, 0.12s);
+  transition: transform var(--dur-fast), filter var(--dur-fast), background-color var(--dur-fast), border-color var(--dur-fast);
 }
 .opc .op-kit-icon-btn { width: max(44px, 2.75rem); padding: 0; font-size: 1.1rem; }
 .opc .op-kit-btn-big { min-height: max(52px, 3.4rem); padding: 0 1.6rem; font-size: 1.14rem; }
@@ -69,18 +69,18 @@
 .opc .op-kit-async-title { color: var(--text); font-weight: 700; font-size: 1.1rem; }
 
 /* ---------- Fenêtres ---------- */
-.opc .op-kit-layer { position: fixed; inset: 0; z-index: var(--z-dialog, 50); display: grid; place-items: center; padding: 1rem; }
+.opc .op-kit-layer { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: 1rem; }
 .opc .op-kit-layer.is-reduced { inset: auto 0 0 0; padding: 0; display: block; pointer-events: none; }
 .opc .op-kit-backdrop {
   position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(2px);
-  animation: op-kit-fade var(--dur, 0.15s) ease-out;
+  animation: op-kit-fade var(--dur-base) ease-out;
 }
 .opc .op-kit-backdrop[hidden], .opc .op-kit-dialog[hidden] { display: none; }
 .opc .op-kit-dialog {
   position: relative; display: flex; flex-direction: column; width: min(36rem, 100%); max-height: min(88vh, 100%);
   background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; color: var(--text);
   box-shadow: 0 24px 60px color-mix(in srgb, var(--bg) 85%, transparent); outline: none;
-  animation: op-kit-pop var(--dur, 0.18s) ease-out;
+  animation: op-kit-pop var(--dur-base) ease-out;
 }
 .opc .op-kit-dialog-small { width: min(26rem, 100%); }
 .opc .op-kit-dialog-wide { width: min(74rem, 100%); }
@@ -101,7 +101,7 @@
 .opc .op-kit-layer.is-sheet { place-items: end stretch; padding: 0; }
 .opc .op-kit-layer.is-sheet .op-kit-dialog {
   width: 100%; max-height: 92dvh; border-radius: 18px 18px 0 0; border-bottom: 0;
-  animation: op-kit-up var(--dur, 0.18s) ease-out;
+  animation: op-kit-up var(--dur-base) ease-out;
 }
 .opc .op-kit-layer.is-sheet .op-kit-dialog-head { padding-left: 1rem; padding-top: 0.4rem; }
 .opc .op-kit-layer.is-sheet .op-kit-dialog-body { padding: 0.3rem 1rem 0.9rem; }
@@ -117,14 +117,14 @@
   padding: 0.5rem 0.6rem 0.5rem 1rem; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
   background: var(--bg-2); border: 1px solid var(--accent); border-bottom: 0; border-radius: 14px 14px 0 0;
   box-shadow: 0 -10px 30px color-mix(in srgb, var(--bg) 70%, transparent);
-  animation: op-kit-up var(--dur, 0.18s) ease-out;
+  animation: op-kit-up var(--dur-base) ease-out;
 }
 .opc .op-kit-reduced-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 
 /* ---------- Écrans ---------- */
 .opc .op-kit-screen { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--bg); }
 .opc .op-kit-screen-head {
-  position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 0.5rem;
+  position: relative; z-index: var(--z-raise-2); flex: none; display: flex; align-items: center; gap: 0.5rem;
   padding: 0.5rem 1rem; padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
   background: var(--bg-2); border-bottom: 1px solid var(--line);
 }
@@ -150,10 +150,10 @@
 /* menu « ⋯ » */
 .opc .op-kit-menu-wrap { position: relative; }
 .opc .op-kit-menu {
-  position: absolute; right: 0; top: calc(100% + 0.3rem); z-index: var(--z-menu, 40); min-width: 14rem; max-width: calc(100vw - 1rem);
+  position: absolute; right: 0; top: calc(100% + 0.3rem); z-index: var(--z-menu); min-width: 14rem; max-width: calc(100vw - 1rem);
   display: flex; flex-direction: column; padding: 0.3rem; background: var(--bg-2); border: 1px solid var(--line);
   border-radius: 12px; box-shadow: 0 16px 40px color-mix(in srgb, var(--bg) 80%, transparent);
-  animation: op-kit-fade var(--dur-fast, 0.12s) ease-out;
+  animation: op-kit-fade var(--dur-fast) ease-out;
 }
 .opc .op-kit-menu-item {
   display: flex; align-items: center; gap: 0.6rem; min-height: max(44px, 2.75rem); padding: 0 0.8rem; margin: 0;
