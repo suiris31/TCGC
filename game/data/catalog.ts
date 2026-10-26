@@ -7,6 +7,7 @@
 //   existent : ce sont des identifiants communs (« Revolutionary Army » = « Armée révolutionnaire ») ;
 // - ce qui s'affiche (nom, types, texte, visuel) est en VF quand la carte existe en français, sinon en VO ;
 // - quand les impressions diffèrent (errata, rééditions reformulées), c'est la plus récente qui compte.
+import { BOOSTER_SETS } from '../boosters/sets/index.ts';
 import { leadingKeywords } from '../engine/keywords.ts';
 import type { CardData, Category, Color } from '../engine/types.ts';
 
@@ -153,6 +154,56 @@ function newestFirst(list: Printing[]) {
 
 const COLORS: Color[] = ['Red', 'Green', 'Blue', 'Purple', 'Black', 'Yellow'];
 
+// ---------- Versions d'une carte (visuels au choix d'un deck) ----------
+
+// Versions des boosters simulés (liste anglaise) : elles gardent le nom de la Cale (« parallele », « manga », « sp »)
+const BOOSTER_VARIANTS = new Map<string, string>(Object.values(BOOSTER_SETS)
+  .flatMap((set) => set.hits.flatMap((h) => h.versions).map((v) => [`${set.lang}|${v.imageId}`, v.variant] as const)));
+
+// Genre d'une impression, d'après sa rareté imprimée et son suffixe : carte SP, Treasure Rare, réédition (_r), sinon
+// illustration alternative. La liste officielle ne distingue pas les parallèles « manga » des autres.
+function printingKind(p: Printing): string {
+  if (/\bSP\b/.test(p.rarity)) return 'sp';
+  if (p.rarity === 'TR') return 'tr';
+  return /_r\d+$/.test(p.imageId) ? 'reedition' : 'parallele';
+}
+
+// Nom d'une version : celui des boosters s'il existe, sinon genre, langue et suffixe du visuel (« parallele-en-p2 »),
+// « normale-en » pour une impression sans suffixe. Les suffixes ne désignent pas le même visuel dans les deux langues
+// (OP05-119_p1 : parallèle d'OP-05 en VO, carte SP d'OP-09 en VF), d'où la langue dans le nom. Le nom ne dépend que de
+// l'impression elle-même : une nouvelle impression ne renomme jamais les autres (les noms sont gardés dans les decks).
+export function variantOf(p: Printing): string {
+  const suffix = p.imageId.match(/_([a-z]\d+)$/)?.[1];
+  return BOOSTER_VARIANTS.get(`${p.lang}|${p.imageId}`) ?? (suffix ? `${printingKind(p)}-${p.lang}-${suffix}` : `normale-${p.lang}`);
+}
+
+const hasSuffix = (imageId: string) => /_[a-z]\d+$/.test(imageId);
+// Ordre dans une langue : illustration normale, parallèles, puis le reste (réédition...)
+const printingRank = (p: Printing) => (!hasSuffix(p.imageId) ? 0 : isParallel(p) ? 1 : 2);
+
+// Toutes les versions d'une carte : la version de base (visuel du catalogue) d'abord, puis celles de la langue affichée,
+// puis celles de l'autre langue ; une même impression listée dans plusieurs extensions ne compte qu'une fois. Quand le
+// visuel de base est l'illustration normale, son impression dans l'autre langue n'est pas répétée. Quand c'est une
+// parallèle (carte qui n'existe en VF qu'en parallèle, comme OP05-119), l'illustration normale reste proposée
+// (« normale-en »).
+export function cardVersions(base: { imageId: string; lang: Lang }, printings: Printing[]): NonNullable<CardData['versions']> {
+  const seen = new Set<string>([`${base.lang}|${base.imageId}`]);
+  let normal = !/_p\d+$/.test(base.imageId);
+  const others = printings
+    .filter((p) => !seen.has(`${p.lang}|${p.imageId}`) && seen.add(`${p.lang}|${p.imageId}`))
+    .sort((a, b) => Number(a.lang !== base.lang) - Number(b.lang !== base.lang) || printingRank(a) - printingRank(b)
+      || version(a) - version(b) || a.imageId.localeCompare(b.imageId))
+    .filter((p) => {
+      // une seule impression sans suffixe, et seulement si le visuel de base n'est pas une parallèle
+      if (hasSuffix(p.imageId)) return true;
+      if (normal) return false;
+      normal = true;
+      return true;
+    })
+    .map((p) => ({ variant: variantOf(p), imageId: p.imageId, lang: p.lang }));
+  return [{ variant: 'base', imageId: base.imageId, lang: base.lang }, ...others];
+}
+
 // Noms d'une carte pour les effets : son nom en VO, et ceux qu'elle porte aussi selon les règles
 // (« Also treat this card's name as [Usopp] », Rosinante & Law EB04-038)
 export function cardNames(nameEn: string, effectEn: string): string[] {
@@ -200,12 +251,14 @@ export function buildCatalog(printings: Printing[]): Record<string, CardData> {
     const image = shown.find((p) => !isParallel(p) && p.effect === d.effect && p.trigger === d.trigger && p.name === d.name) ?? d;
     // visuels des decks pour débutant (« ST-35 » -> « OP13-004_p2 ») : une carte d'un deck préconstruit garde
     // l'illustration de ce deck (voir cards/index.ts)
+    const versions = cardVersions({ imageId: image.imageId, lang: image.lang }, [...list, ...(frList ?? [])]);
     const deckArt = Object.fromEntries(shown.filter((p) => p.series.startsWith('ST-')).reverse().map((p) => [p.series, p.imageId]));
     cards[number] = {
       number,
       imageId: image.imageId,
       ...(Object.keys(deckArt).length ? { deckArt } : {}),
       lang: d.lang,
+      ...(versions.length > 1 ? { versions } : {}),
       rarity: image.rarity,
       category: e.category,
       name: d.name,

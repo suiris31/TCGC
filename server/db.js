@@ -354,6 +354,8 @@ addColumn('users', 'trade_contact', 'TEXT');
 addColumn('users', 'trade_region', 'TEXT');
 // decks personnalisés : 'libre' (toutes les cartes, les decks d'avant l'aventure) ou 'aventure' (cartes de la Cale)
 addColumn('game_decks', 'mode', "TEXT NOT NULL DEFAULT 'libre'");
+// visuels choisis d'un deck (cosmétique, voir game-decks.js) : JSON { arts?: { numéro: version }, don?: id de DON!! }
+addColumn('game_decks', 'looks', "TEXT NOT NULL DEFAULT '{}'");
 db.exec('CREATE INDEX IF NOT EXISTS fr_cards_product ON fr_cards(product_id)');
 
 // Collection sans langue (avant la gestion VF/VO) : les cartes déjà saisies sont considérées en VF
