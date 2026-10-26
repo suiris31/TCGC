@@ -15,6 +15,7 @@ import { CoachHint, EndScreen, RecapBody, recordText, type RecordLine } from './
 import { attackPreview, phaseLabel, readDecision, remainingActions, whyNot, type CardAction } from './decision.ts';
 import { Celebration, FxLayer, Intro } from './Fx.tsx';
 import { ActionBar, ActionMenu, BattlePanel } from './Interaction.tsx';
+import { isEndTurnKey } from './keys.ts';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from './Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
 import { UI_SCALES, ZOOM_DELAYS, useSettings, type Settings } from './settings.ts';
@@ -478,9 +479,10 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
         setSettingsOpen(false);
         setGuide(null);
         setHistory(false);
+        setBuilder(false);
         setPanel(false);
         cardZoom.close();
-      } else if (e.key === 'Enter' && humanTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
+      } else if (isEndTurnKey(e) && humanTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
         requestEnd();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         back();

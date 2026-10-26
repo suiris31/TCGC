@@ -1,6 +1,6 @@
 // Point d'entrée du jeu dans l'appli TCGC (onglet Jouer), chargé seulement quand on ouvre l'onglet : informations des
 // cartes demandées au serveur, parties enregistrées sur le compte connecté, style isolé du reste de l'appli.
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { Component, lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { loadCardData } from '../engine/cards/index.ts';
 import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
@@ -8,6 +8,7 @@ import { setArchiveUser } from './archiveClient.ts';
 import { currentMatches, type CurrentMatch } from './online/api.ts';
 import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
+import { useSettings } from './settings.ts';
 import './styles.css';
 
 // Atelier des écrans de l'aventure (#play/atelier) : chargé seulement quand on l'ouvre
@@ -63,8 +64,38 @@ function hashOf(mode: Mode): string {
   return mode.kind === 'match' ? `#play/partie/${mode.id}` : '#play';
 }
 
-export default function GameApp({ userId, notice, onImmersive }: { userId: number; notice?: string; onImmersive: (on: boolean) => void }) {
+type GameAppProps = { userId: number; notice?: string; onImmersive: (on: boolean) => void };
+
+// Limite d'erreur : une erreur d'affichage dans le jeu laisse un message et « Recharger », au lieu d'effacer tout l'onglet
+// (et le reste de l'appli avec lui)
+class GameErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="opc">
+        <div className="opc-wait">
+          Le jeu a rencontré un problème.{' '}
+          <button className="op-btn op-btn-primary" onClick={() => window.location.reload()}>Recharger</button>
+        </div>
+      </div>
+    );
+  }
+}
+
+export default function GameApp(props: GameAppProps) {
+  return <GameErrorBoundary><GameShell {...props} /></GameErrorBoundary>;
+}
+
+function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   const [state, setState] = useState<'loading' | 'ready' | string>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const [settings] = useSettings();
   const [full, setFull] = useState(false);
   const [mode, setModeState] = useState<Mode>(modeFromHash);
   const [current, setCurrent] = useState<CurrentMatch | null>(null);
@@ -82,11 +113,17 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
       throw e;
     });
     cardsLoaded.then(() => setState('ready'), (e: unknown) => setState(e instanceof Outdated ? 'outdated' : e instanceof Closed ? 'closed' : e instanceof Error ? e.message : String(e)));
-  }, []);
+  }, [attempt]);
+  const retry = () => {
+    setState('loading');
+    setAttempt((n) => n + 1);
+  };
 
-  // Tailles du jeu en rem : la taille du texte de la page ne change que pendant que le jeu est affiché
+  // Tailles du jeu en rem : la taille du texte de la page ne change que pendant que le jeu est affiché. La taille de
+  // l'interface choisie (--ui) s'applique dès l'ouverture, aventure comprise ; la partie et le salon la suivent ensuite
   useEffect(() => {
     document.documentElement.classList.add('opc-on');
+    document.documentElement.style.setProperty('--ui', String(settings.uiScale));
     return () => {
       document.documentElement.classList.remove('opc-on');
       document.documentElement.style.removeProperty('--ui');
@@ -160,7 +197,10 @@ export default function GameApp({ userId, notice, onImmersive }: { userId: numbe
             progression sont gardés. <a className="op-link" href="#legal">En savoir plus</a></p>
         </div>
       ) : (
-        <div className="opc-wait">Impossible de charger le jeu : {state}. Réessaie dans un moment.</div>
+        <div className="opc-wait">
+          Impossible de charger le jeu : {state}. Réessaie dans un moment.{' '}
+          <button className="op-btn op-btn-primary" onClick={retry}>Réessayer</button>
+        </div>
       )}
     </div>
   );
