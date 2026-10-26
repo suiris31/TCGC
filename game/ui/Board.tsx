@@ -18,7 +18,7 @@ export interface BoardUi {
 
 function Pile({ label, count, onClick, top }: { label: string; count: number; onClick?: () => void; top?: string }) {
   return (
-    <button className={`pile ${onClick ? 'pile-click' : ''} ${count === 0 ? 'pile-empty' : ''}`} onClick={onClick} disabled={!onClick}
+    <button className={`pile ${onClick ? 'pile-click' : ''} ${count === 0 ? 'pile-empty' : ''}`} data-ui="table.pile" onClick={onClick} disabled={!onClick}
       title={onClick ? `${label} : voir les cartes` : label}>
       {top ? <img src={cardImage(def(top))} alt="" /> : <span className="pile-back" />}
       <span className="pile-count">{count}</span>
@@ -35,7 +35,7 @@ function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me:
     ui.onDonDrag(true);
   };
   return (
-    <div className="don-pool" title={`DON!! : ${P.donActive} redressées (utilisables), ${P.donRested} épuisées, ${P.donDeck} dans le deck DON!!`}>
+    <div className="don-pool" data-ui="table.don" title={`DON!! : ${P.donActive} redressées (utilisables), ${P.donRested} épuisées, ${P.donDeck} dans le deck DON!!`}>
       <div className="don-cards">
         {Array.from({ length: P.donActive }, (_, i) => (
           <span key={`a${i}`} className={`don-card ${me && ui.donDraggable ? 'don-drag' : ''}`} draggable={me && ui.donDraggable}
@@ -60,7 +60,7 @@ export function PlayerZone({ s, p, me, ui }: { s: GameState; p: PlayerId; me: bo
   );
   const slots = Array.from({ length: Math.max(0, 5 - P.chars.length) });
   return (
-    <section className={`zone ${me ? 'zone-me' : 'zone-opp'} ${s.active === p && s.winner === null ? 'zone-active' : ''}`} data-zone={p}>
+    <section data-ui={me ? 'table.zone-me' : 'table.zone-opp'} className={`zone ${me ? 'zone-me' : 'zone-opp'} ${s.active === p && s.winner === null ? 'zone-active' : ''}`} data-zone={p}>
       <div className="zone-row">
         <div className="piles">
           <Pile label="Deck" count={P.deck.length} />
@@ -73,7 +73,7 @@ export function PlayerZone({ s, p, me, ui }: { s: GameState; p: PlayerId; me: bo
           </div>
           <span className="zone-label"><b className={P.life.length <= 2 ? 'danger' : ''}>{P.life.length}</b> Vie{P.life.length > 1 ? 's' : ''}</span>
         </div>
-        <div className="leader-col">
+        <div className="leader-col" data-ui="table.leader">
           {view(P.leader)}
           <span className="zone-label">Leader</span>
         </div>
@@ -95,7 +95,7 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
   const cards = s.players[p].hand;
   const overlap = cards.length > 7 ? Math.min(60, (cards.length - 7) * 9 + 18) : 0;
   return (
-    <div className="hand" style={{ ['--overlap' as string]: `${overlap}px`, ['--n' as string]: cards.length }}>
+    <div className="hand" data-ui="table.hand" style={{ ['--overlap' as string]: `${overlap}px`, ['--n' as string]: cards.length }}>
       {cards.map((c, i) => (
         <div key={c.uid} className="hand-slot" style={{ ['--i' as string]: i - (cards.length - 1) / 2 }}>
           <CardView s={s} card={c} owner={p} size="hand" look={ui.looks.get(c.uid)} onClick={ui.onCard} onHover={ui.onHover} />
@@ -111,7 +111,7 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
 export function OpponentHand({ s, p }: { s: GameState; p: PlayerId }) {
   const n = s.players[p].hand.length;
   return (
-    <div className="opp-hand" title={`${s.players[p].name} a ${n} carte${n > 1 ? 's' : ''} en main`}>
+    <div className="opp-hand" data-ui="table.opp-hand" title={`${s.players[p].name} a ${n} carte${n > 1 ? 's' : ''} en main`}>
       {s.players[p].hand.map((c) => (knows(s, other(p), c.uid)
         ? <div key={c.uid} className="card card-opp-hand card-known" title={`Carte connue : ${def(c.num).name}`}><img src={cardImage(def(c.num))} alt={def(c.num).name} /></div>
         : <div key={c.uid} className="card card-back card-opp-hand" />))}

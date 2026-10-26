@@ -1,10 +1,10 @@
 // Atelier du parcours de l'aventure (tâche 1.17) : l'écran d'un chapitre et l'écran de fin de partie, avec les données
 // d'East Blue et des résultats de démonstration. Rien n'est envoyé au serveur et aucune partie ne se lance.
 import { useState } from 'react';
-import { EAST_BLUE } from '../../../adventure/east-blue.ts';
-import type { ChapterResult } from '../api.ts';
-import { ChapterScreen, type Interrupted } from '../ChapterScreen.tsx';
-import { RewardsScreen, type SendState } from '../RewardsScreen.tsx';
+import { EAST_BLUE } from '../../adventure/east-blue.ts';
+import type { ChapterResult } from '../adventure/api.ts';
+import { ChapterScreen, type Interrupted } from '../adventure/ChapterScreen.tsx';
+import { RewardsScreen, type SendState } from '../adventure/RewardsScreen.tsx';
 
 export const title = 'Parcours (chapitre, fin de partie)';
 

@@ -5,6 +5,7 @@
 import { act } from '../engine/engine.ts';
 import { def, findField, power } from '../engine/rules.ts';
 import type { DecisionKind, GameState, HistoryEntry, LogEntry, PlayerId } from '../engine/types.ts';
+import type { DeckLooks } from '../data/looks.ts';
 import { gameStats, type GameStats, type Move, type MoveReview } from './review.ts';
 
 export const ARCHIVE_FORMAT = 1;
@@ -72,6 +73,7 @@ export interface GameRecord {
   opponent?: string;              // partie en ligne : pseudo de l'adversaire
   holdDeck?: true;                // partie en ligne : mon deck était un deck de la Cale (game/online/match.ts)
   opponentHoldDeck?: true;        // partie en ligne : celui de l'adversaire aussi
+  looks?: { [player in PlayerId]?: DeckLooks };  // visuels choisis de chaque joueur (cosmétique ; absent : visuels de base)
 }
 
 // Version légère, sans l'état de départ, les coups ni le journal (liste des parties)
@@ -138,6 +140,7 @@ export interface RecordInput {
   extra: Map<number, { ms?: number; hint?: string }>;    // temps de réflexion et conseil affiché, par décision
   undos: { turn: number; undone: number }[];
   abandoned?: boolean;
+  looks?: GameRecord['looks'];                           // visuels choisis des decks (facultatif)
 }
 
 // Chaque appel au moteur ajoute exactement une entrée à l'historique : les coups de la partie sont l'historique de
@@ -193,6 +196,7 @@ export function buildRecord(x: RecordInput): GameRecord {
     undos: x.undos,
     stats: gameStats(s, own, x.human),
     log: s.log,
+    ...(x.looks && Object.keys(x.looks).length ? { looks: x.looks } : {}),
   };
 }
 

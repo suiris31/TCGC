@@ -20,7 +20,7 @@ import {
 import { rateLimit } from './auth.js';
 import { config } from './config.js';
 import { db } from './db.js';
-import { deckOf, holdErrors } from './game-decks.js';
+import { deckLooks, deckOf, holdErrors } from './game-decks.js';
 import { gameCards } from './game-cards.js';
 import { saveRecord } from './game-records.js';
 import { ENGINE } from './version.js';
@@ -84,10 +84,16 @@ function holdMessage(errors, others = false) {
 }
 
 // Deck personnalisé : relu dans la base (seulement ceux du compte) ; sa liste reste côté serveur. Un deck de la Cale est
-// refusé s'il lui manque des cartes.
+// refusé s'il lui manque des cartes. Ses visuels (looks) sont gardés à part : la liste jouée par le moteur n'en a pas.
 export function player(user, deck) {
-  const list = typeof deck === 'string' && deck.startsWith('PERSO-') ? deckOf(user.id, deck) ?? undefined : undefined;
-  const p = { userId: user.id, name: user.pseudo, deck: checkDeck(deck, list), ...(list ? { list } : {}), ...(list?.mode === 'aventure' ? { hold: true } : {}) };
+  const saved = typeof deck === 'string' && deck.startsWith('PERSO-') ? deckOf(user.id, deck) : null;
+  const looks = saved ? deckLooks(user.id, saved) : {};
+  const list = saved ? { ...saved } : undefined;
+  if (list) delete list.looks;
+  const p = {
+    userId: user.id, name: user.pseudo, deck: checkDeck(deck, list), ...(list ? { list } : {}), ...(list?.mode === 'aventure' ? { hold: true } : {}),
+    ...(Object.keys(looks).length ? { looks } : {}),
+  };
   const errors = holdProblems(p);
   if (errors.length) {
     throw new MatchError('hold_incomplete', `Il manque des cartes dans ta Cale pour jouer « ${list.name} » : ${holdMessage(errors)}. `

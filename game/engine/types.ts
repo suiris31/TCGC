@@ -16,6 +16,8 @@ export interface CardData {
   number: string;
   imageId: string;            // visuel affiché, dans la langue affichée
   deckArt?: Record<string, string>;  // visuel de la carte dans chaque deck pour débutant qui la contient (« ST-35 »)
+  // impressions de la carte, pour choisir le visuel d'un deck (cosmétique, jamais lu par le moteur ; game/data/catalog.ts)
+  versions?: { variant: string; imageId: string; lang: 'fr' | 'en' }[];
   lang: 'fr' | 'en';          // langue affichée (nom, types, texte, visuel) : VF si la carte existe en français
   rarity: string;
   category: Category;

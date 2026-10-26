@@ -128,9 +128,9 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
 
   const balance = wallet?.balance;
   return (
-    <div className="setup op-shop">
+    <div className="setup op-shop" data-ui="shop">
       <header className="op-shop-head">
-        <button className="op-btn op-btn-ghost" onClick={onBack}>← Retour</button>
+        <button className="op-btn op-btn-ghost" data-ui="shop.back" onClick={onBack}>← Retour</button>
         <h1>🏪 Boutique</h1>
         <WalletBadge wallet={wallet} />
       </header>

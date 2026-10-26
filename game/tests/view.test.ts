@@ -11,6 +11,8 @@ import { def, draw, knows, lifeToHand, peekTop, reveal } from '../engine/rules.t
 import { hasOption, play, scenario, setDon, setHand } from './helpers.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { viewFor } from '../engine/view.ts';
+import { shownNumbers } from '../data/looks.ts';
+import { createMatch, joinMatch, play as playOnline, viewOf } from '../online/match.ts';
 
 const other = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0);
 
@@ -225,4 +227,38 @@ test('vue : zone de Personnage pleine, la carte qu’on joue est montrée avec l
   assert.equal(s.decision?.tag, 'fullZone');
   assert.deepEqual(s.decision?.cards, [{ uid: jinbe.uid, num: 'ST31-002', owner: 0 }]);
   assert.ok(viewFor(s, 0).decision?.cards?.length === 1);
+});
+
+// Visuels choisis des decks (tâche R3.11) : la vue en ligne donne à chacun tous ses visuels, et de ceux de l'adversaire
+// seulement la DON!! et la version des cartes que sa vue montre déjà (la table complète trahirait la liste du deck)
+test('vue en ligne : visuels de l’adversaire limités aux cartes visibles, à chaque coup', () => {
+  const lookOf = (deck: string) => {
+    const d = DECKS[deck];
+    return { arts: Object.fromEntries([d.leader, ...Object.keys(d.cards)].map((n) => [n, 'parallele-en-p1'])), don: '498519' };
+  };
+  const decks = ['ST-01', 'ST-35'] as const;
+  const host = { userId: 1, name: 'A', deck: decks[0], looks: lookOf(decks[0]) };
+  const guest = { userId: 2, name: 'B', deck: decks[1], looks: lookOf(decks[1]) };
+  const m = createMatch('essai', 'ABCDEF', host, new Date('2026-10-22T10:00:00Z'), 'essai');
+  joinMatch(m, guest, new Date('2026-10-22T10:01:00Z'), 7);
+  let views = 0;
+  let partial = 0;
+  for (let guard = 0; m.status === 'playing' && guard < 2000; guard++) {
+    for (const seat of [0, 1] as PlayerId[]) {
+      const v = viewOf(m, seat);
+      const opp = other(seat);
+      assert.deepEqual(v.looks?.[seat], [host, guest][seat].looks, 'ses propres visuels en entier');
+      const theirs = v.looks?.[opp];
+      assert.equal(theirs?.don, '498519', 'la DON!! de l’adversaire est publique');
+      const shown = shownNumbers(v.state);
+      for (const num of Object.keys(theirs?.arts ?? {})) assert.ok(shown.has(num) && num !== HIDDEN, `${num} : visuel d’une carte que la vue ne montre pas`);
+      const hidden = secrets(m.state!, seat).map((c) => c.num).filter((n) => !shown.has(n));
+      for (const num of hidden) assert.ok(!theirs?.arts?.[num], `${num} : carte cachée trahie par son visuel`);
+      if (Object.keys(theirs?.arts ?? {}).length < Object.keys([host, guest][opp].looks.arts).length) partial++;
+      views++;
+    }
+    const d = m.state!.decision!;
+    playOnline(m, d.player, m.state!.history.length, heuristicChooser(m.state!, d), new Date('2026-10-22T10:02:00Z'));
+  }
+  assert.ok(views > 50 && partial > 0, `trop peu de situations vérifiées (${views}, ${partial} avec des visuels retenus)`);
 });

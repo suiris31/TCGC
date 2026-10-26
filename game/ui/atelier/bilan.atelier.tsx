@@ -1,8 +1,8 @@
 // Atelier du bilan de l'arc (tâche 1.21) : l'arc terminé avec tous ses défis, ou avec un défi manqué et des boosters
 // encore à ouvrir. Données de démonstration, rien n'est lu ni envoyé au serveur.
 import { useState } from 'react';
-import { EAST_BLUE } from '../../../adventure/east-blue.ts';
-import { ArcSummary } from '../ArcSummary.tsx';
+import { EAST_BLUE } from '../../adventure/east-blue.ts';
+import { ArcSummary } from '../adventure/ArcSummary.tsx';
 
 export const title = 'Bilan de l’arc';
 

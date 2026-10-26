@@ -2,10 +2,10 @@
 // étape » simule une première victoire : l'île suivante s'ouvre et le bateau y navigue. Rien n'est enregistré, sauf
 // la dernière position du bateau dans le navigateur (comme sur la vraie carte).
 import { useMemo, useState } from 'react';
-import { ARCS } from '../../../adventure/arcs.ts';
-import { chapterStatuses, currentChapter } from '../../../adventure/progress.ts';
-import type { ChapterStatus } from '../../../adventure/types.ts';
-import { WorldMap, forgetShip } from '../WorldMap.tsx';
+import { ARCS } from '../../adventure/arcs.ts';
+import { chapterStatuses, currentChapter } from '../../adventure/progress.ts';
+import type { ChapterStatus } from '../../adventure/types.ts';
+import { WorldMap, forgetShip } from '../adventure/WorldMap.tsx';
 
 export const title = 'Carte du monde';
 

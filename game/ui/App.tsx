@@ -15,6 +15,7 @@ import { CoachHint, EndScreen, RecapBody, recordText, type RecordLine } from './
 import { attackPreview, phaseLabel, readDecision, remainingActions, whyNot, type CardAction } from './decision.ts';
 import { Celebration, FxLayer, Intro } from './Fx.tsx';
 import { ActionBar, ActionMenu, BattlePanel } from './Interaction.tsx';
+import { isEndTurnKey } from './keys.ts';
 import { ConfirmEndModal, CostModal, HelpModal, MulliganModal, PickerModal, TrashModal, TriggerModal } from './Modals.tsx';
 import { CardPreview, DecisionBox, GameLog } from './Panel.tsx';
 import { UI_SCALES, ZOOM_DELAYS, useSettings, type Settings } from './settings.ts';
@@ -117,22 +118,37 @@ export interface ConfiguredGame {
 // Accès au mode Aventure depuis l'écran de départ
 export interface AdventureEntry { onOpen: () => void }
 
+// Plateau sur un état fixé (atelier, #play/atelier/plateau-<état>) : pas d'écran de départ, ni IA, ni coach, ni
+// enregistrement, ni serveur. Tes choix sont joués sur place ; le tour de l'IA attend. aim : attaque choisie et cible
+// visée (le résultat prévu s'affiche) ; moves et reviews : décisions passées et leur analyse (récap de fin) ;
+// onLeave : « Menu ».
+export interface BoardFixture {
+  state: GameState;
+  aim?: { attacker: number; target: number };
+  moves?: Move[];
+  reviews?: MoveReview[];
+  onLeave: () => void;
+}
+
 // notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
-// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame)
-export function App({ notice, onImmersive, online, adventure, configured }: {
+// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame) ; fixture : plateau sur
+// un état fixé, pour l'atelier (voir BoardFixture)
+export function App({ notice, onImmersive, online, adventure, configured, fixture }: {
   notice?: string;
   onImmersive?: (on: boolean) => void;
   online?: OnlineEntry;
   adventure?: AdventureEntry;
   configured?: ConfiguredGame;
+  fixture?: BoardFixture;
 }) {
   const [settings, updateSettings] = useSettings();
   const [config, setConfig] = useState<Config>(() => configured
     ? { myDeck: configured.myDeck, aiDeck: configured.aiDeck, first: 'random', level: configured.level }
+    : fixture ? { myDeck: fixture.state.players[HUMAN].deckId, aiDeck: fixture.state.players[AI].deckId, first: 'me', level: 1 }
     : { myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
   const [session, setSession] = useState<Config>(config);
   const [thinking, setThinking] = useState(false);
-  const [game, setGame] = useState<GameState | null>(null);
+  const [game, setGame] = useState<GameState | null>(fixture?.state ?? null);
   const [undo, setUndo] = useState<GameState[]>([]);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [trashOf, setTrashOf] = useState<PlayerId | null>(null);
@@ -141,8 +157,8 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const [practice, setPractice] = useState(false);
   const [hint, setHint] = useState<{ for: GameState; analysis: Analysis | null } | null>(null);
   const [menu, setMenu] = useState<{ uid: number; rect: DOMRect } | null>(null);
-  const [targeting, setTargeting] = useState<{ attacker: number } | null>(null);
-  const [hoverUid, setHoverUid] = useState<number | null>(null);
+  const [targeting, setTargeting] = useState<{ attacker: number } | null>(fixture?.aim ? { attacker: fixture.aim.attacker } : null);
+  const [hoverUid, setHoverUid] = useState<number | null>(fixture?.aim?.target ?? null);
   const [dragging, setDragging] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [help, setHelp] = useState(false);
@@ -157,7 +173,12 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const { compact, touch } = useDevice();
   const [panel, setPanel] = useState(false);
   const [aimed, setAimed] = useState<number | null>(null);
-  useEffect(() => setAimed(null), [targeting]);
+  // nouvelle attaque : aucune cible visée (sauf celle de l'état fixé, au premier affichage)
+  const firstAim = useRef(fixture?.aim?.target ?? null);
+  useEffect(() => {
+    setAimed(firstAim.current);
+    firstAim.current = null;
+  }, [targeting]);
   useWakeLock(game !== null && game.winner === null);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
@@ -166,12 +187,13 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const [guide, setGuide] = useState<string | null>(null);
 
   // Décisions du joueur et leur analyse par le coach, faite en arrière-plan pendant la partie
-  const moves = useRef<Move[]>([]);
-  const reviews = useRef(new Map<number, MoveReview>());
-  const nextMove = useRef(1);
+  const moves = useRef<Move[]>(fixture?.moves ?? []);
+  const reviews = useRef(new Map<number, MoveReview>(fixture?.reviews?.map((r) => [r.id, r])));
+  const nextMove = useRef(1 + Math.max(0, ...(fixture?.moves ?? []).map((m) => m.id)));
   const pumping = useRef(false);
-  const recorded = useRef(false);
-  const celebrated = useRef(false);
+  // état fixé : ni bilan, ni écran de victoire ou de défaite animé (le récap s'affiche directement)
+  const recorded = useRef(Boolean(fixture));
+  const celebrated = useRef(Boolean(fixture));
   const ended = useRef(false);
   const [reviewed, setReviewed] = useState(0);
   // Gain de la partie libre (Berry) : demandé au serveur une fois la partie finie et enregistrée (l'aventure le demande
@@ -241,6 +263,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   }, [inGame]);
 
   useEffect(() => {
+    if (fixture) return;
     flushQueue();
     const onHide = () => {
       const rec = snapshot();
@@ -248,7 +271,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     };
     window.addEventListener('pagehide', onHide);
     return () => window.removeEventListener('pagehide', onHide);
-  }, [snapshot]);
+  }, [snapshot, fixture]);
 
   const pump = useCallback(async () => {
     if (pumping.current) return;
@@ -269,7 +292,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
 
   // L'IA joue ses décisions (calculées dans un fil séparé), avec un délai minimum pour qu'on puisse suivre
   useEffect(() => {
-    if (!game || game.winner !== null || game.decision?.player !== AI) return;
+    if (fixture || !game || game.winner !== null || game.decision?.player !== AI) return;
     const current = game;
     const d = current.decision!;
     const started = Date.now();
@@ -294,7 +317,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
       clearTimeout(timer);
       setThinking(false);
     };
-  }, [game, settings.speed, session.level]);
+  }, [game, settings.speed, session.level, fixture]);
 
   // Fin de partie : le résultat compte dans le bilan (sauf une partie reprise depuis un moment revu), puis l'écran
   // de victoire ou de défaite avant le récap
@@ -357,8 +380,8 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     });
   }, [game]);
   useEffect(() => {
-    if (settings.autoCoach && game && humanTurn && d && d.options.length > 1 && !(hint && hint.for === game)) askHint();
-  }, [settings.autoCoach, game, humanTurn, d, hint, askHint]);
+    if (!fixture && settings.autoCoach && game && humanTurn && d && d.options.length > 1 && !(hint && hint.for === game)) askHint();
+  }, [fixture, settings.autoCoach, game, humanTurn, d, hint, askHint]);
 
   // Après avoir donné une DON!!, le menu de la carte reste ouvert pour en donner d'autres
   useEffect(() => {
@@ -442,8 +465,8 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     setTargeting(null);
     setHoverUid(null);
     setPanel(false);
-    void pump();
-  }, [game, pump, hint]);
+    if (!fixture) void pump();
+  }, [game, pump, hint, fixture]);
 
   const back = useCallback(() => {
     const previous = undo[undo.length - 1];
@@ -478,9 +501,10 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
         setSettingsOpen(false);
         setGuide(null);
         setHistory(false);
+        setBuilder(false);
         setPanel(false);
         cardZoom.close();
-      } else if (e.key === 'Enter' && humanTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
+      } else if (isEndTurnKey(e) && humanTurn && d?.kind === 'main' && !menu && !targeting && !confirmEnd) {
         requestEnd();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         back();
@@ -705,6 +729,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
 
   const special = view?.special;
   const leave = () => {
+    if (fixture) return fixture.onLeave();
     closeRecording();
     setGame(null);
   };
@@ -712,7 +737,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   const menuActions = menu && view ? view.byCard.get(menu.uid) ?? [] : [];
 
   return (
-    <div className="game" onClick={() => setSettingsOpen(false)}>
+    <div className="game" data-ui="table" onClick={() => setSettingsOpen(false)}>
       <main className="table">
         <header className="op-topbar">
           <div className="op-brand">☠ OP Coach</div>
@@ -721,11 +746,11 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
             Tour {game.turn || 1} · {compact ? `${game.winner !== null ? 'fin' : game.active === HUMAN ? 'à toi' : 'IA'}${game.battle ? ' ⚔' : ''}` : phaseLabel(game, HUMAN)}
           </div>
           <div className="top-actions">
-            <button className="icon-btn" onClick={back} disabled={!undo.length || (Boolean(configured) && over)} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
-            <button className="icon-btn hide-compact" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
-            <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
+            <button className="icon-btn" data-ui="table.undo" onClick={back} disabled={!undo.length || (Boolean(configured) && over)} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>
+            <button className="icon-btn hide-compact" data-ui="table.sound" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
+            <button className={`icon-btn only-compact ${recommended ? 'icon-reco' : ''}`} data-ui="table.panel" onClick={(e) => { e.stopPropagation(); setPanel((o) => !o); }} title="Journal, coach et tous les choix">📜</button>
             <div className="settings-wrap" onClick={(e) => e.stopPropagation()}>
-              <button className="icon-btn" onClick={() => setSettingsOpen((o) => !o)} title="Réglages">⚙</button>
+              <button className="icon-btn" data-ui="table.settings" onClick={() => setSettingsOpen((o) => !o)} title="Réglages">⚙</button>
               {settingsOpen && (
                 <div className="settings-menu">
                   <label>Vitesse de l’IA
@@ -754,11 +779,11 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
                 </div>
               )}
             </div>
-            <button className="icon-btn" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
-            <button className="icon-btn hide-compact" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
+            <button className="icon-btn" data-ui="table.guide" onClick={() => setGuide(session.myDeck)} title="Guide de ton deck (et de celui de l’IA)">📖</button>
+            <button className="icon-btn hide-compact" data-ui="table.help" onClick={() => setHelp(true)} title="Aide et mots-clés (?)">?</button>
             {configured
-              ? <button className="op-btn op-btn-ghost btn-small" onClick={configured.onLeave} title={over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre'}>{over ? 'Suite →' : 'Quitter'}</button>
-              : <button className="op-btn op-btn-ghost btn-small" onClick={leave}>Menu</button>}
+              ? <button className="op-btn op-btn-ghost btn-small" data-ui="table.leave" onClick={configured.onLeave} title={over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre'}>{over ? 'Suite →' : 'Quitter'}</button>
+              : <button className="op-btn op-btn-ghost btn-small" data-ui="table.leave" onClick={leave}>Menu</button>}
           </div>
         </header>
 
@@ -795,13 +820,13 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
       <aside className={panel ? 'side side-open' : 'side'}>
         <div className="side-head only-compact">
           <strong>Journal et coach</strong>
-          <button className="icon-btn" onClick={() => setPanel(false)} title="Fermer">✕</button>
+          <button className="icon-btn" data-ui="table.panel-close" onClick={() => setPanel(false)} title="Fermer">✕</button>
         </div>
         <CardPreview s={game} preview={preview} />
         <div className="tabs">
-          <button className={tab === 'journal' ? 'op-tab on' : 'op-tab'} onClick={() => setTab('journal')}>Journal</button>
-          <button className={tab === 'coach' ? 'op-tab on' : 'op-tab'} onClick={() => setTab('coach')}>Coach{recommended ? ' ★' : ''}</button>
-          <button className={tab === 'choix' ? 'op-tab on' : 'op-tab'} onClick={() => setTab('choix')}>Tous les choix</button>
+          <button className={tab === 'journal' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-journal" onClick={() => setTab('journal')}>Journal</button>
+          <button className={tab === 'coach' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-coach" onClick={() => setTab('coach')}>Coach{recommended ? ' ★' : ''}</button>
+          <button className={tab === 'choix' ? 'op-tab on' : 'op-tab'} data-ui="table.tab-choix" onClick={() => setTab('choix')}>Tous les choix</button>
         </div>
         {tab === 'journal' && <GameLog s={game} human={HUMAN} />}
         {tab === 'coach' && (
@@ -845,7 +870,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
       {intro && <Intro s={game} onDone={() => setIntro(false)} />}
       {over && celebrate && <Celebration won={game.winner === HUMAN} onDone={() => setCelebrate(false)} />}
       {over && !celebrate && showEnd && (
-        <div className="modal" onClick={() => setShowEnd(false)}>
+        <div className="modal" data-ui="end" onClick={() => setShowEnd(false)}>
           <div className="modal-wrap" onClick={(e) => e.stopPropagation()}>
             {configured ? (
               <div className="modal-box recap">
@@ -861,8 +886,8 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
                   </div>
                 )}
                 <div className="end-actions">
-                  <button className="op-btn op-btn-primary" onClick={configured.onLeave}>Suite de l’aventure →</button>
-                  <button className="op-btn op-btn-ghost" onClick={() => setShowEnd(false)}>Voir le plateau</button>
+                  <button className="op-btn op-btn-primary" data-ui="end.next" onClick={configured.onLeave}>Suite de l’aventure →</button>
+                  <button className="op-btn op-btn-ghost" data-ui="end.board" onClick={() => setShowEnd(false)}>Voir le plateau</button>
                 </div>
               </div>
             ) : <EndScreen
@@ -897,13 +922,13 @@ export function DeckTile({ id, selected, onClick, note, onGuide }: { id: string;
   const colors = leader.colors.map((c) => COLOR[c] ?? '#666');
   const hold = isAdventureDeck(id);
   return (
-    <button className={`deck-tile ${selected ? 'on' : ''}${hold ? ' op-deck-hold' : ''}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
+    <button className={`deck-tile ${selected ? 'on' : ''}${hold ? ' op-deck-hold' : ''}`} data-ui={`deck.tile-${id}`} onClick={onClick} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
       <img src={cardImage(leader)} alt="" />
       {hold && <span className="op-hold-badge" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure">🧭 Cale</span>}
       <span className="deck-name">{deck.name}</span>
       <span className="deck-id">{DECKS[id] ? deck.id : leader.name}{note ? ` · ${note}` : ''}</span>
       <span className="deck-styles">{GUIDES[id]?.styles.slice(0, 2).join(' · ') ?? (hold ? 'Deck de la Cale (cartes de l’Aventure)' : 'Deck perso')}</span>
-      <span className="deck-guide-btn" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
+      <span className="deck-guide-btn" data-ui="deck.guide" role="button" tabIndex={0} title="Voir le guide du deck : plan de jeu, combinaisons, cartes"
         onClick={(e) => { e.stopPropagation(); onGuide(id); }}>📖 Guide</span>
     </button>
   );
@@ -958,7 +983,7 @@ export function DeckPicker({ selected, onPick, onGuide, note, onBuilder, onRando
         <div className="deck-group">
           <h3>Au hasard</h3>
           <div className="deck-grid">
-            <button className={`deck-tile deck-random ${selected === RANDOM_DECK ? 'on' : ''}`} onClick={onRandom}>
+            <button className={`deck-tile deck-random ${selected === RANDOM_DECK ? 'on' : ''}`} data-ui="deck.random" onClick={onRandom}>
               <span className="deck-random-dice" aria-hidden="true">🎲</span>
               <span className="deck-name">Aléatoire</span>
               <span className="deck-id">Un deck du méta ou pour débutant, tiré au sort à chaque partie</span>
@@ -1021,14 +1046,14 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
     return r && r.wins + r.losses ? `${r.wins}V ${r.losses}D` : undefined;
   };
   return (
-    <div className="setup">
+    <div className="setup" data-ui="home">
       <header className="setup-head">
         <h1>☠ OP Coach</h1>
         <p className="op-muted">Entraîne-toi contre l’IA, et laisse le coach t’aider à progresser.</p>
         <div className="setup-links">
-          <button className="op-link" onClick={onHistory}>📈 Mes parties</button>
-          <button className="op-link" onClick={onBuilder}>🃏 Mes decks</button>
-          <button className="op-link" onClick={onHelp}>Comment jouer ?</button>
+          <button className="op-link" data-ui="home.history" onClick={onHistory}>📈 Mes parties</button>
+          <button className="op-link" data-ui="home.decks" onClick={onBuilder}>🃏 Mes decks</button>
+          <button className="op-link" data-ui="home.help" onClick={onHelp}>Comment jouer ?</button>
           <a className="op-link" href="#legal" title="Projet de fan non officiel : mentions légales et confidentialité">À propos</a>
           <label className="op-small op-muted">Taille de l’interface{' '}
             <select value={settings.uiScale} onChange={(e) => updateSettings({ uiScale: Number(e.target.value) })}>
@@ -1044,7 +1069,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
             <h2>🗺️ Aventure</h2>
             <p className="op-muted">Prends la mer à East Blue avec un deck de départ, affronte les adversaires de l’histoire et gagne des boosters pour améliorer ton deck.</p>
           </div>
-          <button className="op-btn op-btn-primary" onClick={adventure.onOpen}>Partir à l’aventure</button>
+          <button className="op-btn op-btn-primary" data-ui="home.adventure" onClick={adventure.onOpen}>Partir à l’aventure</button>
         </section>
       )}
       {online && (
@@ -1056,8 +1081,8 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
               : <p className="op-muted">Une partie en ligne contre un ami : crée une salle et envoie-lui son code, ou rejoins la sienne.</p>}
           </div>
           {online.resume
-            ? <button className="op-btn op-btn-primary" onClick={online.resume.onResume}>Reprendre</button>
-            : <button className="op-btn op-btn-primary" onClick={online.onOpen}>Jouer en ligne</button>}
+            ? <button className="op-btn op-btn-primary" data-ui="home.online-resume" onClick={online.resume.onResume}>Reprendre</button>
+            : <button className="op-btn op-btn-primary" data-ui="home.online" onClick={online.onOpen}>Jouer en ligne</button>}
         </section>
       )}
       <section className="setup-section">
@@ -1074,7 +1099,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
           <h2>Niveau de l’IA</h2>
           <div className="op-segmented">
             {([1, 2, 3, ...(rlReady ? [4] : [])] as Level[]).map((level) => (
-              <button key={level} className={config.level === level ? 'seg on' : 'seg'} onClick={() => onChange({ ...config, level })}>{LEVELS[level].name}</button>
+              <button key={level} className={config.level === level ? 'seg on' : 'seg'} data-ui={`home.level-${level}`} onClick={() => onChange({ ...config, level })}>{LEVELS[level].name}</button>
             ))}
           </div>
           <p className="op-muted op-small">
@@ -1090,7 +1115,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
           <h2>Qui commence ?</h2>
           <div className="op-segmented">
             {([['random', 'Au hasard'], ['me', 'Moi'], ['ai', 'L’IA']] as const).map(([value, label]) => (
-              <button key={value} className={config.first === value ? 'seg on' : 'seg'} onClick={() => onChange({ ...config, first: value })}>{label}</button>
+              <button key={value} className={config.first === value ? 'seg on' : 'seg'} data-ui={`home.first-${value}`} onClick={() => onChange({ ...config, first: value })}>{label}</button>
             ))}
           </div>
         </div>
@@ -1099,7 +1124,7 @@ function SetupScreen({ notice, online, adventure, config, records, onChange, onS
         {ready
           ? <span className="op-muted op-small">{random ? 'Ton adversaire sera tiré au sort au lancement de la partie.' : <>Ton bilan dans cette confrontation : {recordText(records[recordKey(config)])}</>}</span>
           : <span className="danger op-small">Choisis deux decks jouables (un deck perso incomplet se termine dans l’éditeur).</span>}
-        <button className="op-btn op-btn-primary btn-big" onClick={onStart} disabled={!ready}>Lancer la partie</button>
+        <button className="op-btn op-btn-primary btn-big" data-ui="home.start" onClick={onStart} disabled={!ready}>Lancer la partie</button>
       </div>
       {played.length > 0 && (
         <section className="setup-section">
