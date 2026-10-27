@@ -5,9 +5,9 @@ import { useEffect, useState } from 'react';
 import { DECKS, isAdventureOnly, isCustomDeck } from '../../engine/decks.ts';
 import { holdByNumber, loadHold } from '../adventure/api.ts';
 import { holdProblems } from '../adventure/hold.ts';
-import { DeckPicker } from '../App.tsx';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { deckInfo, isAdventureDeck, useMyDecks } from '../myDecks.ts';
+import { DeckPicker } from '../setup/DeckPicker.tsx';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { createRoom, joinRoom } from './api.ts';
 
