@@ -439,7 +439,9 @@ class Tour {
         if (!targets.length) return { how: 'none', where };
         if (targets.includes(a)) return { how: 'ok', where };
         const group = a?.matches?.('.card[role="button"], [data-ui="menu"] button') ? a.closest('[data-a11y-zone], [data-ui="menu"]') : null;
-        return { how: group && targets.some((t) => group.contains(t)) ? 'arrow' : 'tab', where };
+        // une zone ne compte pas les cartes d'une zone qu'elle contient (sur ordinateur, la main est dans le camp)
+        const inGroup = (t) => group.contains(t) && t.parentElement.closest('[data-a11y-zone], [data-ui="menu"]') === group;
+        return { how: group && targets.some(inGroup) ? 'arrow' : 'tab', where };
       }, sel);
       path.push(at.where);
       if (at.how === 'ok') return true;
