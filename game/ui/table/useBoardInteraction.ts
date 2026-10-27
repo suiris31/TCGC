@@ -1,6 +1,7 @@
 // Contrôleur du plateau, commun à la partie contre l'IA, à la partie en ligne et à l'atelier : ce qu'on peut faire de
 // chaque carte (looks), le menu d'une carte, le choix de la cible d'une attaque (ciblage, puis visée au toucher),
-// l'aperçu de la carte survolée, la DON!! glissée, la confirmation de fin de tour et la Défausse ouverte.
+// l'aperçu de la carte survolée, le glisser-déposer (useGestures : jouer, attaquer, donner une DON!!), la
+// confirmation de fin de tour et la Défausse ouverte.
 // Il ne sait pas d'où vient la partie : on lui donne l'état vu, sa place, et une fonction qui envoie un choix (au
 // moteur contre l'IA, au serveur en ligne). Rien ne part sans un choix explicite du joueur.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -12,7 +13,9 @@ import { useDevice } from '../device.ts';
 import { useSettings } from '../settings.ts';
 import { sfx } from '../sound.ts';
 import { useCardZoom } from '../Zoom.tsx';
+import { grabbableCards } from './gestures.ts';
 import { boardLooks, hasUsefulAction } from './looks.ts';
+import { useGestures } from './useGestures.ts';
 
 // Ce que le branchement (contre l'IA, en ligne) donne au contrôleur
 export interface BoardSource {
@@ -35,7 +38,8 @@ export function useBoardInteraction(source: BoardSource, init: { aim?: { attacke
   const [aimed, setAimed] = useState<number | null>(null);
   const [hoverUid, setHoverUid] = useState<number | null>(init.aim?.target ?? null);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [dragging, setDragging] = useState(false);
+  const [dragging, setDragging] = useState(false);       // une DON!! est glissée
+  const [dragOver, setDragOver] = useState<number | null>(null);  // cible sous le pointeur pendant un geste
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [trashOf, setTrashOf] = useState<PlayerId | null>(null);
   const keepMenu = useRef<number | null>(null);
@@ -124,23 +128,48 @@ export function useBoardInteraction(source: BoardSource, init: { aim?: { attacke
     zoom.onHover(p);
   };
 
-  const looks = state ? boardLooks({ state, seat, view, targeting, aimed, menu: menu?.uid ?? null, dragging, recommended }) : new Map<number, CardLook>();
+  // Glisser-déposer : un geste reconnu choisit son option comme le menu (pick) ; lâché ailleurs, il n'a aucun effet
+  const gestures = useGestures({
+    decision: d,
+    seat,
+    touch,
+    onStart: (kind, source) => {
+      setMenu(null);
+      setConfirmEnd(false);
+      zoom.close();
+      if (kind === 'attack' && source.from === 'field') setTargeting({ attacker: source.uid });
+      else setTargeting(null);
+      if (kind === 'don') setDragging(true);
+    },
+    onOver: setDragOver,
+    onEnd: (option, kind) => {
+      setDragging(false);
+      setDragOver(null);
+      if (option) {
+        sfx('click');
+        pick(option.id);
+      } else if (kind === 'attack') {
+        setTargeting(null);
+      }
+    },
+    preview: (attacker, target) => (state ? attackPreview(state, attacker, target).text : null),
+  });
+
+  const looks = state ? boardLooks({ state, seat, view, targeting, aimed: dragOver ?? aimed, menu: menu?.uid ?? null, dragging, recommended }) : new Map<number, CardLook>();
+  // les cartes qu'on peut saisir (pas pendant un ciblage choisi au menu)
+  if (!targeting) for (const uid of grabbableCards(d)) looks.set(uid, { ...looks.get(uid), grab: true });
   const ui: BoardUi = {
     looks,
     onCard,
     onHover,
     onTrash: setTrashOf,
-    onDropDon: (uid) => {
-      setDragging(false);
-      if (d?.options.some((o) => o.id === `don:${uid}`)) pick(`don:${uid}`);
-    },
+    onGrab: gestures.grab,
     donDraggable: Boolean(d?.kind === 'main' && d.options.some((o) => o.id.startsWith('don:'))),
-    onDonDrag: setDragging,
   };
 
-  // Ciblage : le résultat prévu de la cible survolée (souris) ou touchée (écran tactile)
+  // Ciblage : le résultat prévu de la cible visée par un geste, survolée (souris) ou touchée (écran tactile)
   const attacks: Option[] = targeting ? view?.attacks.get(targeting.attacker) ?? [] : [];
-  const aimUid = touch ? aimed : hoverUid;
+  const aimUid = dragOver ?? (touch ? aimed : hoverUid);
   const targetPreview = state && targeting && aimUid !== null && attacks.some((o) => o.target === aimUid)
     ? attackPreview(state, targeting.attacker, aimUid)
     : null;

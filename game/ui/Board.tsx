@@ -1,20 +1,20 @@
 // Le plateau : pour chaque joueur, ses piles (deck, Défausse), sa Vie, son Leader, son Lieu, ses 5 places de
 // Personnage et ses DON!! ; ta main en éventail en bas, la main adverse (cachée) en haut. Sur ordinateur, chaque camp
 // a deux rangées (les Personnages côté centre) et la main est dans la rangée du fond, à côté du Leader et des DON!!.
-import type { DragEvent, ReactNode } from 'react';
+import type { PointerEvent, ReactNode } from 'react';
 import { def, knows, other } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { CardView, type CardLook, type Preview } from './CardView.tsx';
 import { cardImage } from './images.ts';
+import type { GestureSource } from './table/gestures.ts';
 
 export interface BoardUi {
   looks: Map<number, CardLook>;
   onCard: (uid: number, el: HTMLElement, num: string) => void;
   onHover: (p: Preview | null) => void;
   onTrash: (p: PlayerId) => void;
-  onDropDon: (uid: number) => void;
+  onGrab?: (source: GestureSource, e: PointerEvent<HTMLElement>) => void;  // début d'un glisser-déposer (table/useGestures.ts)
   donDraggable: boolean;
-  onDonDrag: (dragging: boolean) => void;
 }
 
 function Pile({ label, count, onClick, top }: { label: string; count: number; onClick?: () => void; top?: string }) {
@@ -30,17 +30,12 @@ function Pile({ label, count, onClick, top }: { label: string; count: number; on
 
 function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me: boolean }) {
   const P = s.players[p];
-  const drag = (e: DragEvent) => {
-    e.dataTransfer.setData('text/plain', 'don');
-    e.dataTransfer.effectAllowed = 'move';
-    ui.onDonDrag(true);
-  };
+  const grab = me && ui.donDraggable && ui.onGrab ? (e: PointerEvent<HTMLElement>) => ui.onGrab!({ from: 'don' }, e) : undefined;
   return (
     <div className="don-pool" data-ui="table.don" title={`DON!! : ${P.donActive} redressées (utilisables), ${P.donRested} épuisées, ${P.donDeck} dans le deck DON!!`}>
       <div className="don-cards">
         {Array.from({ length: P.donActive }, (_, i) => (
-          <span key={`a${i}`} className={`don-card ${me && ui.donDraggable ? 'don-drag' : ''}`} draggable={me && ui.donDraggable}
-            onDragStart={drag} onDragEnd={() => ui.onDonDrag(false)} />
+          <span key={`a${i}`} className={`don-card ${grab ? 'don-drag' : ''}`} onPointerDown={grab} />
         ))}
         {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested" />)}
       </div>
@@ -58,7 +53,7 @@ export function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; 
   const P = s.players[p];
   const view = (card: Card, size: 'field' | 'life' = 'field') => (
     <CardView key={card.uid} s={s} card={card} owner={p} size={size} look={ui.looks.get(card.uid)}
-      onClick={ui.onCard} onHover={ui.onHover} onDropDon={ui.onDropDon} />
+      onClick={ui.onCard} onHover={ui.onHover} onGrab={ui.onGrab} />
   );
   const slots = Array.from({ length: Math.max(0, 5 - P.chars.length) });
   return (
@@ -101,7 +96,7 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
     <div className="hand" data-ui="table.hand" style={{ ['--overlap' as string]: `${overlap}px`, ['--n' as string]: cards.length }}>
       {cards.map((c, i) => (
         <div key={c.uid} className="hand-slot" style={{ ['--i' as string]: i - (cards.length - 1) / 2 }}>
-          <CardView s={s} card={c} owner={p} size="hand" look={ui.looks.get(c.uid)} onClick={ui.onCard} onHover={ui.onHover} />
+          <CardView s={s} card={c} owner={p} size="hand" look={ui.looks.get(c.uid)} onClick={ui.onCard} onHover={ui.onHover} onGrab={ui.onGrab} />
         </div>
       ))}
       {!cards.length && <div className="hand-empty">Main vide</div>}
