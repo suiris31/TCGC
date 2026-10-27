@@ -5,6 +5,7 @@ import { def, knows, other } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { CardView, type CardLook, type Preview } from './CardView.tsx';
 import { cardImage } from './images.ts';
+import { zoneLabel } from './table/a11y.ts';
 
 export interface BoardUi {
   looks: Map<number, CardLook>;
@@ -60,7 +61,7 @@ export function PlayerZone({ s, p, me, ui }: { s: GameState; p: PlayerId; me: bo
   );
   const slots = Array.from({ length: Math.max(0, 5 - P.chars.length) });
   return (
-    <section data-ui={me ? 'table.zone-me' : 'table.zone-opp'} className={`zone ${me ? 'zone-me' : 'zone-opp'} ${s.active === p && s.winner === null ? 'zone-active' : ''}`} data-zone={p}>
+    <section data-ui={me ? 'table.zone-me' : 'table.zone-opp'} role="group" aria-label={zoneLabel(s, p, me)} data-a11y-zone={me ? 'me' : 'opp'} className={`zone ${me ? 'zone-me' : 'zone-opp'} ${s.active === p && s.winner === null ? 'zone-active' : ''}`} data-zone={p}>
       <div className="zone-row">
         <div className="piles">
           <Pile label="Deck" count={P.deck.length} />
@@ -95,7 +96,7 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
   const cards = s.players[p].hand;
   const overlap = cards.length > 7 ? Math.min(60, (cards.length - 7) * 9 + 18) : 0;
   return (
-    <div className="hand" data-ui="table.hand" style={{ ['--overlap' as string]: `${overlap}px`, ['--n' as string]: cards.length }}>
+    <div className="hand" data-ui="table.hand" role="group" aria-label={`Ta main : ${cards.length} carte${cards.length > 1 ? 's' : ''}`} data-a11y-zone="hand" style={{ ['--overlap' as string]: `${overlap}px`, ['--n' as string]: cards.length }}>
       {cards.map((c, i) => (
         <div key={c.uid} className="hand-slot" style={{ ['--i' as string]: i - (cards.length - 1) / 2 }}>
           <CardView s={s} card={c} owner={p} size="hand" look={ui.looks.get(c.uid)} onClick={ui.onCard} onHover={ui.onHover} />

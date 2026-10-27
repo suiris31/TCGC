@@ -1,0 +1,40 @@
+/* Accessibilité du plateau (tâche R2.8) : le focus au clavier, le texte réservé aux lecteurs d'écran, et la partie
+   avec « Animations réduites ». */
+
+/* ---------- Focus au clavier ----------
+   Un contour clair, distinct de l'or (jouable), du rouge (cible) et du bleu (à choisir), seulement au clavier */
+.opc .card[role="button"]:focus { outline: none; }
+.opc .card[role="button"]:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+.opc .action-menu .action:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+
+/* Lu par un lecteur d'écran, invisible à l'écran (région aria-live du plateau) */
+.opc .op-sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ---------- Animations réduites ----------
+   settings.css ramène déjà toute animation à 0,01 ms et à un seul tour. Pendant la partie, ça ne suffit pas : une
+   annonce qui s'efface (bandeau « À toi de jouer », fil des actions, carte activée, nombres, carte mise KO) finirait
+   tout de suite invisible. Elles restent donc affichées sans bouger, le temps prévu par Fx.tsx ; les boucles (lueur de
+   la carte conseillée, DON!! à glisser, flèche d'attaque, roue d'attente du plateau) deviennent fixes. */
+.opc.is-reduced-motion .fx-arrow line,
+.opc.is-reduced-motion .fx-ghost,
+.opc.is-reduced-motion .fx-float,
+.opc.is-reduced-motion .tick,
+.opc.is-reduced-motion .fx-banner,
+.opc.is-reduced-motion .fx-spot,
+.opc.is-reduced-motion .fx-enter,
+.opc.is-reduced-motion .fx-draw,
+.opc.is-reduced-motion .fx-shake,
+.opc.is-reduced-motion .fx-hit img,
+.opc.is-reduced-motion .intro,
+.opc.is-reduced-motion .intro-left,
+.opc.is-reduced-motion .intro-right,
+.opc.is-reduced-motion .intro-vs,
+.opc.is-reduced-motion .celebration,
+.opc.is-reduced-motion .cel-title,
+.opc.is-reduced-motion .confetti i,
+.opc.is-reduced-motion .card,
+.opc.is-reduced-motion .don-drag,
+.opc.is-reduced-motion .game .op-spinner { animation-name: none !important; }

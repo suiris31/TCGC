@@ -6,6 +6,7 @@ import { justPlayed } from './decision.ts';
 import { isTouch } from './device.ts';
 import { cardImage } from './images.ts';
 import { Icon, type IconName } from './kit/index.ts';
+import { cardLabel } from './table/a11y.ts';
 
 export interface Preview {
   num: string;
@@ -123,8 +124,16 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
       : undefined;
   const dragOver = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } : undefined;
   const drop = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); onDropDon(card.uid); } : undefined;
+  // Au clavier et au lecteur d'écran : une carte qui répond est un bouton, atteint par Tab ou par les flèches de sa
+  // zone (table/a11y.ts choisit laquelle a le tabindex 0), et lue avec son nom, sa puissance et son état
+  const label = onClick || onHover ? cardLabel({
+    name: d.name, hand: playCost !== null, power: size === 'life' ? null : p, basePower: d.power,
+    cost: playCost ?? (cost !== null && cost !== d.cost ? cost : null), baseCost: d.cost,
+    rested, don: f?.card.don ?? 0, states: states.map((x) => x.label), look,
+  }) : undefined;
   return (
     <div className={classes} data-ui="table.card" data-uid={card.uid} onClick={click} onDragOver={dragOver} onDrop={drop}
+      role={onClick ? 'button' : undefined} tabIndex={onClick ? -1 : undefined} aria-label={label}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover?.(null); }}>
       <img src={cardImage(d)} alt={d.name} draggable={false} />

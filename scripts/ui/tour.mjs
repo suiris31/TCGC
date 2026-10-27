@@ -90,10 +90,13 @@ const SCREENS = {
   '19-editeur': 'Éditeur de deck',
   '20-mes-parties': 'Mes parties',
   '21-salon': 'Salon en ligne',
+  '22-clavier-menu': 'Au clavier : menu d’une carte ouvert par Entrée',
+  '23-clavier-cible': 'Au clavier : cible d’une attaque choisie par les flèches',
+  '24-clavier-fin': 'Au clavier : partie finie, mouvements réduits',
 };
 const PARCOURS = ['accueil', 'partie', 'aventure', 'decks', 'parties', 'salon'];
 // Parcours joués seulement quand --only les demande (la référence de l'étape ne les contient pas)
-const EXTRA = ['atelier'];
+const EXTRA = ['atelier', 'clavier'];
 
 // Pages « plateau » de l'atelier (#play/atelier/plateau-<état>, tâche R0.2), lues dans game/ui/atelier : toutes sous le
 // numéro 30, suivi du nom de l'état (un nouvel état ne renumérote pas les autres)
@@ -102,6 +105,17 @@ const ATELIER_STATES = fs.readdirSync(path.join(ROOT, 'game/ui/atelier'))
 for (const s of ATELIER_STATES) SCREENS[`30-plateau-${s}`] = `Atelier : plateau, état « ${s} »`;
 
 const ui = (name) => `[data-ui="${name}"]`;
+
+// Touches envoyées par le parcours au clavier (Entrée et Espace avec leur texte : un bouton en fait un clic)
+const KEYS = { Tab: 9, Enter: 13, Escape: 27, ' ': 32, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40 };
+
+// Exécuté dans la page : les animations en boucle qui tournent (une fois les mouvements réduits demandés, aucune)
+function runningLoops() {
+  const where = (el) => (el ? `${el.tagName.toLowerCase()}.${String(el.className?.baseVal ?? el.className ?? '').trim().split(/\s+/).join('.')}` : '?');
+  return document.getAnimations()
+    .filter((a) => a.playState === 'running' && a.effect?.getComputedTiming().iterations === Infinity)
+    .map((a) => `${a.animationName ?? '?'} sur ${where(a.effect?.target)}`);
+}
 
 // ---------- Une session de parcours, dans un format ----------
 class Tour {
@@ -400,6 +414,238 @@ class Tour {
     await this.capture('21-salon');
     await this.tap(ui('lobby.back'));
     await this.waitUi(ui('home'));
+  }
+
+  // ---------- Parcours au clavier (tâche R2.8) ----------
+
+  async press(key) {
+    const text = key === 'Enter' ? '\r' : key === ' ' ? ' ' : undefined;
+    const base = { key, code: key === ' ' ? 'Space' : key, windowsVirtualKeyCode: KEYS[key] };
+    // une touche sans texte part en « rawKeyDown » : sinon Chrome ne fait pas son action (Tab ne déplace pas le focus)
+    await this.page.send('Input.dispatchKeyEvent', text ? { type: 'keyDown', ...base, text, unmodifiedText: text } : { type: 'rawKeyDown', ...base });
+    await this.page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
+    await sleep(40);
+  }
+
+  // Amène le focus sur un élément visible qui répond au sélecteur, seulement avec Tab et les flèches (les flèches quand
+  // le focus est déjà dans la zone ou le menu de l'élément). false : aucun élément de ce genre à l'écran
+  async focusOn(sel, what = sel, max = 90) {
+    const path = [];
+    for (let i = 0; i < max; i++) {
+      const at = await this.page.call((sel) => {
+        const targets = [...document.querySelectorAll(sel)].filter((el) => el.getBoundingClientRect().width > 0);
+        const a = document.activeElement;
+        const where = a ? `${a.getAttribute('data-ui') ?? a.tagName.toLowerCase()}${a.dataset?.uid ? `#${a.dataset.uid}` : ''}` : '-';
+        if (!targets.length) return { how: 'none', where };
+        if (targets.includes(a)) return { how: 'ok', where };
+        const group = a?.matches?.('.card[role="button"], [data-ui="menu"] button') ? a.closest('[data-a11y-zone], [data-ui="menu"]') : null;
+        return { how: group && targets.some((t) => group.contains(t)) ? 'arrow' : 'tab', where };
+      }, sel);
+      path.push(at.where);
+      if (at.how === 'ok') return true;
+      if (at.how === 'none') return false;
+      await this.press(at.how === 'arrow' ? 'ArrowRight' : 'Tab');
+    }
+    throw new Error(`clavier : impossible d’amener le focus sur ${what} (focus : ${path.slice(-12).join(' → ')})`);
+  }
+
+  // Le focus sur l'élément, puis Entrée. false : pas d'élément de ce genre à l'écran
+  async enter(sel, what = sel) {
+    if (!(await this.focusOn(sel, what))) return false;
+    await this.press('Enter');
+    await sleep(200);
+    return true;
+  }
+
+  // La carte au clavier, puis Entrée : son menu s'ouvre et prend le focus. false : la carte n'a pas de menu
+  async openMenu(uid) {
+    await this.enter(`${ui('table')} .card[role="button"][data-uid="${uid}"]`, `la carte ${uid}`);
+    if (!(await this.has(ui('menu')))) return false;
+    if (!(await this.page.call(() => Boolean(document.activeElement?.closest('[data-ui="menu"]'))))) {
+      throw new Error('clavier : le menu ouvert par Entrée n’a pas pris le focus');
+    }
+    return true;
+  }
+
+  async closeMenu() {
+    await this.press('Escape');
+    await sleep(150);
+    if (!(await this.page.call(() => document.activeElement?.matches('.card[role="button"]') ?? false))) {
+      throw new Error('clavier : Échap a fermé le menu sans rendre le focus à la carte');
+    }
+  }
+
+  // Une partie contre l'IA jouée entièrement au clavier, avec les mouvements réduits demandés par l'appareil : main de
+  // départ, cartes jouées, DON!! données, attaques, contres, fins de tour, jusqu'à la fin de la partie. Les animations
+  // du jeu ne sont pas coupées par le script : aucune ne doit tourner en boucle. Ordinateur seulement.
+  async clavier() {
+    if (this.format.touch) {
+      this.note('clavier : sur ordinateur seulement');
+      return;
+    }
+    const media = (reduce) => this.page.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'hover', value: 'hover' }, { name: 'pointer', value: 'fine' }, { name: 'prefers-reduced-motion', value: reduce ? 'reduce' : 'no-preference' }],
+    });
+    await media(true);
+    try {
+      await this.home();
+      await this.page.call(() => document.documentElement.classList.remove('ui-tour-still'));
+      if (!(await this.has('.opc.is-reduced-motion'))) throw new Error('mouvements réduits demandés par l’appareil : la classe is-reduced-motion manque');
+      await this.tap(ui(`deck.tile-${MY_DECK}`), 0);
+      await this.tap(ui(`deck.tile-${AI_DECK}`), 1);
+      await this.tap(ui('home.level-1'));
+      await this.tap(ui('home.first-ai'));
+      await this.page.evaluate(`window.__uiTourSeed(${SEED})`);
+      await this.tap(ui('home.start'));
+      await this.waitUi(ui('mulligan.keep'), 'main de départ', 60000);
+      await this.page.mouseAway();
+      await this.playByKeyboard();
+    } finally {
+      await media(false);
+    }
+  }
+
+  async playByKeyboard({ timeout = 600000 } = {}) {
+    const end = Date.now() + timeout;
+    const loops = new Set();
+    const tried = new Set();         // ce qui a été tenté ce tour-ci (« play:12 », « attack:3 », « don », « end »)
+    const counts = { play: 0, don: 0, attack: 0, counter: 0, turns: 0 };
+    const shots = new Set();
+    let countered = false;
+    const PASS = ['noblock', 'pass', 'none', 'no'];
+    for (;;) {
+      if (Date.now() > end) throw new Error('clavier : la partie n’est pas finie dans le temps imparti');
+      const st = await this.page.call(() => {
+        const vis = (sel) => [...document.querySelectorAll(sel)].filter((el) => el.getBoundingClientRect().width > 0);
+        const uids = (sel) => vis(sel).map((el) => Number(el.dataset.uid));
+        if (vis('[data-ui="table.celebration"], [data-ui="end"]').length) return { kind: 'over' };
+        if (vis('[data-ui="table.intro"]').length) return { kind: 'wait' };
+        const mine = vis('[data-ui="table.zone-me"].zone-active').length > 0;
+        if (vis('[data-ui="mulligan.keep"]').length) return { kind: 'mulligan', mine };
+        if (vis('[data-ui="trigger.hand"]').length) return { kind: 'trigger', mine };
+        if (vis('[data-ui="confirm-end.ok"]').length) return { kind: 'confirm', mine };
+        if (vis('[data-ui="cost.option"]').length) return { kind: 'cost', mine };
+        const pickerOptions = vis('[data-ui^="picker.option-"]').map((el) => el.getAttribute('data-ui').slice('picker.option-'.length));
+        if (pickerOptions.length || vis('[data-ui="picker.choose"]').length) return { kind: 'picker', options: pickerOptions, mine };
+        const hand = uids('[data-ui="table.hand"] .card.is-actionable');
+        const options = vis('[data-ui^="table.option-"]').map((el) => el.getAttribute('data-ui').slice('table.option-'.length));
+        if (options.length) return { kind: 'option', options, hand, mine };
+        if (vis('[data-ui="table.end-turn"]').length) {
+          const field = uids('[data-ui="table.zone-me"] .card.is-actionable');
+          const leader = uids('[data-ui="table.zone-me"] [data-ui="table.leader"] .card[role="button"]')[0];
+          return { kind: 'main', hand, field, leader, mine };
+        }
+        return { kind: 'wait', mine };
+      }).catch(() => ({ kind: 'wait' }));
+      for (const l of await this.page.call(runningLoops).catch(() => [])) loops.add(l);
+      if (st.kind === 'over') break;
+      if (st.mine === false && tried.size) {
+        tried.clear();
+        counts.turns++;
+      }
+      if (st.kind === 'wait') await sleep(200);
+      else if (st.kind === 'mulligan') {
+        await this.enter(ui('mulligan.keep'), 'Garder cette main');
+        this.note('clavier : main de départ gardée');
+      } else if (st.kind === 'trigger') await this.enter(ui('trigger.hand'), 'Prendre la carte en main');
+      else if (st.kind === 'confirm') await this.enter(ui('confirm-end.ok'), 'Finir le tour');
+      else if (st.kind === 'cost') await this.enter(ui('cost.option'), 'le coût');
+      else if (st.kind === 'picker') {
+        const id = st.options.find((o) => PASS.includes(o)) ?? st.options[0];
+        await this.enter(id ? ui(`picker.option-${id}`) : ui('picker.choose'), 'le choix d’un effet');
+      } else if (st.kind === 'option') {
+        // défense : un Contre au clavier (une carte, une fois par attaque), puis on laisse passer
+        const card = !countered && st.options.includes('pass') ? st.hand[0] : undefined;
+        if (card !== undefined) {
+          countered = true;
+          if (await this.openMenu(card)) {
+            if (await this.enter(ui('menu.counter'), 'Contrer')) {
+              counts.counter++;
+              continue;
+            }
+            await this.closeMenu();
+          }
+        }
+        const id = st.options.find((o) => PASS.includes(o)) ?? st.options[0];
+        await this.enter(ui(`table.option-${id}`), `l’option ${id}`);
+      } else if (st.kind === 'main') {
+        countered = false;
+        if (await this.myMove(st, tried, counts, shots)) continue;
+        // plus rien à tenter : fin du tour (Tab jusqu'au bouton, Entrée)
+        if (tried.has('end')) await sleep(200);
+        else {
+          tried.add('end');
+          await this.enter(ui('table.end-turn'), 'Fin du tour');
+        }
+      }
+      await sleep(150);
+    }
+    this.note(`clavier : partie finie (${counts.turns} tours de l’IA, ${counts.play} cartes jouées, ${counts.don} DON!! données, ${counts.attack} attaques, ${counts.counter} contres)`);
+    await this.waitGone(ui('table.celebration'), 10000).catch(() => {});
+    for (const l of await this.page.call(runningLoops).catch(() => [])) loops.add(l);
+    await this.capture('24-clavier-fin');
+    if (!counts.play || !counts.don || !counts.attack) throw new Error(`clavier : ${counts.play} carte jouée, ${counts.don} DON!! donnée, ${counts.attack} attaque`);
+    if (!counts.counter) this.note('clavier : aucune occasion de contrer');
+    if (loops.size) throw new Error(`mouvements réduits : animations en boucle : ${[...loops].join(', ')}`);
+  }
+
+  // Une action de ma phase principale, au clavier (jouer une carte, les DON!! au Leader, une attaque). false : plus rien
+  // à tenter ce tour-ci. Les captures 22 et 23 sont faites à la première occasion
+  async myMove(st, tried, counts, shots) {
+    for (const uid of st.hand) {
+      if (tried.has(`play:${uid}`)) continue;
+      tried.add(`play:${uid}`);
+      if (!(await this.openMenu(uid))) continue;
+      const kind = (await this.has(ui('menu.play'))) ? 'play' : (await this.has(ui('menu.event'))) ? 'event' : null;
+      if (!kind) {
+        await this.closeMenu();
+        continue;
+      }
+      if (!shots.has('menu')) {
+        shots.add('menu');
+        await this.capture('22-clavier-menu');
+      }
+      await this.enter(ui(`menu.${kind}`), 'Jouer');
+      counts.play++;
+      return true;
+    }
+    if (!tried.has('don') && st.leader !== undefined) {
+      tried.add('don');
+      if (await this.openMenu(st.leader)) {
+        // le menu reste ouvert après une DON!! donnée, et reprend le focus
+        for (let i = 0; i < 10 && (await this.has(ui('menu.don'))); i++) {
+          await this.enter(ui('menu.don'), 'Donner 1 DON!!');
+          counts.don++;
+          await sleep(250);
+        }
+        if (await this.has(ui('menu'))) await this.closeMenu();
+        return true;
+      }
+    }
+    for (const uid of [st.leader, ...st.field].filter((x) => x !== undefined)) {
+      if (tried.has(`attack:${uid}`)) continue;
+      tried.add(`attack:${uid}`);
+      if (!(await this.openMenu(uid))) continue;
+      if (!(await this.has(ui('menu.attack')))) {
+        await this.closeMenu();
+        continue;
+      }
+      await this.enter(ui('menu.attack'), 'Attaquer');
+      const onTarget = () => this.page.call(() => document.activeElement?.matches('.card.is-target') ?? false);
+      if (!(await onTarget())) throw new Error('clavier : « Attaquer » n’a pas donné le focus à une cible');
+      if (!shots.has('target')) {
+        shots.add('target');
+        await this.press('ArrowRight');
+        await this.press('ArrowLeft');
+        if (!(await onTarget())) await this.focusOn(`${ui('table.zone-opp')} .card.is-target`, 'une cible');
+        await this.capture('23-clavier-cible', { keepMouse: true });
+      }
+      await this.press('Enter');
+      counts.attack++;
+      await sleep(200);
+      return true;
+    }
+    return false;
   }
 
   // Chaque page « plateau » de l'atelier, ouverte par son adresse (état fixé : ni IA, ni hasard)

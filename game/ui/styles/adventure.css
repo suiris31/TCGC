@@ -146,9 +146,8 @@
 .op-adv-welcome-body .op-adv-fan { margin-top: 0.5rem; }
 /* Carte */
 .op-adv-strip { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; min-height: 2.8rem; padding: 0.4rem 0.8rem; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); }
-@media (prefers-reduced-motion: reduce) {
-  .op-adv-bubble, .op-adv-end-won .op-adv-end-head h1, .op-adv-boosters-packs .op-adv-pack, .op-adv-welcome-ship { animation: none; }
-}
+/* Animations réduites (réglage du jeu, par défaut celui de l'appareil) */
+.opc.is-reduced-motion .op-adv-bubble, .opc.is-reduced-motion .op-adv-end-won .op-adv-end-head h1, .opc.is-reduced-motion .op-adv-boosters-packs .op-adv-pack, .opc.is-reduced-motion .op-adv-welcome-ship { animation: none; }
 @media (max-width: 900px) and (orientation: portrait) {
   .op-adv { padding-left: 0.8rem; padding-right: 0.8rem; gap: 0.9rem; }
   .op-adv-title h1 { font-size: 1.35rem; }
@@ -202,9 +201,7 @@
   .op-adv-finale h2 { font-size: 1.3rem; }
   .op-adv-finale-list li { padding: 0.1rem 0.5rem; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .op-adv-layer > .setup, .op-adv-finale-flag { animation: none; }
-}
+.opc.is-reduced-motion .op-adv-layer > .setup, .opc.is-reduced-motion .op-adv-finale-flag { animation: none; }
 /* Repère d'un deck de la Cale (deck d'aventure) : sur sa tuile dans le choix des decks, et pendant la partie en ligne */
 .deck-tile.op-deck-hold .deck-name { color: var(--accent); }
 .op-hold-badge { position: absolute; top: 0.4rem; left: 0.4rem; padding: 0.1rem 0.45rem; border-radius: 999px; background: var(--ink-2-a85); border: 1px solid var(--accent-a70); color: var(--accent); font-size: 0.72rem; font-weight: 700; pointer-events: none; }

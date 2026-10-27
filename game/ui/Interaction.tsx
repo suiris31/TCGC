@@ -42,7 +42,7 @@ export function ActionMenu({ s, uid, anchor, actions, info, recommended, onActio
   const f = findField(s, uid);
   const num = f?.card.num ?? s.players.flatMap((P) => [...P.hand, ...P.trash]).find((c) => c.uid === uid)?.num;
   return (
-    <div ref={ref} data-ui="menu" className={`action-menu${sheet ? ' as-sheet' : ''}${details ? ' with-details' : ''}`} style={sheet ? undefined : { left: pos.left, top: pos.top }} onClick={(e) => e.stopPropagation()}>
+    <div ref={ref} data-ui="menu" role="dialog" aria-label={`Actions de ${num ? def(num).name : name(s, uid)}`} className={`action-menu${sheet ? ' as-sheet' : ''}${details ? ' with-details' : ''}`} style={sheet ? undefined : { left: pos.left, top: pos.top }} onClick={(e) => e.stopPropagation()}>
       {details && num ? (
         <div className="sheet-card"><CardDetails s={s} num={num} uid={uid} /></div>
       ) : (
