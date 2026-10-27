@@ -2,9 +2,10 @@
 import type { ReactNode } from 'react';
 import { def } from '../engine/rules.ts';
 import type { Card, Decision, GameState, Option, PlayerId } from '../engine/types.ts';
-import { CardView, type Preview } from './CardView.tsx';
+import { CardView, STATE_LEGEND, type Preview } from './CardView.tsx';
 import type { PickItem } from './decision.ts';
 import { isTouch } from './device.ts';
+import { Icon } from './kit/index.ts';
 
 function Modal({ children, onClose, wide, className }: { children: ReactNode; onClose?: () => void; wide?: boolean; className?: string }) {
   return (
@@ -159,19 +160,19 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           <h3>Pendant ton tour</h3>
           {touch ? (
             <ul>
-              <li><b>Les cartes qui brillent</b> peuvent faire quelque chose : touche-les pour voir leur fiche et leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
+              <li><b>Les cartes entourées d’or</b> peuvent faire quelque chose : touche-les pour voir leur fiche et leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
               <li><b>Lire une carte</b> : touche-la, sa fiche s’ouvre en grand (même les cartes de l’adversaire).</li>
               <li><b>Jouer une carte</b> : touche une carte de ta main, puis « Jouer ». Son coût est en haut à gauche.</li>
               <li><b>Donner des DON!!</b> : touche la carte, puis « Donner 1 DON!! » (autant de fois que tu veux).</li>
-              <li><b>Attaquer</b> : touche ton Leader ou un Personnage, « Attaquer… », puis la cible (elle brille en rouge) : le résultat prévu s’affiche en bas, et tu confirmes avec « Attaquer ».</li>
+              <li><b>Attaquer</b> : touche ton Leader ou un Personnage, « Attaquer… », puis la cible (entourée de rouge) : le résultat prévu s’affiche en bas, et tu confirmes avec « Attaquer ».</li>
               <li><b>Fin du tour</b> : le bouton en bas. Le journal et le coach s’ouvrent avec le bouton 📜 en haut.</li>
             </ul>
           ) : (
             <ul>
-              <li><b>Les cartes qui brillent</b> peuvent faire quelque chose : clique dessus pour voir leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
+              <li><b>Les cartes entourées d’or</b> peuvent faire quelque chose : clique dessus pour voir leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
               <li><b>Jouer une carte</b> : clique sur une carte de ta main, puis « Jouer ». Son coût est en haut à gauche.</li>
               <li><b>Donner des DON!!</b> : glisse une DON!! sur une carte, ou clique sur la carte puis « Donner 1 DON!! ».</li>
-              <li><b>Attaquer</b> : clique sur ton Leader ou un Personnage, « Attaquer… », puis sur la cible (elle brille en rouge). Au survol, tu vois le résultat prévu.</li>
+              <li><b>Attaquer</b> : clique sur ton Leader ou un Personnage, « Attaquer… », puis sur la cible (entourée de rouge). Au survol, tu vois le résultat prévu.</li>
               <li><b>Fin du tour</b> : le bouton en bas à droite (ou Entrée).</li>
             </ul>
           )}
@@ -181,9 +182,14 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           </ul>
           <h3>Repères visuels</h3>
           <ul>
-            <li>💤 vient d’être joué (ne peut pas attaquer ce tour) · 🛡 [Bloqueur] · 🔒 ne peut pas attaquer · ◆ DON!! données</li>
-            <li>La puissance est en bas à droite : verte si elle est augmentée, rouge si elle est baissée.</li>
-            <li>★ : la carte ou l’action conseillée par le coach.</li>
+            <li>
+              {STATE_LEGEND.map((x) => (
+                <span key={x.icon} className="op-state-legend"><span className={`op-card-state is-${x.tone}`}><Icon name={x.icon} size="78%" /></span>{x.text} · </span>
+              ))}
+              ◆ DON!! données. Le détail d’une carte explique chacun de ses états.
+            </li>
+            <li>La puissance est en bas à droite : verte avec ↑ si elle est augmentée, rouge avec ↓ si elle est baissée.</li>
+            <li>★ et la lueur qui pulse : la carte ou l’action conseillée par le coach.</li>
           </ul>
           {!touch && (
             <>

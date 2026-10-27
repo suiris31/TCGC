@@ -1,6 +1,19 @@
 /* Cartes : tailles, états (jouable, à choisir, cible, choisie…), pastilles (puissance, coût, DON!!) ; fiche de détail
    d'une carte (au survol, ou épinglée sur un écran tactile). */
-.card { position: relative; flex-shrink: 0; width: var(--cw); height: var(--ch); border-radius: 7px; background: var(--surface); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s, filter 0.2s; box-shadow: 0 3px 8px var(--black-a45); }
+/* Réglage des lueurs (tâche R2.5) : une seule lueur animée, celle de la carte conseillée par le coach ; les cartes
+   jouables, les cibles et les cartes à choisir ont un repère fixe. Pour refaire pulser toutes les cartes jouables :
+   --card-playable-pulse: glow-gold 2.2s ease-in-out infinite (et de même pour les cibles et les cartes à choisir). */
+.opc {
+  --card-playable-ring: 0 0 0 2px var(--accent), 0 0 7px var(--accent-a45);
+  --card-playable-pulse: none;
+  --card-target-ring: 0 0 0 3px var(--red), 0 0 12px var(--red-a70);
+  --card-target-pulse: none;
+  --card-choose-ring: 0 0 0 3px var(--blue), 0 0 12px var(--blue-a65);
+  --card-choose-pulse: none;
+}
+/* La carte est un conteneur : ses pastilles se mesurent à sa largeur (cqi), de la carte de 36 px du téléphone à la
+   grande carte d'un choix. */
+.card { position: relative; flex-shrink: 0; width: var(--cw); height: var(--ch); border-radius: 7px; background: var(--surface); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s, filter 0.2s; box-shadow: 0 3px 8px var(--black-a45); container-type: inline-size; --badge-font: clamp(11px, 24cqi, 0.929rem); --badge-h: calc(var(--badge-font) * 1.2 + 4px); --state-size: clamp(14px, 27cqi, 1.6rem); --edge: clamp(2px, 5cqi, 0.286rem); }
 .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
 .card-hand { width: var(--hw); height: calc(var(--hw) * 1.396); }
 .card-small { width: 5.857rem; height: 8.143rem; }
@@ -9,32 +22,58 @@
 .card-back { background: repeating-linear-gradient(45deg, var(--back-1), var(--back-1) 0.429rem, var(--back-2) 0.429rem, var(--back-2) 0.857rem); border: 2px solid var(--back-edge); }
 .card-rested { transform: rotate(90deg); margin: 0 calc((var(--ch) - var(--cw)) / 2); }
 .is-clickable { cursor: pointer; }
-.is-actionable { box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent-a55); animation: glow-gold 2.2s ease-in-out infinite; }
+.is-actionable { box-shadow: var(--card-playable-ring); animation: var(--card-playable-pulse); }
 @media (hover: hover) { .is-actionable:hover { transform: translateY(-6px) scale(1.04); } }
 @media (hover: hover) { .card-rested.is-actionable:hover { transform: rotate(90deg) scale(1.04); } }
-.is-choose { box-shadow: 0 0 0 3px var(--blue), 0 0 18px var(--blue-a65); animation: glow-blue 1.6s ease-in-out infinite; }
+.is-choose { box-shadow: var(--card-choose-ring); animation: var(--card-choose-pulse); }
 @media (hover: hover) { .is-choose:hover { transform: translateY(-6px) scale(1.04); } }
-.is-target { box-shadow: 0 0 0 3px var(--red), 0 0 22px var(--red-a75); animation: glow-red 1s ease-in-out infinite; cursor: crosshair; }
+.is-target { box-shadow: var(--card-target-ring); animation: var(--card-target-pulse); cursor: crosshair; }
 @media (hover: hover) { .is-target:hover { transform: scale(1.07); } }
 @media (hover: hover) { .card-rested.is-target:hover { transform: rotate(90deg) scale(1.07); } }
+/* la carte conseillée : la seule qui pulse, dans la couleur de ce qu'on y fait (jouer, viser, choisir) */
+.is-recommended { box-shadow: 0 0 0 3px var(--accent), 0 0 16px var(--accent-a55); animation: glow-gold 1.8s ease-in-out infinite; }
+.is-recommended.is-target { box-shadow: 0 0 0 3px var(--red), 0 0 22px var(--red-a75); animation: glow-red 1.2s ease-in-out infinite; }
+.is-recommended.is-choose { box-shadow: 0 0 0 3px var(--blue), 0 0 18px var(--blue-a65); animation: glow-blue 1.6s ease-in-out infinite; }
 .is-selected { box-shadow: 0 0 0 3px var(--white), 0 0 24px var(--white-a55) !important; animation: none; }
 .is-dim { filter: grayscale(0.55) brightness(0.62); }
 .is-drop { outline: 3px dashed var(--green); outline-offset: 3px; }
-@keyframes glow-gold { 50% { box-shadow: 0 0 0 2px var(--accent), 0 0 26px var(--accent-a85); } }
+@keyframes glow-gold { 50% { box-shadow: 0 0 0 3px var(--accent), 0 0 28px var(--accent-a90); } }
 @keyframes glow-blue { 50% { box-shadow: 0 0 0 3px var(--blue), 0 0 30px var(--blue-a95); } }
 @keyframes glow-red { 50% { box-shadow: 0 0 0 3px var(--red), 0 0 34px var(--red-a100); } }
-.badge { position: absolute; font-size: 0.786rem; font-weight: 900; padding: 1px 0.429rem; border-radius: 7px; background: var(--ink-a92); border: 1px solid var(--white-a15); }
-.badge-power { bottom: 0.286rem; right: 0.286rem; font-size: 0.929rem; }
+/* Pastilles : fond presque opaque (contraste ≥ 4,5:1 quel que soit le visuel, game/tests/card-looks.test.ts) */
+.badge { position: absolute; display: inline-flex; align-items: center; gap: 1px; font-size: 0.786rem; font-weight: 900; line-height: 1.2; padding: 1px 0.429rem; border-radius: 7px; background: var(--ink-a92); border: 1px solid var(--white-a15); color: var(--text); }
+.badge-power { bottom: var(--edge); right: var(--edge); font-size: var(--badge-font); padding: 1px clamp(2px, 6cqi, 0.429rem); }
 .card-rested .badge-power { transform: rotate(-90deg); }
-.badge-cost { top: 0.286rem; left: 0.286rem; min-width: 1.429rem; text-align: center; }
+.badge-cost { top: var(--edge); left: var(--edge); min-width: 1.429rem; justify-content: center; font-size: min(var(--badge-font), 0.786rem); padding: 1px clamp(2px, 5cqi, 0.429rem); }
 .badge-cost.cheaper { color: var(--green); border-color: var(--green); }
 .badge-cost.too-expensive { color: var(--red-soft); }
+.op-card-arrow { vertical-align: 0; stroke-width: 3; }
 .badge-counter { left: 50%; bottom: 26%; transform: translateX(-50%); background: var(--green); color: var(--on-green); border: 0; font-size: 0.929rem; }
 .badge-star { top: -10px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--accent-ink); border: 0; font-size: 0.929rem; box-shadow: 0 0 12px var(--accent-a90); }
-.don-chips { position: absolute; top: 0.286rem; right: 0.286rem; display: flex; gap: 2px; align-items: center; }
-.don-chips i { width: 0.643rem; height: 0.643rem; transform: rotate(45deg); background: linear-gradient(135deg, var(--don-light), var(--don-chip)); box-shadow: 0 0 4px var(--accent-a90); }
-.don-chips b { font-size: 0.714rem; color: var(--accent); margin-left: 2px; }
-.status-icons { position: absolute; left: 3px; bottom: 0.286rem; display: flex; gap: 1px; font-size: 0.929rem; filter: drop-shadow(0 1px 2px var(--black)); }
+.don-chips { position: absolute; top: var(--edge); right: var(--edge); display: flex; gap: 2px; align-items: center; }
+.don-chips i { width: clamp(5px, 11cqi, 0.643rem); height: clamp(5px, 11cqi, 0.643rem); transform: rotate(45deg); background: linear-gradient(135deg, var(--don-light), var(--don-chip)); box-shadow: 0 0 4px var(--accent-a90); }
+.don-chips b { font-size: 0.786rem; line-height: 1.2; color: var(--accent); margin-left: 2px; padding: 0 2px; border-radius: 4px; background: var(--ink-a92); }
+/* États (icônes du kit) : une colonne le long du bord gauche, entre le coût imprimé (ou la pastille du coût modifié) et
+   la pastille de puissance ; elle passe sur une deuxième colonne quand la carte est trop petite. Sur une carte épuisée,
+   les icônes restent droites. */
+.op-card-states { position: absolute; left: var(--edge); top: calc(var(--edge) + 22cqi); bottom: calc(var(--edge) + var(--badge-h) + 2px); display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 2px; pointer-events: none; }
+.op-card-states.is-low { top: calc(var(--edge) + var(--badge-h) + 2px); }
+.op-card-state { display: inline-grid; place-items: center; width: var(--state-size); height: var(--state-size); border-radius: var(--radius-xs); background: var(--ink-a92); border: 1px solid var(--white-a15); pointer-events: auto; }
+.op-card-state .op-icon { stroke-width: 2.4; }
+.op-card-state.is-atout { color: var(--accent-light); }
+.op-card-state.is-entrave { color: var(--red-soft); }
+.op-card-state.is-info { color: var(--text-ice); }
+.op-card-state-more { color: var(--text); font-size: 11px; font-weight: 800; line-height: 1; }
+.card-rested .op-card-state > * { transform: rotate(-90deg); }
+/* moins de 52 px (téléphone) : une pastille et « +N » ; sinon jusqu'à 5 */
+.op-card-state.is-more-small { display: none; }
+@container (max-width: 51.5px) {
+  .op-card-state.is-extra, .op-card-state.is-more { display: none; }
+  .op-card-state.is-more-small { display: inline-grid; }
+}
+/* légende de l'aide : la même pastille, dans le texte */
+.op-state-legend { white-space: nowrap; }
+.op-state-legend .op-card-state { --state-size: 1.25rem; display: inline-grid; vertical-align: -0.3em; margin-right: 0.25rem; }
 .up { color: var(--green); }
 .down { color: var(--red-soft); }
 /* Fenêtre de détail d'une carte */

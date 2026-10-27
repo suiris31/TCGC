@@ -49,6 +49,16 @@ export const ICONS = {
   protection: ['M3.5 18a8.5 8.5 0 0 1 17 0', 'M2 21h20', 'M12 6V3', 'M6.3 8.3L4.5 6.5', 'M17.7 8.3l1.8-1.8'],
   'power-up': ['M12 19.5v-15', 'M6 10.5l6-6 6 6'],
   'power-down': ['M12 4.5v15', 'M6 13.5l6 6 6-6'],
+  // vient d'être jouée : « Zz », la carte dort encore
+  asleep: ['M4 5.5h7.5L4 15h7.5', 'M14 11h6l-6 7.5h6'],
+  // ne peut pas être épuisée : une carte couchée, barrée
+  'no-rest': [...forbidden, rect(6.5, 9, 11, 6.5, 1.5)],
+  // effets annulés : l'étincelle d'un effet, barrée
+  negated: [...forbidden, 'M12 6.5l1.4 4.1 4.1 1.4-4.1 1.4-1.4 4.1-1.4-4.1-4.1-1.4 4.1-1.4z'],
+  // [Double attaque] : deux épées croisées (celle d'« attack » et son reflet)
+  'double-attack': ['M20.5 3.5v3L11 16l-3-3 9.5-9.5z', 'M5.5 11.5l7 7', 'M8 16l-4 4', 'M3 19l2 2', 'M3.5 3.5v3L13 16l3-3-9.5-9.5z', 'M18.5 11.5l-7 7', 'M16 16l4 4', 'M21 19l-2 2'],
+  // [Imblocable] : un fantôme, qui passe à travers les Bloqueurs
+  unblockable: ['M5 20.5V11a7 7 0 0 1 14 0v9.5l-2.3-1.8-2.4 1.8-2.3-1.8-2.3 1.8-2.4-1.8z', circle(9.5, 11, 0.8), circle(14.5, 11, 0.8)],
 } satisfies Record<string, readonly string[]>;
 
 export type IconName = keyof typeof ICONS;
@@ -85,6 +95,11 @@ export const ICON_LABELS: Record<IconName, string> = {
   protection: 'Protégée',
   'power-up': 'Puissance augmentée',
   'power-down': 'Puissance diminuée',
+  asleep: 'Vient d’être jouée',
+  'no-rest': 'Ne peut pas être épuisée',
+  negated: 'Effets annulés',
+  'double-attack': 'Double attaque',
+  unblockable: 'Imblocable',
 };
 
 export const ICON_NAMES = Object.keys(ICONS) as IconName[];
