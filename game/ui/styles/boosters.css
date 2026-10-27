@@ -149,21 +149,17 @@
 /* Animations réduites (réglage du système, ou animations={false}) : tout s'affiche sans mouvement */
 .op-bo-calm *, .op-bo-calm *::before, .op-bo-calm *::after { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 .op-bo-calm .op-bo-rays, .op-bo-calm .op-bo-sparks, .op-bo-calm .op-bo-flash { display: none; }
-@media (max-width: 900px) and (orientation: portrait) {
-  .op-bo-at-reveal { --big-h: min(30rem, calc(100dvh - 23rem), calc((100vw - 3rem) * 1.4)); row-gap: 0.5rem; }
-  .op-bo-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 24rem; gap: 0.35rem; }
-  .op-bo-grid { gap: 0.8rem 0.5rem; }
-  .op-bo-tile { width: calc((100vw - 3rem) / 3); }
-  .op-bo-actions .op-btn { flex: 1 1 0; min-width: 0; padding: 0 0.6rem; }
-  .op-bo-pack { height: min(27rem, calc(100dvh - 16rem), calc((100vw - 4rem) / 0.61)); }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  .op-bo-head { padding-top: calc(0.3rem + env(safe-area-inset-top, 0px)); padding-bottom: 0; }
-  .op-bo-at-reveal { --big-h: calc(100dvh - 7rem); grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "show strip" "show actions"; column-gap: 1.2rem; padding: 0 1rem; }
-  .op-bo-strip { grid-template-columns: repeat(6, minmax(0, 3.4rem)); }
-  .op-bo-actions { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
-  .op-bo-pack { height: calc(100dvh - 11rem); }
-  .op-bo-fan { height: calc(100dvh - 10rem); }
-  .op-bo-tile { width: 6.4rem; }
-  .op-bo-zoom-card { height: calc(100dvh - 6rem); }
-}
+:where(.opc.is-portrait) .op-bo-at-reveal { --big-h: min(30rem, calc(100dvh - 23rem), calc((100vw - 3rem) * 1.4)); row-gap: 0.5rem; }
+:where(.opc.is-portrait) .op-bo-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 24rem; gap: 0.35rem; }
+:where(.opc.is-portrait) .op-bo-grid { gap: 0.8rem 0.5rem; }
+:where(.opc.is-portrait) .op-bo-tile { width: calc((100vw - 3rem) / 3); }
+:where(.opc.is-portrait) .op-bo-actions .op-btn { flex: 1 1 0; min-width: 0; padding: 0 0.6rem; }
+:where(.opc.is-portrait) .op-bo-pack { height: min(27rem, calc(100dvh - 16rem), calc((100vw - 4rem) / 0.61)); }
+:where(.opc.is-landscape) .op-bo-head { padding-top: calc(0.3rem + env(safe-area-inset-top, 0px)); padding-bottom: 0; }
+:where(.opc.is-landscape) .op-bo-at-reveal { --big-h: calc(100dvh - 7rem); grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "show strip" "show actions"; column-gap: 1.2rem; padding: 0 1rem; }
+:where(.opc.is-landscape) .op-bo-strip { grid-template-columns: repeat(6, minmax(0, 3.4rem)); }
+:where(.opc.is-landscape) .op-bo-actions { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-landscape) .op-bo-pack { height: calc(100dvh - 11rem); }
+:where(.opc.is-landscape) .op-bo-fan { height: calc(100dvh - 10rem); }
+:where(.opc.is-landscape) .op-bo-tile { width: 6.4rem; }
+:where(.opc.is-landscape) .op-bo-zoom-card { height: calc(100dvh - 6rem); }

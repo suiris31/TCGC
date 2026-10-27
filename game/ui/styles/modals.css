@@ -25,12 +25,10 @@
 .glossary dd { margin: 0 0 2px; color: var(--text-soft); }
 @keyframes op-fade { from { opacity: 0; } }
 /* fenêtres : en bas de l'écran, sur toute la largeur */
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .modal { place-items: end center; }
-  .modal-box, .modal-wide { width: 100%; max-width: none; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 1rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
-  .help-grid { grid-template-columns: 1fr; }
-  .pick-row { gap: 0.5rem; }
-  .cost-grid { grid-template-columns: repeat(4, 1fr); }
-  .trigger-body { flex-direction: column; align-items: center; }
-  .modal-actions .op-btn { flex: 1 1 auto; }
-}
+:where(.opc.is-compact) .modal { place-items: end center; }
+:where(.opc.is-compact) .modal-box, :where(.opc.is-compact) .modal-wide { width: 100%; max-width: none; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 1rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-compact) .help-grid { grid-template-columns: 1fr; }
+:where(.opc.is-compact) .pick-row { gap: 0.5rem; }
+:where(.opc.is-compact) .cost-grid { grid-template-columns: repeat(4, 1fr); }
+:where(.opc.is-compact) .trigger-body { flex-direction: column; align-items: center; }
+:where(.opc.is-compact) .modal-actions .op-btn { flex: 1 1 auto; }

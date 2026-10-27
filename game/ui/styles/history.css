@@ -64,22 +64,20 @@
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hist-two { grid-template-columns: 1fr; }
 }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .modal-box.history { width: 100%; height: 100%; max-height: 100%; border-radius: 0; padding: 0; }
-  .history-body table { display: block; overflow-x: auto; }
-  /* Mes parties */
-  .history-head { flex-wrap: wrap; gap: 0.5rem 0.8rem; padding: calc(0.7rem + env(safe-area-inset-top, 0px)) 0.8rem 0.7rem; }
-  .history-head h2 { flex: 1; font-size: 1.2rem; }
-  .history-tabs { order: 3; flex-basis: 100%; max-width: none; }
-  .history-body { padding: 0.8rem 0.8rem calc(1.2rem + env(safe-area-inset-bottom, 0px)); }
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
-  .kpi { padding: 0.6rem 0.7rem; }
-  .kpi-value { font-size: 1.5rem; }
-  .hist-two { grid-template-columns: minmax(0, 1fr); }
-  .hist-two > div, .history section { min-width: 0; }
-  .habits, .axis-examples { grid-template-columns: minmax(0, 1fr); }
-  .hist-card { min-width: 0; }
-}
+:where(.opc.is-compact) .modal-box.history { width: 100%; height: 100%; max-height: 100%; border-radius: 0; padding: 0; }
+:where(.opc.is-compact) .history-body table { display: block; overflow-x: auto; }
+/* Mes parties */
+:where(.opc.is-compact) .history-head { flex-wrap: wrap; gap: 0.5rem 0.8rem; padding: calc(0.7rem + env(safe-area-inset-top, 0px)) 0.8rem 0.7rem; }
+:where(.opc.is-compact) .history-head h2 { flex: 1; font-size: 1.2rem; }
+:where(.opc.is-compact) .history-tabs { order: 3; flex-basis: 100%; max-width: none; }
+:where(.opc.is-compact) .history-body { padding: 0.8rem 0.8rem calc(1.2rem + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-compact) .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+:where(.opc.is-compact) .kpi { padding: 0.6rem 0.7rem; }
+:where(.opc.is-compact) .kpi-value { font-size: 1.5rem; }
+:where(.opc.is-compact) .hist-two { grid-template-columns: minmax(0, 1fr); }
+:where(.opc.is-compact) .hist-two > div, :where(.opc.is-compact) .history section { min-width: 0; }
+:where(.opc.is-compact) .habits, :where(.opc.is-compact) .axis-examples { grid-template-columns: minmax(0, 1fr); }
+:where(.opc.is-compact) .hist-card { min-width: 0; }
 
 /* Mes parties dans la fenêtre du kit (tâche R3.8) : grande fenêtre de hauteur fixe (elle ne saute pas d'un onglet à
    l'autre), vues et filtre par mode en haut, collés pendant le défilement */
@@ -100,9 +98,7 @@
 .op-history-body { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
 .op-history-bar, .op-history-body > * { min-width: 0; }
 .op-history-body section > p { margin: 0; }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .op-history-bar { top: -0.3rem; margin-top: -0.3rem; }
-  .op-history-bar .history-tabs { flex-basis: 100%; max-width: none; }
-  .op-history-mode { padding: 0 0.7rem; }
-  .op-history-body table { display: block; overflow-x: auto; }
-}
+:where(.opc.is-compact) .op-history-bar { top: -0.3rem; margin-top: -0.3rem; }
+:where(.opc.is-compact) .op-history-bar .history-tabs { flex-basis: 100%; max-width: none; }
+:where(.opc.is-compact) .op-history-mode { padding: 0 0.7rem; }
+:where(.opc.is-compact) .op-history-body table { display: block; overflow-x: auto; }

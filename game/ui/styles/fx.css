@@ -75,15 +75,11 @@
 @keyframes intro-right { from { transform: translateX(60vw) rotate(12deg); } }
 @keyframes intro-out { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 .btn-hint { height: 2.714rem; }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .cel-title { font-size: 3.6rem; }
-  .intro { gap: 1rem; }
-  .intro-side { font-size: 1rem; }
-  .intro-side img { width: 30vw; }
-  .intro-vs { font-size: 2.6rem; }
-  .fx-spot img { width: 10rem; }
-  .fx-banner span { font-size: 2rem; }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  .cel-title { font-size: 3rem; }
-}
+:where(.opc.is-compact) .cel-title { font-size: 3.6rem; }
+:where(.opc.is-compact) .intro { gap: 1rem; }
+:where(.opc.is-compact) .intro-side { font-size: 1rem; }
+:where(.opc.is-compact) .intro-side img { width: 30vw; }
+:where(.opc.is-compact) .intro-vs { font-size: 2.6rem; }
+:where(.opc.is-compact) .fx-spot img { width: 10rem; }
+:where(.opc.is-compact) .fx-banner span { font-size: 2rem; }
+:where(.opc.is-landscape) .cel-title { font-size: 3rem; }

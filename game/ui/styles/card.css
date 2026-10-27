@@ -93,17 +93,3 @@
 .zoom-backdrop { position: fixed; inset: 0; z-index: var(--z-zoom-backdrop); background: var(--backdrop-a55); animation: op-fade 0.15s ease-out; }
 .card-zoom.zoom-pinned { pointer-events: auto; }
 .zoom-close { position: fixed; left: 0; right: 0; bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px)); z-index: var(--z-zoom-close); text-align: center; color: var(--muted); font-size: 0.85rem; pointer-events: none; }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .zoom-effect { font-size: 0.93rem; }
-  /* carte touchée : fiche en bas de l'écran (la position calculée pour la souris est ignorée) */
-  .card-zoom.zoom-pinned { left: 0 !important; right: 0; top: auto !important; bottom: 0; max-width: none; max-height: 88dvh; overflow: auto; border-radius: 18px 18px 0 0; padding: 0.8rem 0.8rem calc(2.4rem + env(safe-area-inset-bottom, 0px)); animation: sheet-up 0.18s ease-out; }
-  .card-zoom.zoom-pinned img { width: 9rem; }
-  .card-zoom .zoom-text { min-width: 0; }
-  .card-big { width: 11rem; height: 15.36rem; }
-}
-@media (max-width: 900px) and (orientation: portrait) {
-  .card-pick { width: calc((min(100vw, 40rem) - 3.5rem) / 3.2); height: calc((min(100vw, 40rem) - 3.5rem) / 3.2 * 1.396); }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  .card-pick { width: calc((100dvh - 11rem) / 1.396 * 0.7); height: calc((100dvh - 11rem) * 0.7); }
-}
