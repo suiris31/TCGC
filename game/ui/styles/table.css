@@ -162,6 +162,10 @@
 .op-last-move, .op-aim { max-width: min(46rem, 70%); padding: 0.286rem 0.857rem; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-a85); font-size: 0.929rem; }
 .op-last-move { max-width: min(40rem, 62%); margin-right: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-left: 3px solid var(--blue); color: var(--text-soft); }
 .op-center:has(.op-aim) .op-last-move { display: none; }
+/* les annonces (à droite de la bande) : une ligne chacune, la plus récente en bas */
+.op-wide .fx-ticker { justify-content: flex-end; }
+.op-wide .tick { flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.op-wide .life-empty { display: none; }
 .op-last-move b { color: var(--blue-soft); }
 .op-aim { border-color: var(--red-a70); }
 .op-aim.is-ok { border-color: var(--green); }
