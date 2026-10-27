@@ -106,7 +106,10 @@
 :where(.opc.is-compact) .op-home-adv-body { padding: var(--space-3) var(--space-4) var(--space-4); }
 :where(.opc.is-compact) .op-home-adv-title { font-size: 1.35rem; }
 :where(.opc.is-compact) .op-home-adv-text { font-size: 0.9rem; }
-:where(.opc.is-portrait) .op-home-adv { grid-template-columns: minmax(0, 1fr) 5.5rem; }
+/* la mer passe en fond, à droite : les boutons prennent toute la largeur de la carte */
+:where(.opc.is-portrait) .op-home-adv { grid-template-columns: minmax(0, 1fr); }
+:where(.opc.is-portrait) .op-home-adv-sea { grid-column: 1; justify-self: end; width: 5.5rem; }
+:where(.opc.is-portrait) .op-home-adv-body > :not(.op-home-adv-actions) { margin-right: 4.5rem; }
 :where(.opc.is-portrait) .op-home-adv-ship { left: 12%; bottom: 34%; font-size: 2.6rem; }
 :where(.opc.is-portrait) .op-home-row-icon { display: none; }
 :where(.opc.is-portrait) .op-home-row { padding-left: var(--space-3); }
