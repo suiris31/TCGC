@@ -5,6 +5,9 @@
 // Le journal n'est pas lu : il dit la même chose en phrases, et une carte s'y retrouvait par son nom (deux cartes
 // peuvent porter le même). En ligne, les cartes cachées (main adverse, decks, Vies face cachée) ont un identifiant qui
 // dépend de leur place (engine/view.ts) : une carte qui en sort est reconnue à ce qu'elle n'était visible nulle part.
+// Une activation se reconnaît au choix que proposait la décision d'avant (et aux DON!! payées) ; une défausse par un
+// effet n'en est pas une. Vérifié contre l'ancienne lecture du journal sur 120 parties simulées (R2.9) : mêmes
+// annonces, plus les [Déclenchement] dont la carte n'était dans aucune zone (l'ancienne recherche par nom les ratait).
 import { def, findField, hasKeyword, power } from '../../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../../engine/types.ts';
 
@@ -73,12 +76,22 @@ function activations(a: GameState, b: GameState, p: PlayerId): TableEvent[] {
   const A = a.players[p];
   const B = b.players[p];
   const out: TableEvent[] = [];
-  const list = arrivals(a, b, p).filter((x) => x.from !== 'seen');
-  // Une carte cachée qui arrive vient de la main tant que la main a perdu assez de cartes, sinon de la Vie ou d'aucune
-  // zone (la carte de Vie révélée par un [Déclenchement] n'est dans aucune zone pendant son effet)
+  const battle = a.battle;
+  const defender = battle ? findField(a, battle.target)?.player : undefined;
+  const counterStep = battle?.step === 'counter' && defender === p;
+  // cartes montrées par la question en cours (carte de Vie révélée pendant son [Déclenchement], cartes regardées) :
+  // déjà annoncées, ou pas jouées
+  const shown = new Set((a.decision?.cards ?? []).map((c) => c.uid));
+  const list = arrivals(a, b, p).filter((x) => x.from !== 'seen' && !shown.has(x.card.uid));
+  // question d'un [Déclenchement] visible : traitée plus bas, par le choix fait
+  const asked = a.decision?.tag === 'trigger' && a.decision.player === p;
+  // Une carte cachée qui arrive vient de la main pendant un Contre sans Vie perdue (l'Événement peut faire piocher), ou
+  // tant que la main a perdu assez de cartes ; sinon de la Vie ou d'aucune zone (la carte de Vie révélée par un
+  // [Déclenchement] n'est dans aucune zone pendant son effet)
+  const lifeLost = B.life.length < A.life.length;
   let handLeft = Math.max(0, A.hand.length - B.hand.length) - list.filter((x) => x.from === 'hand').length;
   const origin = (x: Arrival): 'hand' | 'life' => {
-    if (x.from === 'hand') return 'hand';
+    if (x.from === 'hand' || (counterStep && !lifeLost)) return 'hand';
     if (x.from === 'life') return 'life';
     if (handLeft > 0) {
       handLeft--;
@@ -86,23 +99,39 @@ function activations(a: GameState, b: GameState, p: PlayerId): TableEvent[] {
     }
     return 'life';
   };
-  const battle = a.battle;
-  const defender = battle ? findField(a, battle.target)?.player : undefined;
-  const counterStep = battle?.step === 'counter' && defender === p;
-  const discarded = A.discardedTurn !== B.discardedTurn;  // une carte de la main défaussée par un effet (coût...)
-  const paid = B.donRested - A.donRested;                  // DON!! épuisées pour payer
+  // Un Événement s'active (et un Personnage contre) par un choix du joueur que sa décision proposait ; une carte de la
+  // main défaussée par un effet (coût d'une capacité...) vient d'une autre question. La décision de l'adversaire, en
+  // ligne, est masquée (sans ses choix) : sa phase principale, ou sa décision pendant son Contre.
+  const d0 = a.decision?.player === p ? a.decision : null;
+  const masked = Boolean(d0 && !d0.options.length);
+  const offered = (id: string) => Boolean(d0 && (masked ? d0.kind === 'main' || counterStep : d0.options.some((o) => o.id === id)));
+  const paid = A.donActive - B.donActive;  // DON!! redressées épuisées pour payer (l'effet peut en donner ensuite)
+  // décision masquée : une carte défaussée par un effet (pendant un Événement [Contre]...) n'est ni un Contre ni une
+  // activation
+  const discarded = A.discardedTurn !== B.discardedTurn;
   let activated = false;
   for (const x of list) {
     const d = def(x.card.num);
     const at = origin(x);
-    if (at === 'hand' && x.trash && d.category === 'EVENT' && !activated && (paid >= Math.max(1, d.cost ?? 0) || !discarded)) {
+    const uid = x.card.uid;
+    if (at === 'hand' && x.trash && d.category === 'EVENT' && !activated && (offered(`event:${uid}`) || offered(`cevent:${uid}`)) && paid >= (d.cost ?? 0) && (!masked || !discarded)) {
       // l'Événement activé va dans la Défausse avant son effet : le premier arrivé (une défausse vient après)
       activated = true;
       out.push({ kind: 'activate', player: p, uid: x.card.uid, num: x.card.num, timing: counterStep ? 'counter' : 'main' });
-    } else if (at === 'hand' && x.trash && d.category === 'CHARACTER' && counterStep && !discarded) {
+    } else if (at === 'hand' && x.trash && d.category === 'CHARACTER' && counterStep && offered(`counter:${uid}`) && (!masked || !discarded)) {
       out.push({ kind: 'counter', player: p, uid: x.card.uid, num: x.card.num });
-    } else if (at === 'life' && d.trigger && battle && defender === p && !banish(a)) {
+    } else if (at === 'life' && d.trigger && battle && defender === p && !asked && !banish(a)) {
       out.push({ kind: 'activate', player: p, uid: x.card.uid, num: x.card.num, timing: 'trigger' });
+    }
+  }
+  // [Déclenchement] choisi à sa question (décision visible : la tienne, ou toutes contre l'IA) : annoncé tout de suite,
+  // même si la carte va dans la main ou si son effet pose une question (elle n'est alors dans aucune zone)
+  if (asked) {
+    const chosen = b.history.slice(a.history.length).some((h) => h.player === p && h.tag === 'trigger' && h.choice === 'trigger');
+    const num = a.decision!.options.find((o) => o.id === 'trigger')?.num;
+    if (chosen && num) {
+      const there = [...B.hand, ...B.trash, ...B.chars, ...(b.decision?.cards ?? [])].filter((c) => c.num === num).at(-1);
+      out.push({ kind: 'activate', player: p, uid: there?.uid ?? -1, num, timing: 'trigger' });
     }
   }
   return out;
