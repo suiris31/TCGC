@@ -227,6 +227,7 @@
   --dur-slow: 0.4s;
 
   /* Plans (z-index) : chaque couche nommée, de bas en haut */
+  --z-under: -1;   /* sous son parent (les DON!! glissées sous une carte, don.css) */
   --z-raise: 1;
   --z-raise-2: 2;
   --z-raise-3: 5;

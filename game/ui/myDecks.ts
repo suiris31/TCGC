@@ -79,9 +79,10 @@ export async function deleteMyDeck(id: string) {
   notify();
 }
 
-// DON!! proposées pour un deck (la standard d'abord, choix par défaut) ; imageUrl relatif, à préfixer par BASE_URL
+// DON!! proposées pour un deck (la standard d'abord, choix par défaut) ; imageUrl relatif, à préfixer par BASE_URL ;
+// drawn : visuels coupés par le serveur (retrait des images), chaque visuel n'est qu'une face dessinée
 export interface DonChoice { id: string; label: string; imageUrl: string }
-export const loadDons = () => call<{ dons: DonChoice[] }>('don');
+export const loadDons = () => call<{ dons: DonChoice[]; drawn?: true }>('don');
 
 // Lien avec la collection
 export interface CardCollection { owned: number; wished: boolean; cheapest: { id: number; eur: number } | null }

@@ -8,6 +8,7 @@ import { cardImage } from './images.ts';
 import { Icon, type IconName } from './kit/index.ts';
 import type { GestureSource } from './table/gestures.ts';
 import { cardLabel } from './table/a11y.ts';
+import { DonImg, useDonArt } from './table/DonArt.tsx';
 
 export interface Preview {
   num: string;
@@ -83,6 +84,32 @@ function Arrow({ now, base }: { now: number; base: number | null }) {
   return <Icon name={now > (base ?? 0) ? 'power-up' : 'power-down'} className="op-card-arrow" size="0.8em" />;
 }
 
+// DON!! données à une carte : de petites cartes glissées sous elle (le visuel de la DON!! du deck de son propriétaire,
+// table/DonArt.tsx), qui dépassent vers le centre de la table, et leur nombre « +N » ; sans visuel, des losanges dorés
+const TUCKED = 3;
+function GivenDon({ s, owner, count }: { s: GameState; owner: PlayerId; count: number }) {
+  const art = useDonArt(s, owner);
+  const title = `${count} DON!! donnée${count > 1 ? 's' : ''} : +${count * 1000} pendant le tour de son propriétaire`;
+  if (!art) {
+    return (
+      <span className="don-chips" title={title}>
+        {Array.from({ length: Math.min(count, 5) }, (_, i) => <i key={i} />)}
+        {count > 5 && <b>+{count - 5}</b>}
+      </span>
+    );
+  }
+  return (
+    <>
+      <span className="op-don-under" aria-hidden="true">
+        {Array.from({ length: Math.min(count, TUCKED) }, (_, i) => (
+          <span key={i} className="op-don-tuck" style={{ ['--i' as string]: i }}><DonImg src={art} /></span>
+        ))}
+      </span>
+      <span className="don-chips op-don-count" title={title}><b>+{count}</b></span>
+    </>
+  );
+}
+
 // Une carte : visuel officiel, puissance et coût actuels (en couleur s'ils sont modifiés), DON!! données, état
 export function CardView({ s, card, owner, size = 'field', hidden = false, look = {}, onClick, onHover, onGrab }: {
   s: GameState;
@@ -149,12 +176,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
       {playCost !== null && size === 'hand' && (
         <span className={`badge badge-cost ${playCost < (d.cost ?? 0) ? 'cheaper' : ''} ${look.dim ? 'too-expensive' : ''}`} title={`Coût à payer pour la jouer${trendText(playCost, d.cost)}`}>{playCost}<Arrow now={playCost} base={d.cost} /></span>
       )}
-      {f && f.card.don > 0 && (
-        <span className="don-chips" title={`${f.card.don} DON!! donnée${f.card.don > 1 ? 's' : ''} : +${f.card.don * 1000} pendant le tour de son propriétaire`}>
-          {Array.from({ length: Math.min(f.card.don, 5) }, (_, i) => <i key={i} />)}
-          {f.card.don > 5 && <b>+{f.card.don - 5}</b>}
-        </span>
-      )}
+      {f && f.card.don > 0 && <GivenDon s={s} owner={f.player} count={f.card.don} />}
       {states.length > 0 && (
         <span className={topBusy ? 'op-card-states is-low' : 'op-card-states'}>
           {states.slice(0, shownStates(states.length, MAX_STATES)).map((x, i) => (
