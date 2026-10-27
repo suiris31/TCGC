@@ -1,7 +1,9 @@
 // En-tête du plateau : la marque, les decks en présence, le tour et la phase, un emplacement d'état (présence de
 // l'adversaire en ligne ; l'horloge du classé à l'étape 3), puis les boutons (retour en arrière, son, panneau,
-// réglages, guide du deck, aide, quitter)
+// réglages, guide du deck, aide, quitter). Sur téléphone, les boutons font 44 px : le retour en arrière, le panneau et
+// « Quitter » restent en vue, le son, les réglages, le guide et l'aide passent dans le menu « ⋯ ».
 import type { ReactNode } from 'react';
+import { MoreMenu, type ScreenAction } from '../kit/index.ts';
 import { useSettings } from '../settings.ts';
 import type { Table } from './useTable.ts';
 
@@ -29,6 +31,16 @@ export function TopBar({ table, brand, match, matchTitle, rival, phase, status, 
   const { board } = table;
   const s = board.state!;
   const turn = `${s.winner !== null ? 'fin' : s.active === board.seat ? 'à toi' : rival}${s.battle ? ' ⚔' : ''}`;
+  const sound = { label: settings.sound ? 'Couper le son' : 'Activer le son', onClick: () => updateSettings({ sound: !settings.sound }) };
+  const openGuide = () => table.setGuide(guideDeck);
+  const guideTitle = `Guide de ton deck (et de celui de ${theirs})`;
+  // téléphone : le menu « ⋯ »
+  const more: ScreenAction[] = [
+    { id: 'sound', label: sound.label, icon: settings.sound ? 'sound-off' : 'sound-on', onClick: sound.onClick, 'data-ui': 'table.sound' },
+    { id: 'settings', label: 'Réglages', icon: 'settings', onClick: () => table.setSettingsOpen(true), 'data-ui': 'table.settings' },
+    { id: 'guide', label: 'Guide de ton deck', icon: 'deck', onClick: openGuide, 'data-ui': 'table.guide' },
+    { id: 'help', label: 'Aide et mots-clés', icon: 'help', onClick: () => table.setHelp(true), 'data-ui': 'table.help' },
+  ];
   return (
     <header className="op-topbar">
       <div className="op-brand">{brand}</div>
@@ -38,13 +50,21 @@ export function TopBar({ table, brand, match, matchTitle, rival, phase, status, 
       </div>
       {status}
       <div className="top-actions">
-        {undo && <button className="icon-btn" data-ui="table.undo" onClick={undo.onClick} disabled={undo.disabled} title="Revenir avant ton dernier choix (Ctrl+Z)">↶</button>}
-        <button className="icon-btn hide-compact" data-ui="table.sound" onClick={() => updateSettings({ sound: !settings.sound })} title={settings.sound ? 'Couper le son' : 'Activer le son'}>{settings.sound ? '🔊' : '🔇'}</button>
-        <button className={`icon-btn only-compact ${board.recommended ? 'icon-reco' : ''}`} data-ui="table.panel" onClick={(e) => { e.stopPropagation(); table.setPanel((o) => !o); }}
-          title={coach ? 'Journal, coach et tous les choix' : 'Journal et tous les choix'}>📜</button>
-        <button className="icon-btn" data-ui="table.settings" onClick={() => table.setSettingsOpen(true)} title="Réglages" aria-label="Réglages">⚙</button>
-        <button className="icon-btn" data-ui="table.guide" onClick={() => table.setGuide(guideDeck)} title={`Guide de ton deck (et de celui de ${theirs})`}>📖</button>
-        <button className="icon-btn hide-compact" data-ui="table.help" onClick={() => table.setHelp(true)} title="Aide et mots-clés (?)">?</button>
+        {undo && <button className="icon-btn" data-ui="table.undo" onClick={undo.onClick} disabled={undo.disabled} title="Revenir avant ton dernier choix (Ctrl+Z)" aria-label="Revenir avant ton dernier choix">↶</button>}
+        {board.compact ? (
+          <>
+            <button className={`icon-btn ${board.recommended ? 'icon-reco' : ''}`} data-ui="table.panel" onClick={(e) => { e.stopPropagation(); table.setPanel((o) => !o); }}
+              title={coach ? 'Journal, coach et tous les choix' : 'Journal et tous les choix'} aria-label={coach ? 'Journal, coach et tous les choix' : 'Journal et tous les choix'}>📜</button>
+            <MoreMenu items={more} label="Son, réglages, guide et aide" data-ui="table.more" />
+          </>
+        ) : (
+          <>
+            <button className="icon-btn" data-ui="table.sound" onClick={sound.onClick} title={sound.label} aria-label={sound.label}>{settings.sound ? '🔊' : '🔇'}</button>
+            <button className="icon-btn" data-ui="table.settings" onClick={() => table.setSettingsOpen(true)} title="Réglages" aria-label="Réglages">⚙</button>
+            <button className="icon-btn" data-ui="table.guide" onClick={openGuide} title={guideTitle} aria-label={guideTitle}>📖</button>
+            <button className="icon-btn" data-ui="table.help" onClick={() => table.setHelp(true)} title="Aide et mots-clés (?)" aria-label="Aide et mots-clés">?</button>
+          </>
+        )}
         <button className="op-btn op-btn-ghost btn-small" data-ui="table.leave" onClick={leave.onClick} title={leave.title}>{leave.label}</button>
       </div>
     </header>
