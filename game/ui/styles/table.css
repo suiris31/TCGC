@@ -160,7 +160,8 @@
 .op-wide .battle-power { font-size: 1.429rem; }
 .op-wide .battle-vs { font-size: 1.143rem; }
 .op-last-move, .op-aim { max-width: min(46rem, 70%); padding: 0.286rem 0.857rem; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-a85); font-size: 0.929rem; }
-.op-last-move { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-left: 3px solid var(--blue); color: var(--text-soft); }
+.op-last-move { max-width: min(40rem, 62%); margin-right: auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-left: 3px solid var(--blue); color: var(--text-soft); }
+.op-center:has(.op-aim) .op-last-move { display: none; }
 .op-last-move b { color: var(--blue-soft); }
 .op-aim { border-color: var(--red-a70); }
 .op-aim.is-ok { border-color: var(--green); }
