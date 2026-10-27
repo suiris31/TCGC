@@ -11,6 +11,7 @@ import { DECKS, deckSize, isAdventureOnly, type DeckList } from '../engine/decks
 import { def } from '../engine/rules.ts';
 import type { CardDef, Color } from '../engine/types.ts';
 import { chooseAdventureDeck } from './adventure/api.ts';
+import { ApiError, call } from './api.ts';
 import { holdLimit, holdProblems } from './adventure/hold.ts';
 import { fetchHoldState } from './adventure/holdState.ts';
 import type { Preview } from './CardView.tsx';
@@ -58,9 +59,10 @@ function useRegulations(): Regulations {
   const [regs, setRegs] = useState<Regulations>(regsCache ?? {});
   useEffect(() => {
     if (regsCache) return;
-    fetch(`${import.meta.env.BASE_URL}api/game/regulations`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((x: Regulations) => { regsCache = x; setRegs(x); }, () => {});
+    // refus du serveur : aucune carte signalée ; serveur injoignable : redemandé à la prochaine ouverture
+    call<Regulations>('GET', 'regulations')
+      .catch((e: unknown) => { if (e instanceof ApiError && e.status) return {}; throw e; })
+      .then((x) => { regsCache = x; setRegs(x); }, () => {});
   }, []);
   return regs;
 }

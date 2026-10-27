@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ECONOMY } from '../../economy/config.ts';
 import type { Wallet } from '../../economy/types.ts';
+import { useReducedMotion } from '../settings.ts';
 import { sfx } from '../sound.ts';
 import { loadWallet, subscribeWallet } from './api.ts';
 
@@ -55,23 +56,10 @@ export function useWallet(load?: () => Promise<Wallet>): { wallet: Wallet | null
   return { wallet, error, reload: () => void refreshWallet(load) };
 }
 
-function useReducedMotion(): boolean {
-  const query = '(prefers-reduced-motion: reduce)';
-  const [reduced, setReduced] = useState(() => typeof matchMedia === 'function' && matchMedia(query).matches);
-  useEffect(() => {
-    if (typeof matchMedia !== 'function') return;
-    const m = matchMedia(query);
-    const update = () => setReduced(m.matches);
-    m.addEventListener('change', update);
-    return () => m.removeEventListener('change', update);
-  }, []);
-  return reduced;
-}
-
 // ---------- Pastille du solde ----------
 
-// Le solde qui défile jusqu'à sa nouvelle valeur, et l'écart qui s'envole (« +45 ฿ ») ; sobre si le système demande
-// de réduire les animations. Un gain fait un petit son (s'il est activé dans le jeu).
+// Le solde qui défile jusqu'à sa nouvelle valeur, et l'écart qui s'envole (« +45 ฿ ») ; sobre avec « Animations réduites »
+// (réglage du jeu, par défaut celui du système). Un gain fait un petit son (s'il est activé dans le jeu).
 function useAnimatedBalance(balance: number | undefined) {
   const reduced = useReducedMotion();
   const [shown, setShown] = useState(balance);

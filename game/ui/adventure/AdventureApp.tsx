@@ -2,12 +2,14 @@
 // - Premier passage : écran d'accueil, « Prendre la mer » donne le deck de départ (dans la Cale) et le deck d'aventure.
 // - Carte du monde (WorldMap) avec la progression lue sur le serveur ; une île verrouillée s'explique, une île ouverte
 //   ou gagnée ouvre son chapitre (ChapterScreen) ; « Ma Cale » et « Mon deck » ouvrent les écrans de la tâche 1.18 ;
-//   le solde de la bourse et « Boutique » ouvrent la boutique (tâche 2.3).
+//   le solde de la bourse et « Boutique » ouvrent la boutique (tâche 2.3). Chaque écran a son adresse (routes.ts :
+//   #play/aventure, /chapitre/<id>, /cale, /deck, /boutique) : le Retour revient à l'écran précédent.
 // - « Combattre » lance la partie sur le plateau du jeu (App, partie imposée) : ton deck d'aventure contre le deck et le
 //   niveau du chapitre. Une partie quittée ou coupée (onglet fermé) se reprend depuis le chapitre.
 // - Fin de partie : l'enregistrement final est envoyé, puis le serveur rejoue la partie et donne les récompenses de la
 //   première victoire (RewardsScreen), puis le gain de la partie en Berry (barème de l'IA du chapitre, bonus du jour,
-//   coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening) ou plus tard. Le plateau
+//   coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening, chacun tiré au
+//   moment où on l'ouvre : useBoosterOpening) ou plus tard. Le plateau
 //   reste en place derrière l'écran de fin : le récap du coach reste accessible jusqu'au retour à la carte.
 // Rien ne se lance sans un choix explicite ; les refus et erreurs du serveur s'affichent tels quels (en français).
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -15,21 +17,24 @@ import { ARCS, findChapter } from '../../adventure/arcs.ts';
 import { arcFinished, chapterStatuses, currentChapter, requiredChapters } from '../../adventure/progress.ts';
 import type { ChapterStatus } from '../../adventure/types.ts';
 import { rlModelAvailable } from '../../ai/client.ts';
-import type { BoosterContent } from '../../boosters/types.ts';
 import { replayRecord, type GameRecord, type Replayed } from '../../coach/archive.ts';
 import { DECKS } from '../../engine/decks.ts';
 import { App } from '../App.tsx';
 import { flushQueue, loadRecord, loadSummaries, whenSaved } from '../archiveClient.ts';
 import { deckInfo, loadMyDecks, playable, useMyDecks } from '../myDecks.ts';
+import { goBack, goUp, navigate, useRoute, type AdventureScreen } from '../routes.ts';
+import { IconButton } from '../kit/index.ts';
 import { useSettings } from '../settings.ts';
+import { SettingsPanel } from '../SettingsPanel.tsx';
 import { useGameGain } from '../economy/GameGain.tsx';
 import { ShopScreen } from '../economy/Shop.tsx';
+import { useBoosterOpening } from '../economy/useBoosterOpening.ts';
 import { refreshWallet, useWallet, WalletBadge } from '../economy/Wallet.tsx';
 import { boosterSfx, setSoundEnabled } from '../sound.ts';
 import { AdventureDeckScreen } from './AdventureDeck.tsx';
 import { ArcSummary } from './ArcSummary.tsx';
-import { AdventureApiError, loadAdventure, loadHold, openWonBooster, sendChapterResult, startArc, wonChapters, type AdventureState } from './api.ts';
-import { BoosterOpening, ownedCounts } from './BoosterOpening.tsx';
+import { AdventureApiError, loadAdventure, sendChapterResult, startArc, wonChapters, type AdventureState, type WonBooster } from './api.ts';
+import { BoosterOpening } from './BoosterOpening.tsx';
 import { ChapterScreen, type Interrupted } from './ChapterScreen.tsx';
 import { HoldScreen } from './Hold.tsx';
 import { PackIcon, RewardsScreen, type SendState } from './RewardsScreen.tsx';
@@ -38,7 +43,11 @@ import { WorldMap, forgetShip } from './WorldMap.tsx';
 const ARC = ARCS[0];
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-type Screen = { kind: 'map' } | { kind: 'chapter'; id: string } | { kind: 'hold' } | { kind: 'deck' } | { kind: 'shop' };
+type Screen = { kind: 'map' } | AdventureScreen;
+const MAP = { name: 'aventure' } as const;
+
+// Ouvre un écran de l'aventure (une entrée de plus dans l'historique)
+const setScreen = (s: Screen, replace = false) => navigate(s.kind === 'map' ? MAP : { name: 'aventure', screen: s }, { replace });
 
 // Partie en cours ou finie (le plateau reste monté jusqu'au retour à la carte, pour le récap du coach)
 interface Match {
@@ -80,7 +89,9 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   useMyDecks();   // mes decks arrivent après coup : deckInfo (deck d'aventure) les relit à chaque affichage
   const [adv, setAdv] = useState<AdventureState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [screen, setScreen] = useState<Screen>({ kind: 'map' });
+  const route = useRoute();
+  const screen: Screen = route.name === 'aventure' && route.screen ? route.screen : { kind: 'map' };
+  const chapterId = screen.kind === 'chapter' ? screen.id : undefined;
   const [picked, setPicked] = useState<string>();
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
@@ -90,9 +101,11 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   const [board, setBoard] = useState(false);          // plateau affiché (partie en cours, ou récap du coach)
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [sent, setSent] = useState<SendState>(null);
-  const [opening, setOpening] = useState<{ contents: BoosterContent[]; owned: Record<string, number> } | null>(null);
-  const [openBusy, setOpenBusy] = useState(false);
-  const [openError, setOpenError] = useState<string>();
+  // ouverture des boosters (récompenses ou bouton de la carte) ; à la fin, retour à la carte
+  const boosterOpening = useBoosterOpening({ onDone: () => toMap() });
+  const opening = boosterOpening.props;
+  const openBusy = boosterOpening.busy;
+  const openError = boosterOpening.error;
   const { gain, claim, retry: retryGain, reset: resetGain } = useGameGain();
 
   const reload = useCallback(async () => {
@@ -105,10 +118,22 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
   useEffect(() => { void loadMyDecks(); }, []);
+  // retour à la carte (depuis la Cale, le deck, la boutique...) : progression, Cale et decks relus
+  const away = useRef(false);
+  const atMap = screen.kind === 'map';
+  useEffect(() => {
+    if (!atMap) away.current = true;
+    else if (away.current) {
+      away.current = false;
+      void reload();
+      void loadMyDecks();
+    }
+  }, [atMap, reload]);
 
   const wins = useMemo(() => (adv ? wonChapters(adv) : new Set<string>()), [adv]);
   const winsRef = useRef(wins);
   winsRef.current = wins;
+  const [settingsOpen, setSettingsOpen] = useState(false);   // réglages du jeu, ouverts depuis la carte
   const [finale, setFinale] = useState(false);       // bilan de l'arc, montré à la carte après la victoire qui le termine
   const statuses = useMemo(() => chapterStatuses(ARC, wins) as Record<string, ChapterStatus>, [wins]);
   const current = currentChapter(ARC, wins);
@@ -124,7 +149,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       forgetShip();   // le bateau part du village de Fuchsia
       await loadMyDecks();
       setAdv(state);
-      setScreen({ kind: 'map' });
+      if (screen.kind !== 'map') setScreen({ kind: 'map' }, true);
     } catch (e) {
       setError(message(e));
     } finally {
@@ -133,14 +158,16 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   };
 
   // ---------- Chapitre ----------
-  const openChapter = (id: string) => {
-    setScreen({ kind: 'chapter', id });
+  // à l'ouverture du chapitre (adresse ouverte, rechargement compris) et au retour du plateau : partie interrompue ?
+  const prepareChapter = (id: string) => {
     setError(undefined);
     setInterrupted(undefined);
     const level = findChapter(id)?.chapter.opponent.level;
     if (level === 4 && rlOk === null) void rlModelAvailable().then(setRlOk);
     if (adv?.deckId) void findInterrupted(id, adv.deckId, wins.has(id)).then(setInterrupted, () => undefined);
   };
+  useEffect(() => { if (chapterId) prepareChapter(chapterId); }, [chapterId, adv?.deckId]);
+  const openChapter = (id: string) => setScreen({ kind: 'chapter', id });
 
   const onPick = (id: string) => {
     setPicked(id);
@@ -209,7 +236,6 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   const onEnd = ({ won, saved }: { won: boolean; saved: Promise<string> }) => {
     if (!match) return;
     setOutcome({ chapter: match.chapter, won, recordId: saved });
-    setOpenError(undefined);
     const gainOf = () => claim(() => saved.catch(() => { throw new Error('La partie n’a pas pu être enregistrée'); }));
     if (won) send(match.chapter, saved, gainOf);
     else {
@@ -225,39 +251,42 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     setBoard(false);
     if (!outcome && match) {
       setMatch(null);
-      openChapter(match.chapter);
+      prepareChapter(match.chapter);
     }
   };
 
-  const toMap = () => {
+  // fin de la partie (plateau, écran de fin, boosters) ; toMap y ajoute le retour à la carte
+  const resetMatch = () => {
     setMatch(null);
     setOutcome(null);
     setSent(null);
     resetGain();
-    setOpening(null);
+    boosterOpening.close();
     setPicked(undefined);
-    setScreen({ kind: 'map' });
-    void reload();
+    setBoard(false);
   };
+  const toMap = () => {
+    resetMatch();
+    if (screen.kind === 'map') void reload();
+    else goUp(MAP);
+  };
+  // l'adresse quitte le chapitre de la partie (Retour après la fin) : la partie est refermée comme avec « Carte »
+  const playedChapter = outcome?.chapter ?? match?.chapter;
+  useEffect(() => {
+    if (playedChapter && chapterId !== playedChapter) resetMatch();
+  }, [chapterId]);
 
   // ---------- Boosters ----------
-  // La Cale est lue AVANT l'ouverture (« Nouveau ! ») ; chaque booster est tiré par le serveur
-  const openBoosters = async (ids: string[]) => {
-    setOpenBusy(true);
-    setOpenError(undefined);
-    const contents: BoosterContent[] = [];
-    try {
-      const owned = ownedCounts((await loadHold()).cards);
-      try {
-        for (const id of ids) contents.push((await openWonBooster(id)).content);
-      } finally {
-        if (contents.length) setOpening({ contents, owned });
-      }
-    } catch (e) {
-      setOpenError(`${message(e)}${contents.length ? ' (les boosters non ouverts restent dans ta Cale)' : ''}`);
-    } finally {
-      setOpenBusy(false);
-    }
+  // Boosters connus de l'écran : ceux de la partie (chapitre, coffre de la semaine) et ceux de la Cale
+  const openBoosters = (ids: string[]) => {
+    const known = new Map<string, WonBooster>();
+    const list = [
+      ...(sent?.state === 'done' ? sent.value.boosters : []),
+      ...(gain?.state === 'done' ? gain.reward.chest : []),
+      ...(adv?.boosters ?? []),
+    ];
+    for (const b of list) known.set(b.id, b);
+    void boosterOpening.start(ids.flatMap((id) => known.get(id) ?? []));
   };
 
   // ---------- Affichage ----------
@@ -278,18 +307,18 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     content = (
       <RewardsScreen chapter={chapterOf(outcome.chapter)!} won={outcome.won} result={sent} gain={gain} onRetryGain={retryGain}
         opening={openBusy} openError={openError}
-        onOpen={(ids) => void openBoosters(ids)} onLater={toMap}
+        onOpen={openBoosters} onLater={toMap}
         onResend={() => outcome.recordId && send(outcome.chapter, outcome.recordId)}
         onRecap={match ? () => setBoard(true) : undefined}
-        onRetry={() => { const id = outcome.chapter; toMap(); openChapter(id); }}
+        onRetry={() => { const id = outcome.chapter; resetMatch(); if (chapterId === id) prepareChapter(id); else openChapter(id); }}
         onMap={toMap} />
     );
   } else if (screen.kind === 'hold') {
-    content = <HoldScreen onBack={() => { setScreen({ kind: 'map' }); void reload(); }} />;
+    content = <HoldScreen onBack={() => goBack(MAP)} />;
   } else if (screen.kind === 'shop') {
-    content = <ShopScreen onBack={() => { setScreen({ kind: 'map' }); void reload(); }} />;
+    content = <ShopScreen onBack={() => goBack(MAP)} />;
   } else if (screen.kind === 'deck') {
-    content = <AdventureDeckScreen onBack={() => { setScreen({ kind: 'map' }); void reload(); void loadMyDecks(); }} />;
+    content = <AdventureDeckScreen onBack={() => goBack(MAP)} />;
   } else if (screen.kind === 'chapter' && chapterOf(screen.id)) {
     const chapter = chapterOf(screen.id)!;
     const blocked = !adv.deckId ? 'Tu n’as pas de deck d’aventure : choisis-en un dans « Mon deck ».'
@@ -310,16 +339,17 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
           resetGain();
           send(chapter.id, Promise.resolve(id), () => claim(() => Promise.resolve(id)));
         }}
-        onDeck={() => setScreen({ kind: 'deck' })} onBack={() => setScreen({ kind: 'map' })} />
+        onDeck={() => setScreen({ kind: 'deck' })} onBack={() => goUp(MAP)} />
     );
   } else {
     content = (
       <>
         <MapScreen adv={adv} statuses={statuses} current={current} picked={picked} onPick={onPick} busy={openBusy} error={openError}
           finished={arcFinished(ARC, wins)} onBack={onBack} onHold={() => setScreen({ kind: 'hold' })} onDeck={() => setScreen({ kind: 'deck' })}
-          onShop={() => setScreen({ kind: 'shop' })}
-          onChapter={openChapter} onOpenBoosters={() => void openBoosters(adv.boosters.map((b) => b.id))} onSummary={() => setFinale(true)} />
+          onShop={() => setScreen({ kind: 'shop' })} onSettings={() => setSettingsOpen(true)}
+          onChapter={openChapter} onOpenBoosters={() => openBoosters(adv.boosters.map((b) => b.id))} onSummary={() => setFinale(true)} />
         {finale && !opening && <ArcSummary arc={ARC} adv={adv} onClose={() => setFinale(false)} />}
+        {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       </>
     );
   }
@@ -336,14 +366,13 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
             level: playing.opponent.level,
             opponentName: playing.opponent.name,
             resume: match.resume,
+            mode: 'aventure',
             onEnd,
             onLeave: onLeaveBoard,
           }} />
         </div>
       )}
-      {opening && (
-        <BoosterOpening content={opening.contents} owned={opening.owned} onDone={toMap} />
-      )}
+      {opening && <BoosterOpening {...opening} />}
     </>
   );
 }
@@ -378,7 +407,7 @@ function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: strin
   );
 }
 
-function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPick, onBack, onHold, onDeck, onShop, onChapter, onOpenBoosters, onSummary }: {
+function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPick, onBack, onHold, onDeck, onShop, onSettings, onChapter, onOpenBoosters, onSummary }: {
   adv: AdventureState;
   statuses: Record<string, ChapterStatus>;
   current?: string;
@@ -391,6 +420,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
   onHold: () => void;
   onDeck: () => void;
   onShop: () => void;
+  onSettings: () => void;
   onChapter: (id: string) => void;
   onOpenBoosters: () => void;
   onSummary: () => void;
@@ -406,6 +436,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
         <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.back" onClick={onBack}>← Jeu</button>
         <h1 className="op-adv-map-title">{ARC.title}</h1>
         <WalletBadge wallet={wallet} onClick={onShop} />
+        <IconButton icon="settings" label="Réglages" variant="quiet" data-ui="adventure.settings" onClick={onSettings} />
         <div className="op-adv-head-actions">
           {waiting > 0 && (
             <button className="op-btn btn-small op-adv-gift" data-ui="adventure.boosters" disabled={busy} onClick={onOpenBoosters} title="Ouvrir tes boosters gagnés (ils restent aussi dans ta Cale)">

@@ -4,17 +4,44 @@ import { Component, lazy, Suspense, useCallback, useEffect, useState, type React
 import { loadCardData } from '../engine/cards/index.ts';
 import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
+import { ApiError, call } from './api.ts';
 import { setArchiveUser } from './archiveClient.ts';
+import { deviceClasses, useDevice } from './device.ts';
 import { currentMatches, type CurrentMatch } from './online/api.ts';
 import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
-import { useSettings } from './settings.ts';
-import './styles.css';
+import { goBack, goUp, HOME, navigate, useRoute } from './routes.ts';
+import { useReducedMotion, useSettings } from './settings.ts';
+import { setSoundEnabled } from './sound.ts';
+// Styles du jeu, un fichier par sujet ; l'ordre compte (cascade) : tokens et base d'abord
+import './styles/tokens.css';
+import './styles/base.css';
+import './styles/setup.css';
+import './styles/table.css';
+import './styles/card.css';
+import './styles/fx.css';
+import './styles/modals.css';
+import './styles/guide.css';
+import './styles/coach.css';
+import './styles/history.css';
+import './styles/builder.css';
+import './styles/online.css';
+import './styles/map.css';
+import './styles/boosters.css';
+import './styles/adventure.css';
+import './styles/shop.css';
+import './styles/atelier.css';
+import './styles/settings.css';
+import './styles/a11y.css';
+import './styles/gestures.css';
+import './styles/table-compact.css';
 
 // Atelier des écrans du jeu (#play/atelier) : chargé seulement quand on l'ouvre
 const Atelier = lazy(() => import('./atelier/Atelier.tsx').then((m) => ({ default: m.Atelier })));
 // Mode Aventure (#play/aventure) : chargé quand on l'ouvre
 const AdventureApp = lazy(() => import('./adventure/AdventureApp.tsx').then((m) => ({ default: m.AdventureApp })));
+// Boutique (#play/boutique, la même que dans l'aventure) : chargée quand on l'ouvre
+const ShopScreen = lazy(() => import('./economy/Shop.tsx').then((m) => ({ default: m.ShopScreen })));
 
 // Version du programme de cette page ; celle du serveur arrive avec les cartes
 const ENGINE = typeof __ENGINE__ === 'string' ? __ENGINE__ : 'inconnue';
@@ -30,39 +57,22 @@ let cardsLoaded: Promise<void> | null = null;
 
 async function fetchCards(): Promise<void> {
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${import.meta.env.BASE_URL}api/game/catalog`, { cache: 'no-cache' });
-    if (res.ok) {
-      const { engine, cards } = (await res.json()) as { engine: string; cards: Record<string, CardData> };
+    try {
+      const { engine, cards } = await call<{ engine: string; cards: Record<string, CardData> }>('GET', 'catalog', undefined, { cache: 'no-cache' });
       if (engine !== ENGINE && engine !== 'inconnue' && ENGINE !== 'inconnue') throw new Outdated(engine);
       return loadCardData(cards);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes, ou le jeu est fermé
+      if (e.status === 503 && e.code === 'game_closed') throw new Closed();
+      if (e.status !== 503 || attempt >= 40) throw new Error(e.status ? `le serveur a répondu ${e.status}` : 'le serveur ne répond pas');
     }
-    // 503 : le serveur vient de démarrer et télécharge encore les informations des cartes, ou le jeu est fermé
-    if (res.status === 503 && (await res.json().catch(() => null))?.code === 'game_closed') throw new Closed();
-    if (res.status !== 503 || attempt >= 40) throw new Error(`le serveur a répondu ${res.status}`);
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }
 
-type Mode = { kind: 'solo' } | { kind: 'lobby'; code?: string } | { kind: 'match'; id: string } | { kind: 'atelier'; page?: string } | { kind: 'adventure' };
-
-// Adresse de l'onglet : #play/salle/<code> (lien envoyé par un ami), #play/partie/<id> (partie en ligne ouverte) ou
-// #play/atelier[/<page>] (essais des écrans de l'aventure, sans lien visible) ou #play/aventure (mode Aventure)
-function modeFromHash(): Mode {
-  if (/^#play\/aventure(?:\/|$)/.test(window.location.hash)) return { kind: 'adventure' };
-  const atelier = window.location.hash.match(/^#play\/atelier(?:\/([\w-]+))?$/);
-  if (atelier) return { kind: 'atelier', page: atelier[1] };
-  const room = window.location.hash.match(/^#play\/salle\/([A-Za-z0-9-]+)/);
-  if (room) return { kind: 'lobby', code: room[1].toUpperCase() };
-  const match = window.location.hash.match(/^#play\/partie\/([\w-]+)/);
-  if (match) return { kind: 'match', id: match[1] };
-  return { kind: 'solo' };
-}
-
-function hashOf(mode: Mode): string {
-  if (mode.kind === 'atelier') return mode.page ? `#play/atelier/${mode.page}` : '#play/atelier';
-  if (mode.kind === 'adventure') return '#play/aventure';
-  return mode.kind === 'match' ? `#play/partie/${mode.id}` : '#play';
-}
+// Écrans de l'écran de départ (App) : accueil, partie contre l'IA, Mes decks, Mes parties
+const SOLO = new Set(['home', 'rapide', 'jeu', 'decks', 'parties']);
 
 type GameAppProps = { userId: number; notice?: string; onImmersive: (on: boolean) => void };
 
@@ -97,13 +107,11 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   const [attempt, setAttempt] = useState(0);
   const [settings] = useSettings();
   const [full, setFull] = useState(false);
-  const [mode, setModeState] = useState<Mode>(modeFromHash);
+  // l'écran suit l'adresse (routes.ts) : chaque écran a la sienne, le Retour revient au précédent, un rechargement le
+  // rouvre
+  const route = useRoute();
+  const solo = SOLO.has(route.name);
   const [current, setCurrent] = useState<CurrentMatch | null>(null);
-  const setMode = useCallback((next: Mode) => {
-    setModeState(next);
-    // l'adresse suit la partie ouverte (un rechargement la rouvre), sans créer de page dans l'historique
-    window.history.replaceState(null, '', hashOf(next));
-  }, []);
 
   setArchiveUser(userId);
 
@@ -120,67 +128,71 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   };
 
   // Tailles du jeu en rem : la taille du texte de la page ne change que pendant que le jeu est affiché. La taille de
-  // l'interface choisie (--ui) s'applique dès l'ouverture, aventure comprise ; la partie et le salon la suivent ensuite
+  // l'interface choisie (--ui) s'applique à tous les écrans du jeu, et change dès qu'on la règle
   useEffect(() => {
     document.documentElement.classList.add('opc-on');
-    document.documentElement.style.setProperty('--ui', String(settings.uiScale));
     return () => {
       document.documentElement.classList.remove('opc-on');
       document.documentElement.style.removeProperty('--ui');
     };
   }, []);
+  useEffect(() => { document.documentElement.style.setProperty('--ui', String(settings.uiScale)); }, [settings.uiScale]);
+  // son et animations réduites : réglés une fois pour tout le jeu (styles/settings.css)
+  useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
+  const reducedMotion = useReducedMotion();
+  // téléphone en portrait ou en paysage : .is-compact, .is-portrait, .is-landscape (seule source pour les styles)
+  const device = useDevice();
 
   useEffect(() => () => onImmersive(false), [onImmersive]);
 
-  // #play/atelier tapé dans la barre d'adresse alors que l'onglet est ouvert (la page n'est pas rechargée)
-  useEffect(() => {
-    const onHash = () => { if (window.location.hash.startsWith('#play/atelier')) setModeState(modeFromHash()); };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
-
   // partie en ligne ou salle en cours : proposée sur l'écran de départ
   useEffect(() => {
-    if (mode.kind !== 'solo') return;
+    if (!solo) return;
     let cancelled = false;
     currentMatches().then((list) => { if (!cancelled) setCurrent(list.find((m) => m.status === 'playing') ?? list[0] ?? null); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [mode]);
+  }, [solo]);
 
-  // salon et partie en ligne : tout l'écran
+  // salon, partie en ligne, aventure, boutique, atelier : tout l'écran
   useEffect(() => {
-    if (mode.kind === 'solo') return;
+    if (solo) return;
     setFull(true);
     onImmersive(true);
-  }, [mode, onImmersive]);
+  }, [solo, onImmersive]);
   const immersive = useCallback((on: boolean) => {
     setFull(on);
     onImmersive(on);
   }, [onImmersive]);
 
   return (
-    <div className={full ? 'opc opc-full' : 'opc'}>
+    <div className={`opc${full ? ' opc-full' : ''}${reducedMotion ? ' is-reduced-motion' : ''}${deviceClasses(device)}`}>
       {state === 'ready' ? (
-        mode.kind === 'lobby' ? (
-          <Lobby initialCode={mode.code} onOpen={(id) => setMode({ kind: 'match', id })} onBack={() => setMode({ kind: 'solo' })} />
-        ) : mode.kind === 'match' ? (
-          <OnlineMatch key={mode.id} id={mode.id} onLeave={() => setMode({ kind: 'solo' })} />
-        ) : mode.kind === 'adventure' ? (
+        route.name === 'ami' || route.name === 'salle' ? (
+          // la partie ouverte remplace le salon dans l'historique : le Retour depuis la partie ramène à l'accueil
+          <Lobby key={route.name === 'salle' ? route.code : ''} initialCode={route.name === 'salle' ? route.code : undefined}
+            onOpen={(id) => navigate({ name: 'partie', id }, { replace: true })} onBack={() => goUp(HOME)} />
+        ) : route.name === 'partie' ? (
+          <OnlineMatch key={route.id} id={route.id} onLeave={() => goUp(HOME)} />
+        ) : route.name === 'aventure' ? (
           <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de l’aventure…</div>}>
-            <AdventureApp onBack={() => setMode({ kind: 'solo' })} />
+            <AdventureApp onBack={() => goUp(HOME)} />
           </Suspense>
-        ) : mode.kind === 'atelier' ? (
+        ) : route.name === 'boutique' ? (
+          <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de la boutique…</div>}>
+            <div className="op-adv-layer"><ShopScreen onBack={() => goBack(HOME)} /></div>
+          </Suspense>
+        ) : route.name === 'atelier' ? (
           <Suspense fallback={<div className="opc-wait"><span className="op-spinner" /> Chargement de l’atelier…</div>}>
-            <Atelier page={mode.page} onPage={(page) => setMode({ kind: 'atelier', page })} onBack={() => setMode({ kind: 'solo' })} />
+            <Atelier page={route.page} onPage={(page) => navigate({ name: 'atelier', page })} onBack={() => goUp(HOME)} />
           </Suspense>
         ) : (
-          <App notice={notice} onImmersive={immersive} adventure={{ onOpen: () => setMode({ kind: 'adventure' }) }} online={{
-            onOpen: () => setMode({ kind: 'lobby' }),
+          <App notice={notice} onImmersive={immersive} adventure={{ onOpen: () => navigate({ name: 'aventure' }) }} online={{
+            onOpen: () => navigate({ name: 'ami' }),
             resume: current ? {
               label: current.status === 'playing'
                 ? `Partie en cours contre ${current.opponent} : elle t’attend.`
                 : `Ta salle ${current.code} attend ton ami.`,
-              onResume: () => setMode({ kind: 'match', id: current.id }),
+              onResume: () => navigate({ name: 'partie', id: current.id }),
             } : undefined,
           }} />
         )

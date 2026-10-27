@@ -2,8 +2,8 @@
 // coupé pendant la partie), la partie attend dans le navigateur et part au lancement suivant. La file d'attente est
 // propre à chaque compte : sur un appareil partagé, une partie ne peut pas partir sur le compte d'un autre.
 import type { GameRecord, GameSummary } from '../coach/archive.ts';
+import { call } from './api.ts';
 
-const API = `${import.meta.env.BASE_URL}api/game/records`;
 let userId: number | null = null;
 
 // Compte connecté (appelé à l'ouverture du jeu)
@@ -48,8 +48,8 @@ async function encode(rec: GameRecord): Promise<{ body: BodyInit; type: string }
 async function put(rec: GameRecord): Promise<boolean> {
   try {
     const { body, type } = await encode(rec);
-    const res = await fetch(`${API}/${encodeURIComponent(rec.id)}`, { method: 'PUT', headers: { 'Content-Type': type }, body });
-    return res.ok;
+    await call('PUT', `records/${encodeURIComponent(rec.id)}`, body, { type });
+    return true;
   } catch {
     return false;
   }
@@ -89,17 +89,9 @@ export function flushQueue() {
   for (const rec of Object.values(queued())) void saveRecord(rec);
 }
 
-export async function loadSummaries(): Promise<GameSummary[]> {
-  const res = await fetch(API, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`le serveur a répondu ${res.status}`);
-  return (await res.json()) as GameSummary[];
-}
+export const loadSummaries = () => call<GameSummary[]>('GET', 'records');
 
-export async function loadRecord(id: string): Promise<GameRecord> {
-  const res = await fetch(`${API}/${encodeURIComponent(id)}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`le serveur a répondu ${res.status}`);
-  return (await res.json()) as GameRecord;
-}
+export const loadRecord = (id: string) => call<GameRecord>('GET', `records/${encodeURIComponent(id)}`);
 
 // Import de parties enregistrées par l'ancien OP-Coach (fichiers JSON du dossier parties/) : envoyées telles quelles,
 // le serveur vérifie que ce sont bien des parties

@@ -1,8 +1,8 @@
 // Client des routes de l'économie (server/game-economy.js) : les écrans passent par ces fonctions, ils n'appellent pas
 // fetch eux-mêmes. Le serveur garde et calcule tout (solde, bonus, coffre, plafond, prix) : ces fonctions ne font que
-// demander. Un refus arrive comme une AdventureApiError (game/ui/adventure/api.ts), avec le message du serveur (en
-// français, à montrer tel quel) et son code ('insufficient_funds', 'hold_changed', 'not_found'...).
-import { call } from '../adventure/api.ts';
+// demander. Un refus arrive comme une ApiError (game/ui/api.ts), avec le message du serveur (en français, à montrer tel
+// quel) et son code ('insufficient_funds', 'hold_changed', 'not_found'...).
+import { call } from '../api.ts';
 import type {
   CounterOffer, CounterPurchase, DuplicatesExchange, DuplicatesPreview, GameReward, LedgerPage, Purchase, PurchaseKind,
   Shop, Wallet,
@@ -29,35 +29,35 @@ function publish<T extends { wallet: Wallet }>(result: T): T {
 // double clic) ne refait pas l'opération
 export const newOperationId = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
 
-const post = <T extends { wallet: Wallet }>(path: string, body?: unknown) => call<T>(path, 'POST', body).then(publish);
+const post = <T extends { wallet: Wallet }>(path: string, body?: unknown) => call<T>('POST', path, body).then(publish);
 
 // ---------- Routes ----------
 
 // GET /api/game/wallet
 export async function loadWallet(): Promise<Wallet> {
-  const wallet = await call<Wallet>('wallet');
+  const wallet = await call<Wallet>('GET', 'wallet');
   publish({ wallet });
   return wallet;
 }
 
 // GET /api/game/wallet/history?before=<id> : du plus récent au plus ancien, par pages
 export const loadHistory = (before?: number) =>
-  call<LedgerPage>(before === undefined ? 'wallet/history' : `wallet/history?before=${encodeURIComponent(before)}`);
+  call<LedgerPage>('GET', before === undefined ? 'wallet/history' : `wallet/history?before=${encodeURIComponent(before)}`);
 
 // GET /api/game/shop
-export const loadShop = () => call<Shop>('shop');
+export const loadShop = () => call<Shop>('GET', 'shop');
 
 // POST /api/game/shop/buy : purchaseId = newOperationId(), tiré au clic de confirmation
 export const buy = (set: string, kind: PurchaseKind, purchaseId: string) => post<Purchase>('shop/buy', { set, kind, purchaseId });
 
 // GET /api/game/shop/counter
-export const loadCounter = () => call<CounterOffer>('shop/counter');
+export const loadCounter = () => call<CounterOffer>('GET', 'shop/counter');
 
 // POST /api/game/shop/counter : purchaseId = newOperationId()
 export const buyAtCounter = (number: string, purchaseId: string) => post<CounterPurchase>('shop/counter', { number, purchaseId });
 
 // GET /api/game/duplicates
-export const previewDuplicates = (withVariants = false) => call<DuplicatesPreview>(`duplicates?withVariants=${withVariants ? 1 : 0}`);
+export const previewDuplicates = (withVariants = false) => call<DuplicatesPreview>('GET', `duplicates?withVariants=${withVariants ? 1 : 0}`);
 
 // POST /api/game/duplicates/exchange : stateKey de l'aperçu, exchangeId = newOperationId()
 export const exchangeDuplicates = (stateKey: string, exchangeId: string, withVariants = false) =>

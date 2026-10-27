@@ -1,0 +1,49 @@
+/* Fenêtres : cadre commun (anciennes fenêtres .modal : fin de partie, Quitter), puis le contenu de celles du plateau
+   (mulligan, choix, déclenchement, coût, fin du tour, défausse, aide : Dialog du kit) et la bulle de la première partie. */
+/* hors partie, la barre d'onglets de TCGC reste visible : les fenêtres s'arrêtent au-dessus d'elle */
+.opc:not(.opc-full) .modal { bottom: calc(var(--tabbar-h, 64px) + var(--safe-bottom, 0px)); }
+.modal { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; background: var(--backdrop-a72); backdrop-filter: blur(2px); animation: op-fade 0.15s ease-out; }
+.modal-box { max-width: 51.429rem; width: calc(100% - 2.857rem); max-height: 88vh; overflow: auto; padding: 1.429rem; background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; gap: 0.857rem; box-shadow: 0 24px 60px var(--black-a60); animation: pop 0.18s ease-out; }
+.modal-wide { max-width: 74.286rem; }
+.modal-box h2, .modal-box h3 { margin: 0; }
+.modal-actions { display: flex; gap: 0.714rem; justify-content: center; flex-wrap: wrap; }
+.pick-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; padding: 0.429rem 0; }
+.pick { display: flex; flex-direction: column; align-items: center; gap: 0.429rem; }
+.pick-reco .op-btn { box-shadow: 0 0 0 2px var(--accent); }
+.modal-mulligan .op-kit-dialog-body { text-align: center; }
+.modal-mulligan .op-kit-dialog-actions, .modal-trigger .op-kit-dialog-actions, .modal-picker .op-kit-dialog-actions { justify-content: center; }
+.op-decision .op-kit-dialog-body { display: flex; flex-direction: column; gap: 0.857rem; }
+.op-decision .op-kit-dialog-body > * { margin: 0; }
+.op-decision .op-kit-dialog-actions .op-btn, .op-decision .pick .op-btn { min-height: max(44px, 2.75rem); }
+.trigger-body { display: flex; gap: 1.286rem; align-items: flex-start; }
+.trigger-text { display: flex; flex-direction: column; gap: 0.429rem; }
+.cost-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.571rem; }
+.cost-btn { height: 3.714rem; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-size: 1.429rem; font-weight: 900; }
+@media (hover: hover) { .cost-btn:hover { border-color: var(--accent); background: var(--surface-2); } }
+.modal-confirm ul { margin: 0; padding-left: 1.429rem; }
+.trash-grid { display: flex; flex-wrap: wrap; gap: 0.571rem; }
+.help-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.714rem; }
+.help-grid h3 { font-size: 1rem; color: var(--accent); margin: 0.571rem 0 0.286rem; }
+.help-grid ul { margin: 0; padding-left: 1.286rem; display: flex; flex-direction: column; gap: 0.286rem; font-size: 0.929rem; }
+.glossary { margin: 0; display: flex; flex-direction: column; gap: 0.429rem; font-size: 0.929rem; }
+.glossary dt { font-weight: 800; color: var(--accent); }
+.glossary dd { margin: 0 0 2px; color: var(--text-soft); }
+@keyframes op-fade { from { opacity: 0; } }
+
+/* Première partie : une bulle en haut du plateau, sous les fenêtres de décision (elle ne cache pas la main de départ) */
+.opc .op-first-tip {
+  position: fixed; top: 3.6rem; left: 50%; transform: translateX(-50%); z-index: var(--z-alert);
+  width: min(40rem, calc(100% - 1.5rem)); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  padding: 0.5rem 0.4rem 0.5rem 0.9rem; background: var(--bg-2); border: 1px solid var(--accent); border-radius: 14px;
+  box-shadow: var(--shadow-2); animation: op-fade var(--dur-base) ease-out;
+}
+.opc .op-first-tip p { flex: 1 1 16rem; margin: 0; font-size: 0.93rem; line-height: 1.35; }
+.opc .op-first-tip b { color: var(--accent); }
+/* fenêtres : en bas de l'écran, sur toute la largeur */
+:where(.opc.is-compact) .modal { place-items: end center; }
+:where(.opc.is-compact) .modal-box, :where(.opc.is-compact) .modal-wide { width: 100%; max-width: none; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 1rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-compact) .help-grid { grid-template-columns: minmax(0, 1fr); }
+:where(.opc.is-compact) .pick-row { gap: 0.5rem; }
+:where(.opc.is-compact) .cost-grid { grid-template-columns: repeat(4, 1fr); }
+:where(.opc.is-compact) .trigger-body { flex-direction: column; align-items: center; }
+:where(.opc.is-compact) .modal-actions .op-btn { flex: 1 1 auto; }

@@ -1,0 +1,68 @@
+/* Jeu (onglet Jouer de TCGC). Tout est rangé sous le conteneur .opc pour ne pas toucher au reste de l'appli :
+   - les classes que TCGC utilise aussi portent le préfixe op- (test game/tests/css.test.ts) ;
+   - les tailles sont en rem, et la taille du texte de la page ne change que pendant que le jeu est affiché
+     (html.opc-on), TCGC n'utilisant pas de rem ;
+   - les couleurs, plans (z-index) et échelles sont dans tokens.css ; un fichier par sujet ensuite, importés par
+     GameApp.tsx dans l'ordre de la cascade. */
+.opc {
+  /* taille des cartes : la plus grande qui tient dans l'écran (7 cartes en largeur à côté des piles, de la Vie et des
+     DON!!, deux plateaux et la main en hauteur) */
+  --cw: clamp(52px, min(calc((70.5vw - 13rem) / 8.6), calc((100vh - 15.5rem) / 4.75)), 190px);
+  --ch: calc(var(--cw) * 1.396);
+  --hw: calc(var(--cw) * 0.94);
+  color-scheme: dark;
+  position: fixed; left: 0; right: 0; top: 0; bottom: calc(var(--tabbar-h, 64px) + var(--safe-bottom, 0px));
+  background: var(--bg); color: var(--text); font: 1rem/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+/* pendant une partie, le jeu prend tout l'écran (la barre d'onglets de TCGC est masquée) */
+.opc.opc-full { bottom: 0; }
+/* taille du texte proportionnelle à l'écran, multipliée par le réglage « Taille de l'interface » */
+html.opc-on { font-size: calc(clamp(14px, 0.6vw + 0.45vh, 21px) * var(--ui, 1)); }
+html.opc-on body { overflow: hidden; }
+/* Remise à zéro : les règles générales de la collection (web/src/styles.css) s'appliquent aussi au jeu. Elles sont
+   reprises ici, sous .opc, à la même priorité (:where) et avec les mêmes valeurs : le jeu ne dépend plus d'elles (une
+   retouche de la collection ne change plus le jeu). Les titres h1 ne sont pas touchés par la collection. */
+:where(.opc), :where(.opc) * { box-sizing: border-box; }
+:where(.opc) input { font: inherit; color: inherit; }
+:where(.opc) img { display: block; }
+:where(.opc) code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: 0.9em; word-break: break-all; }
+:where(.opc) h2, :where(.opc) h3 { margin: 0; }
+:where(.opc) h3 { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+/* :where() garde la priorité de ces règles générales au plus bas, comme dans OP Coach (les classes des boutons
+   l'emportent) */
+:where(.opc) button, :where(.opc) select { font: inherit; color: inherit; }
+:where(.opc) button { cursor: pointer; }
+:where(.opc) button:disabled { opacity: 0.4; cursor: default; }
+.opc-wait { height: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem; text-align: center; color: var(--muted); }
+.setup-notice { margin: 0.6rem auto 0; max-width: 40rem; padding: 0.5rem 0.9rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 0.893rem; }
+.op-muted { color: var(--muted); }
+.op-small { font-size: 0.893rem; }
+.good { color: var(--green); }
+.op-warn { color: var(--warn); }
+.danger { color: var(--red); }
+.op-link { background: none; border: 0; color: var(--accent); padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+.op-chip { font-size: 0.786rem; padding: 1px 0.5rem; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); }
+.kw { color: var(--accent); font-weight: 700; }
+.op-btn { height: 2.714rem; padding: 0 1.143rem; border-radius: 10px; border: 1px solid transparent; background: var(--accent); color: var(--accent-ink); font-weight: 700; transition: transform 0.12s, filter 0.12s, box-shadow 0.2s; white-space: nowrap; }
+@media (hover: hover) { .op-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); } }
+.op-btn:active:not(:disabled) { transform: translateY(1px); }
+.op-btn-primary { background: linear-gradient(180deg, var(--accent-light), var(--accent-deep)); box-shadow: 0 4px 14px var(--accent-a25); }
+.op-btn-ghost { background: var(--surface); border-color: var(--line); color: var(--text); font-weight: 600; }
+.btn-choice { background: var(--surface-2); border-color: var(--line-strong); color: var(--text); font-weight: 600; }
+.btn-big { height: 3.429rem; font-size: 1.143rem; padding: 0 1.571rem; }
+.btn-small { height: 2.286rem; padding: 0 0.857rem; font-size: 0.929rem; }
+.btn-reco { box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent-a50); }
+.icon-btn { width: 2.429rem; height: 2.429rem; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); font-size: 1.143rem; display: grid; place-items: center; }
+@media (hover: hover) { .icon-btn:hover:not(:disabled) { border-color: var(--accent); } }
+/* ---------- Téléphone et écrans tactiles ----------
+   « Compact » : téléphone en portrait (ou tablette en portrait) et téléphone en paysage, d'après device.ts, qui pose
+   .is-compact (et .is-portrait ou .is-landscape) sur .opc ; les règles :where(.opc.is-compact) gardent leur priorité.
+   Sur ordinateur, elles ne changent rien. Celles du plateau sont dans table-compact.css. */
+.only-compact { display: none; }
+.icon-reco { box-shadow: 0 0 0 2px var(--accent); }
+:where(.opc.is-compact) .only-compact { display: grid; }
+:where(.opc.is-compact) .hide-compact { display: none; }
+:where(.opc.is-compact) .icon-btn { width: 2.2rem; height: 2.2rem; font-size: 1rem; }
+/* Téléphone en paysage : la disposition de l'ordinateur, resserrée en hauteur */
+html.opc-on:where(:has(.opc.is-landscape)) { font-size: calc(12.5px * var(--ui, 1)); }
+:where(.opc.is-landscape) .icon-btn { width: 2rem; height: 2rem; }

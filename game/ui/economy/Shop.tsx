@@ -1,25 +1,24 @@
 // La boutique (tâche 2.3) : la bourse (solde, bonus du jour, coffre de la semaine), la vitrine (boosters et displays de
 // chaque extension en vente, avec ce qu'ils contiennent), l'achat avec une confirmation explicite, puis « Ouvrir
-// maintenant » (écran d'ouverture de l'étape 1) ou « Plus tard » (les boosters attendent dans la Cale), et l'historique
-// des gains et des dépenses. Les prix viennent du serveur (game/economy/config.ts), jamais du navigateur ; le serveur
+// maintenant » (écran d'ouverture de l'étape 1 ; depuis R3.6, chaque booster est tiré au moment où on l'ouvre, voir
+// useBoosterOpening.ts) ou « Plus tard » (les boosters attendent dans la Cale), et l'historique des gains et des dépenses. Les prix viennent du serveur (game/economy/config.ts), jamais du navigateur ; le serveur
 // tire les cartes à l'ouverture. Le comptoir a son propre écran (tâche 2.6, Counter.tsx), ouvert depuis la vitrine.
 import { useCallback, useEffect, useState } from 'react';
 import { BOOSTER_SETS } from '../../boosters/sets/index.ts';
-import type { BoosterContent } from '../../boosters/types.ts';
 import type { LedgerEntry, LedgerReason, Purchase, PurchaseKind, Shop, ShopOffer, Wallet } from '../../economy/types.ts';
-import { AdventureApiError, loadHold, openWonBooster, type WonBooster } from '../adventure/api.ts';
-import { BoosterOpening, ownedCounts } from '../adventure/BoosterOpening.tsx';
+import { ApiError } from '../api.ts';
+import type { WonBooster } from '../adventure/api.ts';
+import { BoosterOpening } from '../adventure/BoosterOpening.tsx';
 import { boosterRates, chanceText } from '../adventure/hold.ts';
 import { BOOSTER_NOTICE, PackIcon } from '../adventure/RewardsScreen.tsx';
+import { Button, Dialog } from '../kit/index.ts';
 import * as api from './api.ts';
 import { CounterScreen, type CounterClient } from './Counter.tsx';
+import { useBoosterOpening, type BoosterOpener } from './useBoosterOpening.ts';
 import { berry, EarnHelp, showWallet, useWallet, WalletBadge, WalletDetails } from './Wallet.tsx';
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
-
-// Boosters ouverts, prêts pour l'écran d'ouverture ; owned : la Cale lue AVANT l'ouverture (« Nouveau ! »)
-export interface Opened { contents: BoosterContent[]; owned: Record<string, number> }
 
 // Ce dont la boutique a besoin (le client du serveur ; l'atelier en donne un de démonstration)
 export interface ShopClient {
@@ -27,40 +26,22 @@ export interface ShopClient {
   loadShop: () => Promise<Shop>;
   loadHistory: (before?: number) => Promise<{ entries: LedgerEntry[]; next?: number }>;
   buy: (set: string, kind: PurchaseKind, purchaseId: string) => Promise<Purchase>;
-  // ouvre les boosters sur le serveur, un par un ; progress : nombre de boosters déjà ouverts. En cas d'erreur après
-  // quelques boosters, renvoie ceux qui sont ouverts et l'erreur
-  openBoosters: (ids: string[], progress: (done: number) => void) => Promise<Opened & { error?: string }>;
+  opener?: BoosterOpener;    // ouverture des boosters achetés (useBoosterOpening.ts) ; par défaut, celle du serveur
   counter?: CounterClient;   // comptoir (tâche 2.6) ; par défaut, celui du serveur
 }
 
-async function openOnServer(ids: string[], progress: (done: number) => void): Promise<Opened & { error?: string }> {
-  const owned = ownedCounts((await loadHold()).cards);
-  const contents: BoosterContent[] = [];
-  try {
-    for (const id of ids) {
-      contents.push((await openWonBooster(id)).content);
-      progress(contents.length);
-    }
-  } catch (e) {
-    if (!contents.length) throw e;
-    return { contents, owned, error: message(e) };
-  }
-  return { contents, owned };
-}
-
 export const SERVER_CLIENT: ShopClient = {
-  loadWallet: api.loadWallet, loadShop: api.loadShop, loadHistory: api.loadHistory, buy: api.buy, openBoosters: openOnServer,
+  loadWallet: api.loadWallet, loadShop: api.loadShop, loadHistory: api.loadHistory, buy: api.buy,
 };
 
 // ---------- Achat ----------
 
 // confirm : la question ; buying : envoyé (purchaseId tiré au clic de confirmation, gardé pour un nouvel essai : le
-// serveur ne refait pas un achat déjà fait) ; done : acheté ; opening : ouverture en cours (done : boosters ouverts)
+// serveur ne refait pas un achat déjà fait) ; done : acheté
 type Step =
   | { kind: 'confirm'; offer: ShopOffer; what: PurchaseKind; purchaseId?: string; error?: string; retry?: boolean }
   | { kind: 'buying'; offer: ShopOffer; what: PurchaseKind; purchaseId: string }
-  | { kind: 'done'; offer: ShopOffer; what: PurchaseKind; purchase: Purchase; error?: string }
-  | { kind: 'opening'; offer: ShopOffer; what: PurchaseKind; purchase: Purchase; done: number };
+  | { kind: 'done'; offer: ShopOffer; what: PurchaseKind; purchase: Purchase };
 
 const price = (o: ShopOffer, what: PurchaseKind) => (what === 'display' ? o.display : o.booster);
 const count = (o: ShopOffer, what: PurchaseKind) => (what === 'display' ? o.boostersPerDisplay : 1);
@@ -73,7 +54,9 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
   const [shop, setShop] = useState<Shop | null>(null);
   const [shopError, setShopError] = useState<string>();
   const [step, setStep] = useState<Step | null>(null);
-  const [opened, setOpened] = useState<Opened | null>(null);
+  // « Ouvrir maintenant » : la fenêtre d'achat se ferme quand l'écran d'ouverture paraît ; ce qui n'est pas ouvert reste
+  // dans la Cale
+  const opening = useBoosterOpening({ opener: client.opener });
   const [contents, setContents] = useState<string | null>(null);   // extension dont on montre le contenu
   const [historyKey, setHistoryKey] = useState(0);
   const [counter, setCounter] = useState(false);
@@ -99,7 +82,7 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
     } catch (e) {
       // refus du serveur (solde, extension) : l'achat n'a pas eu lieu, un nouvel essai est un nouvel achat ; coupure :
       // on ne sait pas, le même identifiant est renvoyé
-      const refused = e instanceof AdventureApiError && e.status >= 400 && e.status < 500;
+      const refused = e instanceof ApiError && e.status >= 400 && e.status < 500;
       setStep({ kind: 'confirm', offer, what, purchaseId: refused ? undefined : purchaseId, error: message(e), retry: !refused });
       if (refused) reloadWallet();
     }
@@ -107,22 +90,12 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
 
   const openNow = async () => {
     if (step?.kind !== 'done') return;
-    const { purchase } = step;
-    setStep({ ...step, kind: 'opening', done: 0 });
-    try {
-      const result = await client.openBoosters(purchase.boosters.map((b) => b.id), (done) => setStep((s) => (s?.kind === 'opening' ? { ...s, done } : s)));
-      setOpened(result);
-      // les boosters pas encore ouverts restent à ouvrir (depuis cette fenêtre ou depuis la Cale)
-      const left = { ...purchase, boosters: purchase.boosters.slice(result.contents.length) };
-      setStep(result.error ? { ...step, purchase: left, error: `${plural(result.contents.length, 'booster')} ouvert${result.contents.length > 1 ? 's' : ''}, puis : ${result.error}. Les autres t’attendent dans ta Cale.` } : null);
-    } catch (e) {
-      setStep({ ...step, error: `${message(e)}. Tes boosters t’attendent dans ta Cale.` });
-    }
+    await opening.start(step.purchase.boosters);
   };
+  // l'écran d'ouverture a paru : la fenêtre d'achat n'a plus lieu d'être
+  useEffect(() => { if (opening.props) setStep(null); }, [opening.props]);
 
-  if (opened) {
-    return <BoosterOpening content={opened.contents} owned={opened.owned} onDone={() => { setOpened(null); setStep((s) => (s?.kind === 'done' && s.error ? s : null)); }} />;
-  }
+  if (opening.props) return <BoosterOpening {...opening.props} />;
 
   if (counter) return <CounterScreen client={client.counter} onBack={() => { setCounter(false); setHistoryKey((k) => k + 1); }} />;
 
@@ -169,7 +142,8 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
 
       <History key={historyKey} load={client.loadHistory} />
 
-      {step && <PurchaseDialog step={step} balance={balance} onConfirm={() => void confirm()} onOpen={() => void openNow()} onClose={() => setStep(null)} />}
+      {step && <PurchaseDialog step={step} balance={balance} opening={opening.busy} openError={opening.error}
+        onConfirm={() => void confirm()} onOpen={() => void openNow()} onClose={() => setStep(null)} />}
       {contents && <ContentsDialog set={contents} offer={shop?.offers.find((o) => o.set === contents)} onClose={() => setContents(null)} />}
     </div>
   );
@@ -238,39 +212,39 @@ function ContentsDialog({ set, offer, onClose }: { set: string; offer?: ShopOffe
     return `${decimal(n, n >= 0.1 ? 2 : 3)} · 1 display sur ${one >= 10 ? Math.round(one) : decimal(one, 1)}`;
   };
   return (
-    <div className="modal" onClick={onClose}>
-      <div className="modal-box op-rates op-shop-contents" onClick={(e) => e.stopPropagation()}>
-        <header className="db-row"><h3>Que contient un booster {set} ?</h3><span className="db-grow" /><button className="icon-btn" onClick={onClose} aria-label="Fermer">✕</button></header>
-        {r ? (
-          <>
-            <p className="op-small">Un booster : {r.composition}.{perDisplay > 0 && <> Un display : <strong>{perDisplay} boosters</strong>.</>}</p>
-            <table className="op-rates-table">
-              <thead><tr><th>Carte</th><th>Dans un booster</th>{perDisplay > 0 && <th>Dans un display (en moyenne)</th>}</tr></thead>
-              <tbody>
-                {r.rates.map((x) => (
-                  <tr key={x.label} className={x.label.startsWith('dont ') ? 'op-rates-sub' : undefined}>
-                    <td>{x.label}</td><td>{chanceText(x.chance)}</td>{perDisplay > 0 && <td>{mean(x.chance)}</td>}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="op-small op-muted">
-              Ce sont les taux d’un vrai booster en anglais, estimés d’après des comptages publiés par des joueurs. Le tirage
-              se fait sur le serveur au moment d’ouvrir, au hasard : personne ne peut le choisir ni le prévoir.
-            </p>
-          </>
-        ) : <p className="op-muted">Pas encore de description pour cette extension.</p>}
-        <p className="op-small op-muted">{BOOSTER_NOTICE}</p>
-      </div>
-    </div>
+    <Dialog title={`Que contient un booster ${set} ?`} onClose={onClose} className="op-rates op-shop-contents" data-ui="shop.contents">
+      {r ? (
+        <>
+          <p className="op-small">Un booster : {r.composition}.{perDisplay > 0 && <> Un display : <strong>{perDisplay} boosters</strong>.</>}</p>
+          <table className="op-rates-table">
+            <thead><tr><th>Carte</th><th>Dans un booster</th>{perDisplay > 0 && <th>Dans un display (en moyenne)</th>}</tr></thead>
+            <tbody>
+              {r.rates.map((x) => (
+                <tr key={x.label} className={x.label.startsWith('dont ') ? 'op-rates-sub' : undefined}>
+                  <td>{x.label}</td><td>{chanceText(x.chance)}</td>{perDisplay > 0 && <td>{mean(x.chance)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="op-small op-muted">
+            Ce sont les taux d’un vrai booster en anglais, estimés d’après des comptages publiés par des joueurs. Le tirage
+            se fait sur le serveur au moment d’ouvrir, au hasard : personne ne peut le choisir ni le prévoir.
+          </p>
+        </>
+      ) : <p className="op-muted">Pas encore de description pour cette extension.</p>}
+      <p className="op-small op-muted">{BOOSTER_NOTICE}</p>
+    </Dialog>
   );
 }
 
 // ---------- Confirmation, achat, ouverture ----------
 
-function PurchaseDialog({ step, balance, onConfirm, onOpen, onClose }: {
+// opening : la Cale est lue avant l'écran d'ouverture ; openError : elle n'a pas pu l'être
+function PurchaseDialog({ step, balance, opening, openError, onConfirm, onOpen, onClose }: {
   step: Step;
   balance?: number;
+  opening: boolean;
+  openError?: string;
   onConfirm: () => void;
   onOpen: () => void;
   onClose: () => void;
@@ -278,53 +252,45 @@ function PurchaseDialog({ step, balance, onConfirm, onOpen, onClose }: {
   const { offer, what } = step;
   const cost = price(offer, what);
   const n = count(offer, what);
-  const busy = step.kind === 'buying' || step.kind === 'opening';
-  let body;
+  const busy = step.kind === 'buying' || opening;
   if (step.kind === 'confirm' || step.kind === 'buying') {
     const after = balance === undefined ? undefined : balance - cost;
-    body = (
-      <>
+    return (
+      <Dialog title={`Acheter ${itemName(offer, what)} pour ${berry(cost)} ?`} size="small" onClose={busy ? undefined : onClose}
+        className="op-shop-dialog" data-ui="shop.confirm"
+        actions={<>
+          <Button variant="quiet" disabled={busy} onClick={onClose}>Annuler</Button>
+          <Button variant="primary" busy={step.kind === 'buying'} data-autofocus data-ui="shop.confirm-buy"
+            disabled={after !== undefined && after < 0 && !(step.kind === 'confirm' && step.retry)} onClick={onConfirm}>
+            {step.kind === 'buying' ? 'Achat…' : step.kind === 'confirm' && step.retry ? 'Réessayer' : `Acheter pour ${berry(cost)}`}
+          </Button>
+        </>}>
         <PackStack set={offer.set} n={n} />
-        <h3>Acheter {itemName(offer, what)} pour {berry(cost)} ?</h3>
         <p>
           {what === 'display' ? `${n} boosters` : 'Un booster'} {offer.set}, à ouvrir tout de suite ou plus tard depuis ta Cale.
           {after !== undefined && after >= 0 && <> Il te restera <strong>{berry(after)}</strong>.</>}
         </p>
-        {step.kind === 'confirm' && step.error && <p className="danger">{step.error}</p>}
-        <div className="modal-actions">
-          <button className="op-btn op-btn-ghost" disabled={busy} onClick={onClose}>Annuler</button>
-          <button className="op-btn op-btn-primary" disabled={busy || (after !== undefined && after < 0 && !(step.kind === 'confirm' && step.retry))} onClick={onConfirm}>
-            {step.kind === 'buying' ? <><span className="op-spinner" /> Achat…</> : step.kind === 'confirm' && step.retry ? 'Réessayer' : `Acheter pour ${berry(cost)}`}
-          </button>
-        </div>
-      </>
-    );
-  } else {
-    const boosters: WonBooster[] = step.purchase.boosters;
-    body = (
-      <>
-        <PackStack set={offer.set} n={boosters.length} fresh />
-        <h3 className="good">C’est acheté !</h3>
-        <p>
-          {boosters.length > 1 ? `${boosters.length} boosters ${offer.set} t’attendent` : `Un booster ${offer.set} t’attend`} dans ta Cale
-          {step.purchase.spent > 0 && <> · {berry(-step.purchase.spent, true)}</>}.
-        </p>
-        {step.kind === 'done' && step.error && <p className="danger op-small">{step.error}</p>}
-        <div className="modal-actions">
-          <button className="op-btn op-btn-ghost" disabled={busy} onClick={onClose}>Plus tard</button>
-          <button className="op-btn op-btn-primary" disabled={busy || !boosters.length} onClick={onOpen}>
-            {step.kind === 'opening'
-              ? <><span className="op-spinner" /> Ouverture {boosters.length > 1 ? `${step.done}/${boosters.length}` : ''}…</>
-              : 'Ouvrir maintenant'}
-          </button>
-        </div>
-      </>
+        {step.kind === 'confirm' && step.error && <p className="danger" role="alert">{step.error}</p>}
+      </Dialog>
     );
   }
+  const boosters: WonBooster[] = step.purchase.boosters;
   return (
-    <div className="modal" onClick={busy ? undefined : onClose}>
-      <div className="modal-box op-shop-dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>{body}</div>
-    </div>
+    <Dialog title={<span className="good">C’est acheté !</span>} size="small" onClose={busy ? undefined : onClose}
+      className="op-shop-dialog" data-ui="shop.bought"
+      actions={<>
+        <Button variant="quiet" disabled={busy} onClick={onClose} data-ui="shop.later">Plus tard</Button>
+        <Button variant="primary" busy={opening} disabled={!boosters.length} data-autofocus onClick={onOpen} data-ui="shop.open">
+          {opening ? 'Ouverture…' : 'Ouvrir maintenant'}
+        </Button>
+      </>}>
+      <PackStack set={offer.set} n={boosters.length} fresh />
+      <p>
+        {boosters.length > 1 ? `${boosters.length} boosters ${offer.set} t’attendent` : `Un booster ${offer.set} t’attend`} dans ta Cale
+        {step.purchase.spent > 0 && <> · {berry(-step.purchase.spent, true)}</>}.
+      </p>
+      {openError && <p className="danger op-small" role="alert">{openError}</p>}
+    </Dialog>
   );
 }
 

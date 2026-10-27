@@ -1,34 +1,29 @@
-// Fenêtres : main de départ, cartes à choisir, carte de Vie révélée, coût à déclarer, fin de tour, Défausse, aide
-import type { ReactNode } from 'react';
+// Fenêtres : main de départ, cartes à choisir, carte de Vie révélée, coût à déclarer, fin de tour, Défausse, aide, et
+// la bulle de la première partie. Toutes passent par le Dialog du kit ; celles d'une décision n'ont pas de ✕ (le choix
+// est attendu) mais se réduisent avec « Voir le plateau » et se rouvrent sans perdre le choix.
 import { def } from '../engine/rules.ts';
 import type { Card, Decision, GameState, Option, PlayerId } from '../engine/types.ts';
-import { CardView, type Preview } from './CardView.tsx';
+import { CardView, STATE_LEGEND, type Preview } from './CardView.tsx';
 import type { PickItem } from './decision.ts';
 import { isTouch } from './device.ts';
-
-function Modal({ children, onClose, wide, className }: { children: ReactNode; onClose?: () => void; wide?: boolean; className?: string }) {
-  return (
-    <div className="modal" onClick={onClose}>
-      <div className={`modal-box ${wide ? 'modal-wide' : ''} ${className ?? ''}`} onClick={(e) => e.stopPropagation()}>{children}</div>
-    </div>
-  );
-}
+import { Button, Dialog, Icon, IconButton } from './kit/index.ts';
 
 export function MulliganModal({ s, p, onChoose, onHover }: { s: GameState; p: PlayerId; onChoose: (id: string) => void; onHover: (x: Preview | null) => void }) {
   const cheap = s.players[p].hand.filter((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4).length;
   return (
-    <Modal wide className="modal-mulligan">
-      <h2>Ta main de départ</h2>
+    <Dialog title="Ta main de départ" size="wide" reducible reducedText="Ta main de départ : garder ou repiocher ?" className="op-decision modal-mulligan" data-ui="decision.mulligan"
+      actions={(
+        <>
+          <button className="op-btn op-btn-primary btn-big" data-ui="mulligan.keep" onClick={() => onChoose('keep')}>Garder cette main</button>
+          <button className="op-btn op-btn-ghost btn-big" data-ui="mulligan.redraw" onClick={() => onChoose('mulligan')}>Repiocher 5 cartes</button>
+        </>
+      )}>
       <p className="op-muted">{s.first === p ? 'Tu joues en premier : pas de pioche ni d’attaque à ton premier tour.' : s.players[s.first].name === 'IA' ? 'L’IA joue en premier.' : `${s.players[s.first].name} joue en premier.`} Tu peux repiocher 5 nouvelles cartes une seule fois.</p>
       <div className="pick-row">
         {s.players[p].hand.map((c) => <CardView key={c.uid} s={s} card={c} owner={p} size="pick" onHover={onHover} />)}
       </div>
       <p className="op-small op-muted">Repère : {cheap} Personnage{cheap > 1 ? 's' : ''} de coût 4 ou moins (de quoi jouer dès les premiers tours).</p>
-      <div className="modal-actions">
-        <button className="op-btn op-btn-primary btn-big" data-ui="mulligan.keep" onClick={() => onChoose('keep')}>Garder cette main</button>
-        <button className="op-btn op-btn-ghost btn-big" data-ui="mulligan.redraw" onClick={() => onChoose('mulligan')}>Repiocher 5 cartes</button>
-      </div>
-    </Modal>
+    </Dialog>
   );
 }
 
@@ -42,8 +37,10 @@ export function PickerModal({ s, d, picks, buttons, recommended, onChoose, onHov
   onHover: (x: Preview | null) => void;
 }) {
   return (
-    <Modal wide className="modal-picker">
-      <h3>{d.prompt}</h3>
+    <Dialog title={d.prompt} size="wide" reducible reducedText={`Choix en attente : ${d.prompt}`} className="op-decision modal-picker" data-ui="decision.picker"
+      actions={buttons.length > 0 && buttons.map((o) => (
+        <button key={o.id} data-ui={`picker.option-${o.id}`} className={`op-btn op-btn-ghost ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.label}</button>
+      ))}>
       <div className="pick-row">
         {picks.map((it) => {
           const card: Card = { uid: it.option.uid ?? -1, num: it.num };
@@ -56,12 +53,7 @@ export function PickerModal({ s, d, picks, buttons, recommended, onChoose, onHov
           );
         })}
       </div>
-      {buttons.length > 0 && (
-        <div className="modal-actions">
-          {buttons.map((o) => <button key={o.id} data-ui={`picker.option-${o.id}`} className={`op-btn op-btn-ghost ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.label}</button>)}
-        </div>
-      )}
-    </Modal>
+    </Dialog>
   );
 }
 
@@ -70,8 +62,13 @@ export function TriggerModal({ s, d, onChoose, recommended }: { s: GameState; d:
   if (!num) return null;
   const card = def(num);
   return (
-    <Modal className="modal-trigger">
-      <h3>Ton Leader est touché : carte de Vie révélée</h3>
+    <Dialog title="Ton Leader est touché : carte de Vie révélée" reducible reducedText={`[Déclenchement] de ${card.name} : l’activer ?`} className="op-decision modal-trigger" data-ui="decision.trigger"
+      actions={(
+        <>
+          <button className={`op-btn op-btn-primary ${recommended === 'trigger' ? 'btn-reco' : ''}`} data-ui="trigger.activate" onClick={() => onChoose('trigger')}>Activer le [Déclenchement]{recommended === 'trigger' && ' ★'}</button>
+          <button className={`op-btn op-btn-ghost ${recommended === 'hand' ? 'btn-reco' : ''}`} data-ui="trigger.hand" onClick={() => onChoose('hand')}>Prendre la carte en main{recommended === 'hand' && ' ★'}</button>
+        </>
+      )}>
       <div className="trigger-body">
         <CardView s={s} card={{ uid: -2, num }} size="big" />
         <div className="trigger-text">
@@ -80,52 +77,63 @@ export function TriggerModal({ s, d, onChoose, recommended }: { s: GameState; d:
           <p className="op-small op-muted">Activer l’effet envoie la carte dans la Défausse (sauf si l’effet la joue ou la reprend en main). Sinon, elle va dans ta main comme une carte de Vie normale.</p>
         </div>
       </div>
-      <div className="modal-actions">
-        <button className={`op-btn op-btn-primary ${recommended === 'trigger' ? 'btn-reco' : ''}`} data-ui="trigger.activate" onClick={() => onChoose('trigger')}>Activer le [Déclenchement]{recommended === 'trigger' && ' ★'}</button>
-        <button className={`op-btn op-btn-ghost ${recommended === 'hand' ? 'btn-reco' : ''}`} data-ui="trigger.hand" onClick={() => onChoose('hand')}>Prendre la carte en main{recommended === 'hand' && ' ★'}</button>
-      </div>
-    </Modal>
+    </Dialog>
   );
 }
 
 export function CostModal({ d, onChoose, recommended }: { d: Decision; onChoose: (id: string) => void; recommended: string | null }) {
   return (
-    <Modal className="modal-cost">
-      <h3>Déclare un coût</h3>
+    <Dialog title="Déclare un coût" reducible reducedText="Coût à déclarer" className="op-decision modal-cost" data-ui="decision.cost">
       <p className="op-muted">{d.prompt.replace(/^Déclare un coût\s*/, '').replace(/^\(/, '').replace(/\)\s*:?$/, '') || 'La carte du dessus du deck adverse va être révélée : si son coût est celui que tu déclares, l’effet réussit.'}</p>
       <div className="cost-grid">
         {d.options.map((o) => (
           <button key={o.id} data-ui="cost.option" className={`cost-btn ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.id.split(':')[1]}</button>
         ))}
       </div>
-    </Modal>
+    </Dialog>
   );
 }
 
 export function ConfirmEndModal({ remaining, onConfirm, onCancel, onNeverAsk }: { remaining: string[]; onConfirm: () => void; onCancel: () => void; onNeverAsk: () => void }) {
   return (
-    <Modal onClose={onCancel} className="modal-confirm">
-      <h3>Terminer ton tour ?</h3>
+    <Dialog title="Terminer ton tour ?" onClose={onCancel} size="small" alert className="modal-confirm" data-ui="decision.confirm-end"
+      actions={(
+        <>
+          <button className="op-btn op-btn-primary" data-ui="confirm-end.ok" onClick={onConfirm}>Terminer quand même</button>
+          <button className="op-btn op-btn-ghost" data-ui="confirm-end.cancel" onClick={onCancel}>Continuer mon tour</button>
+        </>
+      )}>
       <p>Tu peux encore :</p>
       <ul>{remaining.map((r) => <li key={r}>{r}</li>)}</ul>
-      <div className="modal-actions">
-        <button className="op-btn op-btn-primary" data-ui="confirm-end.ok" onClick={onConfirm}>Terminer quand même</button>
-        <button className="op-btn op-btn-ghost" data-ui="confirm-end.cancel" onClick={onCancel}>Continuer mon tour</button>
-      </div>
       <button className="op-link op-small" data-ui="confirm-end.never" onClick={onNeverAsk}>Ne plus me demander</button>
-    </Modal>
+    </Dialog>
   );
 }
 
 export function TrashModal({ s, p, onClose, onHover }: { s: GameState; p: PlayerId; onClose: () => void; onHover: (x: Preview | null) => void }) {
   return (
-    <Modal onClose={onClose} wide>
-      <h3>Défausse de {s.players[p].name} ({s.players[p].trash.length})</h3>
+    <Dialog title={`Défausse de ${s.players[p].name} (${s.players[p].trash.length})`} onClose={onClose} size="wide" data-ui="trash"
+      actions={<button className="op-btn op-btn-ghost" data-ui="trash.close" onClick={onClose}>Fermer</button>}>
       <div className="trash-grid">
         {[...s.players[p].trash].reverse().map((c) => <CardView key={c.uid} s={s} card={c} size="small" onHover={onHover} />)}
       </div>
-      <div className="modal-actions"><button className="op-btn op-btn-ghost" data-ui="trash.close" onClick={onClose}>Fermer</button></div>
-    </Modal>
+    </Dialog>
+  );
+}
+
+// Première partie : une bulle courte en haut du plateau, sous les fenêtres de décision (elle ne cache pas la main de
+// départ), refermable, avec un lien vers l'aide complète
+export function FirstGameTip({ onHelp, onClose }: { onHelp: () => void; onClose: () => void }) {
+  const tap = isTouch() ? 'touche' : 'clique sur';
+  return (
+    <aside className="op-first-tip" data-ui="tip" aria-label="Première partie">
+      <p>
+        <b>Première partie ?</b> La barre du bas te dit toujours qui doit jouer et quoi faire. Les cartes entourées d’or
+        peuvent agir : {tap} l’une d’elles pour voir ses actions.
+      </p>
+      <Button variant="secondary" icon="help" onClick={onHelp} data-ui="tip.help">Comment jouer ?</Button>
+      <IconButton icon="close" label="Fermer l’astuce" variant="quiet" onClick={onClose} data-ui="tip.close" />
+    </aside>
   );
 }
 
@@ -149,29 +157,30 @@ const KEYWORDS: [string, string][] = [
   ['DON!! −X', 'Coût : renvoyer X DON!! de ton terrain dans ton deck DON!!.'],
 ];
 
+// L'aide complète : ✕ en haut, « C'est parti » en bas
 export function HelpModal({ onClose }: { onClose: () => void }) {
   const touch = isTouch();
   return (
-    <Modal onClose={onClose} wide className="modal-help">
-      <h2>Comment jouer</h2>
+    <Dialog title="Comment jouer" onClose={onClose} size="wide" className="modal-help" data-ui="help"
+      actions={<button className="op-btn op-btn-primary" data-ui="help.close" onClick={onClose}>C’est parti</button>}>
       <div className="help-grid">
         <section>
           <h3>Pendant ton tour</h3>
           {touch ? (
             <ul>
-              <li><b>Les cartes qui brillent</b> peuvent faire quelque chose : touche-les pour voir leur fiche et leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
+              <li><b>Les cartes entourées d’or</b> peuvent faire quelque chose : touche-les pour voir leur fiche et leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
               <li><b>Lire une carte</b> : touche-la, sa fiche s’ouvre en grand (même les cartes de l’adversaire).</li>
               <li><b>Jouer une carte</b> : touche une carte de ta main, puis « Jouer ». Son coût est en haut à gauche.</li>
               <li><b>Donner des DON!!</b> : touche la carte, puis « Donner 1 DON!! » (autant de fois que tu veux).</li>
-              <li><b>Attaquer</b> : touche ton Leader ou un Personnage, « Attaquer… », puis la cible (elle brille en rouge) : le résultat prévu s’affiche en bas, et tu confirmes avec « Attaquer ».</li>
+              <li><b>Attaquer</b> : touche ton Leader ou un Personnage, « Attaquer… », puis la cible (entourée de rouge) : le résultat prévu s’affiche en bas, et tu confirmes avec « Attaquer ».</li>
               <li><b>Fin du tour</b> : le bouton en bas. Le journal et le coach s’ouvrent avec le bouton 📜 en haut.</li>
             </ul>
           ) : (
             <ul>
-              <li><b>Les cartes qui brillent</b> peuvent faire quelque chose : clique dessus pour voir leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
+              <li><b>Les cartes entourées d’or</b> peuvent faire quelque chose : clique dessus pour voir leurs actions. Rien ne se passe tant que tu n’as pas choisi une action.</li>
               <li><b>Jouer une carte</b> : clique sur une carte de ta main, puis « Jouer ». Son coût est en haut à gauche.</li>
               <li><b>Donner des DON!!</b> : glisse une DON!! sur une carte, ou clique sur la carte puis « Donner 1 DON!! ».</li>
-              <li><b>Attaquer</b> : clique sur ton Leader ou un Personnage, « Attaquer… », puis sur la cible (elle brille en rouge). Au survol, tu vois le résultat prévu.</li>
+              <li><b>Attaquer</b> : clique sur ton Leader ou un Personnage, « Attaquer… », puis sur la cible (entourée de rouge). Au survol, tu vois le résultat prévu.</li>
               <li><b>Fin du tour</b> : le bouton en bas à droite (ou Entrée).</li>
             </ul>
           )}
@@ -179,11 +188,20 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           <ul>
             <li>Quand l’IA attaque, tu peux <b>bloquer</b> avec un [Bloqueur] et <b>contrer</b> avec les cartes de ta main : la barre en bas te dit ce qu’il te manque pour repousser l’attaque.</li>
           </ul>
+          <h3>Fenêtres de choix</h3>
+          <ul>
+            <li>Main de départ, carte à choisir, [Déclenchement], coût : « Voir le plateau » réduit la fenêtre en bas de l’écran, « Rouvrir » la fait revenir. Ton choix t’attend.</li>
+          </ul>
           <h3>Repères visuels</h3>
           <ul>
-            <li>💤 vient d’être joué (ne peut pas attaquer ce tour) · 🛡 [Bloqueur] · 🔒 ne peut pas attaquer · ◆ DON!! données</li>
-            <li>La puissance est en bas à droite : verte si elle est augmentée, rouge si elle est baissée.</li>
-            <li>★ : la carte ou l’action conseillée par le coach.</li>
+            <li>
+              {STATE_LEGEND.map((x) => (
+                <span key={x.icon} className="op-state-legend"><span className={`op-card-state is-${x.tone}`}><Icon name={x.icon} size="78%" /></span>{x.text} · </span>
+              ))}
+              ◆ DON!! données. Le détail d’une carte explique chacun de ses états.
+            </li>
+            <li>La puissance est en bas à droite : verte avec ↑ si elle est augmentée, rouge avec ↓ si elle est baissée.</li>
+            <li>★ et la lueur qui pulse : la carte ou l’action conseillée par le coach.</li>
           </ul>
           {!touch && (
             <>
@@ -201,7 +219,6 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           </dl>
         </section>
       </div>
-      <div className="modal-actions"><button className="op-btn op-btn-primary" data-ui="help.close" onClick={onClose}>C’est parti</button></div>
-    </Modal>
+    </Dialog>
   );
 }

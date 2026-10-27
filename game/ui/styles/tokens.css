@@ -1,0 +1,246 @@
+/* Tokens du jeu : le seul fichier où l'on écrit une couleur (game/tests/css.test.ts le vérifie). Ils sont déclarés sous
+   .opc : tout le jeu est rangé sous ce conteneur. Les valeurs sont celles de l'ancien styles.css (aucun changement
+   visuel) ; une nouvelle règle réutilise un token existant plutôt que d'en créer un. */
+.opc {
+  /* Palette */
+  --bg: #0a1220;
+  --bg-2: #0f1a2e;
+  --surface: #15233b;
+  --surface-2: #1c2d4a;
+  --line: #263a5c;
+  --text: #eef2f8;
+  --muted: #8fa1bd;
+  --accent: #f0c04f;
+  --accent-ink: #1a1405;
+  --red: #ef5a4c;
+  --green: #4cc38a;
+  --blue: #5aa9ff;
+
+  /* Teintes transparentes : <couleur>-a<opacité en %> */
+  --accent-a00: rgba(240, 192, 79, 0);
+  --accent-a03: rgba(240, 192, 79, 0.03);
+  --accent-a06: rgba(240, 192, 79, 0.06);
+  --accent-a08: rgba(240, 192, 79, 0.08);
+  --accent-a10: rgba(240, 192, 79, 0.1);
+  --accent-a12: rgba(240, 192, 79, 0.12);
+  --accent-a14: rgba(240, 192, 79, 0.14);
+  --accent-a16: rgba(240, 192, 79, 0.16);
+  --accent-a18: rgba(240, 192, 79, 0.18);
+  --accent-a25: rgba(240, 192, 79, 0.25);
+  --accent-a35: rgba(240, 192, 79, 0.35);
+  --accent-a40: rgba(240, 192, 79, 0.4);
+  --accent-a45: rgba(240, 192, 79, 0.45);
+  --accent-a50: rgba(240, 192, 79, 0.5);
+  --accent-a55: rgba(240, 192, 79, 0.55);
+  --accent-a60: rgba(240, 192, 79, 0.6);
+  --accent-a70: rgba(240, 192, 79, 0.7);
+  --accent-a80: rgba(240, 192, 79, 0.8);
+  --accent-a85: rgba(240, 192, 79, 0.85);
+  --accent-a90: rgba(240, 192, 79, 0.9);
+  --accent-ink-a55: rgba(26, 20, 5, 0.55);
+  --backdrop-a55: rgba(3, 8, 16, 0.55);
+  --backdrop-a72: rgba(3, 8, 16, 0.72);
+  --backdrop-a88: rgba(3, 8, 16, 0.88);
+  --bg-a85: rgba(10, 18, 32, 0.85);
+  --bg-a88: rgba(10, 18, 32, 0.88);
+  --bg-a92: rgba(10, 18, 32, 0.92);
+  --bg-2-a88: rgba(15, 26, 46, 0.88);
+  --bg-2-a98: rgba(15, 26, 46, 0.98);
+  --black-a22: rgba(0, 0, 0, 0.22);
+  --black-a35: rgba(0, 0, 0, 0.35);
+  --black-a40: rgba(0, 0, 0, 0.4);
+  --black-a45: rgba(0, 0, 0, 0.45);
+  --black-a50: rgba(0, 0, 0, 0.5);
+  --black-a55: rgba(0, 0, 0, 0.55);
+  --black-a60: rgba(0, 0, 0, 0.6);
+  --black-a65: rgba(0, 0, 0, 0.65);
+  --black-a70: rgba(0, 0, 0, 0.7);
+  --black-a80: rgba(0, 0, 0, 0.8);
+  --blue-a08: rgba(90, 169, 255, 0.08);
+  --blue-a12: rgba(90, 169, 255, 0.12);
+  --blue-a14: rgba(90, 169, 255, 0.14);
+  --blue-a22: rgba(90, 169, 255, 0.22);
+  --blue-a45: rgba(90, 169, 255, 0.45);
+  --blue-a50: rgba(90, 169, 255, 0.5);
+  --blue-a65: rgba(90, 169, 255, 0.65);
+  --blue-a70: rgba(90, 169, 255, 0.7);
+  --blue-a95: rgba(90, 169, 255, 0.95);
+  --green-a16: rgba(76, 195, 138, 0.16);
+  --green-a50: rgba(76, 195, 138, 0.5);
+  --ink-a90: rgba(8, 14, 26, 0.9);
+  --ink-a92: rgba(8, 14, 26, 0.92);
+  --ink-2-a85: rgba(12, 18, 30, 0.85);
+  --muted-a18: rgba(143, 161, 189, 0.18);
+  --muted-a40: rgba(143, 161, 189, 0.4);
+  --muted-a60: rgba(143, 161, 189, 0.6);
+  --night-a92: rgba(5, 10, 20, 0.92);
+  --night-a94: rgba(5, 10, 20, 0.94);
+  --red-a10: rgba(239, 90, 76, 0.1);
+  --red-a25: rgba(239, 90, 76, 0.25);
+  --red-a45: rgba(239, 90, 76, 0.45);
+  --red-a50: rgba(239, 90, 76, 0.5);
+  --red-a70: rgba(239, 90, 76, 0.7);
+  --red-a75: rgba(239, 90, 76, 0.75);
+  --red-a80: rgba(239, 90, 76, 0.8);
+  --red-a94: rgba(239, 90, 76, 0.94);
+  --red-a100: rgba(239, 90, 76, 1);
+  --red-2-a10: rgba(217, 68, 58, 0.1);
+  --red-2-a60: rgba(217, 68, 58, 0.6);
+  --surface-a96: rgba(21, 35, 59, 0.96);
+  --white-a05: rgba(255, 255, 255, 0.05);
+  --white-a07: rgba(255, 255, 255, 0.07);
+  --white-a08: rgba(255, 255, 255, 0.08);
+  --white-a15: rgba(255, 255, 255, 0.15);
+  --white-a18: rgba(255, 255, 255, 0.18);
+  --white-a28: rgba(255, 255, 255, 0.28);
+  --white-a35: rgba(255, 255, 255, 0.35);
+  --white-a42: rgba(255, 255, 255, 0.42);
+  --white-a55: rgba(255, 255, 255, 0.55);
+  --white-a75: rgba(255, 255, 255, 0.75);
+  --white-a95: rgba(255, 255, 255, 0.95);
+
+  /* Noir et blanc */
+  --black: #000;
+  --white: #fff;
+
+  /* Textes et liserés */
+  --text-soft: #d6deea;
+  --text-cool: #cfd9e8;
+  --text-ice: #cfe3ff;
+  --text-lose: #c4cfdf;
+  --blue-soft: #9cc8ff;
+  --blue-log: #8fc1ff;
+  --line-strong: #3a5888;
+  --warn: #ffb36b;
+  --red-soft: #ff8d84;
+  --red-bright: #ff6b5e;
+  --red-spent: #ff9a8f;
+  --green-bright: #6ff0a8;
+  --on-green: #052012;
+  --accent-light: #ffd56b;
+  --accent-deep: #e7a92c;
+
+  /* Plateau, DON!! et dos des cartes */
+  --table-glow: #16305a;
+  --table-mid: #0d1a30;
+  --don-light: #ffe08a;
+  --don-mid: #e0a325;
+  --don-dark: #b4791a;
+  --don-chip: #d79a1e;
+  --don-ink: #3b2400;
+  --back-1: #2a1a12;
+  --back-2: #3a2416;
+  --back-edge: #5a3a22;
+
+  /* Fenêtres et effets */
+  --zoom-bg: rgba(12, 21, 38, 0.98);
+  --intro-core: rgba(30, 50, 90, 0.9);
+  --intro-edge: rgba(4, 8, 16, 0.97);
+  --lose-glow: rgba(90, 110, 140, 0.35);
+
+  /* Carte du monde */
+  --map-ink: #5a3b1d;
+  --map-region: #6b4a2a;
+  --map-locked: #7b6a52;
+  --map-soon: #8c6a45;
+  --rust: #8c2a17;
+  --map-label: #3b2410;
+  --map-halo: #f6e7c1;
+  --map-coast: #fbf3dd;
+  --map-ridge: #fbe9d6;
+  --map-frame: #1b2a45;
+
+  /* Aventure : bulles, portraits, Berry, paquets dessinés */
+  --parchment: #ecd9b0;
+  --parchment-light: #f8ecd0;
+  --parchment-edge: #6b5330;
+  --parchment-ink: #2d1d0c;
+  --portrait-bg: #c9b289;
+  --narration-bg: #1d2c47;
+  --berry-light: #ffe9a0;
+  --berry-dark: #d39b25;
+  --berry-ink: #4a3207;
+  --pack-wine: #7a1f4a;
+  --pack-red: #c22a3c;
+  --pack-navy: #22306e;
+  --hold-pack-1: #e8574a;
+  --hold-pack-2: #8a2a3a;
+  --hold-pack-3: #2a1838;
+  --special: #c9a2ff;
+  --special-a45: rgba(201, 162, 255, 0.45);
+  --special-light: #e3ccff;
+  --special-bg: rgba(40, 18, 70, 0.9);
+
+  /* Boosters : fond, paquet, raretés, reflets */
+  --bo-bg-0: #060c18;
+  --bo-bg-2: #1d3766;
+  --bo-pack-dark: #0b1022;
+  --foil-1: #aeb8ca;
+  --foil-2: #d9dfe9;
+  --foil-3: #f4f6fb;
+  --bo-set-shadow: #6b4410;
+  --rarity-rare: #8fd3ff;
+  --rarity-foil: #d59bff;
+  --rarity-leader: #ff7a59;
+  --rarity-secret: #ffe27a;
+  --ray-red: #ff6b6b;
+  --ray-gold: #ffd65a;
+  --ray-green: #6bffb0;
+  --ray-blue: #6bb8ff;
+  --ray-purple: #c77dff;
+  --ray-pink: #ff8ad8;
+  --new-light: #7df5b4;
+  --new-dark: #2fb874;
+  --holo-pink: rgba(255, 90, 210, 0.5);
+  --holo-cyan: rgba(90, 225, 255, 0.5);
+  --holo-yellow: rgba(255, 240, 100, 0.5);
+  --pack-glow: rgba(255, 214, 110, 0.45);
+  --pack-light: rgba(255, 246, 210, 0.95);
+  --flash-warm: rgba(255, 236, 170, 0.55);
+  --burst: rgba(255, 220, 120, 0.9);
+
+  /* Espacements : échelle de 4 px (en rem : 1rem vaut 14 px environ sur un ordinateur, la taille du texte suit l'écran) */
+  --space-1: 0.286rem;
+  --space-2: 0.571rem;
+  --space-3: 0.857rem;
+  --space-4: 1.143rem;
+  --space-5: 1.429rem;
+  --space-6: 1.714rem;
+  --space-8: 2.286rem;
+
+  /* Rayons */
+  --radius-xs: 4px;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 999px;
+
+  /* Ombres */
+  --shadow-1: 0 3px 8px var(--black-a45);
+  --shadow-2: 0 16px 40px var(--black-a50);
+  --shadow-3: 0 24px 60px var(--black-a60);
+
+  /* Durées des animations (mises à 0 par le réglage « Animations réduites », tâche R1.3) */
+  --dur-fast: 0.12s;
+  --dur-base: 0.2s;
+  --dur-slow: 0.4s;
+
+  /* Plans (z-index) : chaque couche nommée, de bas en haut */
+  --z-raise: 1;
+  --z-raise-2: 2;
+  --z-raise-3: 5;
+  --z-menu: 30;
+  --z-fx: 35;
+  --z-alert: 36;
+  --z-card-menu: 40;
+  --z-drawer: 45;
+  --z-drawer-menu: 46;
+  --z-modal: 50;
+  --z-celebration: 60;
+  --z-boosters: 66;
+  --z-intro: 70;
+  --z-zoom-backdrop: 79;
+  --z-zoom: 80;
+  --z-zoom-close: 81;
+}

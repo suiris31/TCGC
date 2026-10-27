@@ -1,0 +1,19 @@
+/* Parties en ligne : entrée sur l'écran de départ, salon, code de la salle, alertes de la partie. */
+.online-entry { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-radius: 14px; background: linear-gradient(135deg, var(--blue-a14), var(--accent-a08)); border: 1px solid var(--blue-a45); }
+.setup .online-entry h2 { margin: 0 0 0.2rem; color: var(--text); font-size: 1.15rem; text-transform: none; letter-spacing: 0; }
+.online-entry p { margin: 0; }
+.lobby { max-width: 60rem; }
+.lobby-tabs { width: 100%; max-width: 28rem; margin: 0 auto; grid-template-columns: 1fr 1fr; }
+.room-input { width: 100%; max-width: 16rem; height: 3.4rem; padding: 0 1rem; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--text); font: 800 1.6rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.3em; text-transform: uppercase; }
+.room-input:focus { outline: none; border-color: var(--accent); }
+.room-code { align-self: center; padding: 0.6rem 1.4rem; border-radius: 16px; border: 2px dashed var(--accent); background: var(--surface); color: var(--accent); font: 900 2.6rem/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.25em; user-select: all; }
+.lobby-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem; }
+.lobby-error { margin: 0; }
+.presence { color: var(--muted); font-size: 0.9rem; }
+.presence-on { color: var(--green); }
+.online-alert { position: absolute; left: 50%; top: 3.6rem; z-index: var(--z-alert); transform: translateX(-50%); max-width: calc(100% - 1rem); padding: 0.4rem 0.9rem; border-radius: 10px; background: var(--red-a94); color: var(--white); font-size: 0.9rem; font-weight: 700; box-shadow: 0 8px 24px var(--black-a45); }
+.online-note { margin: 0.2rem 0 0; }
+.online-end { max-width: 30rem; text-align: center; }
+:where(.opc.is-compact) .online-entry { flex-direction: column; align-items: stretch; text-align: center; }
+:where(.opc.is-compact) .room-code { font-size: 2rem; }
+:where(.opc.is-compact) .presence { font-size: 0.75rem; }

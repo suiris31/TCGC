@@ -5,6 +5,7 @@ import { def, findField, power } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { sfx } from './sound.ts';
 import { cardImage } from './images.ts';
+import { useReducedMotion } from './settings.ts';
 
 interface Ghost { id: number; num: string; rect: DOMRect; label: string }
 interface Float { id: number; x: number; y: number; text: string; kind: 'good' | 'bad' | 'don' | 'info' }
@@ -31,7 +32,7 @@ function fieldUids(s: GameState): Map<number, PlayerId> {
   return m;
 }
 
-function flash(selector: string, cls: string, ms: number) {
+function flashCards(selector: string, cls: string, ms: number) {
   document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
     el.classList.remove(cls);
     void el.offsetWidth; // relance l'animation
@@ -43,6 +44,12 @@ function flash(selector: string, cls: string, ms: number) {
 const TICK = /^(joue |active |.+\) attaque |contre avec|bloque avec|l'attaque|perd 1 Vie|déclare|ajoute|place |retourne|regarde|défausse|renvoie)|est mis KO|ne peut pas|est placé|est renvoyé|est ajouté/;
 
 export function FxLayer({ game, human, epoch }: { game: GameState; human: PlayerId; epoch: number }) {
+  // Animations réduites : pas d'arrivée, de tremblement ni d'éclat sur les cartes ; les annonces (bandeau, fil, carte
+  // activée, nombres) restent le temps prévu, mais immobiles (styles/a11y.css)
+  const reduced = useReducedMotion();
+  const still = useRef(reduced);
+  still.current = reduced;
+  const flash = (selector: string, cls: string, ms: number) => { if (!still.current) flashCards(selector, cls, ms); };
   const prevRef = useRef<{ game: GameState; epoch: number } | null>(null);
   const rects = useRef(new Map<number, DOMRect>());
   const [ghosts, setGhosts] = useState<Ghost[]>([]);
@@ -261,11 +268,12 @@ export function Intro({ s, onDone }: { s: GameState; onDone: () => void }) {
 // Écran de victoire ou de défaite, avant le récap du coach
 // sub : la phrase sous le résultat (par défaut, celle de la partie contre l'IA, avec le récap du coach)
 export function Celebration({ won, onDone, sub }: { won: boolean; onDone: () => void; sub?: string }) {
+  const reduced = useReducedMotion();
   useEffect(() => { sfx(won ? 'win' : 'lose'); }, [won]);
   useTimeout(onDone, 2600);
   return (
     <div className={`celebration ${won ? 'cel-win' : 'cel-lose'}`} data-ui="table.celebration" onClick={onDone}>
-      {won && <div className="confetti">{Array.from({ length: 40 }, (_, i) => <i key={i} style={{ ['--i' as string]: i }} />)}</div>}
+      {won && !reduced && <div className="confetti">{Array.from({ length: 40 }, (_, i) => <i key={i} style={{ ['--i' as string]: i }} />)}</div>}
       <div className="cel-title">{won ? 'Victoire !' : 'Défaite'}</div>
       <div className="cel-sub">{sub ?? (won ? 'Bien joué, capitaine.' : 'Le coach a préparé ton récap.')}</div>
     </div>

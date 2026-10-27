@@ -1,6 +1,6 @@
 // « Mes parties » : toutes tes parties sauvegardées, ta progression, tes axes de progrès et le détail de chaque partie
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { replayRecord, type GameRecord, type GameSummary } from '../coach/archive.ts';
+import { playMode, replayRecord, type GameRecord, type GameSummary, type PlayMode } from '../coach/archive.ts';
 import { progress, type Axis, type Group, type Period, type Progress } from '../coach/progress.ts';
 import { buildRecap, MISTAKE, type Recap } from '../coach/review.ts';
 import { def } from '../engine/rules.ts';
@@ -8,13 +8,24 @@ import { ECONOMY } from '../economy/config.ts';
 import type { Preview } from './CardView.tsx';
 import { pct, RecapBody, ReviewItem, StatsTable } from './Coach.tsx';
 import { CardThumb } from './DeckGuide.tsx';
-import { importFiles, loadRecord, loadSummaries } from './archiveClient.ts';
+import { loadRecord, loadSummaries } from './archiveClient.ts';
 import { isTouch } from './device.ts';
 import { GameGain, useGameGain } from './economy/GameGain.tsx';
+import { Dialog } from './kit/index.ts';
 import { deckLabel, isAdventureDeck } from './myDecks.ts';
+import { goUp, HOME, navigate, useRoute } from './routes.ts';
 
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
 type Tab = 'progress' | 'axes' | 'games';
+type Filter = 'all' | PlayMode;
+
+const FILTERS: [Filter, string][] = [['all', 'Tout'], ['solo', 'Contre l’IA'], ['aventure', '🧭 Aventure'], ['online', '🌐 En ligne']];
+const NONE: Record<Filter, string> = {
+  all: 'Aucune partie enregistrée',
+  solo: 'Aucune partie contre l’IA',
+  aventure: 'Aucune partie d’aventure',
+  online: 'Aucune partie en ligne',
+};
 
 const LEVEL = ['', 'Débutant', 'Confirmé', 'Expert', 'IA entraînée'];
 const STATUS: Record<GameSummary['status'], [string, string]> = {
@@ -50,70 +61,90 @@ function minutesText(m: number | null) {
   return m < 60 ? `${Math.round(m)} min` : `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')}`;
 }
 
+// Mes parties (#play/parties) ; le détail d'une partie a son adresse (#play/parties/<id>) : le Retour revient à la liste.
+// Les parties se filtrent par mode : contre l'IA, Aventure, en ligne. La fenêtre a sa propre adresse : elle n'ajoute pas
+// d'entrée d'historique (`history={false}`), le Retour du navigateur la ferme déjà.
 export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => void; onResume: (rec: GameRecord, move: number) => void; onHover: Hover }) {
   const [list, setList] = useState<GameSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('progress');
-  const [open, setOpen] = useState<string | null>(null);
-  const [imported, setImported] = useState<string | null>(null);
-  const reload = () => loadSummaries().then((l) => { rememberNames(l); setList(l); }, (e: Error) => setError(e.message));
+  const [filter, setFilter] = useState<Filter>('all');
+  const route = useRoute();
+  const open = route.name === 'parties' ? route.id ?? null : null;
+  const openGame = (id: string) => navigate({ name: 'parties', id });
+  const closeGame = () => goUp({ name: 'parties' });
+  // fermer depuis le détail ferme Mes parties (pas seulement le détail)
+  const close = () => (open ? navigate(HOME, { replace: true }) : onClose());
   useEffect(() => {
-    void reload();
+    loadSummaries().then((l) => { rememberNames(l); setList(l); }, (e: Error) => setError(e.message));
   }, []);
-  const onImport = async (files: File[]) => {
-    if (!files.length) return;
-    setImported('Import en cours…');
-    const { imported: n, failed } = await importFiles(files);
-    setImported(`${n} partie${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''}${failed.length ? ` ; refusé${failed.length > 1 ? 's' : ''} (ce ne sont pas des parties) : ${failed.join(', ')}` : ''}.`);
-    void reload();
-  };
-  const prog = useMemo(() => (list ? progress(list.filter((g) => g.mode !== 'online')) : null), [list]);
-  const onlineGames = useMemo(() => (list ?? []).filter((g) => g.mode === 'online').reverse(), [list]);
-  const empty = Boolean(prog && prog.rows.length === 0 && onlineGames.length === 0);
+  const modes = useMemo(() => new Map((list ?? []).map((g) => [g.id, playMode(g)])), [list]);
+  const counts = useMemo(() => {
+    const n: Record<Filter, number> = { all: 0, solo: 0, aventure: 0, online: 0 };
+    for (const m of modes.values()) { n.all++; n[m]++; }
+    return n;
+  }, [modes]);
+  const shown = useMemo(() => (list ?? []).filter((g) => filter === 'all' || modes.get(g.id) === filter), [list, modes, filter]);
+  // le coach n'analyse pas les parties en ligne : la progression porte sur celles contre l'IA et d'aventure, sauf
+  // avec le filtre « En ligne » (résultats seulement)
+  const coached = filter !== 'online';
+  const prog = useMemo(() => (list ? progress(coached ? shown.filter((g) => modes.get(g.id) !== 'online') : shown) : null), [list, shown, modes, coached]);
+  const onlineGames = useMemo(() => shown.filter((g) => modes.get(g.id) === 'online').reverse(), [shown, modes]);
+  const empty = Boolean(list && list.length === 0);
+  const emptyHere = Boolean(list && !empty && shown.length === 0);
   const resume = (id: string, move: number) => {
     loadRecord(id).then((rec) => onResume(rec, move)).catch((e: Error) => setError(`impossible de rejouer ce moment : ${e.message}`));
   };
   const tabs: [Tab, string][] = [['progress', 'Progression'], ['axes', 'Axes de progrès'], ['games', 'Toutes les parties']];
   return (
-    <div className="modal history-modal" onClick={onClose}>
-      <div className="modal-box history" data-ui="history" onClick={(e) => e.stopPropagation()}>
-        <header className="history-head">
-          <h2>📈 Mes parties</h2>
-          <nav className="history-tabs">
-            {tabs.map(([key, label]) => (
-              <button key={key} className={tab === key && !open ? 'op-tab on' : 'op-tab'} data-ui={`history.tab-${key}`} onClick={() => { setTab(key); setOpen(null); }}>{label}</button>
+    <Dialog title="📈 Mes parties" onClose={close} size="wide" className="history op-history" history={false} data-ui="history">
+      <div className="op-history-bar">
+        <nav className="history-tabs" aria-label="Vue">
+          {tabs.map(([key, label]) => (
+            <button key={key} className={tab === key && !open ? 'op-tab on' : 'op-tab'} aria-pressed={tab === key && !open} data-ui={`history.tab-${key}`}
+              onClick={() => { setTab(key); if (open) closeGame(); }}>{label}</button>
+          ))}
+        </nav>
+        {!open && list && !empty && (
+          <div className="op-history-modes" role="group" aria-label="Mode de jeu">
+            {FILTERS.map(([key, label]) => (
+              <button key={key} className="op-history-mode" aria-pressed={filter === key} data-ui={`history.mode-${key}`} onClick={() => setFilter(key)}>
+                {label} <span className="op-history-count">{counts[key]}</span>
+              </button>
             ))}
-          </nav>
-          <label className="icon-btn" title="Importer des parties de l’ancien OP Coach (fichiers .json de son dossier parties)">
-            ⤒<input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void onImport([...(e.target.files ?? [])]); e.target.value = ''; }} />
-          </label>
-          <button className="icon-btn" data-ui="history.close" onClick={onClose} title="Fermer (Échap)">✕</button>
-        </header>
-        <div className="history-body">
-          {imported && <p className="op-muted">{imported}</p>}
-          {error && <p className="danger">Impossible de lire les parties : {error}</p>}
-          {!list && !error && <p className="op-muted">Chargement des parties…</p>}
-          {empty && (
-            <div className="history-empty">
-              <p><b>Aucune partie enregistrée pour l’instant.</b></p>
-              <p className="op-muted">Chaque partie que tu joues est sauvegardée sur ton compte avec tous ses détails. Reviens ici après quelques parties : ta progression et tes axes de progrès s’afficheront.</p>
-              <p className="op-muted">Tu as des parties de l’ancien OP Coach ? Importe-les avec le bouton ⤒ (fichiers du dossier <code>parties</code>).</p>
-            </div>
-          )}
-          {prog && !empty && (open
-            ? <GameDetail id={open} onBack={() => setOpen(null)} onResume={(rec, move) => {
-              try {
-                onResume(rec, move);
-              } catch (e) {
-                setError(`impossible de rejouer ce moment : ${e instanceof Error ? e.message : String(e)}`);
-              }
-            }} />
-            : tab === 'progress' ? <ProgressTab p={prog} />
-              : tab === 'axes' ? <AxesTab p={prog} onResume={resume} onOpen={setOpen} onHover={onHover} />
-                : <GamesTab p={prog} online={onlineGames} onOpen={setOpen} />)}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+      <div className="op-history-body">
+        {error && <p className="danger">Impossible de lire les parties : {error}</p>}
+        {!list && !error && <p className="op-muted">Chargement des parties…</p>}
+        {empty && (
+          <div className="history-empty">
+            <p><b>Aucune partie enregistrée pour l’instant.</b></p>
+            <p className="op-muted">Chaque partie que tu joues est sauvegardée sur ton compte avec tous ses détails. Reviens ici après quelques parties : ta progression et tes axes de progrès s’afficheront.</p>
+          </div>
+        )}
+        {prog && !empty && (open
+          ? <GameDetail id={open} onBack={closeGame} onResume={(rec, move) => {
+            try {
+              onResume(rec, move);
+            } catch (e) {
+              setError(`impossible de rejouer ce moment : ${e instanceof Error ? e.message : String(e)}`);
+            }
+          }} />
+          : emptyHere ? (
+            <div className="history-empty">
+              <p><b>{NONE[filter]} pour l’instant.</b></p>
+              <p className="op-muted"><button className="op-link" onClick={() => setFilter('all')}>Voir toutes les parties</button></p>
+            </div>
+          )
+            : tab === 'progress' ? <ProgressTab p={prog} coached={coached} />
+              : tab === 'axes' ? (coached
+                ? <AxesTab p={prog} onResume={resume} onOpen={openGame} onHover={onHover} />
+                : <p className="op-muted">Le coach est désactivé pendant les parties en ligne : elles n’ont pas d’axes de progrès. Choisis « Tout », « Contre l’IA » ou « Aventure » pour voir les tiens.</p>)
+                : <GamesTab p={coached ? prog : null} online={onlineGames} filter={filter} modes={modes} onOpen={openGame} />)}
+      </div>
+    </Dialog>
   );
 }
 
@@ -175,20 +206,21 @@ function Chart({ points, line, min, max, ticks, fmt, marks, bars, wide }: {
   );
 }
 
-function GroupTable({ title, rows, label }: { title: string; rows: Group[]; label: (key: string) => ReactNode }) {
+// accuracy : colonne de la précision (absente pour les parties en ligne, que le coach n'analyse pas)
+function GroupTable({ title, rows, label, accuracy = true }: { title: string; rows: Group[]; label: (key: string) => ReactNode; accuracy?: boolean }) {
   if (!rows.length) return null;
   return (
     <section className="hist-section">
       <h3>{title}</h3>
       <table className="op-stats hist-table">
-        <thead><tr><th /><th>Parties</th><th>Victoires</th><th>Précision</th></tr></thead>
+        <thead><tr><th /><th>Parties</th><th>Victoires</th>{accuracy && <th>Précision</th>}</tr></thead>
         <tbody>
           {rows.map((g) => (
             <tr key={g.key}>
               <td>{label(g.key)}</td>
               <td>{g.games}</td>
               <td>{g.wins}/{g.games} ({pct(g.wins / g.games)})</td>
-              <td>{pctOr(g.accuracy)}</td>
+              {accuracy && <td>{pctOr(g.accuracy)}</td>}
             </tr>
           ))}
         </tbody>
@@ -201,7 +233,8 @@ function trendText(recent: Period | null) {
   return recent ? `sur tes ${recent.games} dernières parties, par rapport aux précédentes` : '';
 }
 
-function ProgressTab({ p }: { p: Progress }) {
+// coached : parties analysées par le coach (sinon, parties en ligne : résultats et confrontations seulement)
+function ProgressTab({ p, coached }: { p: Progress; coached: boolean }) {
   const t = p.totals;
   const h = p.habits;
   const accMin = Math.min(0.5, ...p.series.accuracy.map((a) => Math.floor(a * 10) / 10));
@@ -228,12 +261,14 @@ function ProgressTab({ p }: { p: Progress }) {
       <div className="kpis">
         <Kpi label="Parties terminées" value={String(t.games)} sub={`${plural(t.wins, 'victoire')} · ${plural(t.losses, 'défaite')}${t.unfinished ? ` · ${t.unfinished} non terminée${t.unfinished > 1 ? 's' : ''}` : ''}`} />
         <Kpi label="Victoires" value={pctOr(t.winRate)}><Delta now={p.recent?.winRate ?? null} before={p.before?.winRate ?? null} /></Kpi>
-        <Kpi label="Précision" value={pctOr(t.accuracy)} sub={`décisions sans erreur, sur ${t.decisions} analysées`}><Delta now={p.recent?.accuracy ?? null} before={p.before?.accuracy ?? null} /></Kpi>
-        <Kpi label="Erreurs par partie" value={num(t.mistakesPerGame)}><Delta now={p.recent?.mistakesPerGame ?? null} before={p.before?.mistakesPerGame ?? null} invert percent={false} /></Kpi>
+        {coached && <Kpi label="Précision" value={pctOr(t.accuracy)} sub={`décisions sans erreur, sur ${t.decisions} analysées`}><Delta now={p.recent?.accuracy ?? null} before={p.before?.accuracy ?? null} /></Kpi>}
+        {coached && <Kpi label="Erreurs par partie" value={num(t.mistakesPerGame)}><Delta now={p.recent?.mistakesPerGame ?? null} before={p.before?.mistakesPerGame ?? null} invert percent={false} /></Kpi>}
       </div>
       <p className="op-small op-muted">
         {p.recent ? `Flèches : ${trendText(p.recent)}. ` : 'Les tendances s’affichent à partir de 6 parties. '}
-        Une erreur, c’est un choix qui fait perdre au moins {Math.round(MISTAKE * 100)} points de chances de gagner d’après les simulations du coach.
+        {coached
+          ? <>Une erreur, c’est un choix qui fait perdre au moins {Math.round(MISTAKE * 100)} points de chances de gagner d’après les simulations du coach.</>
+          : 'Le coach est désactivé pendant les parties en ligne : seuls les résultats sont comptés.'}
       </p>
 
       {p.finished.length > 0 && (
@@ -242,7 +277,7 @@ function ProgressTab({ p }: { p: Progress }) {
           <Chart points={p.series.winRolling} line={p.series.winRolling} min={0} max={1} ticks={[0, 0.5, 1]} fmt={(v) => pct(v)} marks={p.series.win} wide />
         </section>
       )}
-      {p.analysed.length > 0 && (
+      {coached && p.analysed.length > 0 && (
         <div className="hist-two">
           <section className="hist-section">
             <h3>Précision par partie <span className="op-small op-muted">· la ligne : moyenne sur 5 parties</span></h3>
@@ -255,21 +290,23 @@ function ProgressTab({ p }: { p: Progress }) {
         </div>
       )}
 
-      <section className="hist-section">
+      {coached && <section className="hist-section">
         <h3>Tes habitudes</h3>
         <dl className="habits">
           {habits.map(([label, value, note]) => (
             <div key={label}><dt>{label}</dt><dd><b>{value}</b>{note && <span className="op-small op-muted"> {note}</span>}</dd></div>
           ))}
         </dl>
-      </section>
+      </section>}
 
       <div className="hist-two">
-        <GroupTable title="Par confrontation" rows={p.matchups} label={(k) => { const [a, b] = k.split('|'); return <>{deckName(a)} <span className="op-muted">contre</span> {deckName(b)}</>; }} />
-        <div>
-          <GroupTable title="Par niveau de l’IA" rows={p.levels} label={(k) => k} />
-          <GroupTable title="Qui commence" rows={p.first} label={(k) => k} />
-        </div>
+        <GroupTable title="Par confrontation" rows={p.matchups} accuracy={coached} label={(k) => { const [a, b] = k.split('|'); return <>{deckName(a)} <span className="op-muted">contre</span> {deckName(b)}</>; }} />
+        {coached && (
+          <div>
+            <GroupTable title="Par niveau de l’IA" rows={p.levels} label={(k) => k} />
+            <GroupTable title="Qui commence" rows={p.first} label={(k) => k} />
+          </div>
+        )}
       </div>
     </>
   );
@@ -343,7 +380,10 @@ function AxesTab({ p, onResume, onOpen, onHover }: { p: Progress; onResume: (id:
 
 // ---------- Liste et détail des parties ----------
 
-function GamesTab({ p, online, onOpen }: { p: Progress; online: GameSummary[]; onOpen: (id: string) => void }) {
+// p : parties contre l'IA et d'aventure (absent avec le filtre « En ligne ») ; modes : mode de chaque partie
+function GamesTab({ p, online, filter, modes, onOpen }: { p: Progress | null; online: GameSummary[]; filter: Filter; modes: Map<string, PlayMode>; onOpen: (id: string) => void }) {
+  const adventure = filter === 'aventure' || (filter === 'all' && Boolean(p?.rows.some((r) => modes.get(r.id) === 'aventure')));
+  const title = filter === 'aventure' ? '🧭 Aventure' : adventure ? 'Contre l’IA et dans l’Aventure' : 'Contre l’IA';
   return (
     <>
       {online.length > 0 && (
@@ -365,25 +405,33 @@ function GamesTab({ p, online, onOpen }: { p: Progress; online: GameSummary[]; o
           </table>
         </section>
       )}
-      {p.rows.length > 0 && <h3>Contre l’IA</h3>}
-      <p className="op-small op-muted">{plural(p.rows.length, 'partie')} sauvegardée{p.rows.length > 1 ? 's' : ''}. {isTouch() ? 'Touche' : 'Clique sur'} une partie pour la revoir.</p>
-      <table className="op-stats hist-table hist-games">
-        <thead><tr><th>Date</th><th>Ton deck</th><th>IA</th><th>Résultat</th><th>Tours</th><th>Durée</th><th>Précision</th><th>Erreurs</th></tr></thead>
-        <tbody>
-          {p.rows.map((r) => (
-            <tr key={r.id} onClick={() => onOpen(r.id)} className="hist-row">
-              <td>{dateText(r.date)}</td>
-              <td>{deckName(r.myDeck)} {isAdventureDeck(r.myDeck) && <HoldMark />}</td>
-              <td>{deckName(r.aiDeck)} <span className="op-small op-muted">{LEVEL[r.level]}</span></td>
-              <td><span className={STATUS[r.status][1]}>{STATUS[r.status][0]}</span>{r.practice && <span className="op-chip">entraînement</span>}</td>
-              <td>{r.turns}</td>
-              <td>{minutesText(r.minutes)}</td>
-              <td>{pctOr(r.accuracy)}</td>
-              <td>{r.reviewed ? r.mistakes : '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {p && p.rows.length > 0 && (
+        <section>
+          <h3>{title}</h3>
+          <p className="op-small op-muted">{plural(p.rows.length, 'partie')} sauvegardée{p.rows.length > 1 ? 's' : ''}. {isTouch() ? 'Touche' : 'Clique sur'} une partie pour la revoir.</p>
+          <table className="op-stats hist-table hist-games">
+            <thead><tr><th>Date</th><th>Ton deck</th><th>IA</th><th>Résultat</th><th>Tours</th><th>Durée</th><th>Précision</th><th>Erreurs</th></tr></thead>
+            <tbody>
+              {p.rows.map((r) => (
+                <tr key={r.id} onClick={() => onOpen(r.id)} className="hist-row">
+                  <td>{dateText(r.date)}</td>
+                  <td>{deckName(r.myDeck)} {isAdventureDeck(r.myDeck) && <HoldMark />}</td>
+                  <td>{deckName(r.aiDeck)} <span className="op-small op-muted">{LEVEL[r.level]}</span></td>
+                  <td>
+                    <span className={STATUS[r.status][1]}>{STATUS[r.status][0]}</span>
+                    {r.practice && <span className="op-chip">entraînement</span>}
+                    {filter === 'all' && modes.get(r.id) === 'aventure' && <span className="op-chip">🧭 Aventure</span>}
+                  </td>
+                  <td>{r.turns}</td>
+                  <td>{minutesText(r.minutes)}</td>
+                  <td>{pctOr(r.accuracy)}</td>
+                  <td>{r.reviewed ? r.mistakes : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </>
   );
 }
@@ -433,11 +481,12 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
   // partie en ligne contre un autre joueur : pas d'analyse du coach (désactivé pendant la partie)
   const online = rec.mode === 'online';
   const oppName = online ? rec.opponent ?? 'ton adversaire' : 'l’IA';
+  const against = online ? `${oppName}, en ligne` : `${playMode(rec) === 'aventure' ? 'Aventure, ' : ''}IA ${LEVEL[rec.config.level]}`;
   return (
     <div className="game-detail">
       <button className="op-link" onClick={onBack}>← Toutes les parties</button>
       <div className="detail-head">
-        <h3>{deckName(rec.config.myDeck)} {holdMine(rec) && <HoldMark />} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} {rec.opponentHoldDeck && <HoldMark />} <span className="op-small op-muted">· {online ? `${oppName}, en ligne` : `IA ${LEVEL[rec.config.level]}`}</span></h3>
+        <h3>{deckName(rec.config.myDeck)} {holdMine(rec) && <HoldMark />} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} {rec.opponentHoldDeck && <HoldMark />} <span className="op-small op-muted">· {against}</span></h3>
         <p>
           <span className={cls}>{label}</span>{rec.winReason ? ` · ${rec.winReason}` : ''} · {plural(rec.turns, 'tour')} · {minutesText((Date.parse(end) - Date.parse(rec.startedAt)) / 60000)}
           {' · '}{rec.wentFirst ? 'tu commençais' : `${oppName} commençait`}

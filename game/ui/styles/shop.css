@@ -1,0 +1,170 @@
+/* Berry : bourse, boutique, gains de fin de partie, doublons et comptoir. */
+/* Pastille du solde : la bourse (👛), jamais la prime de l'avis de recherche */
+.op-wallet-badge { position: relative; flex: none; display: inline-flex; align-items: center; gap: 0.35rem; height: 2.286rem; padding: 0 0.8rem 0 0.55rem; border-radius: 999px; border: 1px solid var(--accent-a55); background: linear-gradient(180deg, var(--accent-a18), var(--accent-a06)); color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.op-wallet-badge.op-wallet-link { font: inherit; font-weight: 800; cursor: pointer; transition: transform 0.12s, box-shadow 0.2s; }
+@media (hover: hover) { .op-wallet-badge.op-wallet-link:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px var(--accent); } }
+.op-wallet-purse { font-size: 1.1rem; }
+.op-wallet-badge.is-up { animation: op-wallet-up 0.7s ease-out; }
+.op-wallet-badge.is-down { animation: op-wallet-down 0.5s ease-out; }
+@keyframes op-wallet-up { 0% { box-shadow: 0 0 0 0 var(--accent-a80); transform: scale(1); } 30% { transform: scale(1.08); } 100% { box-shadow: 0 0 0 0.9rem var(--accent-a00); transform: none; } }
+@keyframes op-wallet-down { 30% { transform: scale(0.94); } 100% { transform: none; } }
+.op-wallet-delta { position: absolute; right: 0.4rem; top: -0.2rem; pointer-events: none; font-size: 0.9rem; font-weight: 800; animation: op-wallet-delta 1.8s ease-out forwards; text-shadow: 0 1px 3px var(--black-a70); }
+.op-wallet-delta.is-gain { color: var(--green); }
+.op-wallet-delta.is-spent { color: var(--red-spent); }
+@keyframes op-wallet-delta { 0% { opacity: 0; transform: translateY(0.4rem); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-1.6rem); } }
+/* Détail de la bourse */
+.op-wallet-details { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+.op-wallet-details li { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.55rem 0.7rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); line-height: 1.35; }
+.op-wallet-details li > span:last-child { flex: 1; min-width: 0; }
+.op-wallet-details li.is-ready { border-color: var(--accent-a50); }
+.op-wallet-details li.is-done { border-color: var(--green-a50); }
+.op-wallet-details li.is-capped { border-color: var(--red-a45); }
+.op-wallet-icon { flex: none; font-size: 1.3rem; line-height: 1.2; }
+.op-wallet-pips { display: flex; gap: 0.3rem; margin-top: 0.35rem; }
+.op-wallet-pips i { flex: 1; max-width: 3rem; height: 0.45rem; border-radius: 999px; background: var(--line); }
+.op-wallet-pips i.on { background: var(--accent); }
+.op-wallet-bar { display: block; height: 0.35rem; margin-top: 0.35rem; border-radius: 999px; background: var(--line); overflow: hidden; }
+.op-wallet-bar i { display: block; height: 100%; background: var(--accent); transition: width 0.6s ease-out; }
+.is-capped .op-wallet-bar i { background: var(--red); }
+.op-wallet-help summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.op-wallet-help ul { margin: 0.5rem 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; line-height: 1.4; }
+.op-wallet-help p { margin: 0; }
+/* Écran de la boutique */
+.op-shop { max-width: 70rem; gap: 1.1rem; }
+.op-shop-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.op-shop-head h1 { flex: 1; margin: 0; font-size: 1.8rem; color: var(--accent); }
+.op-shop-main { display: grid; grid-template-columns: minmax(17rem, 25rem) 1fr; gap: 1.1rem; align-items: start; }
+.op-shop-purse, .op-shop-window, .op-shop-history { display: flex; flex-direction: column; gap: 0.7rem; padding: 1rem 1.1rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+.op-shop-purse h2, .op-shop-window h2, .op-shop-history h2 { margin: 0; }
+.op-shop-purse p, .op-shop-window p, .op-shop-history p { margin: 0; }
+.op-shop-balance { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.op-shop-shelf { display: flex; flex-direction: column; gap: 0.6rem; }
+.op-shop-shelf-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 0.3rem 1rem; }
+.op-shop-shelf-head h3 { margin: 0; }
+.op-shop-item { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 0.9rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.op-shop-display { border-color: var(--accent-a45); background: linear-gradient(135deg, var(--accent-a10), transparent 60%), var(--surface); }
+.op-shop-art { flex: none; width: 5.2rem; display: grid; place-items: center; }
+.op-shop-art .op-adv-pack { width: 2.8rem; }
+.op-shop-box { position: relative; display: block; width: 5rem; height: 4.6rem; }
+.op-shop-box .op-adv-pack { position: absolute; bottom: 0; }
+.op-shop-box .op-adv-pack:nth-child(1) { left: 0; transform: rotate(-12deg); }
+.op-shop-box .op-adv-pack:nth-child(2) { left: 1.1rem; transform: rotate(-3deg); }
+.op-shop-box .op-adv-pack:nth-child(3) { left: 2.2rem; transform: rotate(7deg); }
+.op-shop-box .op-adv-pack:not(:last-child) b { visibility: hidden; }
+.op-shop-item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.op-shop-item-text strong { font-size: 1.1rem; }
+.op-shop-saving { align-self: flex-start; margin-top: 0.2rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--green-a16); color: var(--green); font-size: 0.82rem; font-weight: 700; }
+.op-shop-buy { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; text-align: right; }
+.op-shop-price { font-size: 1.25rem; font-weight: 800; color: var(--accent); white-space: nowrap; }
+/* Contenu d'un booster et d'un display */
+.op-kit-dialog.op-shop-contents { width: min(40rem, 100%); }
+.op-shop-contents .op-kit-dialog-body { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Confirmation et achat */
+.op-shop-dialog .op-kit-dialog-body { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; }
+.op-shop-dialog p { margin: 0; line-height: 1.45; }
+.op-shop-stack { position: relative; display: inline-flex; justify-content: center; height: 5.4rem; }
+.op-shop-stack .op-adv-pack { width: 3.3rem; }
+.op-shop-stack .op-adv-pack:first-child:not(:last-child) { position: absolute; transform: translate(-0.9rem, 0.2rem) rotate(-10deg); opacity: 0.85; }
+.op-shop-stack.is-fresh .op-adv-pack:last-child { animation: op-adv-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+/* Historique */
+.op-shop-ledger { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.op-shop-ledger li { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.2rem; border-bottom: 1px solid var(--line); }
+.op-shop-ledger li:last-child { border-bottom: 0; }
+.op-shop-ledger-icon { flex: none; width: 1.6rem; text-align: center; font-size: 1.15rem; }
+.op-shop-ledger-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.op-shop-ledger-amount { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.op-shop-ledger-amount.is-spent { color: var(--red-spent); }
+.op-shop-more { align-self: center; }
+:where(.opc.is-compact) .op-shop { padding: 1rem 0.8rem 3rem; gap: 0.9rem; }
+:where(.opc.is-compact) .op-shop-head h1 { font-size: 1.35rem; }
+:where(.opc.is-compact) .op-shop-purse, :where(.opc.is-compact) .op-shop-window, :where(.opc.is-compact) .op-shop-history { padding: 0.8rem; }
+:where(.opc.is-compact) .op-shop-balance { font-size: 1.8rem; }
+:where(.opc.is-portrait) .op-shop-main { grid-template-columns: 1fr; }
+/* carte du monde : avec « Boutique », les boutons passent sur deux lignes plutôt que d'être coupés */
+:where(.opc.is-portrait) .op-adv-head-actions .op-btn { flex: 1 1 auto; }
+:where(.opc.is-landscape) .op-shop-main { grid-template-columns: minmax(15rem, 1fr) 1.4fr; gap: 0.7rem; }
+@media (max-width: 600px) {
+  .op-shop-item { flex-wrap: wrap; gap: 0.6rem 0.8rem; }
+  .op-shop-art { width: 3.6rem; }
+  .op-shop-art .op-adv-pack { width: 2.2rem; }
+  .op-shop-box { width: 3.6rem; height: 3.6rem; }
+  .op-shop-box .op-adv-pack:nth-child(2) { left: 0.7rem; }
+  .op-shop-box .op-adv-pack:nth-child(3) { left: 1.4rem; }
+  .op-shop-buy { flex-basis: 100%; flex-direction: row; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+  .op-shop-buy .op-small { order: -1; margin-right: auto; }
+  .op-adv-head .op-wallet-badge { padding: 0 0.6rem 0 0.4rem; }
+}
+/* Animations réduites (réglage du jeu, par défaut celui de l'appareil) : l'écart reste affiché sans bouger, jusqu'à ce
+   que Wallet.tsx le retire (une animation qui s'efface finirait tout de suite invisible, voir settings.css) */
+.opc.is-reduced-motion .op-wallet-badge.is-up, .opc.is-reduced-motion .op-wallet-badge.is-down, .opc.is-reduced-motion .op-shop-stack.is-fresh .op-adv-pack:last-child, .opc.is-reduced-motion .op-wallet-delta { animation: none; }
+.opc.is-reduced-motion .op-wallet-bar i { transition: none; }
+.op-gain { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.6rem 0; padding: 0.75rem 0.9rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); text-align: left; }
+.op-gain.is-gain { border-color: var(--accent-a55); background: linear-gradient(180deg, var(--accent-a10), var(--surface)); }
+.op-gain p { margin: 0; }
+.op-gain-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.op-gain-title { font-weight: 700; color: var(--muted); font-size: 0.893rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.op-gain-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.op-gain-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.1rem; font-size: 1.3rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.op-gain-part { display: inline-block; opacity: 0; animation: op-gain-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
+.op-gain-dot { margin: 0 0.4rem; color: var(--muted); font-weight: 400; }
+.op-gain-bonus { color: var(--green); }
+.op-gain-chest { color: var(--blue); }
+.op-gain-refused { color: var(--muted); }
+.op-gain-note { color: var(--accent); opacity: 0.85; }
+@keyframes op-gain-pop { 0% { opacity: 0; transform: translateY(0.5rem) scale(0.6); } 100% { opacity: 1; transform: none; } }
+.opc.is-reduced-motion .op-gain-part { animation: none; opacity: 1; }
+:where(.opc.is-portrait) .op-gain-line { font-size: 1.1rem; }
+/* Cale : boutons des doublons et du comptoir */
+.op-hold-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.op-hold-actions-count { display: inline-block; margin-left: 0.15rem; min-width: 1.4rem; padding: 0 0.35rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 0.8rem; font-weight: 800; text-align: center; }
+.op-hold-zoom-counter { align-self: flex-start; }
+/* Boutique : entrée du comptoir */
+.op-shop-counter-link { display: flex; align-items: center; gap: 0.8rem; width: 100%; padding: 0.7rem 0.9rem; border-radius: 12px; border: 1px dashed var(--accent-a55); background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, transform 0.12s; }
+.op-shop-counter-link > span:first-child { font-size: 1.6rem; }
+.op-shop-counter-link > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.op-shop-counter-link > span:last-child { color: var(--accent); font-weight: 800; }
+@media (hover: hover) { .op-shop-counter-link:hover { border-style: solid; border-color: var(--accent); transform: translateY(-1px); } }
+/* Écran du comptoir */
+.op-counter { max-width: 70rem; gap: 1rem; }
+.op-counter-intro { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.9rem 1rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+.op-counter-intro p { margin: 0; line-height: 1.45; }
+.op-counter-open { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+.op-counter-card { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.op-counter-card .op-btn { margin-top: 0.3rem; }
+.op-counter-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.op-counter-card.is-full .op-hold-img { opacity: 0.6; }
+.op-counter-pips { display: flex; gap: 0.2rem; margin-top: 0.15rem; }
+.op-counter-pips i { flex: 1; height: 0.3rem; border-radius: 999px; background: var(--line); }
+.op-counter-pips i.on { background: var(--accent); }
+.op-counter-full { margin-top: 0.3rem; color: var(--green); font-weight: 700; font-size: 0.9rem; }
+.op-counter-missing { text-align: center; }
+.op-counter-dialog-art { display: block; width: 8.5rem; }
+.op-counter-dialog-img { width: 100%; display: block; aspect-ratio: 600 / 838; object-fit: cover; border-radius: 8px; box-shadow: 0 6px 18px var(--black-a45); }
+.op-counter-dialog-art.is-fresh { animation: op-counter-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+@keyframes op-counter-pop { 0% { transform: scale(0.6) rotate(-8deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+/* Échange des doublons */
+.modal-box.op-dup { max-width: 34rem; }
+.op-dup p { margin: 0; line-height: 1.45; }
+.op-dup-variants { display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; font-size: 0.93rem; line-height: 1.4; }
+.op-dup-variants input { margin-top: 0.2rem; }
+.op-dup-notice { padding: 0.45rem 0.7rem; border-radius: 9px; background: var(--accent-a14); color: var(--accent); }
+.op-dup-lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; max-height: min(22rem, 45vh); overflow-y: auto; border-top: 1px solid var(--line); }
+.op-dup-lines li { display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0.2rem; border-bottom: 1px solid var(--line); }
+.op-dup-thumb { flex: none; width: 2.3rem; aspect-ratio: 600 / 838; border-radius: 3px; overflow: hidden; background: var(--surface); }
+.op-dup-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.op-dup-lines li.is-special .op-dup-thumb { box-shadow: 0 0 0 2px var(--special); }
+.op-dup-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.op-dup-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-hold-variant.op-dup-variant { position: static; display: inline-block; margin-left: 0.4rem; vertical-align: middle; }
+.op-dup-amount { flex: none; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.op-dup-total { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; font-size: 1.05rem; }
+.op-dup-total strong { font-size: 1.4rem; color: var(--green); font-variant-numeric: tabular-nums; }
+.op-dup-warning { padding: 0.5rem 0.7rem; border-radius: 9px; border: 1px solid var(--red-a50); background: var(--red-a10); }
+.op-dup-icon { display: block; align-self: center; font-size: 3rem; }
+.op-dup-icon.is-fresh { animation: op-counter-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+.op-dup h3.good { align-self: center; }
+:where(.opc.is-compact) .op-counter { padding: 1rem 0.8rem 3rem; gap: 0.8rem; }
+:where(.opc.is-compact) .op-counter-intro { padding: 0.7rem 0.8rem; }
+:where(.opc.is-compact) .op-counter-open { flex-basis: 100%; }
+:where(.opc.is-landscape) .op-counter-dialog-art { width: 5.5rem; }
+.opc.is-reduced-motion .op-counter-dialog-art.is-fresh, .opc.is-reduced-motion .op-dup-icon.is-fresh { animation: none; }

@@ -2,24 +2,36 @@
 // les cartes sortent face cachée et se retournent une à une, avec un effet selon leur rareté ; puis un récapitulatif
 // trié par rareté (« Nouveau ! », doubles). Plusieurs boosters (un display) : « Un par un » ou « Tout ouvrir », avec un
 // récapitulatif groupé.
-// Ni appel au serveur ni Cale : l'écran reçoit le contenu déjà tiré (le tirage se fait sur le serveur) et les cartes que
-// le joueur avait avant l'ouverture. Il respecte le réglage des sons du jeu et « réduire les animations » du système.
+// Sans tirage ni Cale : l'écran reçoit soit le contenu déjà tiré (atelier), soit les boosters à ouvrir et `draw`, qui
+// tire un booster sur le serveur au moment où on l'ouvre (tâche R3.6, voir economy/useBoosterOpening.ts) : « Finir plus
+// tard » (ou le Retour) laisse les autres « à ouvrir » dans la Cale, et le récapitulatif montre ce qui a été ouvert.
+// Il reçoit aussi les cartes que le joueur avait avant l'ouverture. Il respecte le réglage des sons du jeu et « Animations
+// réduites ».
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
-import { DISPLAY_SIZE } from '../../boosters/open.ts';
+import { BOOSTER_SIZE, DISPLAY_SIZE } from '../../boosters/open.ts';
 import type { BoosterContent, PulledCard } from '../../boosters/types.ts';
 import { cardData } from '../../engine/cards/index.ts';
 import { useDevice } from '../device.ts';
 import { cardImage } from '../images.ts';
-import { useSettings } from '../settings.ts';
+import { Button } from '../kit/index.ts';
+import { popLayer, pushLayer } from '../routes.ts';
+import { useReducedMotion, useSettings } from '../settings.ts';
 import { boosterSfx, setSoundEnabled, type BoosterSfx } from '../sound.ts';
 
+// Fin de l'ouverture : boosters ouverts, et boosters laissés dans la Cale
+export interface OpeningResult { opened: number; left: number }
+
 export interface BoosterOpeningProps {
-  content: BoosterContent | BoosterContent[];
+  // contenu déjà tiré (atelier, démonstrations)...
+  content?: BoosterContent | BoosterContent[];
+  // ... ou boosters à tirer un par un, au moment de les ouvrir ; draw les tire (une nouvelle demande rend le même contenu)
+  boosters?: { id: string; set: string }[];
+  draw?: (id: string) => Promise<BoosterContent>;
   // exemplaires que le joueur avait dans sa Cale AVANT l'ouverture, par clé ownedKey (voir ownedCounts) ; sans cette
   // information, aucune carte n'est marquée « Nouveau ! »
   owned?: Record<string, number>;
-  onDone: () => void;
-  // false : ouverture sobre, sans mouvement, comme quand le système demande de réduire les animations
+  onDone: (result: OpeningResult) => void;
+  // false : ouverture sobre, sans mouvement, comme avec « Animations réduites »
   animations?: boolean;
 }
 
@@ -330,7 +342,8 @@ function group(cards: PulledCard[], owned?: Record<string, number>): Entry[] {
 
 const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n > 1 ? many : word}`;
 
-function Recap({ entries, known }: { entries: Entry[]; known: boolean }) {
+// left : boosters laissés dans la Cale ; fail : le tirage d'un booster a échoué
+function Recap({ entries, known, left, fail }: { entries: Entry[]; known: boolean; left: number; fail?: string }) {
   const [filter, setFilter] = useState<'all' | 'new' | 'double'>('all');
   const [zoom, setZoom] = useState<Entry | null>(null);
   useEffect(() => {
@@ -360,6 +373,12 @@ function Recap({ entries, known }: { entries: Entry[]; known: boolean }) {
           {plural(total, 'carte')} · {plural(entries.length, 'différente')}
           {known && <> · <b className="good">{plural(fresh, 'nouvelle')}</b></>}
         </p>
+        {fail && <p className="danger op-small" role="alert">{fail}</p>}
+        {left > 0 && (
+          <p className="op-bo-left" data-ui="opening.left">
+            {left > 1 ? `${left} boosters t’attendent dans ta Cale : tu les ouvriras` : 'Un booster t’attend dans ta Cale : tu l’ouvriras'} quand tu voudras.
+          </p>
+        )}
         <div className="op-bo-chips">
           {sections.filter((s) => s.cards > 0).map((s) => <span key={s.title} className={`op-chip op-bo-chip ${s.tier}`}>{s.short} {s.cards}</span>)}
         </div>
@@ -409,27 +428,20 @@ function Recap({ entries, known }: { entries: Entry[]; known: boolean }) {
 
 type Stage =
   | { kind: 'choose' }                                    // plusieurs boosters : un par un, ou tout ouvrir
-  | { kind: 'pack'; booster: number; opening: boolean }   // paquet fermé (ou en train de se déchirer)
+  // paquet fermé (ou en train de se déchirer) ; waiting : le déchirement est fini, le tirage du serveur pas encore
+  | { kind: 'pack'; booster: number; opening: boolean; waiting?: boolean }
   // cartes retournées une à une : `shown` retournées, `featured` en grand ; `fresh` : elle vient d'être retournée (avec
   // ses effets, après `lead` ms) ; `batch` : cartes retournées par la dernière action
   | { kind: 'reveal'; booster: number; shown: number; featured: number; fresh: boolean; batch: [number, number]; lead: number; rise: boolean }
-  | { kind: 'burst'; packs: number }                      // « Tout ouvrir » : les paquets s'ouvrent ensemble
+  | { kind: 'burst'; packs: number; done: number }        // « Tout ouvrir » : les paquets s'ouvrent (done : déjà tirés)
   | { kind: 'recap' };
 
 interface Action { label: string; run: () => void; disabled?: boolean }
 
-function useReducedMotion(): boolean {
-  const query = '(prefers-reduced-motion: reduce)';
-  const [reduced, setReduced] = useState(() => typeof matchMedia === 'function' && matchMedia(query).matches);
-  useEffect(() => {
-    if (typeof matchMedia !== 'function') return;
-    const m = matchMedia(query);
-    const update = () => setReduced(m.matches);
-    m.addEventListener('change', update);
-    return () => m.removeEventListener('change', update);
-  }, []);
-  return reduced;
-}
+// Un booster de l'écran : son extension, et son contenu une fois tiré
+interface Slot { id?: string; set: string; content?: BoosterContent }
+
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 // Minuteries de l'écran (sons et étapes à venir), annulées quand on passe à la suite ou qu'on quitte l'écran
 function useTimers() {
@@ -453,33 +465,76 @@ function useTimers() {
   }), []);
 }
 
-export function BoosterOpening({ content, owned, onDone, animations = true }: BoosterOpeningProps) {
-  const boosters = useMemo(() => (Array.isArray(content) ? content : [content]).filter((b) => b.cards.length > 0), [content]);
-  const total = boosters.length;
+export function BoosterOpening({ content, boosters: toOpen, draw, owned, onDone, animations = true }: BoosterOpeningProps) {
+  const slots = useMemo<Slot[]>(() => (content !== undefined
+    ? (Array.isArray(content) ? content : [content]).filter((b) => b.cards.length > 0).map((c) => ({ set: c.set, content: c }))
+    : (toOpen ?? []).map((b) => ({ id: b.id, set: b.set }))), [content, toOpen]);
+  const total = slots.length;
   const multi = total > 1;
-  const set = boosters.every((b) => b.set === boosters[0].set) ? boosters[0]?.set ?? '' : '';
-  const size = boosters[0]?.cards.length ?? 0;
+  const set = slots.every((b) => b.set === slots[0].set) ? slots[0]?.set ?? '' : '';
+  // Contenu des boosters déjà tirés (dans l'ordre : on n'ouvre jamais un booster avant ceux qui le précèdent)
+  const [drawn, setDrawn] = useState<(BoosterContent | undefined)[]>(() => slots.map((s) => s.content));
+  const drawnRef = useRef(drawn);
+  const fetching = useRef(new Map<number, Promise<BoosterContent>>());
+  const opened = drawn.filter(Boolean).length;
+  const left = total - opened;
+  const size = drawn.find(Boolean)?.cards.length ?? BOOSTER_SIZE;
+  const cardsOf = (b: number) => drawnRef.current[b]?.cards ?? [];
   const [settings, updateSettings] = useSettings();
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
   const reduced = useReducedMotion();
   const calm = !animations || reduced;
   const { touch } = useDevice();
   const timers = useTimers();
-  const [stage, setStage] = useState<Stage>(() => (total === 0 ? { kind: 'recap' } : multi ? { kind: 'choose' } : { kind: 'pack', booster: 0, opening: false }));
+  const [stage, setStageState] = useState<Stage>(() => (total === 0 ? { kind: 'recap' } : multi ? { kind: 'choose' } : { kind: 'pack', booster: 0, opening: false }));
+  const stageRef = useRef(stage);
+  const setStage = (s: Stage) => {
+    stageRef.current = s;
+    setStageState(s);
+  };
+  const [fail, setFail] = useState<string>();
   const primaryRef = useRef<HTMLButtonElement>(null);
+  // Chaque action de l'écran change de « tour » : un tirage qui revient après (on a arrêté, on est passé à la suite)
+  // ne change plus l'écran
+  const turn = useRef(0);
+  const reset = () => {
+    timers.clear();
+    turn.current++;
+    return turn.current;
+  };
+
+  // Tire le booster i sur le serveur (une seule demande à la fois par booster)
+  const fetchOne = (i: number): Promise<BoosterContent> => {
+    const have = drawnRef.current[i];
+    if (have) return Promise.resolve(have);
+    let p = fetching.current.get(i);
+    if (!p) {
+      const id = slots[i]?.id;
+      if (!draw || !id) return Promise.reject(new Error('Ce booster ne peut pas être ouvert ici'));
+      p = draw(id).then((c) => {
+        drawnRef.current = drawnRef.current.map((x, j) => (j === i ? c : x));
+        setDrawn(drawnRef.current);
+        return c;
+      });
+      fetching.current.set(i, p);
+      const forget = () => { fetching.current.delete(i); };
+      p.then(forget, forget);
+    }
+    return p;
+  };
 
   // « Nouveau ! » : première fois qu'une carte absente de la Cale sort pendant cette ouverture
   const newAt = useMemo(() => {
     const seen = new Set<string>();
     const result = new Set<string>();
-    boosters.forEach((b, i) => b.cards.forEach((c, j) => {
+    drawn.forEach((b, i) => b?.cards.forEach((c, j) => {
       const key = ownedKey(c);
       if (owned && !((owned[key] ?? 0) > 0) && !seen.has(key)) result.add(`${i}:${j}`);
       seen.add(key);
     }));
     return result;
-  }, [boosters, owned]);
-  const entries = useMemo(() => group(boosters.flatMap((b) => b.cards), owned), [boosters, owned]);
+  }, [drawn, owned]);
+  const entries = useMemo(() => group(drawn.flatMap((b) => b?.cards ?? []), owned), [drawn, owned]);
 
   // Sons d'une carte qui se retourne dans `lead` ms : montée pour les belles cartes, puis son de sa rareté
   const playReveal = (c: PulledCard, lead: number) => {
@@ -492,31 +547,46 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
 
   // Moment où la carte mise en avant se retourne (après sa sortie du paquet et son suspense)
   const flipAt = (s: Extract<Stage, { kind: 'reveal' }>) => (
-    s.fresh ? s.lead + (isBig(tierOf(boosters[s.booster].cards[s.featured])) && !calm ? SUSPENSE : 0) : 0
+    s.fresh ? s.lead + (isBig(tierOf(cardsOf(s.booster)[s.featured])) && !calm ? SUSPENSE : 0) : 0
   );
 
   const start = (b: number) => {
     const lead = calm ? 0 : RISE;
     setStage({ kind: 'reveal', booster: b, shown: 1, featured: 0, fresh: true, batch: [0, 1], lead, rise: !calm });
-    playReveal(boosters[b].cards[0], lead);
+    playReveal(cardsOf(b)[0], lead);
   };
 
+  // Le paquet se déchire pendant que le serveur tire le booster ; les cartes sortent quand les deux sont finis
   const openPack = () => {
-    if (stage.kind !== 'pack' || stage.opening) return;
-    const b = stage.booster;
-    timers.clear();
-    preload(boosters[b].cards);
+    const s = stageRef.current;
+    if (s.kind !== 'pack' || s.opening) return;
+    const b = s.booster;
+    const mine = reset();
+    setFail(undefined);
     boosterSfx('tear');
-    if (calm) return start(b);
     setStage({ kind: 'pack', booster: b, opening: true });
-    timers.later(() => start(b), OPENING);
+    const began = Date.now();
+    const tear = calm ? 0 : OPENING;
+    timers.later(() => {
+      if (turn.current === mine && !drawnRef.current[b]) setStage({ kind: 'pack', booster: b, opening: true, waiting: true });
+    }, tear);
+    fetchOne(b).then((c) => {
+      if (turn.current !== mine) return;
+      preload(c.cards);
+      timers.later(() => start(b), Math.max(0, tear - (Date.now() - began)));
+    }, (e: unknown) => {
+      if (turn.current !== mine) return;
+      timers.clear();
+      setStage({ kind: 'pack', booster: b, opening: false });
+      setFail(message(e));
+    });
   };
 
   const next = () => {
     if (stage.kind !== 'reveal') return;
-    const cards = boosters[stage.booster].cards;
+    const cards = cardsOf(stage.booster);
     if (stage.shown >= cards.length) return;
-    timers.clear();
+    reset();
     setStage({ ...stage, shown: stage.shown + 1, featured: stage.shown, fresh: true, batch: [stage.shown, stage.shown + 1], lead: 0, rise: false });
     playReveal(cards[stage.shown], 0);
   };
@@ -524,13 +594,13 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
   // Toutes les cartes restantes se retournent en cascade dans la bande ; la plus belle est mise en avant
   const revealAll = () => {
     if (stage.kind !== 'reveal') return;
-    const cards = boosters[stage.booster].cards;
+    const cards = cardsOf(stage.booster);
     const from = stage.shown;
     if (from >= cards.length) return;
     let best = from;
     for (let i = from + 1; i < cards.length; i++) if (score(cards[i]) >= score(cards[best])) best = i;
     const lead = calm ? 0 : Math.min(700, (cards.length - from) * CASCADE);
-    timers.clear();
+    reset();
     setStage({ ...stage, shown: cards.length, featured: best, fresh: true, batch: [from, cards.length], lead, rise: false });
     if (!calm) for (let i = 0; i < Math.min(5, cards.length - from); i++) timers.later(() => boosterSfx('flip'), i * 110);
     playReveal(cards[best], lead);
@@ -538,17 +608,28 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
 
   const pick = (i: number) => {
     if (stage.kind !== 'reveal' || i >= stage.shown) return;
-    timers.clear();
+    reset();
     setStage({ ...stage, featured: i, fresh: false });
   };
 
   const goPack = (b: number) => {
-    timers.clear();
+    reset();
+    setFail(undefined);
     setStage({ kind: 'pack', booster: b, opening: false });
   };
 
   const toRecap = () => {
-    timers.clear();
+    reset();
+    setStage({ kind: 'recap' });
+  };
+
+  const finish = () => onDone({ opened: drawnRef.current.filter(Boolean).length, left: total - drawnRef.current.filter(Boolean).length });
+
+  // « Finir plus tard » : rien d'ouvert, on s'en va ; sinon le récapitulatif de ce qui a été ouvert (les autres boosters
+  // restent dans la Cale)
+  const stop = () => {
+    reset();
+    if (!drawnRef.current.some(Boolean) && fetching.current.size === 0) return finish();
     setStage({ kind: 'recap' });
   };
 
@@ -558,22 +639,52 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
     : stage.kind === 'reveal' ? stage.booster + 1
     : total;
 
-  // Tous les boosters restants d'un coup, puis le récapitulatif (et le son de la plus belle carte qu'ils contenaient)
+  // Tous les boosters restants, tirés un par un, puis le récapitulatif (et le son de la plus belle carte qu'ils
+  // contenaient) ; si un tirage échoue, le récapitulatif montre ceux qui sont ouverts
   const openAll = () => {
-    timers.clear();
-    const hidden = boosters.slice(rest).flatMap((b) => b.cards);
-    const best = hidden.reduce<PulledCard | null>((a, c) => (!a || score(c) > score(a) ? c : a), null);
-    const sound = best && isBig(tierOf(best)) ? revealSound(best) : null;
-    if (calm || !hidden.length) {
-      setStage({ kind: 'recap' });
-      if (sound) boosterSfx(sound);
-      return;
-    }
-    setStage({ kind: 'burst', packs: total - rest });
-    for (let i = 0; i < 3; i++) timers.later(() => boosterSfx('tear'), i * 170);
-    timers.later(() => setStage({ kind: 'recap' }), BURST);
-    if (sound) timers.later(() => boosterSfx(sound), BURST + 150);
+    const mine = reset();
+    setFail(undefined);
+    const from = rest;
+    const packs = total - from;
+    if (packs <= 0) return toRecap();
+    setStage({ kind: 'burst', packs, done: 0 });
+    const began = Date.now();
+    if (!calm) for (let i = 0; i < 3; i++) timers.later(() => boosterSfx('tear'), i * 170);
+    void (async () => {
+      let error: string | undefined;
+      for (let i = from; i < total; i++) {
+        try {
+          await fetchOne(i);
+        } catch (e) {
+          error = message(e);
+        }
+        if (turn.current !== mine) return;
+        if (error) break;
+        setStage({ kind: 'burst', packs, done: i - from + 1 });
+      }
+      const hidden = drawnRef.current.slice(from).flatMap((b) => b?.cards ?? []);
+      const best = hidden.reduce<PulledCard | null>((a, c) => (!a || score(c) > score(a) ? c : a), null);
+      const sound = best && isBig(tierOf(best)) ? revealSound(best) : null;
+      if (error) setFail(`Ouverture interrompue : ${error}`);
+      const wait = calm || error ? 0 : Math.max(0, BURST - (Date.now() - began));
+      timers.later(() => setStage({ kind: 'recap' }), wait);
+      if (sound) timers.later(() => boosterSfx(sound), wait + (calm ? 0 : 150));
+    })();
   };
+
+  // Le Retour du navigateur (ou d'Android) : pendant l'ouverture, il l'arrête (récapitulatif) ; sur le récapitulatif,
+  // il le ferme. Une entrée d'historique, remise après chaque Retour.
+  const [layer, setLayer] = useState(0);
+  const onBack = useRef(() => {});
+  onBack.current = () => {
+    if (stageRef.current.kind === 'recap') return finish();
+    stop();
+    setLayer((k) => k + 1);
+  };
+  useEffect(() => {
+    const id = pushLayer(() => onBack.current());
+    return () => popLayer(id);
+  }, [layer]);
 
   let primary: Action | null = null;
   let secondary: Action | null = null;
@@ -583,11 +694,11 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
     primary = { label: 'Un par un', run: () => goPack(0) };
     secondary = { label: 'Tout ouvrir', run: openAll };
   } else if (stage.kind === 'pack') {
-    primary = { label: 'Ouvrir le booster', run: openPack, disabled: stage.opening };
+    primary = { label: fail ? 'Réessayer' : 'Ouvrir le booster', run: openPack, disabled: stage.opening };
     if (multi) secondary = { label: allLabel, run: openAll, disabled: stage.opening };
     if (multi) progress = `Booster ${stage.booster + 1}/${total}`;
   } else if (stage.kind === 'reveal') {
-    const n = boosters[stage.booster].cards.length;
+    const n = cardsOf(stage.booster).length;
     progress = `${multi ? `Booster ${stage.booster + 1}/${total} · carte` : 'Carte'} ${stage.shown}/${n}`;
     if (stage.shown < n) {
       primary = { label: 'Suivante', run: next };
@@ -598,8 +709,10 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
     } else {
       primary = { label: 'Récapitulatif', run: toRecap };
     }
+  } else if (stage.kind === 'burst') {
+    if (stage.packs > 1) progress = `${stage.done}/${stage.packs}`;
   } else if (stage.kind === 'recap') {
-    primary = { label: 'Terminer', run: onDone };
+    primary = { label: 'Terminer', run: finish };
     progress = plural(entries.reduce((sum, e) => sum + e.count, 0), 'carte');
   }
 
@@ -617,14 +730,22 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
   };
 
   const title = !multi ? `Booster ${set}`.trim() : total === DISPLAY_SIZE && set ? `Display ${set}` : `${total} boosters ${set}`.trim();
+  // « Finir plus tard » : seulement s'il reste des boosters à tirer (le contenu déjà tiré se voit en entier)
+  const canStop = stage.kind !== 'recap' && left > 0;
 
   return (
-    <div className={`op-bo${calm ? ' op-bo-calm' : ''}`} role="dialog" aria-modal="true" aria-label="Ouverture des boosters" onKeyDown={onKey}>
+    <div className={`op-bo${calm ? ' op-bo-calm' : ''}`} role="dialog" aria-modal="true" aria-label="Ouverture des boosters" onKeyDown={onKey} data-ui="opening">
       <header className="op-bo-head">
         <div className="op-bo-title">
           <strong>{title}</strong>
           {progress && <span className="op-muted op-small">{progress}</span>}
         </div>
+        {canStop && (
+          <Button variant="quiet" className="op-bo-stop" onClick={stop} data-ui="opening.stop"
+            title={left > 1 ? 'Les boosters pas encore ouverts restent dans ta Cale' : 'Le booster reste dans ta Cale'}>
+            Finir plus tard
+          </Button>
+        )}
         <button type="button" className="icon-btn" onClick={() => updateSettings({ sound: !settings.sound })}
           title={settings.sound ? 'Couper le son' : 'Activer le son'} aria-label={settings.sound ? 'Couper le son' : 'Activer le son'}>
           {settings.sound ? '🔊' : '🔇'}
@@ -635,17 +756,22 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
           <div className="op-bo-main">
             <Fan set={set} count={total} cards={size} />
             <p className="op-bo-hint">
-              {total} boosters à ouvrir, soit {boosters.reduce((sum, b) => sum + b.cards.length, 0)} cartes : un par un pour
-              savourer chaque paquet, ou tous d’un coup pour voir tout de suite le récapitulatif.
+              {total} boosters à ouvrir, soit {slots.reduce((sum, _, i) => sum + (drawn[i]?.cards.length ?? size), 0)} cartes : un par
+              un pour savourer chaque paquet, ou tous d’un coup pour voir tout de suite le récapitulatif.
             </p>
           </div>
         )}
         {stage.kind === 'pack' && (
           <div className="op-bo-main">
-            <Pack key={stage.booster} set={boosters[stage.booster].set} cards={boosters[stage.booster].cards.length} opening={stage.opening} onOpen={openPack} />
-            <p className="op-bo-hint">
-              {touch ? 'Touche le paquet, ou fais glisser ton doigt dessus pour le déchirer.' : 'Clique sur le paquet, ou fais-le glisser de côté pour le déchirer.'}
-            </p>
+            <Pack key={stage.booster} set={slots[stage.booster].set} cards={drawn[stage.booster]?.cards.length ?? size} opening={stage.opening} onOpen={openPack} />
+            {stage.waiting ? (
+              <p className="op-bo-hint"><span className="op-spinner" /> Tirage des cartes…</p>
+            ) : (
+              <p className="op-bo-hint">
+                {touch ? 'Touche le paquet, ou fais glisser ton doigt dessus pour le déchirer.' : 'Clique sur le paquet, ou fais-le glisser de côté pour le déchirer.'}
+              </p>
+            )}
+            {fail && <p className="danger op-small" role="alert">{fail}</p>}
           </div>
         )}
         {stage.kind === 'burst' && (
@@ -656,14 +782,14 @@ export function BoosterOpening({ content, owned, onDone, animations = true }: Bo
         )}
         {stage.kind === 'reveal' && (
           <>
-            <Show key={`${stage.booster}-${stage.featured}-${stage.fresh ? stage.shown : 'vu'}`} card={boosters[stage.booster].cards[stage.featured]}
+            <Show key={`${stage.booster}-${stage.featured}-${stage.fresh ? stage.shown : 'vu'}`} card={cardsOf(stage.booster)[stage.featured]}
               fresh={stage.fresh} lead={stage.lead} rise={stage.rise} calm={calm} isNew={newAt.has(`${stage.booster}:${stage.featured}`)}
               onClick={() => primary && !primary.disabled && primary.run()} />
-            <Strip key={stage.booster} cards={boosters[stage.booster].cards} shown={stage.shown} featured={stage.featured} batch={stage.batch}
+            <Strip key={stage.booster} cards={cardsOf(stage.booster)} shown={stage.shown} featured={stage.featured} batch={stage.batch}
               fresh={stage.fresh} flipAt={flipAt(stage)} isNew={(i) => newAt.has(`${stage.booster}:${i}`)} onPick={pick} />
           </>
         )}
-        {stage.kind === 'recap' && <Recap entries={entries} known={owned !== undefined} />}
+        {stage.kind === 'recap' && <Recap entries={entries} known={owned !== undefined} left={left} fail={fail} />}
         {(primary || secondary) && (
           <div className="op-bo-actions">
             {secondary && <button type="button" className="op-btn op-btn-ghost btn-big" onClick={secondary.run} disabled={secondary.disabled}>{secondary.label}</button>}

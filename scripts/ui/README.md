@@ -19,7 +19,7 @@ npm run ui:tour -- --port 3501 --out C:/chemin/vers/dossier-avant
 | `--port <n>` | port du serveur d'essai (celui de ta tâche, `01-contrats.md` § 14.1) | 3500 |
 | `--db <fichier>` | base dont on fait une copie (jamais `tcgc.db`, refusée) | `data/tcgc-test.db` |
 | `--out <dossier>` | dossier des captures et rapports | dossier temporaire daté (affiché) |
-| `--only <a,b>` | seulement ces parcours : `accueil`, `partie`, `aventure`, `decks`, `parties`, `salon`, `atelier` | tous sauf `atelier` |
+| `--only <a,b>` | seulement ces parcours : `accueil`, `partie`, `aventure`, `decks`, `parties`, `salon`, `atelier`, `clavier` | tous sauf `atelier` |
 | `--formats <a,b>` | seulement ces formats : `desktop`, `portrait`, `paysage` | les 3 |
 | `--headed` | Chrome visible (pour regarder un parcours) | sans écran |
 | `--compare <avant> <après>` | compare deux dossiers (voir plus bas) | |
@@ -59,6 +59,18 @@ Les numéros sont fixes : un écran garde le sien même avec `--only`.
 | `parties` | 20 Mes parties (la partie rapide abandonnée y figure si `partie` a été joué) |
 | `salon` | 21 salon en ligne |
 | `atelier` | 30 chaque page « plateau » de l'atelier (`#play/atelier/plateau-<état>`, états fixés de `game/ui/atelier/plateau/etats.ts`) : `30-plateau-<état>-<format>.png`. **Seulement avec `--only atelier`** (hors de la référence de l'étape) |
+| `clavier` | 22 menu d'une carte ouvert par Entrée · 23 cible d'une attaque choisie par les flèches · 24 fin de la partie. **Seulement avec `--only clavier`**, sur ordinateur (`--formats desktop` ; les formats tactiles notent « sur ordinateur seulement ») |
+
+**Le parcours `clavier`** (tâche R2.8) joue une partie rapide **entière** contre l'IA, sans souris après « Lancer la
+partie » : Tab et les flèches amènent le focus, Entrée choisit (main de départ, cartes jouées, DON!! données au Leader,
+attaques, un Contre par attaque subie, fins de tour), Échap ferme un menu. Il vérifie que le menu ouvert par Entrée
+prend le focus, qu'Échap le rend à la carte, que « Attaquer » le donne à une cible. Il demande les **mouvements
+réduits** (`prefers-reduced-motion: reduce`) et retire la classe `ui-tour-still` : aucune animation du jeu ne doit
+tourner en boucle (`document.getAnimations()`), sinon le parcours échoue en les nommant. Durée : 2 à 5 minutes.
+
+```bash
+npm run ui:tour -- --port 3548 --only clavier --formats desktop --out <dossier>
+```
 
 La partie rapide : ST-01 contre ST-32, IA « Débutant », l'IA commence. Les écrans 06 et 07 n'existent que si la partie
 passe par là (elle est toujours la même, voir « Stabilité »).
@@ -152,13 +164,14 @@ Convention `data-ui="<écran>.<élément>"` (`01-contrats.md`, § 14.4). On ne l
 
 | Écran | Repères |
 |---|---|
-| départ (`home`) | `home`, `home.history`, `home.decks`, `home.help`, `home.adventure`, `home.online`, `home.online-resume`, `home.level-<1..4>`, `home.first-<random\|me\|ai>`, `home.start` ; tuiles `deck.tile-<id du deck>`, `deck.random`, `deck.guide` |
-| plateau (`table`) | `table`, `table.zone-me`, `table.zone-opp`, `table.leader`, `table.hand`, `table.opp-hand`, `table.card` (toute carte), `table.don`, `table.pile`, `table.undo`, `table.sound`, `table.panel`, `table.panel-close`, `table.settings`, `table.guide`, `table.help`, `table.leave`, `table.tab-<journal\|coach\|choix>`, `table.end-turn`, `table.option-<id de l'option>`, `table.hint`, `table.confirm-attack`, `table.cancel-target`, `table.intro`, `table.celebration` ; en ligne : `table.sending` (choix envoyé, réponse attendue), `table.reopen-end` (rouvrir la fin de partie) |
+| départ (`home`) | `home`, `home.history`, `home.decks`, `home.help`, `home.settings`, `home.adventure`, `home.online`, `home.online-resume`, `home.level-<1..4>`, `home.first-<random\|me\|ai>`, `home.start` ; tuiles `deck.tile-<id du deck>`, `deck.random`, `deck.guide` |
+| plateau (`table`) | `table`, `table.zone-me`, `table.zone-opp`, `table.leader`, `table.hand`, `table.opp-hand`, `table.card` (toute carte), `table.don`, `table.pile`, `table.undo`, `table.sound`, `table.panel`, `table.panel-close`, `table.settings`, `table.guide`, `table.help` (sur téléphone, `table.sound`, `table.settings`, `table.guide` et `table.help` sont dans le menu « ⋯ » `table.more`, R2.4), `table.leave`, `table.tab-<journal\|coach\|choix>`, `table.end-turn`, `table.option-<id de l'option>`, `table.hint`, `table.confirm-attack`, `table.cancel-target`, `table.intro`, `table.celebration`, `table.live` (région aria-live : consigne et actions jouées, R2.8) ; « Quitter la partie ? » : `leave`, `leave.yes`, `leave.no` ; en ligne (même plateau, contrôleur commun `game/ui/table/`, R2.1) : `table.sending` (choix envoyé, réponse attendue), `table.reopen-end` (rouvrir la fin de partie), `leave.resign` (abandonner) |
 | menu d'une carte | `menu`, `menu.<play\|event\|act\|don\|attack\|block\|counter\|cevent\|choose>`, `menu.close` |
 | fenêtres du plateau | `mulligan.keep`, `mulligan.redraw`, `picker.choose`, `picker.option-<id>`, `trigger.activate`, `trigger.hand`, `cost.option`, `confirm-end.ok`, `confirm-end.cancel`, `confirm-end.never`, `trash.close`, `help.close`, `zoom.close`, fin d'une partie d'aventure `end`, `end.next`, `end.board` |
-| aventure | `adventure.welcome`, `adventure.sail`, `adventure.map`, `adventure.back`, `adventure.boosters`, `adventure.hold`, `adventure.deck`, `adventure.shop`, `adventure.go`, `adventure.summary` ; `chapter`, `chapter.back`, `chapter.bubble`, `chapter.skip`, `chapter.next`, `chapter.deck`, `chapter.fight`, `chapter.resume`, `chapter.count` ; `hold`, `hold.back` ; `adventure-deck`, `adventure-deck.back` ; `shop`, `shop.back` |
+| aventure | `adventure.welcome`, `adventure.sail`, `adventure.map`, `adventure.back`, `adventure.settings`, `adventure.boosters`, `adventure.hold`, `adventure.deck`, `adventure.shop`, `adventure.go`, `adventure.summary` ; `chapter`, `chapter.back`, `chapter.bubble`, `chapter.skip`, `chapter.next`, `chapter.deck`, `chapter.fight`, `chapter.resume`, `chapter.count` ; `hold`, `hold.back` ; `adventure-deck`, `adventure-deck.back` ; `shop`, `shop.back` |
 | decks | `decks`, `decks.close`, `decks.new`, `decks.import`, `decks.edit`, `leaders`, `leaders.item`, `leaders.close`, `editor`, `editor.back`, `editor.pane-<…>` |
-| parties | `history`, `history.close`, `history.tab-<progress\|axes\|games>` |
+| parties | `history` (fenêtre du kit, fermée par son `dialog.close`), `history.tab-<progress\|axes\|games>`, `history.mode-<all\|solo\|aventure\|online>` |
+| réglages (`SettingsPanel`, R1.3) | `settings.panel`, `settings.sound`, `settings.scale`, `settings.motion`, `settings.speed`, `settings.confirm-end`, `settings.coach`, `settings.zoom`, `settings.help`, `settings.done` ; fenêtres du kit : `dialog.close`, `dialog.reduce`, `dialog.reopen` |
 | salon | `lobby`, `lobby.tab-create`, `lobby.tab-join`, `lobby.code`, `lobby.back`, `lobby.go` |
 | atelier | `atelier.board` (page « plateau », avec `data-state="<état>"` ; prête quand elle contient `.game`) |
 | chargement | `game.loading` |
