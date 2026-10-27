@@ -38,9 +38,8 @@
 .op-wm-legend > span { display: inline-flex; align-items: center; gap: 0.3rem; }
 .op-wm-legend svg { width: 1.15rem; height: 1.15rem; }
 .op-wm-hint { margin-left: auto; }
-@media (prefers-reduced-motion: reduce) {
-  .op-wm-pulse, .op-wm-arrive, .op-wm-bob, .op-wm-bubble { animation: none; }
-}
+/* Animations réduites (réglage du jeu, par défaut celui de l'appareil) */
+.opc.is-reduced-motion .op-wm-pulse, .opc.is-reduced-motion .op-wm-arrive, .opc.is-reduced-motion .op-wm-bob, .opc.is-reduced-motion .op-wm-bubble { animation: none; }
 :where(.opc.is-portrait) .op-wm-frame { aspect-ratio: 4 / 5; max-height: calc(100dvh - 13rem); }
 :where(.opc.is-portrait) .op-wm-hint { margin-left: 0; flex-basis: 100%; }
 :where(.opc.is-landscape) .op-wm-frame { aspect-ratio: auto; height: calc(100dvh - 6.5rem); max-height: none; min-height: 11rem; }

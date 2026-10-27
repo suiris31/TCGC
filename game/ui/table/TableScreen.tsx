@@ -2,7 +2,7 @@
 // les réglages, le guide du deck, la carte en grand, l'intro, l'écran de victoire ou de défaite et la fin de partie.
 // Le mode (contre l'IA, en ligne, atelier ; le classé à l'étape 3) donne le contrôleur (useTable) et remplit les
 // emplacements : ce qui est écrit dans l'en-tête, l'onglet Coach, les bandeaux, la fin de partie, « Quitter ».
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { def, findField, power } from '../../engine/rules.ts';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { Celebration, Intro } from '../Fx.tsx';
@@ -11,6 +11,7 @@ import { FirstGameTip, HelpModal } from '../Modals.tsx';
 import { SettingsPanel } from '../SettingsPanel.tsx';
 import { sfx } from '../sound.ts';
 import { CardZoom } from '../Zoom.tsx';
+import { useAnnouncement, useBoardFocus } from './a11y.ts';
 import { verdict } from './center.ts';
 import { DecisionLayer } from './DecisionLayer.tsx';
 import { GameTable } from './GameTable.tsx';
@@ -39,6 +40,10 @@ export interface TableScreenProps {
 
 export function TableScreen({ table, opponent, thinking, top, decks, coach, sideNote, alert, center, hint, sending, reopenEnd, celebration, end, leave }: TableScreenProps) {
   const { board } = table;
+  // au clavier : les flèches dans une zone, Tab d'une zone à l'autre ; la consigne et les actions jouées sont lues
+  const root = useRef<HTMLDivElement>(null);
+  useBoardFocus(root, board);
+  const announcement = useAnnouncement(board, opponent, table.epoch);
   const s = board.state;
   if (!s) return null;
   const won = s.winner === board.seat;
@@ -89,7 +94,8 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
   );
   const mine = table.guide === decks.mine;
   return (
-    <div className={folded ? 'game op-side-collapsed' : 'game'} data-ui="table">
+    <div className={folded ? 'game op-side-collapsed' : 'game'} data-ui="table" ref={root}>
+      <div className="op-sr-only" aria-live="polite" aria-atomic="true" data-ui="table.live">{announcement}</div>
       <GameTable state={s} seat={board.seat} ui={board.ui} epoch={table.epoch} alert={alert} center={<>{aim}{center}</>} bar={bar}
         top={<TopBar table={table} {...top} guideDeck={decks.mine} theirs={decks.theirsName} coach={Boolean(coach)} />} />
       <SidePanel table={table} coach={coach} footer={sideNote} collapsed={folded} onCollapse={board.compact ? undefined : setCollapsed} />

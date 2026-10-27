@@ -32,6 +32,7 @@ import './styles/adventure.css';
 import './styles/shop.css';
 import './styles/atelier.css';
 import './styles/settings.css';
+import './styles/a11y.css';
 import './styles/gestures.css';
 import './styles/table-compact.css';
 

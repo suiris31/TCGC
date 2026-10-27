@@ -94,12 +94,10 @@
   .op-shop-buy .op-small { order: -1; margin-right: auto; }
   .op-adv-head .op-wallet-badge { padding: 0 0.6rem 0 0.4rem; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .op-wallet-badge.is-up, .op-wallet-badge.is-down, .op-shop-stack.is-fresh .op-adv-pack:last-child { animation: none; }
-  .op-wallet-delta { animation: op-wallet-delta-calm 1.8s linear forwards; }
-  .op-wallet-bar i { transition: none; }
-}
-@keyframes op-wallet-delta-calm { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+/* Animations réduites (réglage du jeu, par défaut celui de l'appareil) : l'écart reste affiché sans bouger, jusqu'à ce
+   que Wallet.tsx le retire (une animation qui s'efface finirait tout de suite invisible, voir settings.css) */
+.opc.is-reduced-motion .op-wallet-badge.is-up, .opc.is-reduced-motion .op-wallet-badge.is-down, .opc.is-reduced-motion .op-shop-stack.is-fresh .op-adv-pack:last-child, .opc.is-reduced-motion .op-wallet-delta { animation: none; }
+.opc.is-reduced-motion .op-wallet-bar i { transition: none; }
 .op-gain { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.6rem 0; padding: 0.75rem 0.9rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); text-align: left; }
 .op-gain.is-gain { border-color: var(--accent-a55); background: linear-gradient(180deg, var(--accent-a10), var(--surface)); }
 .op-gain p { margin: 0; }
@@ -114,9 +112,7 @@
 .op-gain-refused { color: var(--muted); }
 .op-gain-note { color: var(--accent); opacity: 0.85; }
 @keyframes op-gain-pop { 0% { opacity: 0; transform: translateY(0.5rem) scale(0.6); } 100% { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) {
-  .op-gain-part { animation: none; opacity: 1; }
-}
+.opc.is-reduced-motion .op-gain-part { animation: none; opacity: 1; }
 :where(.opc.is-portrait) .op-gain-line { font-size: 1.1rem; }
 /* Cale : boutons des doublons et du comptoir */
 .op-hold-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
@@ -171,6 +167,4 @@
 :where(.opc.is-compact) .op-counter-intro { padding: 0.7rem 0.8rem; }
 :where(.opc.is-compact) .op-counter-open { flex-basis: 100%; }
 :where(.opc.is-landscape) .op-counter-dialog-art { width: 5.5rem; }
-@media (prefers-reduced-motion: reduce) {
-  .op-counter-dialog-art.is-fresh, .op-dup-icon.is-fresh { animation: none; }
-}
+.opc.is-reduced-motion .op-counter-dialog-art.is-fresh, .opc.is-reduced-motion .op-dup-icon.is-fresh { animation: none; }
