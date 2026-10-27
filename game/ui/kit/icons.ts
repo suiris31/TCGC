@@ -59,6 +59,9 @@ export const ICONS = {
   'double-attack': ['M20.5 3.5v3L11 16l-3-3 9.5-9.5z', 'M5.5 11.5l7 7', 'M8 16l-4 4', 'M3 19l2 2', 'M3.5 3.5v3L13 16l3-3-9.5-9.5z', 'M18.5 11.5l-7 7', 'M16 16l4 4', 'M21 19l-2 2'],
   // [Imblocable] : un fantôme, qui passe à travers les Bloqueurs
   unblockable: ['M5 20.5V11a7 7 0 0 1 14 0v9.5l-2.3-1.8-2.4 1.8-2.3-1.8-2.3 1.8-2.4-1.8z', circle(9.5, 11, 0.8), circle(14.5, 11, 0.8)],
+  // panneau du plateau : le replier vers la droite, le déplier vers la gauche
+  'panel-hide': ['M6 6l6 6-6 6', 'M13 6l6 6-6 6'],
+  'panel-show': ['M18 6l-6 6 6 6', 'M11 6l-6 6 6 6'],
 } satisfies Record<string, readonly string[]>;
 
 export type IconName = keyof typeof ICONS;
@@ -100,6 +103,8 @@ export const ICON_LABELS: Record<IconName, string> = {
   negated: 'Effets annulés',
   'double-attack': 'Double attaque',
   unblockable: 'Imblocable',
+  'panel-hide': 'Replier le panneau',
+  'panel-show': 'Déplier le panneau',
 };
 
 export const ICON_NAMES = Object.keys(ICONS) as IconName[];

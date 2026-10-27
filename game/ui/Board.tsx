@@ -1,6 +1,7 @@
 // Le plateau : pour chaque joueur, ses piles (deck, Défausse), sa Vie, son Leader, son Lieu, ses 5 places de
-// Personnage et ses DON!! ; ta main en éventail en bas, la main adverse (cachée) en haut.
-import type { DragEvent } from 'react';
+// Personnage et ses DON!! ; ta main en éventail en bas, la main adverse (cachée) en haut. Sur ordinateur, chaque camp
+// a deux rangées (les Personnages côté centre) et la main est dans la rangée du fond, à côté du Leader et des DON!!.
+import type { DragEvent, ReactNode } from 'react';
 import { def, knows, other } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { CardView, type CardLook, type Preview } from './CardView.tsx';
@@ -39,9 +40,9 @@ function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me:
       <div className="don-cards">
         {Array.from({ length: P.donActive }, (_, i) => (
           <span key={`a${i}`} className={`don-card ${me && ui.donDraggable ? 'don-drag' : ''}`} draggable={me && ui.donDraggable}
-            onDragStart={drag} onDragEnd={() => ui.onDonDrag(false)}>DON!!</span>
+            onDragStart={drag} onDragEnd={() => ui.onDonDrag(false)} />
         ))}
-        {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested">DON!!</span>)}
+        {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested" />)}
       </div>
       <div className="don-legend">
         <b>{P.donActive}</b> utilisable{P.donActive > 1 ? 's' : ''}
@@ -52,7 +53,8 @@ function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me:
   );
 }
 
-export function PlayerZone({ s, p, me, ui }: { s: GameState; p: PlayerId; me: boolean; ui: BoardUi }) {
+// hand : la main du joueur, dans la rangée du fond (ordinateur)
+export function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; me: boolean; ui: BoardUi; hand?: ReactNode }) {
   const P = s.players[p];
   const view = (card: Card, size: 'field' | 'life' = 'field') => (
     <CardView key={card.uid} s={s} card={card} owner={p} size={size} look={ui.looks.get(card.uid)}
@@ -85,6 +87,7 @@ export function PlayerZone({ s, p, me, ui }: { s: GameState; p: PlayerId; me: bo
           {slots.map((_, i) => <div key={i} className="slot">{i === 0 && !P.chars.length ? 'Personnages' : ''}</div>)}
         </div>
         <DonPool s={s} p={p} ui={ui} me={me} />
+        {hand && <div className="op-zone-hand">{hand}</div>}
       </div>
     </section>
   );

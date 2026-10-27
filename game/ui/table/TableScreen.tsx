@@ -3,6 +3,7 @@
 // Le mode (contre l'IA, en ligne, atelier ; le classé à l'étape 3) donne le contrôleur (useTable) et remplit les
 // emplacements : ce qui est écrit dans l'en-tête, l'onglet Coach, les bandeaux, la fin de partie, « Quitter ».
 import type { ReactNode } from 'react';
+import { def, findField, power } from '../../engine/rules.ts';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { Celebration, Intro } from '../Fx.tsx';
 import { ActionBar } from '../Interaction.tsx';
@@ -10,9 +11,10 @@ import { HelpModal } from '../Modals.tsx';
 import { SettingsPanel } from '../SettingsPanel.tsx';
 import { sfx } from '../sound.ts';
 import { CardZoom } from '../Zoom.tsx';
+import { verdict } from './center.ts';
 import { DecisionLayer } from './DecisionLayer.tsx';
 import { GameTable } from './GameTable.tsx';
-import { SidePanel } from './SidePanel.tsx';
+import { SidePanel, useSideCollapsed } from './SidePanel.tsx';
 import { TopBar, type TopBarSlots } from './TopBar.tsx';
 import type { Table } from './useTable.ts';
 
@@ -41,6 +43,18 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
   if (!s) return null;
   const won = s.winner === board.seat;
   const { aimedOption } = board;
+  // ordinateur : le panneau replié laisse la place au plateau
+  const [collapsed, setCollapsed] = useSideCollapsed();
+  const folded = collapsed && !board.compact;
+  // prévision d'attaque, au centre du plateau : la cible survolée (ou touchée), sinon l'attaquant choisi
+  const attacker = board.targeting ? findField(s, board.targeting.attacker) : null;
+  const aim = board.targeting && !s.battle && (board.targetPreview ? (
+    <div className={`op-aim ${board.targetPreview.ok ? 'is-ok' : 'is-ko'}`} data-ui="table.aim">{verdict(board.targetPreview.text)}</div>
+  ) : attacker && (
+    <div className="op-aim" data-ui="table.aim">
+      Attaque de <b>{def(attacker.card.num).name}</b> ({power(s, attacker.card.uid)}) : {board.touch ? 'touche' : 'survole'} une cible pour voir le résultat.
+    </div>
+  ));
   const bar = sending ? (
     <div className="action-bar bar-wait" data-ui="table.sending">
       <div className="bar-text"><span className="op-spinner" /> <strong>Envoi…</strong></div>
@@ -67,7 +81,7 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
       onButton={(id) => { sfx('click'); board.pick(id); }}
       onCancelTargeting={board.cancelTargeting}
       onEndTurn={board.requestEnd}
-      onHint={hint && (() => { table.setTab('coach'); if (board.compact) table.setPanel(true); if (hint.state === 'idle') hint.ask(); })}
+      onHint={hint && (() => { table.setTab('coach'); if (board.compact) table.setPanel(true); else setCollapsed(false); if (hint.state === 'idle') hint.ask(); })}
       hintState={hint?.state}
       touch={board.touch}
       onConfirmAttack={aimedOption ? () => { sfx('click'); board.pick(aimedOption.id); } : undefined}
@@ -75,10 +89,10 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
   );
   const mine = table.guide === decks.mine;
   return (
-    <div className="game" data-ui="table">
-      <GameTable state={s} seat={board.seat} ui={board.ui} epoch={table.epoch} alert={alert} center={center} bar={bar}
+    <div className={folded ? 'game op-side-collapsed' : 'game'} data-ui="table">
+      <GameTable state={s} seat={board.seat} ui={board.ui} epoch={table.epoch} alert={alert} center={<>{aim}{center}</>} bar={bar}
         top={<TopBar table={table} {...top} guideDeck={decks.mine} theirs={decks.theirsName} coach={Boolean(coach)} />} />
-      <SidePanel table={table} coach={coach} footer={sideNote} />
+      <SidePanel table={table} coach={coach} footer={sideNote} collapsed={folded} onCollapse={board.compact ? undefined : setCollapsed} />
       <DecisionLayer board={board} />
       {table.help && !table.intro && <HelpModal onClose={() => table.setHelp(false)} />}
       {table.settingsOpen && <SettingsPanel onClose={() => table.setSettingsOpen(false)} onHelp={() => table.setHelp(true)} />}

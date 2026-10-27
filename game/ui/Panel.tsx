@@ -1,10 +1,6 @@
+// Le contenu du panneau à côté du plateau : la décision en cours et tous ses choix, le journal de la partie
 import { useEffect, useRef } from 'react';
-import { cardStatus, HIDDEN } from '../engine/cards/index.ts';
-import { def, fieldCost, findField, power } from '../engine/rules.ts';
 import type { Decision, GameState, Option } from '../engine/types.ts';
-import type { Preview } from './CardView.tsx';
-import { EffectText } from './Zoom.tsx';
-import { cardImage } from './images.ts';
 
 const GROUPS: Record<string, string> = {
   play: 'Jouer une carte',
@@ -46,37 +42,6 @@ export function DecisionBox({ decision, focus, notes, onChoose, onClearFocus }: 
           ))}
         </div>
       ))}
-    </div>
-  );
-}
-
-// Aperçu d'une carte survolée : grand visuel, texte officiel, valeurs actuelles
-export function CardPreview({ s, preview }: { s: GameState; preview: Preview | null }) {
-  if (!preview) return <div className="preview preview-empty">Survole une carte pour lire son effet.</div>;
-  const d = def(preview.num);
-  const f = preview.uid !== undefined ? findField(s, preview.uid) : null;
-  return (
-    <div className="preview">
-      <img src={cardImage(d)} alt={d.name} />
-      <div className="preview-text">
-        <strong>{d.name}</strong>
-        <div className="op-muted op-small">
-          {d.number} · {d.category === 'LEADER' ? `Leader · Vie ${d.life}` : `Coût ${d.cost ?? 0}`}
-          {d.power !== null && ` · ${d.power}`}{d.counter ? ` · Contre +${d.counter}` : ''}
-        </div>
-        <div className="op-muted op-small">{d.typeLabels.join(' / ')}</div>
-        {f && (
-          <div className="op-small">
-            Actuellement : <b>{power(s, f.card.uid)}</b> de puissance{!f.leader && <>, coût <b>{Math.max(0, fieldCost(s, f.card.uid))}</b></>}
-            {f.card.don > 0 && <>, {f.card.don} DON!! donnée{f.card.don > 1 ? 's' : ''}</>}
-          </div>
-        )}
-        <p className="effect">{d.effect && d.effect !== '-' ? <EffectText text={d.effect} /> : 'Pas d’effet.'}</p>
-        {d.trigger && <p className="effect"><span className="kw">[Déclenchement]</span> <EffectText text={d.trigger} /></p>}
-        {d.lang === 'en' && <p className="op-small op-muted">Texte anglais : cette carte n’existe pas en VF.</p>}
-        {d.number !== HIDDEN && cardStatus(d.number) === 'todo' && <p className="op-small op-muted">Effet pas encore géré par le simulateur.</p>}
-        {f?.card.rested && <div className="op-small op-muted">Épuisée</div>}
-      </div>
     </div>
   );
 }
