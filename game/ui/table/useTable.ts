@@ -22,10 +22,11 @@ export function useTable(source: BoardSource, init: { intro?: boolean; aim?: { a
   const board = useBoardInteraction({ ...source, choose }, init);
 
   const [help, setHelp] = useState(false);
+  // première partie : la bulle courte qui mène à l'aide (au lieu de l'aide en grand par-dessus la main de départ)
+  const [tip, setTip] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guide, setGuide] = useState<string | null>(null);
-  // anciennes fenêtres de l'aide et du guide : le Retour les ferme aussi (les réglages, fenêtre du kit, le font d'office)
-  useLayer(help, () => setHelp(false));
+  // ancienne fenêtre du guide : le Retour la ferme aussi (l'aide et les réglages, fenêtres du kit, le font d'office)
   useLayer(guide !== null, () => setGuide(null));
 
   const [intro, setIntro] = useState(Boolean(init.intro));
@@ -56,7 +57,7 @@ export function useTable(source: BoardSource, init: { intro?: boolean; aim?: { a
   return {
     board, over, epoch,
     panel, setPanel, tab, setTab,
-    help, setHelp, settingsOpen, setSettingsOpen, guide, setGuide,
+    help, setHelp, tip, setTip, settingsOpen, setSettingsOpen, guide, setGuide,
     intro, setIntro,
     celebrate, setCelebrate, showEnd, setShowEnd,
     reset,

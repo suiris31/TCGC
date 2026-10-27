@@ -31,6 +31,13 @@ export interface DecisionView {
 
 const uidOf = (o: Option) => Number(o.id.split(':')[1]);
 
+// L'attaque en cours est-elle repoussée ? (la cible a plus de puissance que l'attaquant)
+export function attackRepelled(s: GameState): boolean {
+  const b = s.battle;
+  return Boolean(b && power(s, b.attacker) < power(s, b.target));
+}
+const REPELLED = 'l’attaque est déjà repoussée';
+
 // Où se trouve une carte (hors terrain)
 function zoneOf(s: GameState, uid: number): { player: PlayerId; zone: string; num: string } | null {
   for (const p of [0, 1] as PlayerId[]) {
@@ -81,8 +88,10 @@ export function readDecision(s: GameState, d: Decision, aids = true): DecisionVi
     } else if (d.kind === 'counter') {
       const uid = uidOf(o);
       const card = P.hand.find((c) => c.uid === uid);
-      if (kind === 'counter' && card) add(uid, { option: o, kind: 'counter', icon: '🛡', label: `Contrer : +${counterValue(s, d.player, card.num)}`, detail: 'la carte est défaussée' });
-      else if (kind === 'cevent' && card) add(uid, { option: o, kind: 'cevent', icon: '✦', label: 'Activer son [Contre]', detail: `coût ${def(card.num).cost ?? 0}`, useless });
+      // attaque déjà repoussée : un Contre de plus ne sert à rien (un fait, pas un jugement de l'IA : aussi en ligne)
+      const repelled = attackRepelled(s) ? REPELLED : undefined;
+      if (kind === 'counter' && card) add(uid, { option: o, kind: 'counter', icon: '🛡', label: `Contrer : +${counterValue(s, d.player, card.num)}`, detail: 'la carte est défaussée', useless: repelled });
+      else if (kind === 'cevent' && card) add(uid, { option: o, kind: 'cevent', icon: '✦', label: 'Activer son [Contre]', detail: `coût ${def(card.num).cost ?? 0}`, useless: useless ?? (def(card.num).counterExtra?.(s, d.player) ? undefined : repelled) });
       else view.buttons.push(o);
     } else {
       // décision au milieu d'un effet : cartes du terrain à cibler, autres cartes dans une fenêtre, le reste en boutons

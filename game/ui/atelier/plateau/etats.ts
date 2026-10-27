@@ -218,6 +218,30 @@ const builders: Record<string, () => BoardState> = {
     return { state: s };
   },
 
+  // Contre suffisant : l'attaque est déjà repoussée, les cartes de Contre ne sont plus entourées, « Ne plus contrer »
+  'contre-repousse': () => {
+    let s = scenario(6, AI, midGame);
+    s = pick(s, `attack:${s.players[AI].chars[0].uid}:${s.players[ME].leader.uid}`);
+    s = pick(s, 'noblock');
+    // les cartes de Contre de la main, une à une, jusqu'à repousser l'attaque
+    for (let i = 0; i < 5 && s.decision?.kind === 'counter' && !s.decision.prompt.includes('déjà repoussée'); i++) s = pick(s, 'counter');
+    if (s.decision?.player !== ME || s.decision.kind !== 'counter' || !s.decision.prompt.includes('déjà repoussée')) fail(`contre repoussé : question inattendue ${s.decision?.prompt}`);
+    return { state: s };
+  },
+
+  // Coût à déclarer : Streusen (OP11-074, prêté pour l'occasion) utilise son effet
+  cout: () => {
+    let s = scenario(5, ME, (s) => {
+      midGame(s);
+      const c = take(s, ME, 'OP14-015');
+      s.players[ME].chars.push({ uid: c.uid, num: 'OP11-074', rested: false, don: 0, playedTurn: 0, usedOpt: [] });
+    });
+    const streusen = s.players[ME].chars.find((c) => c.num === 'OP11-074')!.uid;
+    s = pick(s, `act:${streusen}`);
+    if (s.decision?.player !== ME || s.decision.tag !== 'declareCost') fail(`coût : question inattendue ${s.decision?.tag}`);
+    return { state: s };
+  },
+
   // Fins de partie, avec le récap du coach
   victoire: () => ending(true),
   defaite: () => ending(false),
