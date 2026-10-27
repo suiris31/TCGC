@@ -1,4 +1,4 @@
-import type { DragEvent, MouseEvent } from 'react';
+import type { MouseEvent, PointerEvent } from 'react';
 import { def, fieldCost, findField, handCost, hasBlocker, hasKeyword, hasMod, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
@@ -6,6 +6,7 @@ import { justPlayed } from './decision.ts';
 import { isTouch } from './device.ts';
 import { cardImage } from './images.ts';
 import { Icon, type IconName } from './kit/index.ts';
+import type { GestureSource } from './table/gestures.ts';
 
 export interface Preview {
   num: string;
@@ -21,6 +22,7 @@ export interface CardLook {
   recommended?: boolean;  // conseil du coach (étoile)
   dim?: boolean;          // pas jouable maintenant
   drop?: boolean;         // on peut y déposer une DON!!
+  grab?: boolean;         // se saisit pour un glisser-déposer (jouer, attaquer)
   selected?: boolean;     // carte dont le menu est ouvert ou qui attaque
   badge?: string;         // pastille (valeur de Contre...)
 }
@@ -81,7 +83,7 @@ function Arrow({ now, base }: { now: number; base: number | null }) {
 }
 
 // Une carte : visuel officiel, puissance et coût actuels (en couleur s'ils sont modifiés), DON!! données, état
-export function CardView({ s, card, owner, size = 'field', hidden = false, look = {}, onClick, onHover, onDropDon }: {
+export function CardView({ s, card, owner, size = 'field', hidden = false, look = {}, onClick, onHover, onGrab }: {
   s: GameState;
   card: Card;
   owner?: PlayerId;
@@ -90,7 +92,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
   look?: CardLook;
   onClick?: (uid: number, el: HTMLElement, num: string) => void;
   onHover?: (p: Preview | null) => void;
-  onDropDon?: (uid: number) => void;
+  onGrab?: (source: GestureSource, e: PointerEvent<HTMLElement>) => void;
 }) {
   if (hidden || card.num === HIDDEN) return <div className={`card card-${size} card-back`} data-ui="table.card" data-uid={card.uid} />;
   const d = def(card.num);
@@ -113,6 +115,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
     look.dim && 'is-dim',
     look.drop && 'is-drop',
     look.selected && 'is-selected',
+    look.grab && 'is-grab',
     onClick && 'is-clickable',
   ].filter(Boolean).join(' ');
   // Sur un écran tactile, une carte sans action s'ouvre en grand quand on la touche (pas de survol possible)
@@ -121,10 +124,10 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
     : onHover && isTouch()
       ? (e: MouseEvent<HTMLDivElement>) => { e.stopPropagation(); onHover({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect(), pinned: true }); }
       : undefined;
-  const dragOver = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } : undefined;
-  const drop = look.drop && onDropDon ? (e: DragEvent) => { e.preventDefault(); onDropDon(card.uid); } : undefined;
+  // Glisser-déposer : une carte de ta main (jouer) ou un attaquant (attaquer)
+  const grab = look.grab && onGrab ? (e: PointerEvent<HTMLElement>) => onGrab(inHand ? { from: 'hand', uid: card.uid } : { from: 'field', uid: card.uid }, e) : undefined;
   return (
-    <div className={classes} data-ui="table.card" data-uid={card.uid} onClick={click} onDragOver={dragOver} onDrop={drop}
+    <div className={classes} data-ui="table.card" data-uid={card.uid} onClick={click} onPointerDown={grab}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover?.(null); }}>
       <img src={cardImage(d)} alt={d.name} draggable={false} />

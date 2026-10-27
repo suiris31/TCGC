@@ -10,7 +10,7 @@ import { FxLayer } from '../Fx.tsx';
 import { BattlePanel } from '../Interaction.tsx';
 
 const noop = () => {};
-const READ_ONLY: BoardUi = { looks: new Map(), onCard: noop, onHover: noop, onTrash: noop, onDropDon: noop, donDraggable: false, onDonDrag: noop };
+const READ_ONLY: BoardUi = { looks: new Map(), onCard: noop, onHover: noop, onTrash: noop, donDraggable: false };
 
 // epoch : les effets ne comparent pas deux états d'époques différentes (nouvelle partie, retour en arrière)
 export function GameTable({ state, seat, ui = READ_ONLY, epoch = 0, top, alert, center, bar }: {
