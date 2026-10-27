@@ -136,14 +136,16 @@
 :where(.opc.is-landscape) .bar-buttons .op-btn { height: 44px; padding: 0 0.8rem; font-size: 0.95rem; }
 :where(.opc.is-landscape) .btn-end { min-width: 7rem; height: 44px; font-size: 1rem; }
 
-/* ---------- Fenêtres du plateau en paysage : elles tiennent dans la hauteur, boutons collés en bas ---------- */
-:where(.opc.is-landscape) .modal-box { max-height: 100dvh; gap: 0.4rem; padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
-:where(.opc.is-landscape) .modal-box h2 { font-size: 1.25rem; }
-:where(.opc.is-landscape) .modal-box h3 { margin: 0; }
-:where(.opc.is-landscape) .modal-box p { margin: 0; }
+/* ---------- Fenêtres du plateau en paysage : elles tiennent dans la hauteur, boutons collés en bas ----------
+   Seulement celles de l'écran de la partie (.game : fin de partie, Quitter) : Mes decks, la Cale, le comptoir...
+   gardent leur mise en page. Les fenêtres de décision sont des Dialog du kit (R2.6, modals.css). */
+:where(.opc.is-landscape .game) .modal-box { max-height: 100dvh; gap: 0.4rem; padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-landscape .game) .modal-box h2 { font-size: 1.25rem; }
+:where(.opc.is-landscape .game) .modal-box h3 { margin: 0; }
+:where(.opc.is-landscape .game) .modal-box p { margin: 0; }
 :where(.opc.is-landscape) .pick-row { padding: 0.2rem 0; }
-:where(.opc.is-landscape) .modal-box > .modal-actions { position: sticky; bottom: calc(-0.6rem - env(safe-area-inset-bottom, 0px)); margin-bottom: calc(-0.6rem - env(safe-area-inset-bottom, 0px)); padding: 0.4rem 0 calc(0.6rem + env(safe-area-inset-bottom, 0px)); background: var(--bg-2); flex-wrap: nowrap; }
-:where(.opc.is-landscape) .modal-actions .op-btn { flex: 1 1 0; min-width: 0; height: 44px; font-size: 1rem; }
+:where(.opc.is-landscape .game) .modal-box > .modal-actions { position: sticky; bottom: calc(-0.6rem - env(safe-area-inset-bottom, 0px)); margin-bottom: calc(-0.6rem - env(safe-area-inset-bottom, 0px)); padding: 0.4rem 0 calc(0.6rem + env(safe-area-inset-bottom, 0px)); background: var(--bg-2); flex-wrap: nowrap; }
+:where(.opc.is-landscape .game) .modal-actions .op-btn { flex: 1 1 0; min-width: 0; height: 44px; font-size: 1rem; }
 :where(.opc.is-landscape) .pick .op-btn { height: 44px; }
 :where(.opc.is-landscape) .trigger-body { flex-direction: row; align-items: flex-start; }
 
