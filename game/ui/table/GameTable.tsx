@@ -4,7 +4,7 @@
 // Emplacements : l'en-tête (top), un bandeau d'alerte, un bandeau au centre, la barre d'action (bar).
 // Sur ordinateur (op-wide), les camps sont en miroir : les Personnages côté centre, et chaque main dans la rangée
 // du fond de son camp ; la bande centrale montre le combat, la prévision d'attaque et le dernier coup de l'adversaire.
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { other } from '../../engine/rules.ts';
 import type { GameState, PlayerId } from '../../engine/types.ts';
 import { Hand, OpponentHand, PlayerZone, type BoardUi } from '../Board.tsx';
@@ -30,12 +30,15 @@ export function GameTable({ state, seat, ui = READ_ONLY, epoch = 0, top, alert, 
   const opp = other(seat);
   const wide = !useDevice().compact;
   const move = wide && !state.battle && state.winner === null ? lastMove(state, seat) : null;
+  // les mains, mémorisées : passées aux zones (memo), elles ne les font pas redessiner à chaque rendu de l'écran
+  const oppHand = useMemo(() => <OpponentHand s={state} p={opp} />, [state, opp]);
+  const myHand = useMemo(() => <Hand s={state} p={seat} ui={ui} />, [state, seat, ui]);
   return (
     <main className={wide ? 'table op-wide' : 'table'}>
       {top}
       {alert}
-      {!wide && <OpponentHand s={state} p={opp} />}
-      <PlayerZone s={state} p={opp} me={false} ui={ui} hand={wide && <OpponentHand s={state} p={opp} />} />
+      {!wide && oppHand}
+      <PlayerZone s={state} p={opp} me={false} ui={ui} hand={wide && oppHand} />
       <div className="op-center">
         {center}
         <BattlePanel s={state} human={seat} />
@@ -45,8 +48,8 @@ export function GameTable({ state, seat, ui = READ_ONLY, epoch = 0, top, alert, 
           </div>
         )}
       </div>
-      <PlayerZone s={state} p={seat} me ui={ui} hand={wide && <Hand s={state} p={seat} ui={ui} />} />
-      {!wide && <Hand s={state} p={seat} ui={ui} />}
+      <PlayerZone s={state} p={seat} me ui={ui} hand={wide && myHand} />
+      {!wide && myHand}
       {bar}
       <FxLayer game={state} human={seat} epoch={epoch} />
     </main>
