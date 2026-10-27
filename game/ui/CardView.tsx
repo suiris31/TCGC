@@ -33,8 +33,11 @@ export interface CardState {
   tone: 'atout' | 'entrave' | 'info';
 }
 
-// Au-delà, la dernière pastille devient « +N » (le détail de la carte les donne toutes)
+// Pastilles montrées : 5 au plus, 2 sur une carte de moins de 52 px (téléphone ; choisi par card.css selon la largeur
+// de la carte). Au-delà, la dernière devient « +N » (le détail de la carte les donne toutes).
 const MAX_STATES = 5;
+const MAX_STATES_SMALL = 2;
+const shownStates = (n: number, max: number) => (n > max ? max - 1 : n);
 
 export function cardStates(s: GameState, uid: number): CardState[] {
   const f = findField(s, uid);
@@ -98,8 +101,8 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
   const inHand = owner !== undefined && s.players[owner].hand.some((c) => c.uid === card.uid);
   const playCost = inHand && d.category !== 'LEADER' ? handCost(s, owner!, card) : null;
   const states = size === 'life' ? [] : cardStates(s, card.uid);
-  // Le coût modifié ou beaucoup de DON!! occupent le haut de la carte : les pastilles d'état commencent plus bas
-  const topBusy = (cost !== null && cost !== d.cost) || (f?.card.don ?? 0) >= 5;
+  // La pastille du coût modifié occupe le haut de la carte : les pastilles d'état commencent plus bas
+  const topBusy = cost !== null && cost !== d.cost;
   const classes = [
     'card', `card-${size}`,
     rested && 'card-rested',
@@ -142,12 +145,15 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
       )}
       {states.length > 0 && (
         <span className={topBusy ? 'op-card-states is-low' : 'op-card-states'}>
-          {states.slice(0, states.length > MAX_STATES ? MAX_STATES - 1 : MAX_STATES).map((x) => (
-            <span key={x.label} className={`op-card-state is-${x.tone}`}><Icon name={x.icon} label={x.label} size="78%" /></span>
+          {states.slice(0, shownStates(states.length, MAX_STATES)).map((x, i) => (
+            <span key={x.label} className={`op-card-state is-${x.tone}${i >= shownStates(states.length, MAX_STATES_SMALL) ? ' is-extra' : ''}`}>
+              <Icon name={x.icon} label={x.label} size="78%" />
+            </span>
           ))}
-          {states.length > MAX_STATES && (
-            <span className="op-card-state op-card-state-more" title={states.slice(MAX_STATES - 1).map((x) => x.label).join(' · ')}>+{states.length - MAX_STATES + 1}</span>
-          )}
+          {[MAX_STATES_SMALL, MAX_STATES].filter((max) => states.length > max).map((max) => (
+            <span key={max} className={`op-card-state op-card-state-more ${max === MAX_STATES ? 'is-more' : 'is-more-small'}`}
+              title={states.slice(max - 1).map((x) => x.label).join(' · ')}>+{states.length - max + 1}</span>
+          ))}
         </span>
       )}
       {look.badge && <span className="badge badge-counter">{look.badge}</span>}

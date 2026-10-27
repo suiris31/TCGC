@@ -53,11 +53,11 @@
 .don-chips { position: absolute; top: var(--edge); right: var(--edge); display: flex; gap: 2px; align-items: center; }
 .don-chips i { width: clamp(5px, 11cqi, 0.643rem); height: clamp(5px, 11cqi, 0.643rem); transform: rotate(45deg); background: linear-gradient(135deg, var(--don-light), var(--don-chip)); box-shadow: 0 0 4px var(--accent-a90); }
 .don-chips b { font-size: 0.786rem; line-height: 1.2; color: var(--accent); margin-left: 2px; padding: 0 2px; border-radius: 4px; background: var(--ink-a92); }
-/* États (icônes du kit) : une colonne le long du bord gauche, entre le haut de la carte (ou le coût modifié) et la
-   pastille de puissance ; elle passe sur une deuxième colonne quand la carte est trop petite. Sur une carte épuisée,
+/* États (icônes du kit) : une colonne le long du bord gauche, entre le coût imprimé (ou la pastille du coût modifié) et
+   la pastille de puissance ; elle passe sur une deuxième colonne quand la carte est trop petite. Sur une carte épuisée,
    les icônes restent droites. */
-.op-card-states { position: absolute; left: var(--edge); top: var(--edge); bottom: calc(var(--edge) + var(--badge-h) + 2px); display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 2px; pointer-events: none; }
-.op-card-states.is-low { top: calc(var(--edge) + var(--state-size) + 3px); }
+.op-card-states { position: absolute; left: var(--edge); top: calc(var(--edge) + 22cqi); bottom: calc(var(--edge) + var(--badge-h) + 2px); display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 2px; pointer-events: none; }
+.op-card-states.is-low { top: calc(var(--edge) + var(--badge-h) + 2px); }
 .op-card-state { display: inline-grid; place-items: center; width: var(--state-size); height: var(--state-size); border-radius: var(--radius-xs); background: var(--ink-a92); border: 1px solid var(--white-a15); pointer-events: auto; }
 .op-card-state .op-icon { stroke-width: 2.4; }
 .op-card-state.is-atout { color: var(--accent-light); }
@@ -65,6 +65,12 @@
 .op-card-state.is-info { color: var(--text-ice); }
 .op-card-state-more { color: var(--text); font-size: 11px; font-weight: 800; line-height: 1; }
 .card-rested .op-card-state > * { transform: rotate(-90deg); }
+/* moins de 52 px (téléphone) : une pastille et « +N » ; sinon jusqu'à 5 */
+.op-card-state.is-more-small { display: none; }
+@container (max-width: 51.5px) {
+  .op-card-state.is-extra, .op-card-state.is-more { display: none; }
+  .op-card-state.is-more-small { display: inline-grid; }
+}
 /* légende de l'aide : la même pastille, dans le texte */
 .op-state-legend { white-space: nowrap; }
 .op-state-legend .op-card-state { --state-size: 1.25rem; display: inline-grid; vertical-align: -0.3em; margin-right: 0.25rem; }
