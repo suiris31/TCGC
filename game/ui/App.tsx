@@ -149,8 +149,9 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     const initial = newGame({ decks: [source(config.myDeck), source(aiDeck)], names: ['Toi', configured?.opponentName ?? 'IA'], first });
     rec.begin({ state: initial, config: named, intro: true });
     if (routed) navigate({ name: 'jeu' });
+    // première partie : une bulle courte mène à l'aide (elle ne s'ouvre plus en grand sur la main de départ)
     if (!settings.helpSeen) {
-      setHelp(true);
+      table.setTip(true);
       updateSettings({ helpSeen: true });
     }
     return true;

@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { def, findField, name, power } from '../engine/rules.ts';
 import type { Decision, GameState, Option, PlayerId } from '../engine/types.ts';
 import type { CardAction } from './decision.ts';
+import { barButton, barText } from './table/barText.ts';
 import { CardDetails } from './Zoom.tsx';
 
 // Menu des actions d'une carte, affiché à côté d'elle. Rien ne se passe tant qu'on n'a pas choisi une action.
@@ -118,12 +119,13 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
   // écran tactile : la cible touchée est choisie, l'attaque part avec ce bouton
   onConfirmAttack?: () => void;
 }) {
-  const tap = touch ? 'Touche' : 'Clique sur';
   if (s.winner !== null) return <div className="action-bar"><div className="bar-text"><strong>{s.winner === human ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{s.winReason}</span></div></div>;
+  // qui doit faire quoi (table/barText.ts)
+  const text = barText({ state: s, decision: d, human, opponent: aiName, thinking, hasCardActions, touch });
   if (!d || d.player !== human) {
     return (
       <div className="action-bar bar-wait">
-        <div className="bar-text"><span className="op-spinner" /> <strong>{thinking ? `${aiName} réfléchit…` : `${aiName} joue…`}</strong></div>
+        <div className="bar-text"><span className="op-spinner" /> <strong>{text.title}</strong></div>
       </div>
     );
   }
@@ -132,7 +134,7 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
       <div className="action-bar bar-target">
         <div className="bar-text">
           <strong>⚔ Choisis la cible de {name(s, targeting.attacker)} ({power(s, targeting.attacker)})</strong>
-          <span className={preview ? (preview.ok ? 'good' : 'op-warn') : 'op-muted'}>{preview?.text ?? `Les cibles possibles brillent en rouge : le Leader adverse ou un Personnage adverse épuisé. ${touch ? 'Touche-en une pour voir le résultat.' : 'Survole-les pour voir le résultat.'}`}</span>
+          <span className={preview ? (preview.ok ? 'good' : 'op-warn') : 'op-muted'}>{preview?.text ?? `Les cibles possibles sont entourées de rouge : le Leader adverse ou un Personnage adverse épuisé. ${touch ? 'Touche-en une pour voir le résultat.' : 'Survole-les pour voir le résultat.'}`}</span>
         </div>
         <div className="bar-buttons">
           {onConfirmAttack && <button className="op-btn op-btn-primary btn-end" data-ui="table.confirm-attack" onClick={onConfirmAttack}>⚔ Attaquer</button>}
@@ -141,27 +143,13 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
       </div>
     );
   }
-  let title = d.prompt;
-  let help = '';
-  if (d.kind === 'main') {
-    title = 'À toi de jouer';
-    help = hasCardActions
-      ? (touch ? 'Touche une carte qui brille pour voir ce qu’elle peut faire.' : 'Clique sur une carte qui brille pour voir ce qu’elle peut faire. Tu peux aussi glisser une DON!! sur une carte.')
-      : 'Plus rien d’utile à faire : termine ton tour.';
-  } else if (d.kind === 'blocker') {
-    help = `${tap} un de tes [Bloqueur] qui brille pour qu’il prenne l’attaque à la place, ou laisse passer.`;
-  } else if (d.kind === 'counter') {
-    help = `${tap} une carte de ta main qui brille pour contrer (sa valeur de Contre s’ajoute à la carte attaquée), ou arrête là.`;
-  } else if (hasCardActions) {
-    help = `${tap} une carte qui brille.`;
-  }
   const others = buttons.filter((o) => o.id !== 'end');
   const end = buttons.find((o) => o.id === 'end');
   return (
     <div className={`action-bar bar-${d.kind}`}>
       <div className="bar-text">
-        <strong>{title}</strong>
-        {help && <span className="op-muted">{help}</span>}
+        <strong>{text.title}</strong>
+        {text.help && <span className="op-muted">{text.help}</span>}
       </div>
       <div className="bar-buttons">
         {onHint && d.options.length > 1 && (
@@ -169,11 +157,14 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
             {hintState === 'loading' ? 'Le coach réfléchit…' : hintState === 'ready' ? '★ Conseil affiché' : '💡 Conseil'}
           </button>
         )}
-        {others.map((o) => (
-          <button key={o.id} data-ui={`table.option-${o.id}`} className={`op-btn ${BUTTON_STYLE[o.id] ?? 'btn-choice'} ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onButton(o.id)}>
-            {o.label}{recommended === o.id && ' ★'}
-          </button>
-        ))}
+        {others.map((o) => {
+          const { label, primary } = barButton(s, d, o);
+          return (
+            <button key={o.id} data-ui={`table.option-${o.id}`} className={`op-btn ${primary ? 'op-btn-primary' : BUTTON_STYLE[o.id] ?? 'btn-choice'} ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onButton(o.id)}>
+              {label}{recommended === o.id && ' ★'}
+            </button>
+          );
+        })}
         {end && (
           <button className={`op-btn op-btn-primary btn-end ${recommended === 'end' ? 'btn-reco' : ''}`} data-ui="table.end-turn" onClick={onEndTurn} title="Entrée">
             Fin du tour{recommended === 'end' && ' ★'}

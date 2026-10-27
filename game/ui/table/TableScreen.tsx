@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { Celebration, Intro } from '../Fx.tsx';
 import { ActionBar } from '../Interaction.tsx';
-import { HelpModal } from '../Modals.tsx';
+import { FirstGameTip, HelpModal } from '../Modals.tsx';
 import { SettingsPanel } from '../SettingsPanel.tsx';
 import { sfx } from '../sound.ts';
 import { CardZoom } from '../Zoom.tsx';
@@ -80,6 +80,7 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
         top={<TopBar table={table} {...top} guideDeck={decks.mine} theirs={decks.theirsName} coach={Boolean(coach)} />} />
       <SidePanel table={table} coach={coach} footer={sideNote} />
       <DecisionLayer board={board} />
+      {table.tip && !table.intro && s.winner === null && <FirstGameTip onHelp={() => { table.setTip(false); table.setHelp(true); }} onClose={() => table.setTip(false)} />}
       {table.help && !table.intro && <HelpModal onClose={() => table.setHelp(false)} />}
       {table.settingsOpen && <SettingsPanel onClose={() => table.setSettingsOpen(false)} onHelp={() => table.setHelp(true)} />}
       {table.guide && (
