@@ -71,6 +71,9 @@ function useRegulations(): Regulations {
   return regs;
 }
 
+// Nom d'une copie : « (copie) » reste visible même quand le nom d'origine est long (40 caractères au plus)
+export const copyName = (name: string) => `${name.slice(0, 32).trimEnd()} (copie)`;
+
 const draftOf = (d: MyDeck): Draft => ({ id: d.id, name: d.name, leader: d.leader, cards: { ...d.cards } });
 
 // Mes decks (#play/decks) : une fenêtre du kit avec mes decks (le même sélecteur que pour jouer) ; un deck s'ouvre dans
@@ -124,7 +127,7 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
     setCopying(false);
     const src = deckInfo(id);
     // la copie d'un deck d'aventure est un deck libre (toutes les cartes)
-    if (src) open({ id: newDeckId(), name: `${src.name} (copie)`.slice(0, 40), leader: src.leader, cards: { ...src.cards } }, true);
+    if (src) open({ id: newDeckId(), name: copyName(src.name), leader: src.leader, cards: { ...src.cards } }, true);
   };
 
   if (editing) {

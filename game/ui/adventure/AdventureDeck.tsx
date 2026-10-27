@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CARDS } from '../../engine/cards/index.ts';
 import { def } from '../../engine/rules.ts';
-import { DeckEditor, fits, LeaderPicker, playableNums, type Draft, type HoldMode } from '../DeckBuilder.tsx';
+import { copyName, DeckEditor, fits, LeaderPicker, playableNums, type Draft, type HoldMode } from '../DeckBuilder.tsx';
 import { CostCurve } from '../DeckGuide.tsx';
 import { Button, Screen } from '../kit/index.ts';
 import { isAdventureDeck, loadMyDecks, newDeckId, playable, useMyDecks, type MyDeck } from '../myDecks.ts';
@@ -99,7 +99,7 @@ export function AdventureDeckScreen({ onBack }: { onBack: () => void }) {
                     <div className="db-actions">
                       <Button variant="primary" data-ui="adventure-deck.edit" onClick={() => edit(chosen)}>Modifier</Button>
                       <Button data-ui="adventure-deck.copy" onClick={() => setEditing({
-                        draft: { ...draftOf(chosen), id: newDeckId(), name: `${chosen.name} (copie)`.slice(0, 40) }, existing: false,
+                        draft: { ...draftOf(chosen), id: newDeckId(), name: copyName(chosen.name) }, existing: false,
                       })}>Copier</Button>
                     </div>
                   </div>
