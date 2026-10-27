@@ -10,7 +10,7 @@ import { replayRecord, type Replayed } from '../../coach/archive.ts';
 import type { HomeActions } from '../App.tsx';
 import { loadRecord } from '../archiveClient.ts';
 import { useWallet, WalletBadge } from '../economy/Wallet.tsx';
-import { Button, Icon, IconButton, Screen, type IconName } from '../kit/index.ts';
+import { AsyncState, Button, Icon, IconButton, Screen, type IconName } from '../kit/index.ts';
 import { deckLabel, useMyDecks } from '../myDecks.ts';
 import type { CurrentMatch } from '../online/api.ts';
 import { navigate } from '../routes.ts';
@@ -41,7 +41,7 @@ export function Home({ notice, resume, help, settings, ranked }: HomeProps) {
   return (
     <Screen
       className="op-home"
-      data-ui="home"
+      data-ui={data.ready ? 'home' : 'home.loading'}
       title="☠ OP Coach"
       extra={(
         <span className="op-home-wallet" data-ui="home.wallet">
@@ -53,7 +53,7 @@ export function Home({ notice, resume, help, settings, ranked }: HomeProps) {
         { id: 'settings', label: 'Réglages', icon: 'settings', onClick: settings, 'data-ui': 'home.settings' },
       ]}
     >
-      <div className="op-home-body">
+      {!data.ready ? <AsyncState loading loadingText="Chargement de l’accueil…" /> : <div className="op-home-body">
         {notice && <p className="setup-notice">{notice}</p>}
         {(data.online || quick || chapter) && (
           <section className="op-home-continue" aria-labelledby="op-home-continue" data-ui="home.continue">
@@ -98,7 +98,7 @@ export function Home({ notice, resume, help, settings, ranked }: HomeProps) {
         <p className="op-home-foot">
           <a className="op-link" href="#legal" title="Projet de fan non officiel : mentions légales et confidentialité">À propos</a>
         </p>
-      </div>
+      </div>}
     </Screen>
   );
 }
