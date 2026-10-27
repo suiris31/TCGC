@@ -39,7 +39,7 @@
 .zone-opp .op-don-tuck { top: auto; bottom: -14cqi; transform: rotate(180deg); }
 .leader-col .op-don-tuck { left: -13cqi; top: calc(8cqi + var(--i) * 30cqi); bottom: auto; transform: none; }
 .op-wide .zone-opp .leader-col .op-don-tuck { left: auto; right: -13cqi; }
-.op-don-count b { margin-left: 0; }
+.op-don-count b { margin-left: 0; font-size: max(11px, 0.786rem); }
 
 /* la DON!! glissée au doigt : en grand, pour qu'on la voie au-dessus du doigt (un jeton de téléphone fait 23 px) */
 :where(.opc.is-compact) .op-gesture-ghost.don-card { scale: 2; }
