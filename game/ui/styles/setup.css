@@ -35,20 +35,16 @@
   .deck-grid { grid-template-columns: repeat(3, 1fr); }
 }
 /* Téléphone en portrait */
-@media (max-width: 900px) and (orientation: portrait) {
-  .setup { padding: calc(1rem + env(safe-area-inset-top, 0px)) 0.8rem 2rem; gap: 1.1rem; }
-  .setup-head h1 { font-size: 1.8rem; }
-  .setup-links { flex-wrap: wrap; gap: 0.5rem 1.2rem; }
-  .deck-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-  .deck-tile img, .deck-random-dice { height: 5.2rem; }
-  .deck-random-dice { font-size: 2.4rem; }
-  .deck-name { padding: 0.4rem 0.45rem 0; font-size: 0.85rem; }
-  .deck-id { padding: 0 0.45rem; font-size: 0.72rem; }
-  .deck-styles { display: none; }
-  .deck-guide-btn { margin: 0.35rem 0.4rem 0; padding: 0.2rem 0.3rem; font-size: 0.75rem; }
-  .setup-row { grid-template-columns: 1fr; gap: 1.1rem; }
-  .setup-go { flex-direction: column; align-items: stretch; padding: 0.9rem; text-align: center; }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  .setup { padding: calc(0.8rem + env(safe-area-inset-top, 0px)) 1rem 1.5rem; gap: 1rem; }
-}
+:where(.opc.is-portrait) .setup { padding: calc(1rem + env(safe-area-inset-top, 0px)) 0.8rem 2rem; gap: 1.1rem; }
+:where(.opc.is-portrait) .setup-head h1 { font-size: 1.8rem; }
+:where(.opc.is-portrait) .setup-links { flex-wrap: wrap; gap: 0.5rem 1.2rem; }
+:where(.opc.is-portrait) .deck-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+:where(.opc.is-portrait) .deck-tile img, :where(.opc.is-portrait) .deck-random-dice { height: 5.2rem; }
+:where(.opc.is-portrait) .deck-random-dice { font-size: 2.4rem; }
+:where(.opc.is-portrait) .deck-name { padding: 0.4rem 0.45rem 0; font-size: 0.85rem; }
+:where(.opc.is-portrait) .deck-id { padding: 0 0.45rem; font-size: 0.72rem; }
+:where(.opc.is-portrait) .deck-styles { display: none; }
+:where(.opc.is-portrait) .deck-guide-btn { margin: 0.35rem 0.4rem 0; padding: 0.2rem 0.3rem; font-size: 0.75rem; }
+:where(.opc.is-portrait) .setup-row { grid-template-columns: 1fr; gap: 1.1rem; }
+:where(.opc.is-portrait) .setup-go { flex-direction: column; align-items: stretch; padding: 0.9rem; text-align: center; }
+:where(.opc.is-landscape) .setup { padding: calc(0.8rem + env(safe-area-inset-top, 0px)) 1rem 1.5rem; gap: 1rem; }

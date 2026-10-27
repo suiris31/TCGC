@@ -55,17 +55,14 @@ html.opc-on body { overflow: hidden; }
 .icon-btn { width: 2.429rem; height: 2.429rem; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); font-size: 1.143rem; display: grid; place-items: center; }
 @media (hover: hover) { .icon-btn:hover:not(:disabled) { border-color: var(--accent); } }
 /* ---------- Téléphone et écrans tactiles ----------
-   « Compact » : téléphone en portrait (ou tablette en portrait) et téléphone en paysage. Mêmes conditions que COMPACT
-   dans device.ts. Sur ordinateur, les blocs compacts (ici et à la fin de chaque fichier) ne changent rien. */
+   « Compact » : téléphone en portrait (ou tablette en portrait) et téléphone en paysage, d'après device.ts, qui pose
+   .is-compact (et .is-portrait ou .is-landscape) sur .opc ; les règles :where(.opc.is-compact) gardent leur priorité.
+   Sur ordinateur, elles ne changent rien. Celles du plateau sont dans table-compact.css. */
 .only-compact { display: none; }
 .icon-reco { box-shadow: 0 0 0 2px var(--accent); }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .only-compact { display: grid; }
-  .hide-compact { display: none; }
-  .icon-btn { width: 2.2rem; height: 2.2rem; font-size: 1rem; }
-}
+:where(.opc.is-compact) .only-compact { display: grid; }
+:where(.opc.is-compact) .hide-compact { display: none; }
+:where(.opc.is-compact) .icon-btn { width: 2.2rem; height: 2.2rem; font-size: 1rem; }
 /* Téléphone en paysage : la disposition de l'ordinateur, resserrée en hauteur */
-@media (max-height: 520px) and (orientation: landscape) {
-  html.opc-on { font-size: calc(12.5px * var(--ui, 1)); }
-  .icon-btn { width: 2rem; height: 2rem; }
-}
+html.opc-on:where(:has(.opc.is-landscape)) { font-size: calc(12.5px * var(--ui, 1)); }
+:where(.opc.is-landscape) .icon-btn { width: 2rem; height: 2rem; }

@@ -6,6 +6,7 @@ import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
 import { ApiError, call } from './api.ts';
 import { setArchiveUser } from './archiveClient.ts';
+import { deviceClasses, useDevice } from './device.ts';
 import { currentMatches, type CurrentMatch } from './online/api.ts';
 import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
@@ -31,6 +32,7 @@ import './styles/adventure.css';
 import './styles/shop.css';
 import './styles/atelier.css';
 import './styles/settings.css';
+import './styles/table-compact.css';
 
 // Atelier des écrans du jeu (#play/atelier) : chargé seulement quand on l'ouvre
 const Atelier = lazy(() => import('./atelier/Atelier.tsx').then((m) => ({ default: m.Atelier })));
@@ -136,6 +138,8 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   // son et animations réduites : réglés une fois pour tout le jeu (styles/settings.css)
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
   const reducedMotion = useReducedMotion();
+  // téléphone en portrait ou en paysage : .is-compact, .is-portrait, .is-landscape (seule source pour les styles)
+  const device = useDevice();
 
   useEffect(() => () => onImmersive(false), [onImmersive]);
 
@@ -159,7 +163,7 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   }, [onImmersive]);
 
   return (
-    <div className={`opc${full ? ' opc-full' : ''}${reducedMotion ? ' is-reduced-motion' : ''}`}>
+    <div className={`opc${full ? ' opc-full' : ''}${reducedMotion ? ' is-reduced-motion' : ''}${deviceClasses(device)}`}>
       {state === 'ready' ? (
         route.name === 'ami' || route.name === 'salle' ? (
           // la partie ouverte remplace le salon dans l'historique : le Retour depuis la partie ramène à l'accueil

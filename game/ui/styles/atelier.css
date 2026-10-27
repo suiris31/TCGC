@@ -16,11 +16,9 @@
 .op-atelier-status { white-space: nowrap; font-weight: 700; }
 .op-soon { justify-content: center; }
 .op-soon-actions { display: flex; justify-content: center; }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .op-atelier-head h1 { font-size: 1.3rem; }
-  .op-atelier-stage { padding: 0.5rem; }
-  .op-atelier-chapter { flex-wrap: wrap; justify-content: flex-end; }
-  .op-atelier-chapter-text { flex-basis: 100%; }
-}
+:where(.opc.is-compact) .op-atelier-head h1 { font-size: 1.3rem; }
+:where(.opc.is-compact) .op-atelier-stage { padding: 0.5rem; }
+:where(.opc.is-compact) .op-atelier-chapter { flex-wrap: wrap; justify-content: flex-end; }
+:where(.opc.is-compact) .op-atelier-chapter-text { flex-basis: 100%; }
 /* une page « plateau » de l'atelier occupe tout l'écran, comme une partie */
 .op-atelier-board { position: fixed; inset: 0; z-index: var(--z-raise); background: var(--bg); }

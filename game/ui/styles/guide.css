@@ -35,10 +35,8 @@
 .guide-stats b { font-size: 1.3rem; color: var(--accent); }
 .guide-stats span { font-size: 0.85rem; color: var(--muted); }
 @media (max-width: 1000px) { .guide-body { grid-template-columns: 1fr; } }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .modal-guide { width: 100%; max-width: none; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 1rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
-  .guide-pros { grid-template-columns: 1fr; }
-  .guide-head { flex-wrap: wrap; }
-  .guide-head .thumb { width: 6rem; }
-  .combo { flex-direction: column; }
-}
+:where(.opc.is-compact) .modal-guide { width: 100%; max-width: none; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 1rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-compact) .guide-pros { grid-template-columns: 1fr; }
+:where(.opc.is-compact) .guide-head { flex-wrap: wrap; }
+:where(.opc.is-compact) .guide-head .thumb { width: 6rem; }
+:where(.opc.is-compact) .combo { flex-direction: column; }

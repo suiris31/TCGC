@@ -85,7 +85,7 @@ export function Screen({ children, footer, className, 'data-ui': dataUi, ...head
 }
 
 // Le menu « ⋯ » : s'ouvre au clic, se parcourt aux flèches, se ferme par Échap, Tab, un choix ou un clic ailleurs
-export function MoreMenu({ items, label = 'Plus d’actions' }: { items: ScreenAction[]; label?: string }) {
+export function MoreMenu({ items, label = 'Plus d’actions', 'data-ui': dataUi = 'screen.more' }: { items: ScreenAction[]; label?: string; 'data-ui'?: string }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -148,7 +148,7 @@ export function MoreMenu({ items, label = 'Plus d’actions' }: { items: ScreenA
         aria-expanded={open}
         aria-controls={open ? `${id}-menu` : undefined}
         onClick={() => (open ? shut(false) : setOpen(true))}
-        data-ui="screen.more"
+        data-ui={dataUi}
       />
       {open && (
         <div className="op-kit-menu" role="menu" id={`${id}-menu`} aria-label={label}>

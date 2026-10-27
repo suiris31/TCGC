@@ -41,13 +41,9 @@
 @media (prefers-reduced-motion: reduce) {
   .op-wm-pulse, .op-wm-arrive, .op-wm-bob, .op-wm-bubble { animation: none; }
 }
-@media (max-width: 900px) and (orientation: portrait) {
-  .op-wm-frame { aspect-ratio: 4 / 5; max-height: calc(100dvh - 13rem); }
-  .op-wm-hint { margin-left: 0; flex-basis: 100%; }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  .op-wm-frame { aspect-ratio: auto; height: calc(100dvh - 6.5rem); max-height: none; min-height: 11rem; }
-  .op-wm-controls { top: 0.35rem; right: 0.35rem; gap: 0.25rem; }
-  .op-wm-legend { font-size: 0.75rem; gap: 0.2rem 0.8rem; }
-  .op-wm-legend > .op-wm-hint { display: none; }
-}
+:where(.opc.is-portrait) .op-wm-frame { aspect-ratio: 4 / 5; max-height: calc(100dvh - 13rem); }
+:where(.opc.is-portrait) .op-wm-hint { margin-left: 0; flex-basis: 100%; }
+:where(.opc.is-landscape) .op-wm-frame { aspect-ratio: auto; height: calc(100dvh - 6.5rem); max-height: none; min-height: 11rem; }
+:where(.opc.is-landscape) .op-wm-controls { top: 0.35rem; right: 0.35rem; gap: 0.25rem; }
+:where(.opc.is-landscape) .op-wm-legend { font-size: 0.75rem; gap: 0.2rem 0.8rem; }
+:where(.opc.is-landscape) .op-wm-legend > .op-wm-hint { display: none; }

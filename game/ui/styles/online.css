@@ -14,8 +14,6 @@
 .online-alert { position: absolute; left: 50%; top: 3.6rem; z-index: var(--z-alert); transform: translateX(-50%); max-width: calc(100% - 1rem); padding: 0.4rem 0.9rem; border-radius: 10px; background: var(--red-a94); color: var(--white); font-size: 0.9rem; font-weight: 700; box-shadow: 0 8px 24px var(--black-a45); }
 .online-note { margin: 0.2rem 0 0; }
 .online-end { max-width: 30rem; text-align: center; }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .online-entry { flex-direction: column; align-items: stretch; text-align: center; }
-  .room-code { font-size: 2rem; }
-  .presence { font-size: 0.75rem; }
-}
+:where(.opc.is-compact) .online-entry { flex-direction: column; align-items: stretch; text-align: center; }
+:where(.opc.is-compact) .room-code { font-size: 2rem; }
+:where(.opc.is-compact) .presence { font-size: 0.75rem; }

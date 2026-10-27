@@ -55,21 +55,17 @@
 .op-db-holdnote { margin: 0; padding: 0.4rem 1.4rem; border-bottom: 1px solid var(--line); }
 .op-db-adventure { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
 .op-db-adventure p { margin: 0; }
-@media (max-width: 900px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
-  .op-hold, .op-adeck { padding: 1rem 0.8rem 3rem; gap: 0.9rem; }
-  .op-hold-head h1, .op-adeck-head h1 { font-size: 1.35rem; }
-  .op-hold-grid { grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr)); gap: 0.6rem 0.45rem; }
-  .op-hold-filters select { flex: 1 1 8rem; min-width: 0; }
-  .op-hold-filters .db-search { flex-basis: 100%; }
-  .op-hold-sort { flex: 1 1 8rem; }
-  .op-hold-sort select { flex: 1; }
-  .op-adeck-chosen { grid-template-columns: 1fr; }
-  .op-db-holdnote { padding: 0.4rem 0.8rem; }
-}
-@media (max-width: 900px) and (orientation: portrait) {
-  .modal-box.op-hold-zoom { flex-direction: column; align-items: center; }
-  .op-hold-zoom-img { width: min(16rem, 70%); }
-}
+:where(.opc.is-compact) .op-hold, :where(.opc.is-compact) .op-adeck { padding: 1rem 0.8rem 3rem; gap: 0.9rem; }
+:where(.opc.is-compact) .op-hold-head h1, :where(.opc.is-compact) .op-adeck-head h1 { font-size: 1.35rem; }
+:where(.opc.is-compact) .op-hold-grid { grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr)); gap: 0.6rem 0.45rem; }
+:where(.opc.is-compact) .op-hold-filters select { flex: 1 1 8rem; min-width: 0; }
+:where(.opc.is-compact) .op-hold-filters .db-search { flex-basis: 100%; }
+:where(.opc.is-compact) .op-hold-sort { flex: 1 1 8rem; }
+:where(.opc.is-compact) .op-hold-sort select { flex: 1; }
+:where(.opc.is-compact) .op-adeck-chosen { grid-template-columns: 1fr; }
+:where(.opc.is-compact) .op-db-holdnote { padding: 0.4rem 0.8rem; }
+:where(.opc.is-portrait) .modal-box.op-hold-zoom { flex-direction: column; align-items: center; }
+:where(.opc.is-portrait) .op-hold-zoom-img { width: min(16rem, 70%); }
 .op-adv-layer, .op-adv-board { height: 100%; }
 .op-adv-entry { background: linear-gradient(135deg, var(--accent-a16), var(--blue-a08)); border-color: var(--accent-a50); }
 .op-adv { max-width: 62rem; gap: 1.1rem; padding: calc(1.1rem + env(safe-area-inset-top, 0px)) 1.2rem calc(2rem + env(safe-area-inset-bottom, 0px)); }
@@ -149,33 +145,29 @@
 @media (prefers-reduced-motion: reduce) {
   .op-adv-bubble, .op-adv-end-won .op-adv-end-head h1, .op-adv-boosters-packs .op-adv-pack, .op-adv-welcome-ship { animation: none; }
 }
-@media (max-width: 900px) and (orientation: portrait) {
-  .op-adv { padding-left: 0.8rem; padding-right: 0.8rem; gap: 0.9rem; }
-  .op-adv-title h1 { font-size: 1.35rem; }
-  .op-adv-grid { grid-template-columns: 1fr; }
-  .op-adv-bubble { gap: 0.8rem; padding: 0.8rem 0.9rem; min-height: 6rem; }
-  .op-adv-portrait { width: 4rem; height: 4rem; }
-  .op-adv-text { font-size: 1rem; }
-  .op-adv-go { flex-direction: column; align-items: stretch; }
-  .op-adv-go-actions .op-btn { flex: 1; }
-  .op-adv-leader { width: 5.5rem; }
-  .op-adv-map-title { font-size: 1.3rem; }
-  .op-adv-head-actions { width: 100%; }
-  .op-adv-head-actions .op-btn { flex: 1 1 0; min-width: 0; padding: 0 0.4rem; }
-  .op-adv-welcome-body h1 { font-size: 1.6rem; }
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  .op-adv { gap: 0.7rem; padding-top: calc(0.6rem + env(safe-area-inset-top, 0px)); }
-  .op-adv-map { gap: 0.35rem; padding-top: 0.35rem; padding-bottom: 0.35rem; }
-  .op-adv-map .op-wm-frame { height: calc(100dvh - 7.6rem); }
-  .op-adv-strip { min-height: 2.3rem; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
-  .op-adv-title h1, .op-adv-map-title { font-size: 1.25rem; }
-  .op-adv-bubble { min-height: 5rem; padding: 0.6rem 0.9rem; }
-  .op-adv-portrait { width: 3.6rem; height: 3.6rem; }
-  .op-adv-welcome-ship { font-size: 2.5rem; }
-  .op-adv-leader { width: 4.5rem; }
-  .op-adv-panel { padding: 0.7rem 0.9rem; }
-}
+:where(.opc.is-portrait) .op-adv { padding-left: 0.8rem; padding-right: 0.8rem; gap: 0.9rem; }
+:where(.opc.is-portrait) .op-adv-title h1 { font-size: 1.35rem; }
+:where(.opc.is-portrait) .op-adv-grid { grid-template-columns: 1fr; }
+:where(.opc.is-portrait) .op-adv-bubble { gap: 0.8rem; padding: 0.8rem 0.9rem; min-height: 6rem; }
+:where(.opc.is-portrait) .op-adv-portrait { width: 4rem; height: 4rem; }
+:where(.opc.is-portrait) .op-adv-text { font-size: 1rem; }
+:where(.opc.is-portrait) .op-adv-go { flex-direction: column; align-items: stretch; }
+:where(.opc.is-portrait) .op-adv-go-actions .op-btn { flex: 1; }
+:where(.opc.is-portrait) .op-adv-leader { width: 5.5rem; }
+:where(.opc.is-portrait) .op-adv-map-title { font-size: 1.3rem; }
+:where(.opc.is-portrait) .op-adv-head-actions { width: 100%; }
+:where(.opc.is-portrait) .op-adv-head-actions .op-btn { flex: 1 1 0; min-width: 0; padding: 0 0.4rem; }
+:where(.opc.is-portrait) .op-adv-welcome-body h1 { font-size: 1.6rem; }
+:where(.opc.is-landscape) .op-adv { gap: 0.7rem; padding-top: calc(0.6rem + env(safe-area-inset-top, 0px)); }
+:where(.opc.is-landscape) .op-adv-map { gap: 0.35rem; padding-top: 0.35rem; padding-bottom: 0.35rem; }
+:where(.opc.is-landscape) .op-adv-map .op-wm-frame { height: calc(100dvh - 7.6rem); }
+:where(.opc.is-landscape) .op-adv-strip { min-height: 2.3rem; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
+:where(.opc.is-landscape) .op-adv-title h1, :where(.opc.is-landscape) .op-adv-map-title { font-size: 1.25rem; }
+:where(.opc.is-landscape) .op-adv-bubble { min-height: 5rem; padding: 0.6rem 0.9rem; }
+:where(.opc.is-landscape) .op-adv-portrait { width: 3.6rem; height: 3.6rem; }
+:where(.opc.is-landscape) .op-adv-welcome-ship { font-size: 2.5rem; }
+:where(.opc.is-landscape) .op-adv-leader { width: 4.5rem; }
+:where(.opc.is-landscape) .op-adv-panel { padding: 0.7rem 0.9rem; }
 /* Changement d'écran : l'écran qui arrive se fond (accueil, carte, chapitre, fin de partie, Cale, deck) */
 .op-adv-layer > .setup { animation: op-adv-screen 0.28s ease-out; }
 @keyframes op-adv-screen { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -196,12 +188,10 @@
   .op-adv-finale-list li { grid-template-columns: 1.2rem 1fr; }
   .op-adv-finale-list li > span:last-child { grid-column: 2; }
 }
-@media (max-height: 520px) and (orientation: landscape) {
-  .modal-box.op-adv-finale { max-width: 40rem; gap: 0.5rem; padding: 0.9rem 1.1rem; max-height: calc(100dvh - 1rem); }
-  .op-adv-finale-flag { font-size: 2rem; }
-  .op-adv-finale h2 { font-size: 1.3rem; }
-  .op-adv-finale-list li { padding: 0.1rem 0.5rem; }
-}
+:where(.opc.is-landscape) .modal-box.op-adv-finale { max-width: 40rem; gap: 0.5rem; padding: 0.9rem 1.1rem; max-height: calc(100dvh - 1rem); }
+:where(.opc.is-landscape) .op-adv-finale-flag { font-size: 2rem; }
+:where(.opc.is-landscape) .op-adv-finale h2 { font-size: 1.3rem; }
+:where(.opc.is-landscape) .op-adv-finale-list li { padding: 0.1rem 0.5rem; }
 @media (prefers-reduced-motion: reduce) {
   .op-adv-layer > .setup, .op-adv-finale-flag { animation: none; }
 }
