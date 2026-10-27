@@ -1,0 +1,35 @@
+/* Fin de partie (tâche R3.3) : l'écran unique de tous les modes (game/ui/end/EndScreen.tsx), rendu dans la fenêtre
+   `.modal` de l'écran de la partie (data-ui="end"). Le contenu défile, les boutons restent collés en bas. Puis le récap
+   du coach (aussi dans Mes parties) : graduations du graphique et lien « Revoir ce moment » lisibles au doigt. */
+.op-end { display: flex; flex-direction: column; width: min(52rem, calc(100% - 2rem)); max-height: 90vh; max-height: 90dvh; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-3); overflow: hidden; animation: pop var(--dur-base) ease-out; outline: none; }
+.op-end-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-6) var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-5); }
+.op-end-head { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); text-align: center; padding-bottom: var(--space-4); border-bottom: 1px solid var(--line); }
+.op-end .op-end-title { margin: 0; font-size: 2rem; line-height: 1.1; text-transform: none; letter-spacing: normal; }
+.op-end.is-won .op-end-title { color: var(--green); }
+.op-end.is-lost .op-end-title { color: var(--red); }
+.op-end-head p { margin: 0; }
+.op-end-reason { font-size: 1.05rem; }
+.op-end-result:empty { display: none; }
+.op-end-actions { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-6) calc(var(--space-3) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--bg-2); }
+
+/* Récap du coach (fin de partie et Mes parties) */
+.curve-box { overflow: hidden; padding-bottom: 1rem; border-radius: 10px; background: var(--surface); }
+.curve-plot { position: relative; }
+.curve-plot .curve { display: block; border-radius: 0; }
+.curve-label { position: absolute; transform: translateY(0.15rem); font-size: 0.786rem; line-height: 1; color: var(--muted); white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
+.curve-label.is-mid { transform: translateY(-110%); padding-left: var(--space-1); }
+.review .op-link { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* Téléphone : une fiche qui monte du bas, les boutons sur toute la largeur */
+:where(.opc.is-compact) .op-end { width: 100%; max-height: 94dvh; border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: 0; }
+:where(.opc.is-compact) .op-end-body { padding: var(--space-4) var(--space-4) var(--space-3); gap: var(--space-4); }
+:where(.opc.is-compact) .op-end .op-end-title { font-size: 1.6rem; }
+:where(.opc.is-compact) .op-end-actions { padding: var(--space-2) var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-compact) .op-end-actions .op-kit-btn { flex: 1 1 auto; }
+/* paysage : toute la hauteur, l'en-tête sur une ligne, les boutons sur une ligne */
+:where(.opc.is-landscape) .op-end { max-height: 100dvh; border-radius: 0; }
+:where(.opc.is-landscape) .op-end-body { padding-top: var(--space-2); gap: var(--space-3); }
+:where(.opc.is-landscape) .op-end-head { flex-flow: row wrap; justify-content: center; column-gap: var(--space-3); padding-bottom: var(--space-2); }
+:where(.opc.is-landscape) .op-end .op-end-title { font-size: 1.3rem; }
+:where(.opc.is-landscape) .op-end-actions { flex-wrap: nowrap; }
+:where(.opc.is-landscape) .op-end-actions .op-kit-btn { flex: 1 1 0; min-width: 0; }

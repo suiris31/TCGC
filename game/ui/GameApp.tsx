@@ -34,6 +34,7 @@ import './styles/atelier.css';
 import './styles/settings.css';
 import './styles/a11y.css';
 import './styles/gestures.css';
+import './styles/end.css';
 import './styles/table-compact.css';
 
 // Atelier des écrans du jeu (#play/atelier) : chargé seulement quand on l'ouvre

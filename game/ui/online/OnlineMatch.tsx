@@ -1,14 +1,15 @@
 // Partie en ligne : salle d'attente (code à transmettre), puis plateau. Le plateau est celui de la partie contre l'IA
 // (contrôleur commun, game/ui/table/), avec la vue envoyée par le serveur : pas de coach, pas de retour en arrière,
 // pas de marques « sans intérêt » (aides désactivées), et chaque choix part au serveur, qui arbitre. En fin de partie,
-// son gain en Berry (tâche 2.5).
+// son gain en Berry (tâche 2.5), sur l'écran de fin commun (end/EndScreen.tsx).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DECKS } from '../../engine/decks.ts';
 import type { GameState } from '../../engine/types.ts';
 import { loadSummaries } from '../archiveClient.ts';
-import { useLeaveGuard } from '../routes.ts';
+import { navigate, useLeaveGuard } from '../routes.ts';
+import { EndScreen } from '../end/EndScreen.tsx';
 import { GameGain, useGameGain } from '../economy/GameGain.tsx';
-import { LeaveDialog, stop, TableScreen } from '../table/TableScreen.tsx';
+import { LeaveDialog, TableScreen } from '../table/TableScreen.tsx';
 import { useGameKeys } from '../table/useGameKeys.ts';
 import { useTable } from '../table/useTable.ts';
 import { resignMatch, sendChoice, useMatch, type LiveView } from './api.ts';
@@ -77,12 +78,14 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
   useGameKeys(table);
 
   // fin de partie : son gain, demandé une fois (une partie déjà réclamée renvoie le même détail)
+  // (la partie retrouvée dans « Mes parties » : le bouton « Mes parties » de la fin y mène)
   const { gain, claim, retry: retryGain } = useGameGain();
+  const [archived, setArchived] = useState<string | null>(null);
   const claimed = useRef(false);
   useEffect(() => {
     if (!over || claimed.current) return;
     claimed.current = true;
-    claim(() => archivedId(view, game));
+    claim(() => archivedId(view, game).then((found) => { setArchived(found); return found; }));
   }, [over, view, game, claim]);
 
   useEffect(() => {
@@ -126,16 +129,18 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
         </LeaveDialog>
       )}
       end={(
-        <div className="modal-box online-end" onClick={stop}>
-          <h2 className={won ? 'good' : 'danger'}>{won ? 'Victoire !' : 'Défaite'}</h2>
-          <p>{game.winReason} · {game.turn} tours{you.hold && opponent?.hold ? ' · 🧭 partie avec decks de la Cale' : ''}</p>
-          <GameGain gain={gain} onRetry={retryGain} />
-          <p className="op-small op-muted">La partie est rangée dans « Mes parties ». Le coach était désactivé pendant la partie ; depuis « Mes parties », tu peux la revoir et rejouer un moment contre l’IA.</p>
-          <div className="modal-actions">
-            <button className="op-btn op-btn-primary" onClick={onLeave}>Retour au menu</button>
-            <button className="op-btn op-btn-ghost" onClick={() => table.setShowEnd(false)}>Voir le plateau</button>
-          </div>
-        </div>
+        <EndScreen
+          mode="en-ligne"
+          won={won}
+          reason={game.winReason ?? ''}
+          turns={game.turn}
+          matchup={<>{myDeck} contre {oppName} · {oppDeck}{you.hold && opponent?.hold ? ' · partie avec decks de la Cale' : ''}</>}
+          note="Le coach était désactivé pendant la partie. Elle est rangée dans « Mes parties » : tu peux l’y revoir et rejouer un moment contre l’IA."
+          gain={<GameGain gain={gain} onRetry={retryGain} />}
+          onHistory={() => navigate(archived ? { name: 'parties', id: archived } : { name: 'parties' })}
+          onHome={onLeave}
+          onBoard={() => table.setShowEnd(false)}
+        />
       )}
     />
   );

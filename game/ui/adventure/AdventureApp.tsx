@@ -6,11 +6,12 @@
 //   #play/aventure, /chapitre/<id>, /cale, /deck, /boutique) : le Retour revient à l'écran précédent.
 // - « Combattre » lance la partie sur le plateau du jeu (App, partie imposée) : ton deck d'aventure contre le deck et le
 //   niveau du chapitre. Une partie quittée ou coupée (onglet fermé) se reprend depuis le chapitre.
-// - Fin de partie : l'enregistrement final est envoyé, puis le serveur rejoue la partie et donne les récompenses de la
-//   première victoire (RewardsScreen), puis le gain de la partie en Berry (barème de l'IA du chapitre, bonus du jour,
-//   coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening, chacun tiré au
-//   moment où on l'ouvre : useBoosterOpening) ou plus tard. Le plateau
-//   reste en place derrière l'écran de fin : le récap du coach reste accessible jusqu'au retour à la carte.
+// - Fin de partie, en deux écrans (tâche R3.3) : l'écran de fin commun sur le plateau (récap du coach), puis les
+//   récompenses (RewardsScreen). Dès la fin, l'enregistrement final est envoyé, le serveur rejoue la partie et donne
+//   les récompenses de la première victoire, puis le gain de la partie en Berry (barème de l'IA du chapitre, bonus du
+//   jour, coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening, chacun
+//   tiré au moment où on l'ouvre : useBoosterOpening) ou plus tard. Le plateau reste en place derrière les
+//   récompenses : le récap du coach reste accessible jusqu'au retour à la carte. « Retenter » relance la partie.
 // Rien ne se lance sans un choix explicite ; les refus et erreurs du serveur s'affichent tels quels (en français).
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ARCS, findChapter } from '../../adventure/arcs.ts';
@@ -232,7 +233,8 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     ).finally(then);
   }, [reload]);
 
-  // La partie est finie (écran de victoire ou de défaite passé) : place au dialogue de fin et au résultat
+  // La partie est finie (écran de victoire ou de défaite passé) : le résultat part au serveur pendant que le plateau
+  // montre le récap du coach ; « Récompenses → » (onLeaveBoard) mène ensuite au dialogue de fin et au résultat
   const onEnd = ({ won, saved }: { won: boolean; saved: Promise<string> }) => {
     if (!match) return;
     setOutcome({ chapter: match.chapter, won, recordId: saved });
@@ -242,7 +244,6 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       setSent(null);
       gainOf();
     }
-    setBoard(false);
   };
 
   // « Quitter » pendant la partie : retour au chapitre (le plateau disparaît, la partie est enregistrée et reprenable) ;
@@ -310,7 +311,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
         onOpen={openBoosters} onLater={toMap}
         onResend={() => outcome.recordId && send(outcome.chapter, outcome.recordId)}
         onRecap={match ? () => setBoard(true) : undefined}
-        onRetry={() => { const id = outcome.chapter; resetMatch(); if (chapterId === id) prepareChapter(id); else openChapter(id); }}
+        onRetry={() => { const id = outcome.chapter; resetMatch(); if (chapterId === id) fight(); else openChapter(id); }}
         onMap={toMap} />
     );
   } else if (screen.kind === 'hold') {

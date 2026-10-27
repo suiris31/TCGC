@@ -1,4 +1,5 @@
-// Fin d'une partie de l'aventure (tâche 1.17) : le dialogue de victoire ou de défaite, puis ce que la partie a rapporté
+// Fin d'une partie de l'aventure (tâche 1.17), deuxième et dernier écran après le récap du coach (écran de fin commun,
+// end/EndScreen.tsx, tâche R3.3) : le dialogue de victoire ou de défaite, puis ce que la partie a rapporté
 // une fois que le serveur l'a vérifiée (récompenses de la première victoire ; gain de la partie en Berry, tâche 2.5),
 // avec les boosters gagnés (chapitre, coffre de la semaine) à ouvrir tout de suite ou plus tard (ils restent dans la
 // Cale). Écran sans appel au serveur : AdventureApp envoie et ouvre.
@@ -75,8 +76,8 @@ export interface RewardsScreenProps {
   onOpen: (boosterIds: string[]) => void;
   onLater: () => void;                  // garder les boosters dans la Cale, retour à la carte
   onResend: () => void;                 // renvoyer la partie après une erreur
-  onRecap?: () => void;                 // récap du coach (absent quand la partie n'est plus affichable)
-  onRetry: () => void;                  // revenir au chapitre pour retenter
+  onRecap?: () => void;                 // revenir au récap du coach (absent quand la partie n'est plus affichable)
+  onRetry: () => void;                  // retenter : relance la partie du chapitre
   onMap: () => void;
 }
 
@@ -87,7 +88,7 @@ export function RewardsScreen(p: RewardsScreenProps) {
   const boosters = [...(done?.firstWin ? done.boosters : []), ...chest];
   const sets = [...new Set(boosters.map((b) => b.set))];
   return (
-    <div className={`setup op-adv op-adv-end ${won ? 'op-adv-end-won' : 'op-adv-end-lost'}`}>
+    <div className={`setup op-adv op-adv-end ${won ? 'op-adv-end-won' : 'op-adv-end-lost'}`} data-ui="rewards">
       <header className="op-adv-head op-adv-end-head">
         <div className="op-adv-title">
           <span className="op-muted op-small">{chapter.place} · {chapter.title}</span>
@@ -103,7 +104,7 @@ export function RewardsScreen(p: RewardsScreenProps) {
           {result?.state === 'error' && (
             <div className="op-adv-row">
               <span className="danger">{result.message}</span>
-              <button className="op-btn op-btn-ghost btn-small" onClick={p.onResend}>Réessayer</button>
+              <button className="op-btn op-btn-ghost btn-small" data-ui="rewards.resend" onClick={p.onResend}>Réessayer</button>
             </div>
           )}
           {done && !done.won && <p className="op-warn">Le serveur n’a pas pu confirmer cette victoire : elle ne compte pas pour l’aventure.</p>}
@@ -124,7 +125,7 @@ export function RewardsScreen(p: RewardsScreenProps) {
         <section className="op-adv-panel">
           <p className="op-muted">Pas de récompense de chapitre cette fois. Revois le récap du coach, ajuste ton deck, et retente ta chance !</p>
           <div className="op-adv-row">
-            <button className="op-btn op-btn-primary" onClick={p.onRetry}>⚔ Retenter le chapitre</button>
+            <button className="op-btn op-btn-primary" data-ui="rewards.retry" onClick={p.onRetry}>⚔ Retenter le chapitre</button>
           </div>
         </section>
       )}
@@ -141,10 +142,10 @@ export function RewardsScreen(p: RewardsScreenProps) {
             <span className="op-small op-muted">Ouvre-les maintenant, ou plus tard depuis ta Cale.</span>
           </div>
           <div className="op-adv-row">
-            <button className="op-btn op-btn-primary" disabled={p.opening} onClick={() => p.onOpen(boosters.map((b) => b.id))}>
+            <button className="op-btn op-btn-primary" data-ui="rewards.open" disabled={p.opening} onClick={() => p.onOpen(boosters.map((b) => b.id))}>
               {p.opening ? <><span className="op-spinner" /> Ouverture…</> : '🎁 Ouvrir maintenant'}
             </button>
-            <button className="op-btn op-btn-ghost" disabled={p.opening} onClick={p.onLater}>Plus tard</button>
+            <button className="op-btn op-btn-ghost" data-ui="rewards.later" disabled={p.opening} onClick={p.onLater}>Plus tard</button>
           </div>
           {p.openError && <p className="danger op-small">{p.openError}</p>}
           <p className="op-small op-muted op-adv-notice">{BOOSTER_NOTICE}</p>
@@ -152,8 +153,8 @@ export function RewardsScreen(p: RewardsScreenProps) {
       )}
 
       <div className="op-adv-row op-adv-end-actions">
-        {p.onRecap && <button className="op-btn op-btn-ghost" onClick={p.onRecap}>📊 Récap du coach</button>}
-        {!(boosters.length > 0) && <button className={won ? 'op-btn op-btn-primary' : 'op-btn op-btn-ghost'} onClick={p.onMap}>🗺️ Retour à la carte</button>}
+        {p.onRecap && <button className="op-btn op-btn-ghost" data-ui="rewards.recap" onClick={p.onRecap}>📊 Revoir le récap</button>}
+        {!(boosters.length > 0) && <button className={won ? 'op-btn op-btn-primary' : 'op-btn op-btn-ghost'} data-ui="rewards.map" onClick={p.onMap}>🗺️ Retour à la carte</button>}
       </div>
     </div>
   );
