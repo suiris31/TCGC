@@ -122,14 +122,13 @@
 :where(.opc.is-portrait) .db-head .db-save { flex: 1; }
 /* paysage : en-tête et résumé resserrés, pour laisser la hauteur aux cartes */
 :where(.opc.is-landscape) .db-head { flex-wrap: nowrap; gap: 0.6rem; padding: calc(0.25rem + env(safe-area-inset-top, 0px)) 0.8rem 0.25rem; }
-:where(.opc.is-landscape) .db-head .db-name { font-size: 1rem; min-height: 2.2rem; padding: 0.3rem 0.5rem; }
+:where(.opc.is-landscape) .db-head .db-name { font-size: 1rem; padding: 0.3rem 0.5rem; }
 :where(.opc.is-landscape) .db-summary { flex-wrap: nowrap; gap: 0.6rem; padding: 0.25rem 0.8rem; }
 :where(.opc.is-landscape) .db-leader-mini { display: none; }
 :where(.opc.is-landscape) .db-summary-text { flex-direction: row; align-items: baseline; gap: 0.5rem; min-width: 0; white-space: nowrap; overflow: hidden; }
 :where(.opc.is-landscape) .db-count { font-size: 1.05rem; }
 :where(.opc.is-landscape) .op-db-holdnote { margin: 0.2rem 0.8rem 0; }
 :where(.opc.is-landscape) .history-tabs.db-tabs { margin: 0.3rem 0.8rem 0; }
-:where(.opc.is-landscape) .history-tabs.db-tabs .seg { height: 2.2rem; }
 :where(.opc.is-landscape) .db-panes { padding: 0.5rem 0.8rem 0.8rem; }
 /* Deck d'aventure : le deck choisi (résumé, courbe), puis le sélecteur de mes decks d'aventure */
 .op-adeck-chosen-text { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
@@ -138,3 +137,6 @@
 .op-adeck-body { display: flex; flex-direction: column; gap: 1.2rem; width: 100%; max-width: 78rem; margin: 0 auto; }
 .op-adeck .op-adeck-curve { max-width: 34rem; }
 .op-adeck section > h2 { margin: 0 0 0.6rem; font-size: 1.05rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+/* cibles au doigt : boutons − et + des cartes, lien vers Mes decks (44 px) */
+.db-card-btns .icon-btn, .db-line-btns .icon-btn { min-height: 44px; min-width: 44px; }
+.deck-mine-note .op-link { display: inline-flex; align-items: center; min-height: 44px; }
