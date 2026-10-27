@@ -46,9 +46,9 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
   // ordinateur : le panneau replié laisse la place au plateau
   const [collapsed, setCollapsed] = useSideCollapsed();
   const folded = collapsed && !board.compact;
-  // prévision d'attaque, au centre du plateau : la cible survolée (ou touchée), sinon l'attaquant choisi
+  // prévision d'attaque, au centre du plateau (ordinateur) : la cible survolée, sinon l'attaquant choisi
   const attacker = board.targeting ? findField(s, board.targeting.attacker) : null;
-  const aim = board.targeting && !s.battle && (board.targetPreview ? (
+  const aim = !board.compact && board.targeting && !s.battle && (board.targetPreview ? (
     <div className={`op-aim ${board.targetPreview.ok ? 'is-ok' : 'is-ko'}`} data-ui="table.aim">{verdict(board.targetPreview.text)}</div>
   ) : attacker && (
     <div className="op-aim" data-ui="table.aim">

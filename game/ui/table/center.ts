@@ -11,7 +11,10 @@ export function lastMove(s: GameState, seat: PlayerId): string | null {
   let turns = 0;
   for (let i = s.log.length - 1; i >= 0; i--) {
     const l = s.log[i];
-    if (l.text.startsWith('—') && ++turns > 1) return null;
+    if (l.text.startsWith('—')) {
+      if (++turns > 1) return null;
+      continue;
+    }
     if (l.only !== undefined && l.only !== seat) continue;
     if (l.player === other(seat) && !DULL.test(l.text)) return l.text;
   }

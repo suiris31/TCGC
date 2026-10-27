@@ -12,6 +12,9 @@ const line = (player: 0 | 1 | null, text: string, only?: 0 | 1): LogEntry => ({ 
 test('bande centrale : le dernier coup de l’adversaire, pendant son tour', () => {
   const s = withLog([line(null, '— Tour 2 : IA —'), line(1, 'pioche 1 carte'), line(1, 'joue Nefeltari Vivi'), line(1, 'donne 1 DON!! à Vivi')]);
   assert.equal(lastMove(s, 0), 'donne 1 DON!! à Vivi');
+  // la ligne du nouveau tour est au nom du joueur dont c'est le tour : ce n'est pas un coup
+  const start = withLog([line(0, 'joue Karoo'), line(1, '— Tour 2 : IA —'), line(1, 'pioche 1 carte')]);
+  assert.equal(lastMove(start, 0), null);
 });
 
 test('bande centrale : au tour suivant, le dernier vrai coup de l’adversaire (pas « termine son tour »)', () => {
