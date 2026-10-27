@@ -37,11 +37,13 @@ interface Drag {
 
 const SVG = 'http://www.w3.org/2000/svg';
 
-// Où le pointeur lâcherait le geste : la carte (et à qui elle est), ton terrain, ou nulle part
+// Où le pointeur lâcherait le geste : la carte (et à qui elle est), ton terrain, ou nulle part. Les mains n'en font
+// pas partie : sur ordinateur, elles sont dans la rangée du fond de chaque camp (une carte relâchée sur la main n'est
+// pas jouée).
 function dropAt(x: number, y: number, seat: PlayerId): GestureDrop {
   const el = document.elementFromPoint(x, y);
   const zone = el?.closest<HTMLElement>('.table [data-zone]');
-  if (!zone) return { on: 'none' };
+  if (!zone || el?.closest('.hand, .opp-hand, .op-zone-hand')) return { on: 'none' };
   const mine = zone.dataset.zone === String(seat);
   const card = el?.closest<HTMLElement>('[data-uid]');
   return card && zone.contains(card) ? { on: 'card', uid: Number(card.dataset.uid), mine } : { on: 'zone', mine };

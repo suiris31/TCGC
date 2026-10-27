@@ -103,11 +103,13 @@ function cardOf(s: GameState, uid: number): Card | undefined {
 const ZONE = '[data-a11y-zone]';
 const CARD = '.card[role="button"]';
 const MENU = '[data-ui="menu"]';
+// Les cartes d'une zone, sans celles d'une zone qu'elle contient (sur ordinateur, ta main est dans ton camp)
+const zoneCards = (zone: Element) => [...zone.querySelectorAll<HTMLElement>(CARD)].filter((c) => c.closest(ZONE) === zone);
 
 // Une seule carte par zone est atteinte par Tab (tabindex 0), les autres le sont par les flèches (-1)
 function applyStops(root: HTMLElement, stops: Map<string, number>) {
   root.querySelectorAll<HTMLElement>(ZONE).forEach((zone) => {
-    const cards = [...zone.querySelectorAll<HTMLElement>(CARD)];
+    const cards = zoneCards(zone);
     const stop = tabStop(cards.map((c) => Number(c.dataset.uid)), stops.get(zone.dataset.a11yZone ?? ''));
     for (const c of cards) {
       const want = Number(c.dataset.uid) === stop ? 0 : -1;
@@ -149,7 +151,7 @@ export function useBoardFocus(root: RefObject<HTMLElement | null>, board: BoardI
       if (!t.matches?.(CARD) || e.ctrlKey || e.metaKey || e.altKey) return;
       const zone = t.closest(ZONE);
       if (move && zone) {
-        const cards = [...zone.querySelectorAll<HTMLElement>(CARD)];
+        const cards = zoneCards(zone);
         cards[moveIndex(cards.indexOf(t), cards.length, move)]?.focus();
         e.preventDefault();
       } else if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
