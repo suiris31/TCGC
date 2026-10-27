@@ -117,8 +117,9 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   // Retour du navigateur pendant la partie : « Quitter la partie ? » (la partie est enregistrée)
   useLeaveGuard(game !== null && game.winner === null, () => setConfirmLeave(true));
 
-  // une partie, ou une fenêtre ouverte sur l'écran de départ (guide, Mes parties, aide), occupe tout l'écran
-  const fullScreen = game !== null || history || guide !== null || help;
+  // une partie, ou une fenêtre ouverte sur l'écran de départ (guide, Mes parties, Mes decks et l'éditeur, aide), occupe
+  // tout l'écran
+  const fullScreen = game !== null || history || builder || guide !== null || help;
   useEffect(() => onImmersive?.(fullScreen), [fullScreen, onImmersive]);
 
   // L'adresse quitte la partie (« Menu », Retour après la fin) : la partie se ferme comme avec « Menu ». #play/jeu
@@ -214,7 +215,7 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
         {history && <HistoryScreen onClose={() => { showScreen(null); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
         {builder && (
           <DeckBuilderScreen onClose={() => { showScreen(null); cardZoom.close(); }} onHover={cardZoom.onHover}
-            onPlay={(id) => { showScreen(null); cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); }} />
+            onPlay={(id) => { cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); navigate({ name: 'rapide' }); }} />
         )}
         {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
         {table.settingsOpen && <SettingsPanel onClose={() => table.setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
