@@ -93,6 +93,8 @@ const SCREENS = {
   '22-clavier-menu': 'Au clavier : menu d’une carte ouvert par Entrée',
   '23-clavier-cible': 'Au clavier : cible d’une attaque choisie par les flèches',
   '24-clavier-fin': 'Au clavier : partie finie, mouvements réduits',
+  '25-salon-decks': 'Salon en ligne : choix du deck',
+  '26-salle': 'Salle d’attente en ligne (code à envoyer)',
 };
 const PARCOURS = ['accueil', 'partie', 'aventure', 'decks', 'parties', 'salon'];
 // Parcours joués seulement quand --only les demande (la référence de l'étape ne les contient pas)
@@ -419,7 +421,17 @@ class Tour {
     await this.tap(ui('home.online'));
     await this.waitUi(ui('lobby'), 'salon en ligne');
     await this.capture('21-salon');
-    await this.tap(ui('lobby.back'));
+    // le deck rappelé se change dans le sélecteur commun (fenêtre)
+    await this.tap(ui('lobby.deck'));
+    await this.waitUi(ui('lobby.decks'), 'choix du deck du salon');
+    await this.capture('25-salon-decks', { pause: 600 });
+    await this.tap(`${ui('lobby.decks')} ${ui('dialog.close')}`);
+    await this.waitGone(ui('lobby.decks'));
+    // « Créer une salle » : la salle d'attente et son code, puis la salle est fermée (retour à l'accueil)
+    await this.tap(ui('lobby.create'));
+    await this.waitUi(ui('room.code'), 'salle d’attente');
+    await this.capture('26-salle');
+    await this.tap(ui('room.close'));
     await this.waitUi(ui('home'));
   }
 

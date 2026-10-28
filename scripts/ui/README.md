@@ -57,7 +57,7 @@ Les numéros sont fixes : un écran garde le sien même avec `--only`.
 | `aventure` | 11 accueil · 12 carte d'East Blue · 13 un chapitre · 14 la Cale · 15 mon deck d'aventure · 16 boutique |
 | `decks` | 17 Mes decks · 18 choix du Leader · 19 éditeur (deck vide, non enregistré) |
 | `parties` | 20 Mes parties (la partie rapide abandonnée y figure si `partie` a été joué) |
-| `salon` | 21 salon en ligne |
+| `salon` | 21 salon en ligne (« Jouer avec un ami ») · 25 choix du deck du salon · 26 salle d’attente (salle créée, puis fermée) |
 | `atelier` | 30 chaque page « plateau » de l'atelier (`#play/atelier/plateau-<état>`, états fixés de `game/ui/atelier/plateau/etats.ts`) : `30-plateau-<état>-<format>.png`. **Seulement avec `--only atelier`** (hors de la référence de l'étape) |
 | `clavier` | 22 menu d'une carte ouvert par Entrée · 23 cible d'une attaque choisie par les flèches · 24 fin de la partie. **Seulement avec `--only clavier`**, sur ordinateur (`--formats desktop` ; les formats tactiles notent « sur ordinateur seulement ») |
 
@@ -172,7 +172,7 @@ Convention `data-ui="<écran>.<élément>"` (`01-contrats.md`, § 14.4). On ne l
 | decks | `decks` (fermée par son `dialog.close`), `decks.new`, `decks.copy`, `decks.copy-dialog`, `decks.copy-one`, `decks.play`, `decks.import`, `import`, `import.go`, `leaders`, `leaders.item`, `editor`, `editor.back`, `editor.save`, `editor.play`, `editor.pane-<…>`, `editor.unsaved` (`editor.stay`, `editor.retry`, `editor.discard`) |
 | parties | `history` (fenêtre du kit, fermée par son `dialog.close`), `history.tab-<progress\|axes\|games>`, `history.mode-<all\|solo\|aventure\|online>` |
 | réglages (`SettingsPanel`, R1.3) | `settings.panel`, `settings.sound`, `settings.scale`, `settings.motion`, `settings.speed`, `settings.confirm-end`, `settings.coach`, `settings.zoom`, `settings.help`, `settings.done` ; fenêtres du kit : `dialog.close`, `dialog.reduce`, `dialog.reopen` |
-| salon | `lobby`, `lobby.tab-create`, `lobby.tab-join`, `lobby.code`, `lobby.back`, `lobby.go` |
+| salon (R3.7) | `lobby`, `lobby.back`, `lobby.create-card`, `lobby.create`, `lobby.join-card`, `lobby.code`, `lobby.join`, `lobby.deck-line`, `lobby.deck` (« Changer »), `lobby.decks` (fenêtre du choix, fermée par son `dialog.close`) ; salle d’attente `room`, `room.back`, `room.code`, `room.share`, `room.copy`, `room.close` ; connexion `room.loading`, `room.error` ; salle fermée `room.closed`, `room.new` |
 | atelier | `atelier.board` (page « plateau », avec `data-state="<état>"` ; prête quand elle contient `.game`) |
 | chargement | `game.loading` |
 

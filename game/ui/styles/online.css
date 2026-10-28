@@ -1,18 +1,75 @@
-/* Parties en ligne : entrée sur l'écran de départ, salon, code de la salle, alertes de la partie. */
+/* Parties en ligne : entrée sur l'écran de départ, salon (« Jouer avec un ami »), salle d'attente, alertes de la
+   partie. Salon et salle (tâche R3.7) sont des écrans du kit (Screen) : des cartes empilées, la première est celle de
+   l'action principale (« Créer une salle », ou « Rejoindre » quand on arrive par le lien d'un ami). */
 .online-entry { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-radius: 14px; background: linear-gradient(135deg, var(--blue-a14), var(--accent-a08)); border: 1px solid var(--blue-a45); }
 .setup .online-entry h2 { margin: 0 0 0.2rem; color: var(--text); font-size: 1.15rem; text-transform: none; letter-spacing: 0; }
 .online-entry p { margin: 0; }
-.lobby { max-width: 60rem; }
-.lobby-tabs { width: 100%; max-width: 28rem; margin: 0 auto; grid-template-columns: 1fr 1fr; }
-.room-input { width: 100%; max-width: 16rem; height: 3.4rem; padding: 0 1rem; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--text); font: 800 1.6rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.3em; text-transform: uppercase; }
+
+/* ---------- Salon et salle ---------- */
+.op-lobby-body { max-width: 40rem; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
+.op-lobby-card {
+  display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-l); background: var(--surface); border: 1px solid var(--line);
+}
+.op-lobby-card > p { margin: 0; }
+.op-lobby-card.is-main {
+  border-color: var(--blue-a45); background: linear-gradient(135deg, var(--blue-a14), var(--accent-a08)), var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.op-lobby-card.is-second { background: none; border-style: dashed; }
+.op-lobby-card-head { display: flex; flex-direction: column; gap: 0.2rem; }
+.op-lobby-card-head h2 { margin: 0; font-size: 1.25rem; color: var(--text); }
+.op-lobby-card.is-main .op-lobby-card-head h2 { font-size: 1.4rem; color: var(--accent); }
+.op-lobby-card-head p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.op-lobby-error { margin: 0; color: var(--red-soft); font-weight: 700; }
+.op-lobby-foot { margin: 0; color: var(--muted); font-size: 0.85rem; text-align: center; }
+
+/* le deck choisi, rappelé : Leader, nom, style, « Changer » */
+.op-lobby-deck {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
+  border-radius: var(--radius-m); background: var(--bg-2); border: 1px solid var(--line);
+  box-shadow: inset 0.25rem 0 0 var(--c1, var(--accent));
+}
+.op-lobby-deck img { flex: none; width: 3.2rem; aspect-ratio: 5 / 7; object-fit: cover; border-radius: var(--radius-xs); margin-left: var(--space-1); }
+.op-lobby-deck-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.op-lobby-deck-label { color: var(--muted); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+.op-lobby-deck-text strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+.op-lobby-deck-detail { color: var(--muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-lobby-deck > .op-kit-btn { flex: none; }
+.op-lobby-deck-wrap .op-hold-note { margin-top: var(--space-2); }
+
+/* rejoindre : le code et le bouton sur une ligne */
+.op-lobby-join { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.op-lobby-join .room-input { flex: 1 1 12rem; max-width: 18rem; }
+.room-input { width: 100%; height: 3.4rem; padding: 0 1rem; border-radius: 12px; border: 2px solid var(--line); background: var(--bg-2); color: var(--text); font: 800 1.6rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.3em; text-transform: uppercase; }
+.room-input::placeholder { color: var(--muted); font-size: 1.1rem; letter-spacing: 0.15em; }
 .room-input:focus { outline: none; border-color: var(--accent); }
-.room-code { align-self: center; padding: 0.6rem 1.4rem; border-radius: 16px; border: 2px dashed var(--accent); background: var(--surface); color: var(--accent); font: 900 2.6rem/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.25em; user-select: all; }
-.lobby-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem; }
-.lobby-error { margin: 0; }
+
+/* la salle d'attente */
+.op-room-card { align-items: center; text-align: center; }
+.op-room-label { color: var(--muted); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+.room-code { padding: 0.6rem 1.4rem; border-radius: 16px; border: 2px dashed var(--accent); background: var(--bg-2); color: var(--accent); font: 900 2.6rem/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.25em; user-select: all; }
+.op-room-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
+.op-room-said { margin: 0; font-weight: 700; }
+.op-room-wait { margin: 0; color: var(--muted); }
+.op-room-wait .op-spinner { vertical-align: -0.15em; margin-right: 0.3rem; }
+.op-room-help { gap: var(--space-2); }
+.op-room-help p { color: var(--text-soft); }
+.op-room-help > .op-kit-btn { align-self: flex-start; }
+.op-room-deck { overflow-wrap: anywhere; }
+
+/* ---------- Partie ---------- */
 .presence { color: var(--muted); font-size: 0.9rem; }
 .presence-on { color: var(--green); }
 .online-alert { position: absolute; left: 50%; top: 3.6rem; z-index: var(--z-alert); transform: translateX(-50%); max-width: calc(100% - 1rem); padding: 0.4rem 0.9rem; border-radius: 10px; background: var(--red-a94); color: var(--white); font-size: 0.9rem; font-weight: 700; box-shadow: 0 8px 24px var(--black-a45); }
 .online-note { margin: 0.2rem 0 0; }
+
 :where(.opc.is-compact) .online-entry { flex-direction: column; align-items: stretch; text-align: center; }
+:where(.opc.is-compact) .op-lobby-body { gap: var(--space-3); }
+:where(.opc.is-compact) .op-lobby-card { padding: var(--space-3); }
+:where(.opc.is-compact) .op-lobby-card.is-main .op-lobby-card-head h2 { font-size: 1.2rem; }
+:where(.opc.is-compact) .op-lobby-join .room-input { max-width: none; }
+:where(.opc.is-compact) .op-lobby-join > .op-kit-btn { flex: 1 1 auto; }
 :where(.opc.is-compact) .room-code { font-size: 2rem; }
+:where(.opc.is-compact) .op-room-actions > .op-kit-btn { flex: 1 1 auto; }
 :where(.opc.is-compact) .presence { font-size: 0.75rem; }
