@@ -5,7 +5,7 @@ import { memo, type PointerEvent, type ReactNode } from 'react';
 import { def, knows, other } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { CardView, type CardLook, type Preview } from './CardView.tsx';
-import { cardImage } from './images.ts';
+import { ArtImg, useCardArt } from './table/CardArt.tsx';
 import type { GestureSource } from './table/gestures.ts';
 import { zoneLabel } from './table/a11y.ts';
 import { DonImg, useDonArt } from './table/DonArt.tsx';
@@ -19,11 +19,17 @@ export interface BoardUi {
   donDraggable: boolean;
 }
 
-function Pile({ label, count, onClick, top }: { label: string; count: number; onClick?: () => void; top?: string }) {
+// Visuel d'une carte du joueur p hors du terrain (dessus de la Défausse, carte adverse connue) : la version choisie pour
+// son deck (tâche R3.12)
+function OwnArt({ s, p, num, alt = '' }: { s: GameState; p: PlayerId; num: string; alt?: string }) {
+  return <ArtImg art={useCardArt(s, p, num)} alt={alt} />;
+}
+
+function Pile({ label, count, onClick, top }: { label: string; count: number; onClick?: () => void; top?: ReactNode }) {
   return (
     <button className={`pile ${onClick ? 'pile-click' : ''} ${count === 0 ? 'pile-empty' : ''}`} data-ui="table.pile" onClick={onClick} disabled={!onClick}
       title={onClick ? `${label} : voir les cartes` : label}>
-      {top ? <img src={cardImage(def(top))} alt="" /> : <span className="pile-back" />}
+      {top ?? <span className="pile-back" />}
       <span className="pile-count">{count}</span>
       <span className="pile-label">{label}</span>
     </button>
@@ -86,7 +92,7 @@ export const PlayerZone = memo(function PlayerZone({ s, p, me, ui, hand }: { s: 
       <div className="zone-row">
         <div className="piles">
           <Pile label="Deck" count={P.deck.length} />
-          <Pile label="Défausse" count={P.trash.length} top={P.trash.at(-1)?.num} onClick={P.trash.length ? () => ui.onTrash(p) : undefined} />
+          <Pile label="Défausse" count={P.trash.length} top={P.trash.length ? <OwnArt s={s} p={p} num={P.trash.at(-1)!.num} /> : undefined} onClick={P.trash.length ? () => ui.onTrash(p) : undefined} />
         </div>
         <div className="life-col" title="Vie : quand le Leader est touché, la carte du dessus va dans la main. À 0 Vie, le coup suivant fait perdre la partie.">
           <div className="life-stack">
@@ -136,7 +142,7 @@ export const OpponentHand = memo(function OpponentHand({ s, p }: { s: GameState;
   return (
     <div className="opp-hand" data-ui="table.opp-hand" title={`${s.players[p].name} a ${n} carte${n > 1 ? 's' : ''} en main`}>
       {s.players[p].hand.map((c) => (knows(s, other(p), c.uid)
-        ? <div key={c.uid} className="card card-opp-hand card-known" title={`Carte connue : ${def(c.num).name}`}><img src={cardImage(def(c.num))} alt={def(c.num).name} /></div>
+        ? <div key={c.uid} className="card card-opp-hand card-known" title={`Carte connue : ${def(c.num).name}`}><OwnArt s={s} p={p} num={c.num} alt={def(c.num).name} /></div>
         : <div key={c.uid} className="card card-back card-opp-hand" />))}
       <span className="opp-hand-count">{n} en main</span>
     </div>

@@ -10,6 +10,7 @@ import { copyName, DeckEditor, fits, LeaderPicker, playableNums, type Draft, typ
 import { CostCurve } from '../DeckGuide.tsx';
 import { Button, Screen } from '../kit/index.ts';
 import { isAdventureDeck, loadMyDecks, newDeckId, playable, useMyDecks, type MyDeck } from '../myDecks.ts';
+import { holdVariants } from '../builder/versions.ts';
 import { DeckPicker } from '../setup/DeckPicker.tsx';
 import { useSettings } from '../settings.ts';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
@@ -56,6 +57,7 @@ export function AdventureDeckScreen({ onBack }: { onBack: () => void }) {
   };
   const hold: HoldMode | null = data && {
     hold: data.byNumber,
+    variants: holdVariants(data.cards),
     chosen: chosenId,
     onChoose: async (id) => {
       const s = await chooseAdventureDeck(id);

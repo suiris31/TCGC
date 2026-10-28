@@ -9,8 +9,8 @@ import { DECK_SIZE } from '../../engine/deckRules.ts';
 import { DECKS, deckSize } from '../../engine/decks.ts';
 import { def } from '../../engine/rules.ts';
 import { GUIDES } from '../deckGuides.ts';
-import { cardImage } from '../images.ts';
-import { deckInfo, isAdventureDeck, playable } from '../myDecks.ts';
+import { deckInfo, isAdventureDeck, playable, type MyDeck } from '../myDecks.ts';
+import { ArtImg, deckArt } from '../table/CardArt.tsx';
 
 export const COLOR: Record<string, string> = { Red: '#d9443a', Green: '#2f9e5b', Blue: '#2f6fd1', Purple: '#8a4fc9', Yellow: '#e2b623', Black: '#3a3a44' };
 
@@ -48,7 +48,7 @@ export function DeckTile({ id, selected, onClick, note, onGuide, chosen, actions
     <div className={classes} style={{ ['--c1' as string]: colors[0], ['--c2' as string]: colors[1] ?? colors[0] }}>
       <button className="deck-tile-main" data-ui={`deck.tile-${id}`} onClick={onClick} aria-pressed={selected}
         aria-label={label ? `${label} : ${deck.name}` : undefined}>
-        <img src={cardImage(leader)} alt="" loading="lazy" />
+        <ArtImg art={deckArt(deck.leader, (deck as MyDeck).looks)} alt="" loading="lazy" />
         {adventure && (
           <span className={`op-deck-badge${chosen ? ' is-chosen' : ''}`}
             title={chosen ? 'Deck choisi : c’est avec lui que tu joues les chapitres' : 'Deck d’aventure : seulement des cartes gagnées dans l’Aventure'}>
