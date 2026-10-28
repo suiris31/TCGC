@@ -59,11 +59,11 @@ test('versions : un deck d’aventure ne choisit que les versions de la Cale ; u
     { number: 'OP03-001', variant: 'parallele', count: 2 },
     { number: 'OP03-122', variant: 'manga', count: 0 },
   ]);
-  assert.deepEqual(hold, { 'OP03-001': { base: 1, parallele: 2 } });
   assert.equal(canChoose('parallele', hold['OP03-001'], true), true);
   assert.equal(canChoose('manga', hold['OP03-122'], true), false, 'pas dans la Cale : à trouver');
   assert.equal(canChoose('base', undefined, true), true, 'la version de base est le visuel par défaut');
   assert.equal(canChoose('manga', undefined, false), true, 'deck libre');
+  assert.deepEqual(hold, { 'OP03-001': { base: 1, parallele: 2 } });
 });
 
 const card = (uid: number, num: string): Card => ({ uid, num }) as Card;
