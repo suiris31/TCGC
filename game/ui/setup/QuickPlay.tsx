@@ -41,14 +41,17 @@ export function QuickPlay({ config, records, onChange, onStart, onBack, onHelp, 
   // choix d'un deck en cours : le mien ou celui de l'IA (le Retour du navigateur revient à l'écran)
   const [picking, setPicking] = useState<'me' | 'ai' | null>(null);
   useLayer(picking !== null, () => setPicking(null));
-  // Échap aussi (sauf quand une fenêtre est ouverte dessus, comme le guide d'un deck : elle prend Échap avant)
+  // Échap aussi, sauf quand une fenêtre est ouverte dessus (guide d'un deck, aide, réglages) : Échap la ferme, elle
+  // seule. Lu avant les autres écouteurs (capture), tant que la fenêtre est encore affichée
   useEffect(() => {
     if (!picking) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.opc .modal')) setPicking(null);
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.querySelector('.opc .modal, .opc [role="dialog"], .opc [role="alertdialog"]')) return;
+      setPicking(null);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [picking]);
 
   const random = config.aiDeck === RANDOM_DECK;
