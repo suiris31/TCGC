@@ -72,7 +72,7 @@ tourner en boucle (`document.getAnimations()`), sinon le parcours échoue en les
 npm run ui:tour -- --port 3548 --only clavier --formats desktop --out <dossier>
 ```
 
-La partie rapide : ST-01 contre ST-32, IA « Débutant », l'IA commence. Les écrans 06 et 07 n'existent que si la partie
+La partie rapide : ST-01 contre ST-32 (choisis par l'écran de choix des decks), IA « Débutant », l'IA commence. Les écrans 06 et 07 n'existent que si la partie
 passe par là (elle est toujours la même, voir « Stabilité »).
 
 ### Le rapport
@@ -164,7 +164,8 @@ Convention `data-ui="<écran>.<élément>"` (`01-contrats.md`, § 14.4). On ne l
 
 | Écran | Repères |
 |---|---|
-| départ (`home`) | `home`, `home.history`, `home.decks`, `home.help`, `home.settings`, `home.adventure`, `home.online`, `home.online-resume`, `home.level-<1..4>`, `home.first-<random\|me\|ai>`, `home.start` ; tuiles `deck.tile-<id du deck>` (la même tuile partout : partie rapide, salon, Mes decks, deck d’aventure), `deck.random`, `deck.guide` |
+| accueil (`home`) | `home`, `home.quick`, `home.history`, `home.decks`, `home.help`, `home.settings`, `home.adventure`, `home.online`, `home.online-resume` |
+| partie rapide (`quick`, R3.2) | `quick`, `quick.back`, `quick.help`, `quick.settings`, `quick.decks`, `quick.history` (ces deux-là dans le menu « ⋯ » `screen.more`), `quick.my-deck`, `quick.ai-deck` (ouvrent le choix des decks `quick.picker`, retour `quick.picker-back`), `quick.my-deck-guide`, `quick.ai-deck-guide`, `quick.summary`, `quick.note`, `quick.record`, `home.level-<1..4>`, `home.first-<random\|me\|ai>`, `home.start` ; tuiles `deck.tile-<id du deck>` (la même tuile partout : partie rapide, salon, Mes decks, deck d’aventure), `deck.random`, `deck.guide` |
 | plateau (`table`) | `table`, `table.zone-me`, `table.zone-opp`, `table.leader`, `table.hand`, `table.opp-hand`, `table.card` (toute carte), `table.don`, `table.pile`, `table.undo`, `table.sound`, `table.panel`, `table.panel-close`, `table.settings`, `table.guide`, `table.help` (sur téléphone, `table.sound`, `table.settings`, `table.guide` et `table.help` sont dans le menu « ⋯ » `table.more`, R2.4), `table.leave`, `table.tab-<journal\|coach\|choix>`, `table.end-turn`, `table.option-<id de l'option>`, `table.hint`, `table.confirm-attack`, `table.cancel-target`, `table.intro`, `table.celebration`, `table.live` (région aria-live : consigne et actions jouées, R2.8) ; « Quitter la partie ? » : `leave`, `leave.yes`, `leave.no` ; en ligne (même plateau, contrôleur commun `game/ui/table/`, R2.1) : `table.sending` (choix envoyé, réponse attendue), `table.reopen-end` (rouvrir la fin de partie), `leave.resign` (abandonner) |
 | menu d'une carte | `menu`, `menu.<play\|event\|act\|don\|attack\|block\|counter\|cevent\|choose>`, `menu.close` |
 | fenêtres du plateau | `mulligan.keep`, `mulligan.redraw`, `picker.choose`, `picker.option-<id>`, `trigger.activate`, `trigger.hand`, `cost.option`, `confirm-end.ok`, `confirm-end.cancel`, `confirm-end.never`, `trash.close`, `help.close`, `zoom.close`, fin d'une partie d'aventure `end`, `end.next`, `end.board` |

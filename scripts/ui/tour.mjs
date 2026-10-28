@@ -206,6 +206,17 @@ class Tour {
     await this.waitUi(ui('home.start'), 'écran de la partie rapide');
   }
 
+  // Decks fixés de la partie rapide (ceux par défaut, gardés d'une visite à l'autre, peuvent changer) : chaque deck
+  // s'ouvre sur l'écran de choix des decks, qui revient à la partie rapide une fois le deck touché (R3.2)
+  async quickDecks() {
+    for (const [side, deck] of [['quick.my-deck', MY_DECK], ['quick.ai-deck', AI_DECK]]) {
+      await this.tap(ui(side));
+      await this.waitUi(ui('quick.picker'), 'choix d’un deck');
+      await this.tap(`${ui('quick.picker')} ${ui(`deck.tile-${deck}`)}`);
+      await this.waitUi(ui('home.start'), 'retour à la partie rapide');
+    }
+  }
+
   // ---------- Parcours ----------
 
   async accueil() {
@@ -220,10 +231,8 @@ class Tour {
 
   async partie() {
     await this.quick();
-    // decks fixés (ceux par défaut peuvent changer) : les Personnages de ST-01 coûtent peu, il en a dès le premier tour.
-    // Chaque deck est dans les deux listes (« Ton deck » d'abord, puis « Ton adversaire »)
-    await this.tap(ui(`deck.tile-${MY_DECK}`), 0);
-    await this.tap(ui(`deck.tile-${AI_DECK}`), 1);
+    // les Personnages de ST-01 coûtent peu : il en a dès le premier tour
+    await this.quickDecks();
     await this.tap(ui('home.level-1'));
     await this.tap(ui('home.first-ai'));
     await this.page.evaluate(`window.__uiTourSeed(${SEED})`);
@@ -305,7 +314,7 @@ class Tour {
     }
 
     await this.tap(ui('table.leave'));
-    await this.waitUi(ui('home'), 'retour à l’écran de départ');
+    await this.waitUi(ui('quick'), 'retour à la partie rapide');
   }
 
   // Avance jusqu'à ma prochaine décision principale : garde la main de départ, refuse les choix facultatifs, ne bloque
@@ -500,8 +509,7 @@ class Tour {
       await this.quick();
       await this.page.call(() => document.documentElement.classList.remove('ui-tour-still'));
       if (!(await this.has('.opc.is-reduced-motion'))) throw new Error('mouvements réduits demandés par l’appareil : la classe is-reduced-motion manque');
-      await this.tap(ui(`deck.tile-${MY_DECK}`), 0);
-      await this.tap(ui(`deck.tile-${AI_DECK}`), 1);
+      await this.quickDecks();
       await this.tap(ui('home.level-1'));
       await this.tap(ui('home.first-ai'));
       await this.page.evaluate(`window.__uiTourSeed(${SEED})`);
