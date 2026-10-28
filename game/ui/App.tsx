@@ -4,7 +4,8 @@ import { replayRecord, type GameRecord, type Replayed } from '../coach/archive.t
 import { DECKS } from '../engine/decks.ts';
 import { newGame } from '../engine/engine.ts';
 import type { PlayerId } from '../engine/types.ts';
-import { EndScreen } from './Coach.tsx';
+import { flushQueue, whenSaved } from './archiveClient.ts';
+import { recordText } from './Coach.tsx';
 import { phaseLabel } from './decision.ts';
 import { HelpModal } from './Modals.tsx';
 import { currentRoute, goBack, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
@@ -16,14 +17,14 @@ import { deckInfo, deckLabel, playable } from './myDecks.ts';
 import { CardZoom } from './Zoom.tsx';
 import { HistoryScreen } from './History.tsx';
 import { GameGain, useGameGain } from './economy/GameGain.tsx';
-import { AdventureEnd } from './game/AdventureEnd.tsx';
+import { EndScreen } from './end/EndScreen.tsx';
 import { useAiOpponent } from './game/useAiOpponent.ts';
 import { useCoach } from './game/useCoach.ts';
 import { useGameRecording, useRecordingEnd } from './game/useGameRecording.ts';
 import { matchupName, RANDOM_DECK, randomDeck, recordKey, useRecords, type Config } from './setup/config.ts';
 import { SetupScreen, type AdventureEntry, type OnlineEntry } from './setup/SetupScreen.tsx';
 import { CoachTab } from './table/SidePanel.tsx';
-import { LeaveDialog, stop, TableScreen } from './table/TableScreen.tsx';
+import { LeaveDialog, TableScreen } from './table/TableScreen.tsx';
 import { useGameKeys } from './table/useGameKeys.ts';
 import { useTable } from './table/useTable.ts';
 
@@ -257,6 +258,14 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
     if (routed && currentRoute().name === 'jeu') return goBack(HOME);
     rec.quit();
   };
+  // « Mes parties » après la partie : son détail, une fois l'enregistrement sur le serveur (sinon la liste)
+  const openHistory = () => {
+    const id = rec.gameId;
+    flushQueue();
+    void whenSaved().then(() => true, () => false).then((saved) => {
+      if (currentRoute().name === 'jeu') navigate(saved && id ? { name: 'parties', id } : { name: 'parties' }, { replace: true });
+    });
+  };
   const over = game.winner !== null;
   const won = game.winner === HUMAN;
   const { hintNow } = coach;
@@ -288,28 +297,27 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
           <button className="op-btn op-btn-primary" data-ui="leave.no" onClick={() => setConfirmLeave(false)}>Continuer la partie</button>
         </LeaveDialog>
       )}
+      reopenEnd
       end={(
-        <div className="modal-wrap" onClick={stop}>
-          {configured ? (
-            <AdventureEnd game={game} won={won} practice={practice} recap={coach.recap} progress={coach.progress} onReplay={replay}
-              onNext={configured.onLeave} onBoard={() => table.setShowEnd(false)} />
-          ) : <EndScreen
-            won={won}
-            reason={game.winReason ?? ''}
-            turns={game.turn}
-            matchup={matchupName(session)}
-            record={records[recordKey(session)]}
-            practice={practice}
-            gain={<GameGain gain={gain} onRetry={retryGain} />}
-            progress={coach.progress}
-            recap={coach.recap}
-            onReplay={replay}
-            onRestart={start}
-            onBoard={() => table.setShowEnd(false)}
-            onMenu={leave}
-            onHistory={() => (routed ? navigate({ name: 'parties' }, { replace: true }) : leave())}
-          />}
-        </div>
+        <EndScreen
+          mode={configured ? 'aventure' : 'ia'}
+          won={won}
+          reason={game.winReason ?? ''}
+          turns={game.turn}
+          matchup={configured ? undefined : <>Bilan {matchupName(session)} : {recordText(records[recordKey(session)])}</>}
+          note={practice && (configured
+            ? 'Partie reprise depuis un moment revu : elle ne compte pas pour l’aventure.'
+            : 'Partie reprise depuis un moment revu : elle ne compte pas dans ton bilan.')}
+          gain={configured ? undefined : <GameGain gain={gain} onRetry={retryGain} />}
+          coach={{ recap: coach.recap, progress: coach.progress, onReplay: replay }}
+          onRestart={configured ? undefined : start}
+          // aventure : le récap, puis les récompenses (le résultat du chapitre et le gain sont déjà demandés au serveur)
+          onNext={configured?.onLeave}
+          nextLabel={won && !practice ? 'Récompenses →' : 'Suite de l’aventure →'}
+          onHistory={configured ? undefined : openHistory}
+          onHome={configured ? undefined : leave}
+          onBoard={() => table.setShowEnd(false)}
+        />
       )}
     />
   );

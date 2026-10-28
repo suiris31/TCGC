@@ -32,9 +32,9 @@ export interface TableScreenProps {
   center?: ReactNode;            // bandeau au centre du plateau
   hint?: { state: 'idle' | 'loading' | 'ready'; ask: () => void };  // bouton « Conseil » de la barre d'action
   sending?: boolean;             // ton choix est parti, la réponse est attendue (en ligne) : « Envoi… »
-  reopenEnd?: boolean;           // après « Voir le plateau », la barre propose « Voir le résultat » (en ligne)
+  reopenEnd?: boolean;           // après « Voir le plateau », la barre propose « Voir le résultat » (tous les modes)
   celebration?: string;          // la phrase sous « Victoire ! » ou « Défaite »
-  end?: ReactNode;               // la fin de partie (son contenu arrête le clic, qui sinon la referme)
+  end?: ReactNode;               // la fin de partie (EndScreen, end/ ; son contenu arrête le clic, qui sinon la referme)
   leave?: ReactNode;             // la fenêtre « Quitter la partie ? », quand elle est ouverte (LeaveDialog)
 }
 
@@ -130,6 +130,3 @@ export function LeaveDialog({ text, onStay, children }: { text: string; onStay: 
     </div>
   );
 }
-
-// Le contenu d'une fenêtre de fin de partie arrête le clic (un clic à côté referme la fenêtre)
-export const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();

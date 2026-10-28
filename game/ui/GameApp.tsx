@@ -36,6 +36,7 @@ import './styles/settings.css';
 import './styles/a11y.css';
 import './styles/gestures.css';
 import './styles/home.css';
+import './styles/end.css';
 import './styles/table-compact.css';
 import './styles/don.css';
 

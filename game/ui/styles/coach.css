@@ -1,4 +1,4 @@
-/* Coach : conseils pendant la partie, puis récapitulatif de fin de partie. */
+/* Coach : conseils pendant la partie, puis récapitulatif de fin de partie (le cadre de l'écran de fin : end.css). */
 .coach-ask { width: 100%; }
 .coach-hint { display: flex; flex-direction: column; gap: 0.286rem; padding: 0.714rem; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
 .hint-row { position: relative; display: flex; justify-content: space-between; gap: 0.571rem; padding: 0.429rem 0.571rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); text-align: left; overflow: hidden; }
@@ -9,15 +9,8 @@
 .hint-best { border-color: var(--accent); }
 .hint-minor { opacity: 0.75; padding: 0.286rem 0.571rem; font-size: 0.893rem; }
 .hint-best .hint-rate { color: var(--accent); font-weight: 700; }
-.modal-wrap { width: min(55.714rem, calc(100% - 2.286rem)); }
-.modal-box.recap { max-width: none; width: 100%; max-height: 88vh; gap: 1.143rem; }
-.recap-top { text-align: center; }
-.recap-top h2.win { color: var(--green); }
-.recap-top h2.loss { color: var(--red); }
-.recap-top p { margin: 0.286rem 0; }
 .recap section { display: flex; flex-direction: column; gap: 0.571rem; }
 .recap h3 { font-size: 1.071rem; color: var(--accent); }
-.recap .end-actions, .end-actions { display: flex; gap: 0.714rem; justify-content: center; }
 .progress { display: flex; flex-direction: column; gap: 0.429rem; }
 .progress-bar { height: 0.571rem; border-radius: 4px; background: var(--surface); overflow: hidden; }
 .progress-bar span { display: block; height: 100%; background: var(--accent); transition: width 0.3s; }
@@ -26,7 +19,6 @@
 .curve-mid { stroke: var(--muted); stroke-dasharray: 4 4; opacity: 0.6; }
 .curve-turn { stroke: var(--line); }
 .curve-bad { fill: var(--red); }
-.curve-text { fill: var(--muted); font-size: 0.714rem; }
 .review { display: flex; flex-direction: column; gap: 3px; padding: 0.714rem 0.857rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
 .review-bad { border-left: 3px solid var(--red); }
 .review-good { border-left: 3px solid var(--green); }
@@ -39,7 +31,4 @@
 table.op-stats { width: 100%; border-collapse: collapse; font-size: 0.929rem; }
 table.op-stats th, table.op-stats td { padding: 0.357rem 0.571rem; border-bottom: 1px solid var(--line); text-align: left; }
 table.op-stats th { color: var(--muted); font-weight: 600; }
-:where(.opc.is-compact) .modal-box.recap { width: 100%; max-width: none; max-height: 94dvh; border-radius: 18px 18px 0 0; padding: 1rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)); }
-:where(.opc.is-compact) .modal-wrap { width: 100%; }
-:where(.opc.is-compact) .end-actions { flex-wrap: wrap; }
 :where(.opc.is-compact) table.op-stats { display: block; overflow-x: auto; }
