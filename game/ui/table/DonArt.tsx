@@ -10,9 +10,11 @@ import { donCatalog, donChoice, donImage, type DonCatalog, type SeatLooks } from
 
 // Visuels de chaque siège donnés par le serveur (partie en ligne) ; sans <DonLooks> : mes decks
 const GivenLooks = createContext<SeatLooks | null>(null);
+// Objet stable quand le serveur n'envoie rien : un {} neuf à chaque rendu redessinerait toutes les DON!! (R2.9)
+const NO_LOOKS: SeatLooks = {};
 
 export function DonLooks({ looks, children }: { looks: SeatLooks | undefined; children: ReactNode }) {
-  return <GivenLooks.Provider value={looks ?? {}}>{children}</GivenLooks.Provider>;
+  return <GivenLooks.Provider value={looks ?? NO_LOOKS}>{children}</GivenLooks.Provider>;
 }
 
 // ---------- Liste des DON!! (lue une fois) et images qui n'ont pas pu se charger ----------
