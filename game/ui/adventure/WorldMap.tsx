@@ -645,17 +645,19 @@ export function WorldMap({ arcs, statuses, current, onPick, selected }: WorldMap
           {bubble && <Bubble text={bubble.text} p={bubble.p} k={k} box={box} />}
           <Frame />
         </svg>
-        <div className="op-wm-controls">
-          <button
-            className="op-wm-ctrl op-wm-ctrl-wide"
-            onClick={() => { if (!size) return; touched.current = !isWorld; animateTo(isWorld ? focusView(size) : worldView(size)); }}
-            title={isWorld ? `Zoomer sur ${focusRegion.name}` : 'Voir tout le monde'}
-          >
-            {isWorld ? `⚓ ${focusRegion.name}` : '🌍 Le monde'}
-          </button>
-          <button className="op-wm-ctrl" onClick={() => { const v = view && zoomAt(view.s / 1.5); if (v) animateTo(v, 250); }} disabled={isWorld} aria-label="Dézoomer" title="Dézoomer">−</button>
-          <button className="op-wm-ctrl" onClick={() => { const v = view && zoomAt(view.s * 1.5); if (v) animateTo(v, 250); }} disabled={isMax} aria-label="Zoomer" title="Zoomer">+</button>
-        </div>
+      </div>
+      {/* hors du dessin (tâche R3.5) : les boutons ne cachent plus les noms des îles ni des régions */}
+      <div className="op-wm-controls">
+        <button
+          className="op-wm-ctrl op-wm-ctrl-wide"
+          data-ui="map.world"
+          onClick={() => { if (!size) return; touched.current = !isWorld; animateTo(isWorld ? focusView(size) : worldView(size)); }}
+          title={isWorld ? `Zoomer sur ${focusRegion.name}` : 'Voir tout le monde'}
+        >
+          {isWorld ? `⚓ ${focusRegion.name}` : '🌍 Le monde'}
+        </button>
+        <button className="op-wm-ctrl" data-ui="map.zoom-out" onClick={() => { const v = view && zoomAt(view.s / 1.5); if (v) animateTo(v, 250); }} disabled={isWorld} aria-label="Dézoomer" title="Dézoomer">−</button>
+        <button className="op-wm-ctrl" data-ui="map.zoom-in" onClick={() => { const v = view && zoomAt(view.s * 1.5); if (v) animateTo(v, 250); }} disabled={isMax} aria-label="Zoomer" title="Zoomer">+</button>
       </div>
       <div className="op-wm-legend" aria-hidden="true">
         <span><svg viewBox="-11 -11 22 22"><Badge kind="flag" /></svg> À jouer</span>

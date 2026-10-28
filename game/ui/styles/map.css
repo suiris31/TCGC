@@ -1,6 +1,6 @@
 /* Aventure : carte du monde. */
-.op-wm { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
-.op-wm-frame { position: relative; width: 100%; aspect-ratio: 5 / 3; max-height: calc(100dvh - 11rem); min-height: 15rem; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); background: radial-gradient(circle at 50% 40%, var(--map-frame), var(--bg) 75%); box-shadow: inset 0 0 40px var(--black-a50); }
+.op-wm { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'frame frame' 'legend controls'; align-items: center; gap: 0.5rem 0.8rem; width: 100%; }
+.op-wm-frame { grid-area: frame; position: relative; width: 100%; aspect-ratio: 5 / 3; max-height: calc(100dvh - 11rem); min-height: 15rem; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); background: radial-gradient(circle at 50% 40%, var(--map-frame), var(--bg) 75%); box-shadow: inset 0 0 40px var(--black-a50); }
 .op-wm-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: grab; }
 .op-wm-svg.op-wm-dragging { cursor: grabbing; }
 .op-wm-svg text { font-family: Georgia, 'Times New Roman', serif; }
@@ -30,19 +30,23 @@
 .op-wm-bob { transform-box: fill-box; transform-origin: 50% 90%; animation: op-wm-bob 2.6s ease-in-out infinite; }
 @keyframes op-wm-bob { 50% { transform: translateY(-1.2px) rotate(-2.5deg); } }
 .op-wm-bubble { animation: op-fade 0.2s ease-out; }
-.op-wm-controls { position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.35rem; }
+/* commandes hors du dessin (tâche R3.5) : sous la carte, à droite de la légende ; en colonne à droite en paysage */
+.op-wm-controls { grid-area: controls; display: flex; gap: 0.35rem; justify-content: flex-end; }
 .op-wm-ctrl { min-width: max(44px, 2.6rem); min-height: max(44px, 2.6rem); padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--bg-2-a88); color: var(--text); font-size: 1.15rem; font-weight: 800; line-height: 1; box-shadow: 0 4px 14px var(--black-a35); }
 .op-wm-ctrl-wide { font-size: 0.9rem; white-space: nowrap; }
 @media (hover: hover) { .op-wm-ctrl:hover:not(:disabled) { border-color: var(--accent); } }
-.op-wm-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 1rem; color: var(--muted); font-size: 0.857rem; }
+.op-wm-legend { grid-area: legend; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 1rem; color: var(--muted); font-size: 0.857rem; }
 .op-wm-legend > span { display: inline-flex; align-items: center; gap: 0.3rem; }
 .op-wm-legend svg { width: 1.15rem; height: 1.15rem; }
 .op-wm-hint { margin-left: auto; }
 /* Animations réduites (réglage du jeu, par défaut celui de l'appareil) */
 .opc.is-reduced-motion .op-wm-pulse, .opc.is-reduced-motion .op-wm-arrive, .opc.is-reduced-motion .op-wm-bob, .opc.is-reduced-motion .op-wm-bubble { animation: none; }
+:where(.opc.is-portrait) .op-wm { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'frame' 'controls' 'legend'; }
 :where(.opc.is-portrait) .op-wm-frame { aspect-ratio: 4 / 5; max-height: calc(100dvh - 13rem); }
 :where(.opc.is-portrait) .op-wm-hint { margin-left: 0; flex-basis: 100%; }
 :where(.opc.is-landscape) .op-wm-frame { aspect-ratio: auto; height: calc(100dvh - 6.5rem); max-height: none; min-height: 11rem; }
-:where(.opc.is-landscape) .op-wm-controls { top: 0.35rem; right: 0.35rem; gap: 0.25rem; }
+:where(.opc.is-landscape) .op-wm { grid-template-areas: 'frame controls' 'legend legend'; align-items: stretch; gap: 0.3rem 0.4rem; }
+:where(.opc.is-landscape) .op-wm-controls { flex-direction: column; justify-content: flex-start; gap: 0.3rem; }
+:where(.opc.is-landscape) .op-wm-ctrl-wide { font-size: 0.75rem; white-space: normal; max-width: 4.6rem; padding: 0.2rem 0.3rem; }
 :where(.opc.is-landscape) .op-wm-legend { font-size: 0.75rem; gap: 0.2rem 0.8rem; }
 :where(.opc.is-landscape) .op-wm-legend > .op-wm-hint { display: none; }

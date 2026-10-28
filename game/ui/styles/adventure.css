@@ -1,9 +1,8 @@
 /* Aventure : la Cale, le deck d'aventure, le parcours (accueil, chapitres, dialogues, combats, fin de partie),
    le bilan de l'arc, et le repère des decks de la Cale (choix des decks, partie en ligne). */
 .op-hold, .op-adeck { gap: 1.1rem; }
-.op-hold-head, .op-adeck-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 1rem; }
-.op-hold-head h1, .op-adeck-head h1 { margin: 0; font-size: 1.8rem; color: var(--accent); }
-.op-hold-summary { flex-basis: 100%; }
+.op-adeck-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 1rem; }
+.op-adeck-head h1 { margin: 0; font-size: 1.8rem; color: var(--accent); }
 .op-hold-boosters { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.9rem 1rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
 .op-hold-boosters h2 { margin: 0; }
 .op-hold-boosters-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
@@ -19,6 +18,7 @@
 .op-hold-cards > p { margin: 0; }
 .op-hold-filters select { height: 2.5rem; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 0 0.6rem; font: inherit; }
 .op-hold-sort { display: flex; align-items: center; gap: 0.3rem; }
+.op-hold-filters-toggle { flex: none; }
 .op-hold-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.8rem 0.6rem; }
 .op-hold-card { display: flex; flex-direction: column; gap: 0.1rem; padding: 0; border: 0; background: none; color: var(--text); text-align: left; min-width: 0; }
 .op-hold-img { position: relative; display: block; aspect-ratio: 600 / 838; border-radius: 6px; background: var(--surface); overflow: hidden; transition: transform 0.12s; }
@@ -55,11 +55,12 @@
 .op-db-holdnote { margin: 0; padding: 0.4rem 1.4rem; border-bottom: 1px solid var(--line); }
 .op-db-adventure { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
 .op-db-adventure p { margin: 0; }
-:where(.opc.is-compact) .op-hold, :where(.opc.is-compact) .op-adeck { padding: 1rem 0.8rem 3rem; gap: 0.9rem; }
-:where(.opc.is-compact) .op-hold-head h1, :where(.opc.is-compact) .op-adeck-head h1 { font-size: 1.35rem; }
+:where(.opc.is-compact) .op-adeck { padding: 1rem 0.8rem 3rem; gap: 0.9rem; }
+:where(.opc.is-compact) .op-hold { gap: 0.9rem; }
+:where(.opc.is-compact) .op-adeck-head h1 { font-size: 1.35rem; }
 :where(.opc.is-compact) .op-hold-grid { grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr)); gap: 0.6rem 0.45rem; }
 :where(.opc.is-compact) .op-hold-filters select { flex: 1 1 8rem; min-width: 0; }
-:where(.opc.is-compact) .op-hold-filters .db-search { flex-basis: 100%; }
+:where(.opc.is-compact) .op-hold-filters .db-search { flex: 1 1 10rem; }
 :where(.opc.is-compact) .op-hold-sort { flex: 1 1 8rem; }
 :where(.opc.is-compact) .op-hold-sort select { flex: 1; }
 :where(.opc.is-compact) .op-adeck-chosen { grid-template-columns: 1fr; }
@@ -69,12 +70,20 @@
 .op-adv-layer, .op-adv-board { height: 100%; }
 .op-adv-entry { background: linear-gradient(135deg, var(--accent-a16), var(--blue-a08)); border-color: var(--accent-a50); }
 .op-adv { max-width: 62rem; gap: 1.1rem; padding: calc(1.1rem + env(safe-area-inset-top, 0px)) 1.2rem calc(2rem + env(safe-area-inset-bottom, 0px)); }
-.op-adv-map { max-width: 84rem; gap: 0.6rem; padding-top: calc(0.7rem + env(safe-area-inset-top, 0px)); padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px)); }
+/* Écrans de l'aventure sur le gabarit du kit (tâche R3.5) : accueil, carte, chapitre, Cale */
+.op-adv-page { width: 100%; max-width: 62rem; margin: 0 auto; display: flex; flex-direction: column; gap: 1.1rem; }
+.op-adv-page h2 { font-size: 1.071rem; margin: 0; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.op-adv-page.op-hold { max-width: 78.571rem; }
+.op-adv-map .op-kit-screen-body, .op-adv-welcome .op-kit-screen-body { display: flex; flex-direction: column; }
+.op-adv-map-page { flex: 1; min-height: 0; max-width: 84rem; gap: 0.6rem; }
+.op-adv-map-page .op-wm { flex: 1; min-height: 0; grid-template-rows: minmax(13rem, 1fr) auto; }
+.op-adv-map-page .op-wm-frame { aspect-ratio: auto; height: 100%; max-height: none; min-height: 0; }
+.op-adv-nav { display: flex; align-items: center; gap: 0.4rem; }
+.op-adv-guide { align-self: flex-start; }
 .op-adv-head { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
 .op-adv-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.op-adv-title h1, .op-adv-map-title { margin: 0; font-size: 1.7rem; line-height: 1.15; color: var(--accent); }
-.op-adv-map-title { flex: 1; font-family: Georgia, 'Times New Roman', serif; }
-.op-adv-head-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.op-adv-title h1 { margin: 0; font-size: 1.7rem; line-height: 1.15; color: var(--accent); }
+.op-adv-map-title { font-family: Georgia, 'Times New Roman', serif; }
 .op-adv-won { border-color: var(--green); color: var(--green); font-weight: 700; padding: 0.2rem 0.6rem; }
 .op-adv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
 .op-adv-panel { display: flex; flex-direction: column; gap: 0.7rem; padding: 1rem 1.1rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
@@ -117,8 +126,8 @@
 .op-adv-pack i { position: absolute; right: -0.55rem; bottom: -0.4rem; padding: 0 0.3rem; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 0.75rem; font-style: normal; font-weight: 800; }
 .op-adv-gift .op-adv-pack { width: 1.15rem; box-shadow: inset 0 0.15rem 0 var(--white-a55); }
 .op-adv-gift .op-adv-pack b { display: none; }
-/* Combattre */
-.op-adv-go { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); }
+/* Combattre : barre collée en bas de l'écran du chapitre */
+.op-adv-go { flex: 1; width: 100%; max-width: 62rem; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .op-adv-go-text { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
 .op-adv-go-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; }
 /* Fin de partie */
@@ -135,13 +144,15 @@
 .op-adv-boosters > .op-adv-row, .op-adv-boosters > p { grid-column: 1 / -1; }
 .op-adv-end-actions { justify-content: center; }
 /* Accueil */
-.op-adv-welcome-body { display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: 40rem; margin: auto; text-align: center; }
+.op-adv-welcome-body { display: flex; flex-direction: column; align-items: center; gap: 1rem; max-width: 40rem; margin: auto; padding: 1rem 0; text-align: center; }
 .op-adv-welcome-body h1 { margin: 0; font-size: 2.1rem; color: var(--accent); font-family: Georgia, 'Times New Roman', serif; }
 .op-adv-welcome-body p { margin: 0; line-height: 1.5; }
 .op-adv-welcome-ship { font-size: 4rem; animation: op-adv-float 3s ease-in-out infinite; }
 .op-adv-welcome-body .op-adv-fan { margin-top: 0.5rem; }
-/* Carte */
-.op-adv-strip { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; min-height: 2.8rem; padding: 0.4rem 0.8rem; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); }
+/* Carte : la prochaine étape et « Y aller », dans la barre du bas */
+.op-adv-strip { flex: 1; width: 100%; max-width: 84rem; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+.op-adv-strip-text { min-width: 0; }
+.op-adv-strip .op-kit-btn { flex: none; }
 /* Animations réduites (réglage du jeu, par défaut celui de l'appareil) */
 .opc.is-reduced-motion .op-adv-bubble, .opc.is-reduced-motion .op-adv-end-won .op-adv-end-head h1, .opc.is-reduced-motion .op-adv-boosters-packs .op-adv-pack, .opc.is-reduced-motion .op-adv-welcome-ship { animation: none; }
 :where(.opc.is-portrait) .op-adv { padding-left: 0.8rem; padding-right: 0.8rem; gap: 0.9rem; }
@@ -151,24 +162,28 @@
 :where(.opc.is-portrait) .op-adv-portrait { width: 4rem; height: 4rem; }
 :where(.opc.is-portrait) .op-adv-text { font-size: 1rem; }
 :where(.opc.is-portrait) .op-adv-go { flex-direction: column; align-items: stretch; }
-:where(.opc.is-portrait) .op-adv-go-actions .op-btn { flex: 1; }
+:where(.opc.is-portrait) .op-adv-go-actions .op-kit-btn { flex: 1; }
 :where(.opc.is-portrait) .op-adv-leader { width: 5.5rem; }
-:where(.opc.is-portrait) .op-adv-map-title { font-size: 1.3rem; }
-:where(.opc.is-portrait) .op-adv-head-actions { width: 100%; }
-:where(.opc.is-portrait) .op-adv-head-actions .op-btn { flex: 1 1 0; min-width: 0; padding: 0 0.4rem; }
+:where(.opc.is-portrait) .op-adv-nav > .op-kit-btn { flex: 1 1 0; min-width: 0; padding: 0 0.4rem; gap: 0.3rem; }
+:where(.opc.is-portrait) .op-adv-map-page .op-wm { grid-template-rows: minmax(16rem, 1fr) auto auto; }
+:where(.opc.is-portrait) .op-adv-strip { font-size: 0.93rem; }
 :where(.opc.is-portrait) .op-adv-welcome-body h1 { font-size: 1.6rem; }
 :where(.opc.is-landscape) .op-adv { gap: 0.7rem; padding-top: calc(0.6rem + env(safe-area-inset-top, 0px)); }
-:where(.opc.is-landscape) .op-adv-map { gap: 0.35rem; padding-top: 0.35rem; padding-bottom: 0.35rem; }
-:where(.opc.is-landscape) .op-adv-map .op-wm-frame { height: calc(100dvh - 7.6rem); }
-:where(.opc.is-landscape) .op-adv-strip { min-height: 2.3rem; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
-:where(.opc.is-landscape) .op-adv-title h1, :where(.opc.is-landscape) .op-adv-map-title { font-size: 1.25rem; }
+:where(.opc.is-landscape) .op-adv-map-page { gap: 0.3rem; }
+:where(.opc.is-landscape) .op-adv-map-page .op-wm { grid-template-rows: minmax(8rem, 1fr) auto; }
+:where(.opc.is-landscape) .op-adv-strip { font-size: 0.85rem; }
+/* paysage : la hauteur est rare, les barres du haut et du bas se resserrent sur la carte */
+.opc.is-landscape .op-adv-map .op-kit-screen-body { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+.opc.is-landscape .op-adv-map .op-kit-screen-head { padding-top: calc(0.2rem + env(safe-area-inset-top, 0px)); padding-bottom: 0.2rem; }
+.opc.is-landscape .op-adv-screen .op-kit-screen-bar { padding-top: 0.3rem; padding-bottom: calc(0.3rem + env(safe-area-inset-bottom, 0px)); }
+:where(.opc.is-landscape) .op-adv-title h1 { font-size: 1.25rem; }
 :where(.opc.is-landscape) .op-adv-bubble { min-height: 5rem; padding: 0.6rem 0.9rem; }
 :where(.opc.is-landscape) .op-adv-portrait { width: 3.6rem; height: 3.6rem; }
 :where(.opc.is-landscape) .op-adv-welcome-ship { font-size: 2.5rem; }
 :where(.opc.is-landscape) .op-adv-leader { width: 4.5rem; }
 :where(.opc.is-landscape) .op-adv-panel { padding: 0.7rem 0.9rem; }
 /* Changement d'écran : l'écran qui arrive se fond (accueil, carte, chapitre, fin de partie, Cale, deck) */
-.op-adv-layer > .setup { animation: op-adv-screen 0.28s ease-out; }
+.op-adv-layer > .setup, .op-adv-layer > .op-kit-screen { animation: op-adv-screen 0.28s ease-out; }
 @keyframes op-adv-screen { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* Bilan de l'arc */
 .modal-box.op-adv-finale { max-width: 34rem; align-items: center; text-align: center; border-color: var(--accent-a55); background: radial-gradient(circle at 50% 0%, var(--accent-a16), transparent 60%), var(--bg-2); }
@@ -191,7 +206,7 @@
 :where(.opc.is-landscape) .op-adv-finale-flag { font-size: 2rem; }
 :where(.opc.is-landscape) .op-adv-finale h2 { font-size: 1.3rem; }
 :where(.opc.is-landscape) .op-adv-finale-list li { padding: 0.1rem 0.5rem; }
-.opc.is-reduced-motion .op-adv-layer > .setup, .opc.is-reduced-motion .op-adv-finale-flag { animation: none; }
+.opc.is-reduced-motion .op-adv-layer > .setup, .opc.is-reduced-motion .op-adv-layer > .op-kit-screen, .opc.is-reduced-motion .op-adv-finale-flag { animation: none; }
 /* Repère d'un deck de la Cale (deck d'aventure) : sur sa tuile dans le choix des decks, et pendant la partie en ligne */
 .deck-tile.op-deck-hold .deck-name { color: var(--accent); }
 .op-hold-badge { position: absolute; top: 0.4rem; left: 0.4rem; padding: 0.1rem 0.45rem; border-radius: 999px; background: var(--ink-2-a85); border: 1px solid var(--accent-a70); color: var(--accent); font-size: 0.72rem; font-weight: 700; pointer-events: none; }
