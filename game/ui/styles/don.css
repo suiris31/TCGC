@@ -40,6 +40,10 @@
 .leader-col .op-don-tuck { left: -13cqi; top: calc(8cqi + var(--i) * 30cqi); bottom: auto; transform: none; }
 .op-wide .zone-opp .leader-col .op-don-tuck { left: auto; right: -13cqi; }
 .op-don-count b { margin-left: 0; font-size: max(11px, 0.786rem); }
+/* sur une carte épuisée (tournée), le nombre reste droit, comme la puissance */
+.card-rested .op-don-count { transform: rotate(-90deg); }
+/* téléphone en portrait : la carte épuisée est aussi réduite (0,72, table-compact.css) ; le nombre garde 11 px */
+:where(.opc.is-portrait) .chars .card-rested .op-don-count b, :where(.opc.is-portrait) .leader-col .card-rested .op-don-count b { font-size: calc(11px / 0.72); }
 
 /* la DON!! glissée au doigt : en grand, pour qu'on la voie au-dessus du doigt (un jeton de téléphone fait 23 px) */
 :where(.opc.is-compact) .op-gesture-ghost.don-card { scale: 2; }
