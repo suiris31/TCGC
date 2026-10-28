@@ -38,6 +38,9 @@
 .op-lobby-deck > .op-kit-btn { flex: none; }
 .op-lobby-deck-wrap .op-hold-note { margin-top: var(--space-2); }
 
+/* le choix du deck (sélecteur commun, en fenêtre) : filtres et guides à 44 px, sous le doigt */
+.op-lobby-decks .deck-chip, .op-lobby-decks .deck-guide-btn { min-height: 44px; }
+
 /* rejoindre : le code et le bouton sur une ligne */
 .op-lobby-join { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .op-lobby-join .room-input { flex: 1 1 12rem; max-width: 18rem; }
