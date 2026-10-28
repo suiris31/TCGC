@@ -16,9 +16,10 @@ type Art = Pick<CardData, 'imageId' | 'lang' | 'versions'>;
 
 const imagePath = (imageId: string, lang: 'fr' | 'en') => `img-${lang}-hd/${imageId}.webp`;
 
-// Genre d'une version, d'après son nom (« parallele-en-p2 » : parallèle ; « manga », « sp » : noms des boosters)
+// Genre d'une version, d'après son nom (« parallele-en-p2 » : parallèle ; « manga », « sp » : noms des boosters). La
+// version de base est « Par défaut » : c'est parfois une parallèle (illustration d'un deck pour débutant, OP12-020)
 const KIND_LABELS: Record<string, string> = {
-  base: 'Normale', normale: 'Normale', parallele: 'Parallèle', manga: 'Parallèle manga', sp: 'Carte SP',
+  base: 'Par défaut', normale: 'Normale', parallele: 'Parallèle', manga: 'Parallèle manga', sp: 'Carte SP',
   reedition: 'Réédition', tr: 'Treasure Rare',
 };
 export const kindLabel = (variant: string) => KIND_LABELS[variant.split('-')[0]] ?? 'Autre version';

@@ -24,7 +24,7 @@ const SHANKS = {
 test('versions : la version de base d’abord, puis celles du catalogue, avec un nom lisible', () => {
   const list = artVersions('OP01-120', SHANKS);
   assert.deepEqual(list.map((v) => v.variant), ['base', 'parallele-fr-p2', 'parallele-fr-p3', 'normale-en', 'parallele-en-p1', 'reedition-en-r1', 'sp-fr-p4']);
-  assert.deepEqual(list.map((v) => v.label), ['Normale', 'Parallèle 1', 'Parallèle 2', 'Normale · VO', 'Parallèle · VO', 'Réédition · VO', 'Carte SP'],
+  assert.deepEqual(list.map((v) => v.label), ['Par défaut', 'Parallèle 1', 'Parallèle 2', 'Normale · VO', 'Parallèle · VO', 'Réédition · VO', 'Carte SP'],
     'deux versions du même nom sont numérotées ; la langue n’est dite que pour l’autre langue');
   assert.equal(list[0].path, 'img-fr-hd/OP01-120_p1.webp');
   assert.equal(list[3].path, 'img-en-hd/OP01-120.webp');
@@ -39,7 +39,7 @@ test('versions : noms des genres, ceux des boosters compris', () => {
 
 test('versions : une impression gagnée dans un booster reste proposée si le catalogue ne la connaît pas', () => {
   const list = artVersions('OP03-001', { imageId: 'OP03-001', lang: 'en' });
-  assert.deepEqual(list.map((v) => [v.variant, v.label]), [['base', 'Normale'], ['parallele', 'Parallèle']]);
+  assert.deepEqual(list.map((v) => [v.variant, v.label]), [['base', 'Par défaut'], ['parallele', 'Parallèle']]);
   assert.equal(list[1].path, 'img-en-hd/OP03-001_p1.webp');
   assert.equal(artVersions('OP03-001', undefined).length, 0, 'carte inconnue : rien');
   assert.equal(artVersions('ST01-001', { imageId: 'ST01-001', lang: 'fr' }).length, 1, 'une seule version : pas de choix');

@@ -39,7 +39,7 @@ export function VersionPicker({ num, chosen, owned, adventure, onPick, onClose }
               <img src={`${BASE}${v.path}`} alt="" loading="lazy" draggable={false} />
               <span className="op-looks-name">{on && '✔ '}{v.label}</span>
               {adventure && (
-                <span className="op-looks-note">{n > 0 ? `${n} dans ta Cale` : v.variant === 'base' ? 'visuel par défaut' : 'à trouver'}</span>
+                <span className="op-looks-note">{n > 0 ? `${n} dans ta Cale` : v.variant === 'base' ? 'toujours permise' : 'à trouver'}</span>
               )}
             </button>
           );

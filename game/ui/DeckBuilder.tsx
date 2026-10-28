@@ -576,7 +576,7 @@ function CardBrowser({ leader, cards, full, owned, hold, limit: copies, onAdd, o
 // Petite image d'une carte du deck dans sa version choisie (survol : le détail de la carte)
 function DeckThumb({ num, variant, onHover }: { num: string; variant: string | undefined; onHover: Hover }) {
   return (
-    <span className="thumb thumb-mini"
+    <span className="thumb thumb-mini op-db-thumb"
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover({ num, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover(null); }}>
       <ArtImg art={versionArt(num, variant)} alt={def(num).name} draggable={false} />
