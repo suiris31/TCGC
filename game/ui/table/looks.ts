@@ -62,3 +62,17 @@ export function boardLooks({ state, seat, view, targeting, aimed, menu, dragging
 export function hasUsefulAction(view: DecisionView | null): boolean {
   return Boolean(view && [...view.byCard.values()].some((acts) => acts.some((a) => !a.useless)));
 }
+
+// Les looks du rendu précédent gardés quand ils n'ont pas changé : une carte dont le look est le même reçoit le même
+// objet, et sa vue (memo) n'est pas redessinée
+export function keepLooks(prev: Map<number, CardLook>, next: Map<number, CardLook>): Map<number, CardLook> {
+  const same = (a: CardLook, b: CardLook) => {
+    const ka = Object.keys(a) as (keyof CardLook)[];
+    return ka.length === Object.keys(b).length && ka.every((k) => a[k] === b[k]);
+  };
+  for (const [uid, look] of next) {
+    const old = prev.get(uid);
+    if (old && old !== look && same(old, look)) next.set(uid, old);
+  }
+  return next;
+}

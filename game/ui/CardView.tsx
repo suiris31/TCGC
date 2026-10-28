@@ -1,4 +1,4 @@
-import type { MouseEvent, PointerEvent } from 'react';
+import { memo, type MouseEvent, type PointerEvent } from 'react';
 import { def, fieldCost, findField, handCost, hasBlocker, hasKeyword, hasMod, power } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
@@ -83,8 +83,10 @@ function Arrow({ now, base }: { now: number; base: number | null }) {
   return <Icon name={now > (base ?? 0) ? 'power-up' : 'power-down'} className="op-card-arrow" size="0.8em" />;
 }
 
-// Une carte : visuel officiel, puissance et coût actuels (en couleur s'ils sont modifiés), DON!! données, état
-export function CardView({ s, card, owner, size = 'field', hidden = false, look = {}, onClick, onHover, onGrab }: {
+// Une carte : visuel officiel, puissance et coût actuels (en couleur s'ils sont modifiés), DON!! données, état.
+// memo : la carte n'est redessinée que si la partie, son look ou ses fonctions changent (le contrôleur du plateau les
+// garde stables : un survol ne redessine aucune carte)
+export const CardView = memo(function CardView({ s, card, owner, size = 'field', hidden = false, look = {}, onClick, onHover, onGrab }: {
   s: GameState;
   card: Card;
   owner?: PlayerId;
@@ -139,7 +141,7 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
       role={onClick ? 'button' : undefined} tabIndex={onClick ? -1 : undefined} aria-label={label}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover?.(null); }}>
-      <img src={cardImage(d)} alt={d.name} draggable={false} />
+      <img src={cardImage(d)} alt={d.name} draggable={false} loading={size === 'small' || size === 'pick' ? 'lazy' : undefined} />
       {p !== null && size !== 'life' && (
         <span className={`badge badge-power ${trend(p, d.power)}`} title={`Puissance actuelle${trendText(p, d.power)}`}><Arrow now={p} base={d.power} />{p}</span>
       )}
@@ -172,4 +174,4 @@ export function CardView({ s, card, owner, size = 'field', hidden = false, look 
       {look.recommended && <span className="badge badge-star" title="Le coach conseille cette carte">★</span>}
     </div>
   );
-}
+});

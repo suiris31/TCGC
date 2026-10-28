@@ -1,7 +1,7 @@
 // Le plateau : pour chaque joueur, ses piles (deck, Défausse), sa Vie, son Leader, son Lieu, ses 5 places de
 // Personnage et ses DON!! ; ta main en éventail en bas, la main adverse (cachée) en haut. Sur ordinateur, chaque camp
 // a deux rangées (les Personnages côté centre) et la main est dans la rangée du fond, à côté du Leader et des DON!!.
-import type { PointerEvent, ReactNode } from 'react';
+import { memo, type PointerEvent, type ReactNode } from 'react';
 import { def, knows, other } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { CardView, type CardLook, type Preview } from './CardView.tsx';
@@ -49,8 +49,10 @@ function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me:
   );
 }
 
-// hand : la main du joueur, dans la rangée du fond (ordinateur)
-export function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; me: boolean; ui: BoardUi; hand?: ReactNode }) {
+// hand : la main du joueur, dans la rangée du fond (ordinateur).
+// Les zones et les mains sont en memo : elles ne sont redessinées que si la partie ou le contrôleur (ui, stable entre
+// deux survols) changent.
+export const PlayerZone = memo(function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; me: boolean; ui: BoardUi; hand?: ReactNode }) {
   const P = s.players[p];
   const view = (card: Card, size: 'field' | 'life' = 'field') => (
     <CardView key={card.uid} s={s} card={card} owner={p} size={size} look={ui.looks.get(card.uid)}
@@ -87,10 +89,10 @@ export function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; 
       </div>
     </section>
   );
-}
+});
 
 // Ta main, en éventail (les cartes se chevauchent quand il y en a beaucoup)
-export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
+export const Hand = memo(function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
   const cards = s.players[p].hand;
   const overlap = cards.length > 7 ? Math.min(60, (cards.length - 7) * 9 + 18) : 0;
   return (
@@ -103,11 +105,11 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
       {!cards.length && <div className="hand-empty">Main vide</div>}
     </div>
   );
-}
+});
 
 // Main adverse : le dos des cartes et leur nombre ; face visible, les cartes que tu connais (révélées : renvoyées en
 // main, ajoutées à la main en les révélant...)
-export function OpponentHand({ s, p }: { s: GameState; p: PlayerId }) {
+export const OpponentHand = memo(function OpponentHand({ s, p }: { s: GameState; p: PlayerId }) {
   const n = s.players[p].hand.length;
   return (
     <div className="opp-hand" data-ui="table.opp-hand" title={`${s.players[p].name} a ${n} carte${n > 1 ? 's' : ''} en main`}>
@@ -117,4 +119,4 @@ export function OpponentHand({ s, p }: { s: GameState; p: PlayerId }) {
       <span className="opp-hand-count">{n} en main</span>
     </div>
   );
-}
+});
