@@ -394,7 +394,7 @@ class Tour {
     await this.capture('19-editeur');
     await this.tap(ui('editor.back'));
     await this.waitUi(ui('decks'));
-    await this.tap(ui('decks.close'));
+    await this.tap(`${ui('decks')} ${ui('dialog.close')}`);
     await this.waitUi(ui('home'));
   }
 
