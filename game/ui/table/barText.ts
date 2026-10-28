@@ -2,6 +2,7 @@
 // game/tests/decisions.test.ts). Utilisé par ActionBar (Interaction.tsx).
 import type { Decision, GameState, Option, PlayerId } from '../../engine/types.ts';
 import { attackRepelled } from '../decision.ts';
+import { quoteCardNames } from '../texts.ts';
 
 export interface BarInput {
   state: GameState;
@@ -19,8 +20,8 @@ export interface BarText {
   mine: boolean;               // c'est à toi
 }
 
-// la consigne du moteur, sans les deux-points de la fin
-const tidy = (text: string) => text.replace(/\s*:\s*$/, '');
+// la consigne du moteur, sans les deux-points de la fin, les noms de cartes à virgule entre guillemets
+const tidy = (text: string) => quoteCardNames(text).replace(/\s*:\s*$/, '');
 
 export function barText({ state: s, decision: d, human, opponent, thinking, hasCardActions, touch }: BarInput): BarText {
   const tap = touch ? 'Touche' : 'Clique sur';

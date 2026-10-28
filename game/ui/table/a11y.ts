@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { name, power } from '../../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../../engine/types.ts';
 import type { CardLook } from '../CardView.tsx';
+import { quoteCardNames } from '../texts.ts';
 import type { BoardInteraction } from './useBoardInteraction.ts';
 
 // ---------- Ce qu'on lit d'une carte et d'une zone ----------
@@ -264,7 +265,7 @@ export function promptText({ state: s, seat, opponent, targeting, preview }: Pro
   if (d.kind === 'counter' && s.battle) {
     return `${name(s, s.battle.attacker)} (${power(s, s.battle.attacker)}) attaque ${name(s, s.battle.target)} (${power(s, s.battle.target)}). ${d.prompt}`;
   }
-  return d.prompt;
+  return quoteCardNames(d.prompt);
 }
 
 // Le texte de la région aria-live : les dernières actions jouées, puis la consigne. Les actions restent jusqu'aux

@@ -4,6 +4,7 @@
 // Chaque tâche d'interface ajoute son fichier game/ui/atelier/<page>.atelier.tsx, chargé automatiquement, qui exporte
 // `title` (le nom de la page) et `render` (une fonction qui renvoie l'écran, et peut utiliser des hooks).
 import { Component, type JSX, type ReactNode } from 'react';
+import { BACK, backText } from '../texts.ts';
 
 export interface AtelierPage {
   title: string;
@@ -46,7 +47,7 @@ export function Atelier({ page, onPage, onBack }: { page?: string; onPage: (page
   return (
     <div className="setup op-atelier">
       <header className="op-atelier-head">
-        <button className="op-btn op-btn-ghost" onClick={onBack}>← Retour au jeu</button>
+        <button className="op-btn op-btn-ghost" onClick={onBack}>{backText(BACK.home)}</button>
         <h1>🛠 Atelier</h1>
       </header>
       <nav className="op-atelier-pages" aria-label="Pages de l’atelier">

@@ -61,7 +61,7 @@ const VIEWS = {
   empty: 'Cale vide',
   full: 'Toute OP03',
   hold: 'Ma Cale (mon compte)',
-  deck: 'Mon deck (mon compte)',
+  deck: 'Deck d’aventure (mon compte)',
 } as const;
 
 export function render() {

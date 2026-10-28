@@ -92,7 +92,7 @@ export function SetupScreen({ notice, online, adventure, config, records, onChan
           </div>
           {online.resume
             ? <button className="op-btn op-btn-primary" data-ui="home.online-resume" onClick={online.resume.onResume}>Reprendre</button>
-            : <button className="op-btn op-btn-primary" data-ui="home.online" onClick={online.onOpen}>Jouer en ligne</button>}
+            : <button className="op-btn op-btn-primary" data-ui="home.online" onClick={online.onOpen}>Jouer avec un ami</button>}
         </section>
       )}
       <section className="setup-section">

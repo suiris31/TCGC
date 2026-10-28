@@ -1,7 +1,7 @@
 // Mode Aventure (tâche 1.17) : le parcours complet, de l'accueil à la fin de l'arc.
 // - Premier passage : écran d'accueil, « Prendre la mer » donne le deck de départ (dans la Cale) et le deck d'aventure.
 // - Carte du monde (WorldMap) avec la progression lue sur le serveur ; une île verrouillée s'explique, une île ouverte
-//   ou gagnée ouvre son chapitre (ChapterScreen) ; « Ma Cale » et « Mon deck » ouvrent les écrans de la tâche 1.18 ;
+//   ou gagnée ouvre son chapitre (ChapterScreen) ; « Ma Cale » et « Deck d’aventure » ouvrent les écrans de la tâche 1.18 ;
 //   le solde de la bourse et « Boutique » ouvrent la boutique (tâche 2.3). Chaque écran a son adresse (routes.ts :
 //   #play/aventure, /chapitre/<id>, /cale, /deck, /boutique) : le Retour revient à l'écran précédent.
 // - « Combattre » lance la partie sur le plateau du jeu (App, partie imposée) : ton deck d'aventure contre le deck et le
@@ -36,6 +36,7 @@ import { ShopScreen } from '../economy/Shop.tsx';
 import { useBoosterOpening } from '../economy/useBoosterOpening.ts';
 import { refreshWallet, useWallet, WalletBadge } from '../economy/Wallet.tsx';
 import { boosterSfx, setSoundEnabled } from '../sound.ts';
+import { ADVENTURE_DECK, BACK, backText } from '../texts.ts';
 import { AdventureDeckScreen } from './AdventureDeck.tsx';
 import { ArcSummary } from './ArcSummary.tsx';
 import { AdventureApiError, loadAdventure, sendChapterResult, startArc, wonChapters, type AdventureState, type WonBooster } from './api.ts';
@@ -303,7 +304,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       <div className="opc-wait op-adv-wait">
         <span className="danger">{loadError}</span>
         <button className="op-btn op-btn-ghost" onClick={() => void reload()}>Réessayer</button>
-        <button className="op-btn op-btn-ghost" onClick={onBack}>← Accueil</button>
+        <button className="op-btn op-btn-ghost" onClick={onBack}>{backText(BACK.home)}</button>
       </div>
     ) : <div className="opc-wait"><span className="op-spinner" /> Chargement de ton aventure…</div>;
   } else if (!started) {
@@ -321,14 +322,14 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
   } else if (screen.kind === 'hold') {
     content = <HoldScreen onBack={() => goBack(MAP)} onShop={() => setScreen({ kind: 'shop' })} />;
   } else if (screen.kind === 'shop') {
-    content = <ShopScreen onBack={() => goBack(MAP)} />;
+    content = <ShopScreen back={BACK.map} onBack={() => goBack(MAP)} />;
   } else if (screen.kind === 'deck') {
     content = <AdventureDeckScreen onBack={() => goBack(MAP)} />;
   } else if (screen.kind === 'chapter' && chapterOf(screen.id)) {
     const chapter = chapterOf(screen.id)!;
-    const blocked = !adv.deckId ? 'Tu n’as pas de deck d’aventure : choisis-en un dans « Mon deck ».'
+    const blocked = !adv.deckId ? `Tu n’as pas de deck d’aventure : choisis-en un dans « ${ADVENTURE_DECK.title} ».`
       : !deck ? 'Chargement de ton deck…'
-        : !playable(deck) ? 'Ton deck d’aventure est incomplet : termine-le dans « Mon deck ».'
+        : !playable(deck) ? `Ton deck d’aventure est incomplet : termine-le dans « ${ADVENTURE_DECK.title} ».`
           : !DECKS[chapter.opponent.deck] ? 'Le deck de cet adversaire n’est pas encore jouable.'
             : chapter.opponent.level === 4 && rlOk === false ? 'Ce défi se joue contre l’IA entraînée, qui n’est pas installée sur ce serveur.'
               : chapter.opponent.level === 4 && rlOk === null ? 'Vérification de l’IA entraînée…'
@@ -386,7 +387,7 @@ function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: strin
   const starter = ARC.starterDeck ? DECKS[ARC.starterDeck] : undefined;
   return (
     <Screen className="op-adv-screen op-adv-welcome" data-ui="adventure.welcome" title="Aventure"
-      back={{ label: 'Accueil', onBack, 'data-ui': 'adventure.back' }}>
+      back={{ label: BACK.home, onBack, 'data-ui': 'adventure.back' }}>
       <div className="op-adv-welcome-body">
         <div className="op-adv-welcome-ship" aria-hidden="true">⛵</div>
         <h1>Ton aventure commence à East Blue</h1>
@@ -443,7 +444,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
         </Button>
       )}
       <Button variant="secondary" icon="hold" data-ui="adventure.hold" onClick={onHold}>Ma Cale</Button>
-      <Button variant="secondary" icon="deck" data-ui="adventure.deck" onClick={onDeck}>Mon deck</Button>
+      <Button variant="secondary" icon="deck" data-ui="adventure.deck" onClick={onDeck}>{ADVENTURE_DECK.title}</Button>
       <Button variant="secondary" icon="shop" data-ui="adventure.shop" onClick={onShop}>Boutique</Button>
     </nav>
   );
@@ -461,7 +462,7 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
     <Screen
       className="op-adv-screen op-adv-map"
       data-ui="adventure.map"
-      back={{ label: 'Accueil', onBack, 'data-ui': 'adventure.back' }}
+      back={{ label: BACK.home, onBack, 'data-ui': 'adventure.back' }}
       title={<span className="op-adv-map-title">{ARC.title}</span>}
       extra={<>{!portrait && nav}<WalletBadge wallet={wallet} onClick={onShop} /></>}
       actions={[{ id: 'settings', label: 'Réglages', icon: 'settings', onClick: onSettings, 'data-ui': 'adventure.settings' }]}

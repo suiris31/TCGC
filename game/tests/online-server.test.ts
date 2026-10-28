@@ -1,6 +1,6 @@
 // Decks de la Cale en ligne (server/game-online.js), sur une base temporaire : un deck d'aventure n'entre dans une
 // partie que si son joueur possède encore toutes ses cartes (à la création de la salle, et pour l'hôte au moment où son
-// ami le rejoint) ; la partie et ses enregistrements portent la marque « deck de la Cale »
+// ami le rejoint) ; la partie et ses enregistrements portent la marque « deck d'aventure »
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -58,7 +58,7 @@ const deckB = decks.saveDeck(B.id, 'PERSO-caleb001', { name: 'Cale de Zoro', lea
 const freeA = decks.saveDeck(A.id, 'PERSO-librea01', { name: 'Libre', leader: STARTER.leader, cards: STARTER.cards });
 const card = Object.keys(STARTER.cards)[0];
 
-test('en ligne (serveur) : deux decks de la Cale complets, partie marquée et rangée avec la marque', () => {
+test('en ligne (serveur) : deux decks d’aventure complets, partie marquée et rangée avec la marque', () => {
   const room = online.openRoom(A, deckA.id, t0);
   assert.equal(room.host.hold, true);
   assert.equal(viewOf(room, 0).you.hold, true);
@@ -81,7 +81,7 @@ test('en ligne (serveur) : deux decks de la Cale complets, partie marquée et ra
   assert.equal(summary(B.id).holdDeck, true);
 });
 
-test('en ligne (serveur) : un deck de la Cale auquel il manque des cartes est refusé, avec un message clair', () => {
+test('en ligne (serveur) : un deck d’aventure auquel il manque des cartes est refusé, avec un message clair', () => {
   setCount(A.id, card, 1);  // échangées contre des Berry, par exemple
   refused(() => online.openRoom(A, deckA.id, later(10)), 'hold_incomplete', new RegExp(`Cale de Luffy.*${card}.*${STARTER.cards[card]} dans le deck, 1 dans ta Cale.*Mes decks`));
   // un deck libre aux mêmes cartes reste permis
@@ -96,10 +96,10 @@ test('en ligne (serveur) : un deck de la Cale auquel il manque des cartes est re
   setCount(B.id, STARTER.leader, 1);
 });
 
-test('en ligne (serveur) : l’hôte qui échange des cartes de son deck de la Cale avant l’arrivée de son ami ferme sa salle', () => {
+test('en ligne (serveur) : l’hôte qui échange des cartes de son deck d’aventure avant l’arrivée de son ami ferme sa salle', () => {
   const room = online.openRoom(A, deckA.id, later(20));
   setCount(A.id, card, 0);
-  refused(() => online.enterRoom(B, room.code, 'ST-35', later(21)), 'host_hold_incomplete', /Luffy n'a plus toutes les cartes de son deck de la Cale \(.*absente de sa Cale\).*fermée/);
+  refused(() => online.enterRoom(B, room.code, 'ST-35', later(21)), 'host_hold_incomplete', /Luffy n'a plus toutes les cartes de son deck d'aventure \(.*absente de sa Cale\).*fermée/);
   const row = db.prepare('SELECT status, code FROM game_matches WHERE id = ?').get(room.id);
   assert.deepEqual({ ...row }, { status: 'cancelled', code: null });
   refused(() => online.enterRoom(B, room.code, 'ST-35', later(22)), 'unknown_room');
@@ -112,7 +112,7 @@ test('en ligne (serveur) : un deck d’un autre compte ou un adversaire de l’a
   refused(() => online.openRoom(A, adversary, later(30)), 'invalid_deck');
 });
 
-test('en ligne (serveur) : partie avec un seul deck de la Cale : seul son joueur a la marque', () => {
+test('en ligne (serveur) : partie avec un seul deck d’aventure : seul son joueur a la marque', () => {
   const room = online.openRoom(A, deckA.id, later(40));
   const m = online.enterRoom(B, room.code, 'ST-35', later(41));
   online.giveUp(A, m.id, () => {}, later(42));

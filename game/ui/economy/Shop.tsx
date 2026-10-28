@@ -12,6 +12,7 @@ import { BoosterOpening } from '../adventure/BoosterOpening.tsx';
 import { boosterRates, chanceText } from '../adventure/hold.ts';
 import { BOOSTER_NOTICE, PackIcon } from '../adventure/RewardsScreen.tsx';
 import { Button, Dialog } from '../kit/index.ts';
+import { BACK, backText } from '../texts.ts';
 import * as api from './api.ts';
 import { CounterScreen, type CounterClient } from './Counter.tsx';
 import { useBoosterOpening, type BoosterOpener } from './useBoosterOpening.ts';
@@ -49,7 +50,8 @@ const itemName = (o: ShopOffer, what: PurchaseKind) => `1 ${what} ${o.set}`;
 
 // ---------- L'écran ----------
 
-export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => void; client?: ShopClient }) {
+// back : l'écran où l'on revient (« ← Accueil » depuis #play/boutique, « ← Carte » dans l'aventure)
+export function ShopScreen({ onBack, back = BACK.home, client = SERVER_CLIENT }: { onBack: () => void; back?: string; client?: ShopClient }) {
   const { wallet, error: walletError, reload: reloadWallet } = useWallet(client.loadWallet);
   const [shop, setShop] = useState<Shop | null>(null);
   const [shopError, setShopError] = useState<string>();
@@ -103,7 +105,7 @@ export function ShopScreen({ onBack, client = SERVER_CLIENT }: { onBack: () => v
   return (
     <div className="setup op-shop" data-ui="shop">
       <header className="op-shop-head">
-        <button className="op-btn op-btn-ghost" data-ui="shop.back" onClick={onBack}>← Retour</button>
+        <button className="op-btn op-btn-ghost" data-ui="shop.back" onClick={onBack}>{backText(back)}</button>
         <h1>🏪 Boutique</h1>
         <WalletBadge wallet={wallet} />
       </header>

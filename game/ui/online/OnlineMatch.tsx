@@ -13,6 +13,7 @@ import { LeaveDialog, TableScreen } from '../table/TableScreen.tsx';
 import { useGameKeys } from '../table/useGameKeys.ts';
 import { useTable } from '../table/useTable.ts';
 import { DonLooks } from '../table/DonArt.tsx';
+import { LEAVE_GAME } from '../texts.ts';
 import { resignMatch, sendChoice, useMatch, type LiveView } from './api.ts';
 import { HoldMark, WaitingRoom } from './WaitingRoom.tsx';
 
@@ -36,7 +37,7 @@ export function OnlineMatch({ id, onLeave }: { id: string; onLeave: () => void }
     return (
       <div className="setup lobby">
         {error ? <p className="danger">Impossible d’ouvrir la partie : {error}</p> : <p className="op-muted"><span className="op-spinner" /> Connexion à la partie…</p>}
-        <button className="op-btn op-btn-ghost" onClick={onLeave}>Retour</button>
+        <button className="op-btn op-btn-ghost" onClick={onLeave}>← Accueil</button>
       </div>
     );
   }
@@ -46,7 +47,7 @@ export function OnlineMatch({ id, onLeave }: { id: string; onLeave: () => void }
       <div className="setup lobby">
         <h2>{view.status === 'expired' ? 'La salle a expiré' : 'La salle est fermée'}</h2>
         <p className="op-muted">Personne ne l’a rejointe à temps. Crée une nouvelle salle et envoie son code à ton ami.</p>
-        <button className="op-btn op-btn-primary" onClick={onLeave}>Retour</button>
+        <button className="op-btn op-btn-primary" onClick={onLeave}>← Accueil</button>
       </div>
     );
   }
@@ -63,7 +64,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
   const [leaving, setLeaving] = useState(false);
   const [sentSeq, setSentSeq] = useState<number | null>(null);
   const [alert, setAlert] = useState<string | null>(null);
-  // Retour du navigateur pendant la partie : la même question que « Menu » (revenir plus tard, abandonner)
+  // Retour du navigateur pendant la partie : la même question que « Quitter » (revenir plus tard, abandonner)
   useLeaveGuard(!over, () => setLeaving(true));
   // mon choix est parti, le serveur n'a pas encore répondu : la barre le dit, au lieu de redemander ce choix
   const sending = Boolean(game.decision?.player === seat && !over && sentSeq === view.seq);
@@ -111,10 +112,10 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       top={{
         brand: '🌐 En ligne',
         match: <>{myDeck}{you.hold && <> <HoldMark /></>} <span className="vs">contre</span> {oppName} · {oppDeck}{opponent?.hold && <> <HoldMark /></>}</>,
-        matchTitle: `${myDeck}${you.hold ? ' (deck de la Cale)' : ''} contre ${oppName} · ${oppDeck}${opponent?.hold ? ' (deck de la Cale)' : ''}`,
+        matchTitle: `${myDeck}${you.hold ? ' (deck d’aventure)' : ''} contre ${oppName} · ${oppDeck}${opponent?.hold ? ' (deck d’aventure)' : ''}`,
         rival: oppName,
         status: <span className={view.opponentOnline ? 'presence presence-on' : 'presence'} title={view.opponentOnline ? `${oppName} est connecté` : `${oppName} n’est pas connecté en ce moment`}>●</span>,
-        leave: { label: 'Menu', onClick: () => (over ? onLeave() : setLeaving(true)) },
+        leave: { ...LEAVE_GAME, onClick: () => (over ? onLeave() : setLeaving(true)) },
       }}
       decks={{ mine: you.deck, theirs: DECKS[opponent?.deck ?? ''] ? opponent?.deck : undefined, theirsName: 'ton adversaire' }}
       sideNote={<p className="op-small op-muted online-note">Partie en ligne : le coach et les conseils sont désactivés, et tu ne vois que tes propres cartes.</p>}
@@ -124,7 +125,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
       reopenEnd
       celebration={won ? 'Bien joué, capitaine.' : `${oppName} remporte la partie.`}
       leave={leaving && (
-        <LeaveDialog onStay={() => setLeaving(false)} text={`Tu peux revenir plus tard : la partie t’attend (Jouer → reprendre la partie en cours). Ou tu peux l’abandonner : ${oppName} gagne.`}>
+        <LeaveDialog onStay={() => setLeaving(false)} text={`Tu peux revenir plus tard : la partie t’attend dans « Continuer », sur l’accueil. Ou tu peux l’abandonner : ${oppName} gagne.`}>
           <button className="op-btn op-btn-ghost" data-ui="leave.yes" onClick={onLeave}>Revenir plus tard</button>
           <button className="op-btn op-btn-ghost danger" data-ui="leave.resign" onClick={resign}>Abandonner</button>
           <button className="op-btn op-btn-primary" data-ui="leave.no" onClick={() => setLeaving(false)}>Continuer</button>
@@ -136,7 +137,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
           won={won}
           reason={game.winReason ?? ''}
           turns={game.turn}
-          matchup={<>{myDeck} contre {oppName} · {oppDeck}{you.hold && opponent?.hold ? ' · partie avec decks de la Cale' : ''}</>}
+          matchup={<>{myDeck} contre {oppName} · {oppDeck}{you.hold && opponent?.hold ? ' · partie entre decks d’aventure' : ''}</>}
           note="Le coach était désactivé pendant la partie. Elle est rangée dans « Mes parties » : tu peux l’y revoir et rejouer un moment contre l’IA."
           gain={<GameGain gain={gain} onRetry={retryGain} />}
           onHistory={() => navigate(archived ? { name: 'parties', id: archived } : { name: 'parties' })}

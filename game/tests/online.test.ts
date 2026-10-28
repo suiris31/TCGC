@@ -91,7 +91,7 @@ test('en ligne : abandon', () => {
   fails(() => resign(m, 0, later(7)), 'not_playing');
 });
 
-test('en ligne : decks de la Cale repérés dans la vue et dans « Mes parties » ; adversaires de l’aventure refusés', () => {
+test('en ligne : decks d’aventure repérés dans la vue et dans « Mes parties » ; adversaires de l’aventure refusés', () => {
   const list = { ...DECKS['ST-01'], id: 'PERSO-cale0001', name: 'Ma Cale', series: 'PERSO' };
   const m = createMatch('partie-cale', 'K7MQ2P', { ...host, deck: list.id, list, hold: true }, t0, 'test');
   assert.equal(viewOf(m, 0).you.hold, true);
@@ -105,7 +105,7 @@ test('en ligne : decks de la Cale repérés dans la vue et dans « Mes parties �
   assert.equal(recordFor(m, 0, later(6)).opponentHoldDeck, undefined);
   assert.equal(recordFor(m, 1, later(6)).opponentHoldDeck, true);
   assert.equal(recordFor(m, 1, later(6)).holdDeck, undefined);
-  // deux decks de la Cale : partie « avec decks de la Cale »
+  // deux decks d'aventure : partie « entre decks d'aventure »
   const both = createMatch('partie-cale-2', 'K7MQ2Q', { ...host, deck: list.id, list, hold: true }, t0, 'test');
   joinMatch(both, { ...guest, deck: 'PERSO-cale0002', list: { ...list, id: 'PERSO-cale0002' }, hold: true }, later(1), 8);
   assert.equal(holdMatch(both), true);

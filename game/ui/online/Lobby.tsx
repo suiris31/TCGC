@@ -91,7 +91,7 @@ export function Lobby({ initialCode, onOpen, onBack }: { initialCode?: string; o
       </section>
       {error && <p className="danger lobby-error">{error}</p>}
       <div className="setup-go">
-        <button className="op-btn op-btn-ghost" data-ui="lobby.back" onClick={onBack}>← Retour</button>
+        <button className="op-btn op-btn-ghost" data-ui="lobby.back" onClick={onBack}>← Accueil</button>
         <button className="op-btn op-btn-primary btn-big" data-ui="lobby.go" onClick={go} disabled={busy || missing.length > 0 || (tab === 'join' && clean.length !== 6)}>
           {busy ? '…' : tab === 'create' ? 'Créer la salle' : 'Rejoindre la partie'}
         </button>

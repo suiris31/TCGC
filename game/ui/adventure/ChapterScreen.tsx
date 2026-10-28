@@ -15,6 +15,7 @@ import { cardImage } from '../images.ts';
 import { Button, Screen } from '../kit/index.ts';
 import { useLayer } from '../routes.ts';
 import { sfx } from '../sound.ts';
+import { BACK } from '../texts.ts';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { RewardList } from './RewardsScreen.tsx';
 
@@ -117,7 +118,7 @@ export interface ChapterScreenProps {
   onFight: () => void;           // nouvelle partie
   onResume: () => void;          // reprendre la partie interrompue
   onCount: () => void;           // faire compter la victoire pas encore comptée
-  onDeck: () => void;            // ouvrir « Mon deck »
+  onDeck: () => void;            // ouvrir le deck d’aventure
   onBack: () => void;            // retour à la carte
 }
 
@@ -145,7 +146,7 @@ export function ChapterScreen(p: ChapterScreenProps) {
     <Screen
       className="op-adv-screen op-adv-chapter"
       data-ui="chapter"
-      back={{ label: 'Carte', onBack: p.onBack, 'data-ui': 'chapter.back' }}
+      back={{ label: BACK.map, onBack: p.onBack, 'data-ui': 'chapter.back' }}
       title={chapter.title}
       subtitle={`${chapter.optional ? '⚔ Défi bonus' : `Chapitre ${step + 1} sur ${story.length}`} · ${chapter.place}`}
       extra={p.status === 'won' ? <span className="op-chip op-adv-won">✓ Gagné{p.wins > 1 ? ` ${p.wins} fois` : ''}</span> : undefined}

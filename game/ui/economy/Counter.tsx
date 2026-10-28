@@ -10,6 +10,7 @@ import { cardData } from '../../engine/cards/index.ts';
 import { AdventureApiError } from '../adventure/api.ts';
 import { CardImage } from '../adventure/CardImage.tsx';
 import { RARITIES, RARITY_LABELS } from '../adventure/hold.ts';
+import { BACK, backText } from '../texts.ts';
 import * as api from './api.ts';
 import { berry, showWallet, useWallet, WalletBadge } from './Wallet.tsx';
 
@@ -47,8 +48,9 @@ type Step =
   | { kind: 'buying'; card: CounterCard; purchaseId: string }
   | { kind: 'done'; card: CounterCard; purchase: CounterPurchase };
 
-// focus : carte cherchée en arrivant (depuis une carte de la Cale)
-export function CounterScreen({ onBack, client = COUNTER_SERVER, focus }: { onBack: () => void; client?: CounterClient; focus?: string }) {
+// focus : carte cherchée en arrivant (depuis une carte de la Cale) ; back : l'écran où l'on revient (« ← Boutique »,
+// « ← Cale »)
+export function CounterScreen({ onBack, back = BACK.shop, client = COUNTER_SERVER, focus }: { onBack: () => void; back?: string; client?: CounterClient; focus?: string }) {
   const { wallet, reload: reloadWallet } = useWallet(client.loadWallet);
   const [offer, setOffer] = useState<CounterOffer | null>(null);
   const [error, setError] = useState<string>();
@@ -98,7 +100,7 @@ export function CounterScreen({ onBack, client = COUNTER_SERVER, focus }: { onBa
   return (
     <div className="setup op-counter">
       <header className="op-shop-head">
-        <button className="op-btn op-btn-ghost" onClick={onBack}>← Retour</button>
+        <button className="op-btn op-btn-ghost" onClick={onBack}>{backText(back)}</button>
         <h1>🏪 Comptoir</h1>
         <WalletBadge wallet={wallet} />
       </header>

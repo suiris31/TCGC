@@ -18,6 +18,7 @@ import { DuplicatesDialog, duplicateCount } from '../economy/Duplicates.tsx';
 import { berry } from '../economy/Wallet.tsx';
 import { useBoosterOpening } from '../economy/useBoosterOpening.ts';
 import { Button, Screen } from '../kit/index.ts';
+import { BACK } from '../texts.ts';
 import { EffectText } from '../Zoom.tsx';
 import { boosterChapter, holdByNumber, type HoldCard, type WonBooster } from './api.ts';
 import { BoosterOpening } from './BoosterOpening.tsx';
@@ -55,7 +56,7 @@ export function HoldScreen({ onBack, onShop }: { onBack: () => void; onShop?: ()
   const [duplicates, setDuplicates] = useState(false);
 
   if (opening.props) return <BoosterOpening {...opening.props} />;
-  if (counter) return <CounterScreen focus={counter.focus} onBack={() => { setCounter(null); void reload(); }} />;
+  if (counter) return <CounterScreen focus={counter.focus} back={BACK.hold} onBack={() => { setCounter(null); void reload(); }} />;
   if (!data) {
     return (
       <HoldFrame onBack={onBack}>
@@ -79,7 +80,7 @@ export function HoldScreen({ onBack, onShop }: { onBack: () => void; onShop?: ()
 function HoldFrame({ onBack, summary, children }: { onBack: () => void; summary?: string; children: ReactNode }) {
   return (
     <Screen className="op-adv-screen" data-ui="hold" title="Ma Cale" subtitle={summary}
-      back={{ label: 'Carte', onBack, 'data-ui': 'hold.back' }}>
+      back={{ label: BACK.map, onBack, 'data-ui': 'hold.back' }}>
       <div className="op-adv-page op-hold">{children}</div>
     </Screen>
   );

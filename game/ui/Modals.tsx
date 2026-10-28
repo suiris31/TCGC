@@ -7,6 +7,7 @@ import { CardView, STATE_LEGEND, type Preview } from './CardView.tsx';
 import type { PickItem } from './decision.ts';
 import { isTouch } from './device.ts';
 import { Button, Dialog, Icon, IconButton } from './kit/index.ts';
+import { quoteCardNames } from './texts.ts';
 
 export function MulliganModal({ s, p, onChoose, onHover }: { s: GameState; p: PlayerId; onChoose: (id: string) => void; onHover: (x: Preview | null) => void }) {
   const cheap = s.players[p].hand.filter((c) => def(c.num).category === 'CHARACTER' && (def(c.num).cost ?? 0) <= 4).length;
@@ -37,7 +38,7 @@ export function PickerModal({ s, d, picks, buttons, recommended, onChoose, onHov
   onHover: (x: Preview | null) => void;
 }) {
   return (
-    <Dialog title={d.prompt} size="wide" reducible reducedText={`Choix en attente : ${d.prompt}`} className="op-decision modal-picker" data-ui="decision.picker"
+    <Dialog title={quoteCardNames(d.prompt)} size="wide" reducible reducedText={`Choix en attente : ${quoteCardNames(d.prompt)}`} className="op-decision modal-picker" data-ui="decision.picker"
       actions={buttons.length > 0 && buttons.map((o) => (
         <button key={o.id} data-ui={`picker.option-${o.id}`} className={`op-btn op-btn-ghost ${recommended === o.id ? 'btn-reco' : ''}`} onClick={() => onChoose(o.id)}>{o.label}</button>
       ))}>

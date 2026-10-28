@@ -1,6 +1,6 @@
 // Une page « plateau » de l'atelier : le plateau de la partie contre l'IA (contrôleur commun, game/ui/table/), sur un
 // état fixé (plateau/etats.ts), en plein écran. Ni IA, ni coach, ni enregistrement, ni serveur : tes choix sont joués
-// sur place, le tour de l'IA attend. « Menu » revient à la liste des pages de l'atelier. Une partie finie montre l'écran
+// sur place, le tour de l'IA attend. « Quitter » revient à la liste des pages de l'atelier. Une partie finie montre l'écran
 // de fin du mode demandé (contre l'IA, aventure, en ligne), avec un gain de démonstration.
 import { useCallback, useMemo, useState } from 'react';
 import { LEVELS } from '../../../ai/search.ts';
@@ -16,6 +16,7 @@ import { CoachTab } from '../../table/SidePanel.tsx';
 import { TableScreen } from '../../table/TableScreen.tsx';
 import { useGameKeys } from '../../table/useGameKeys.ts';
 import { useTable } from '../../table/useTable.ts';
+import { LEAVE_GAME } from '../../texts.ts';
 import { AI_DECK, boardState, MY_DECK, type BoardState } from './etats.ts';
 
 const ME = 0;
@@ -88,7 +89,7 @@ function FixedTable({ fixed, mode, onLeave }: { fixed: BoardState; mode: EndMode
         rival: 'IA',
         phase: phaseLabel(game, ME),
         undo: { onClick: back, disabled: !undo.length },
-        leave: { label: 'Menu', onClick: onLeave },
+        leave: { ...LEAVE_GAME, onClick: onLeave },
       }}
       decks={{ mine: MY_DECK, theirs: AI_DECK, theirsName: 'l’IA' }}
       coach={<CoachTab table={table} analysis={null} loading={false} onAsk={() => undefined} />}

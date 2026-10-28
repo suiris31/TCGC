@@ -77,7 +77,11 @@ test('décisions : la barre dit qui doit faire quoi', () => {
   assert.equal(bar(boardState('cout').state).title, 'À toi : déclare un coût');
   assert.equal(bar(boardState('contre-repousse').state).title, 'Attaque repoussée : tu peux arrêter de contrer');
   const recherche = boardState('recherche').state;
-  assert.deepEqual(bar(recherche), { title: 'À toi de choisir', help: recherche.decision!.prompt.replace(/\s*:\s*$/, ''), mine: true }, 'la consigne du moteur en dessous');
+  // la consigne du moteur en dessous, avec « Menu "Bonnes manières", Kick Course » entre guillemets (sa virgule ne compte
+  // pas une carte de plus : tâche R3.9)
+  const help = recherche.decision!.prompt.replace(/\s*:\s*$/, '').replace('Menu "Bonnes manières", Kick Course', '« Menu "Bonnes manières", Kick Course »');
+  assert.ok(help.includes('« Menu'), 'la recherche de l’atelier regarde cette carte');
+  assert.deepEqual(bar(recherche), { title: 'À toi de choisir', help, mine: true }, 'la consigne du moteur en dessous');
 
   // la décision de l'adversaire : son nom et ce qu'il choisit
   const mull = boardState('mulligan').state;

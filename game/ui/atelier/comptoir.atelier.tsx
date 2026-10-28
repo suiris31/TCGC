@@ -65,7 +65,7 @@ function useDemo(initialBalance: number, changing = false) {
         extra -= count;
       }
     }
-    const decks = lines.some((l) => l.number === 'ST01-004') ? [{ id: 'PERSO-demo', name: 'Mon deck d’aventure' }] : [];
+    const decks = lines.some((l) => l.number === 'ST01-004') ? [{ id: 'PERSO-demo', name: 'Équipage de démo' }] : [];
     return { stateKey: key(withVariants), lines, total: lines.reduce((s, l) => s + l.count * l.value, 0), decks };
   }
 
