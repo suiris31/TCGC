@@ -98,7 +98,7 @@
 :where(.opc.is-compact) .op-quick-match { padding: var(--space-3); gap: var(--space-2); }
 :where(.opc.is-compact) .op-quick-sides { gap: var(--space-2); }
 :where(.opc.is-compact) .op-quick-vs { font-size: 0.8rem; }
-:where(.opc.is-compact) .op-quick-side-art { height: 7.5rem; }
+:where(.opc.is-compact) .op-quick-side-art { height: 6rem; }
 :where(.opc.is-compact) .op-quick-side-name { font-size: 1rem; }
 :where(.opc.is-compact) .op-quick-side-who, :where(.opc.is-compact) .op-quick-side-name, :where(.opc.is-compact) .op-quick-side-detail { padding: 0 var(--space-2); }
 :where(.opc.is-compact) .op-kit-screen.op-quick .op-kit-screen-bar { flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
