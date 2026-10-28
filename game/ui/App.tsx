@@ -8,7 +8,7 @@ import { flushQueue, whenSaved } from './archiveClient.ts';
 import { recordText } from './Coach.tsx';
 import { phaseLabel } from './decision.ts';
 import { HelpModal } from './Modals.tsx';
-import { currentRoute, goBack, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
+import { currentRoute, goBack, goUp, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
 import { useSettings } from './settings.ts';
 import { SettingsPanel } from './SettingsPanel.tsx';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
@@ -258,6 +258,12 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
     if (routed && currentRoute().name === 'jeu') return goBack(HOME);
     rec.quit();
   };
+  // « Accueil » après la partie : l'accueil du jeu, même quand la partie a été lancée depuis #play/rapide (goBack
+  // ramènerait à l'écran de départ)
+  const goHome = () => {
+    if (routed && currentRoute().name === 'jeu') return goUp(HOME);
+    rec.quit();
+  };
   // « Mes parties » après la partie : son détail, une fois l'enregistrement sur le serveur (sinon la liste)
   const openHistory = () => {
     const id = rec.gameId;
@@ -315,7 +321,7 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
           onNext={configured?.onLeave}
           nextLabel={won && !practice ? 'Récompenses →' : 'Suite de l’aventure →'}
           onHistory={configured ? undefined : openHistory}
-          onHome={configured ? undefined : leave}
+          onHome={configured ? undefined : goHome}
           onBoard={() => table.setShowEnd(false)}
         />
       )}
