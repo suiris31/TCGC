@@ -4,6 +4,7 @@ import { Component, lazy, Suspense, useCallback, useEffect, useState, type React
 import { loadCardData } from '../engine/cards/index.ts';
 import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
+import { Home } from './home/Home.tsx';
 import { ApiError, call } from './api.ts';
 import { setArchiveUser } from './archiveClient.ts';
 import { deviceClasses, useDevice } from './device.ts';
@@ -34,6 +35,7 @@ import './styles/atelier.css';
 import './styles/settings.css';
 import './styles/a11y.css';
 import './styles/gestures.css';
+import './styles/home.css';
 import './styles/table-compact.css';
 import './styles/don.css';
 
@@ -72,7 +74,7 @@ async function fetchCards(): Promise<void> {
   }
 }
 
-// Écrans de l'écran de départ (App) : accueil, partie contre l'IA, Mes decks, Mes parties
+// Écrans portés par App : accueil (home/Home.tsx), partie rapide, partie contre l'IA, Mes decks, Mes parties
 const SOLO = new Set(['home', 'rapide', 'jeu', 'decks', 'parties']);
 
 type GameAppProps = { userId: number; notice?: string; onImmersive: (on: boolean) => void };
@@ -146,13 +148,13 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
 
   useEffect(() => () => onImmersive(false), [onImmersive]);
 
-  // partie en ligne ou salle en cours : proposée sur l'écran de départ
+  // partie en ligne ou salle en cours : proposée sur l'écran de la partie rapide (l'accueil la cherche lui-même)
   useEffect(() => {
-    if (!solo) return;
+    if (route.name !== 'rapide') return;
     let cancelled = false;
     currentMatches().then((list) => { if (!cancelled) setCurrent(list.find((m) => m.status === 'playing') ?? list[0] ?? null); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [solo]);
+  }, [route.name]);
 
   // salon, partie en ligne, aventure, boutique, atelier : tout l'écran
   useEffect(() => {
@@ -187,7 +189,7 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
             <Atelier page={route.page} onPage={(page) => navigate({ name: 'atelier', page })} onBack={() => goUp(HOME)} />
           </Suspense>
         ) : (
-          <App notice={notice} onImmersive={immersive} adventure={{ onOpen: () => navigate({ name: 'aventure' }) }} online={{
+          <App notice={notice} onImmersive={immersive} home={(actions) => <Home notice={notice} {...actions} />} adventure={{ onOpen: () => navigate({ name: 'aventure' }) }} online={{
             onOpen: () => navigate({ name: 'ami' }),
             resume: current ? {
               label: current.status === 'playing'

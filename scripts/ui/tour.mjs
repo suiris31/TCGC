@@ -199,6 +199,13 @@ class Tour {
     await this.waitUi(ui('home'), 'écran de départ du jeu', 60000);
   }
 
+  // Écran de la partie rapide (choix des decks, niveau, « Lancer la partie »), ouvert depuis l'accueil (R3.1)
+  async quick() {
+    await this.home();
+    await this.tap(ui('home.quick'));
+    await this.waitUi(ui('home.start'), 'écran de la partie rapide');
+  }
+
   // ---------- Parcours ----------
 
   async accueil() {
@@ -212,7 +219,7 @@ class Tour {
   }
 
   async partie() {
-    await this.home();
+    await this.quick();
     // decks fixés (ceux par défaut peuvent changer) : les Personnages de ST-01 coûtent peu, il en a dès le premier tour.
     // Chaque deck est dans les deux listes (« Ton deck » d'abord, puis « Ton adversaire »)
     await this.tap(ui(`deck.tile-${MY_DECK}`), 0);
@@ -490,7 +497,7 @@ class Tour {
     });
     await media(true);
     try {
-      await this.home();
+      await this.quick();
       await this.page.call(() => document.documentElement.classList.remove('ui-tour-still'));
       if (!(await this.has('.opc.is-reduced-motion'))) throw new Error('mouvements réduits demandés par l’appareil : la classe is-reduced-motion manque');
       await this.tap(ui(`deck.tile-${MY_DECK}`), 0);

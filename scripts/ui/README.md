@@ -53,7 +53,7 @@ Les numéros sont fixes : un écran garde le sien même avec `--only`.
 | Parcours | Écrans |
 |---|---|
 | `accueil` | 01 accueil de « Jouer » (et temps d'ouverture de l'onglet, cache vidé) |
-| `partie` | 02 main de départ · 03 début de mon tour · 04 une carte jouée · 05 une DON!! donnée au Leader · 06 confirmation de fin de tour (s'il reste des actions) · 07 l'IA attaque (blocage ou contre ; on laisse passer) · 08 mon tour suivant · 09 choix de la cible d'une attaque · 10 attaque résolue |
+| `partie` | (lancée depuis « Partie rapide » de l'accueil) 02 main de départ · 03 début de mon tour · 04 une carte jouée · 05 une DON!! donnée au Leader · 06 confirmation de fin de tour (s'il reste des actions) · 07 l'IA attaque (blocage ou contre ; on laisse passer) · 08 mon tour suivant · 09 choix de la cible d'une attaque · 10 attaque résolue |
 | `aventure` | 11 accueil · 12 carte d'East Blue · 13 un chapitre · 14 la Cale · 15 mon deck d'aventure · 16 boutique |
 | `decks` | 17 Mes decks · 18 choix du Leader · 19 éditeur (deck vide, non enregistré) |
 | `parties` | 20 Mes parties (la partie rapide abandonnée y figure si `partie` a été joué) |

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { LEVELS, type Level } from '../ai/search.ts';
 import { replayRecord, type GameRecord, type Replayed } from '../coach/archive.ts';
 import { DECKS } from '../engine/decks.ts';
@@ -6,6 +6,7 @@ import { newGame } from '../engine/engine.ts';
 import type { PlayerId } from '../engine/types.ts';
 import { EndScreen } from './Coach.tsx';
 import { phaseLabel } from './decision.ts';
+import { HelpModal } from './Modals.tsx';
 import { currentRoute, goBack, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
 import { useSettings } from './settings.ts';
 import { SettingsPanel } from './SettingsPanel.tsx';
@@ -47,6 +48,13 @@ export interface ConfiguredGame {
   onLeave: () => void;
 }
 
+// Ce que l'accueil (home/Home.tsx) demande à App
+export interface HomeActions {
+  resume: (saved: GameRecord, replayed: Replayed) => void;
+  help: () => void;
+  settings: () => void;
+}
+
 // Réglages d'une partie enregistrée (reprise, moment revu)
 const configOf = (rec: GameRecord): Config => ({
   myDeck: rec.config.myDeck, aiDeck: rec.config.aiDeck, level: rec.config.level as Level, first: rec.config.first,
@@ -54,13 +62,16 @@ const configOf = (rec: GameRecord): Config => ({
 });
 
 // notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
-// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame)
-export function App({ notice, onImmersive, online, adventure, configured }: {
+// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame) ; home : l'accueil du jeu
+// (home/Home.tsx), montré à la place de l'écran de départ hors de #play/rapide (et sous Mes decks et Mes parties),
+// avec de quoi y reprendre une partie rapide interrompue et ouvrir l'aide et les réglages (ceux de la touche « ? »)
+export function App({ notice, onImmersive, online, adventure, configured, home }: {
   notice?: string;
   onImmersive?: (on: boolean) => void;
   online?: OnlineEntry;
   adventure?: AdventureEntry;
   configured?: ConfiguredGame;
+  home?: (actions: HomeActions) => ReactNode;
 }) {
   const [settings, updateSettings] = useSettings();
   const [config, setConfig] = useState<Config>(() => configured
@@ -187,6 +198,12 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     rec.begin({ state: replayed.final, config: cfg, moves: replayed.moves, reviews: saved.reviews, continues: saved });
   };
 
+  // Partie rapide interrompue, reprise depuis l'accueil (« Continuer ») : à l'adresse de la partie
+  const resumeQuick = (saved: GameRecord, replayed: Replayed) => {
+    resumeInterrupted(saved, replayed);
+    if (routed) navigate({ name: 'jeu' });
+  };
+
   // Partie imposée : lancée (ou reprise) dès l'affichage
   const launched = useRef(false);
   const [launchError, setLaunchError] = useState(false);
@@ -209,8 +226,9 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     }
     return (
       <>
-        <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
-          onSettings={() => table.setSettingsOpen(true)} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
+        {home && route.name !== 'rapide' ? home({ resume: resumeQuick, help: () => setHelp(true), settings: () => table.setSettingsOpen(true) }) : <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
+          onSettings={() => table.setSettingsOpen(true)} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />}
+        {home && route.name !== 'rapide' && help && <HelpModal onClose={() => setHelp(false)} />}
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { showScreen(null); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
         {builder && (
