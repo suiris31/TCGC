@@ -11,6 +11,7 @@ import { GameGain, useGameGain } from '../economy/GameGain.tsx';
 import { LeaveDialog, stop, TableScreen } from '../table/TableScreen.tsx';
 import { useGameKeys } from '../table/useGameKeys.ts';
 import { useTable } from '../table/useTable.ts';
+import { DonLooks } from '../table/DonArt.tsx';
 import { resignMatch, sendChoice, useMatch, type LiveView } from './api.ts';
 import { HoldMark, WaitingRoom } from './WaitingRoom.tsx';
 
@@ -48,7 +49,8 @@ export function OnlineMatch({ id, onLeave }: { id: string; onLeave: () => void }
       </div>
     );
   }
-  return <OnlineBoard view={view} game={view.state} connected={connected} refresh={refresh} onLeave={onLeave} />;
+  // les DON!! de chaque joueur : celles de son deck, dites par le serveur (table/DonArt.tsx)
+  return <DonLooks looks={view.looks}><OnlineBoard view={view} game={view.state} connected={connected} refresh={refresh} onLeave={onLeave} /></DonLooks>;
 }
 
 // ---------- Plateau ----------

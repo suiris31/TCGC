@@ -8,6 +8,7 @@ import { CardView, type CardLook, type Preview } from './CardView.tsx';
 import { cardImage } from './images.ts';
 import type { GestureSource } from './table/gestures.ts';
 import { zoneLabel } from './table/a11y.ts';
+import { DonImg, useDonArt } from './table/DonArt.tsx';
 
 export interface BoardUi {
   looks: Map<number, CardLook>;
@@ -29,17 +30,38 @@ function Pile({ label, count, onClick, top }: { label: string; count: number; on
   );
 }
 
+// Les DON!! d'un joueur : son deck DON!! (la réserve), puis sa zone de Coût, les redressées sur une rangée et les
+// épuisées (tournées) sur une autre ; elles se chevauchent quand il y en a beaucoup. Avec le visuel de la DON!! de son
+// deck (table/DonArt.tsx), sinon des jetons dorés.
 function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me: boolean }) {
   const P = s.players[p];
+  const art = useDonArt(s, p);
   const grab = me && ui.donDraggable && ui.onGrab ? (e: PointerEvent<HTMLElement>) => ui.onGrab!({ from: 'don' }, e) : undefined;
+  const face = art && <DonImg src={art} />;
   return (
-    <div className="don-pool" data-ui="table.don" title={`DON!! : ${P.donActive} redressées (utilisables), ${P.donRested} épuisées, ${P.donDeck} dans le deck DON!!`}>
-      <div className="don-cards">
-        {Array.from({ length: P.donActive }, (_, i) => (
-          <span key={`a${i}`} className={`don-card ${grab ? 'don-drag' : ''}`} onPointerDown={grab} />
-        ))}
-        {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested" />)}
-      </div>
+    <div className={`don-pool ${art ? 'op-don-arts' : ''}`} data-ui="table.don" title={`DON!! : ${P.donActive} redressées (utilisables), ${P.donRested} épuisées, ${P.donDeck} dans le deck DON!!`}>
+      {art ? (
+        <div className="op-don-table">
+          {P.donDeck > 0 && <span className="op-don-deck" aria-hidden="true">{face}<b>{P.donDeck}</b></span>}
+          <div className="op-don-rows">
+            <div className="don-cards op-don-row" style={{ ['--n' as string]: P.donActive }}>
+              {Array.from({ length: P.donActive }, (_, i) => (
+                <span key={`a${i}`} className={`don-card ${grab ? 'don-drag' : ''}`} onPointerDown={grab}>{face}</span>
+              ))}
+            </div>
+            <div className="don-cards op-don-row is-rested" style={{ ['--n' as string]: P.donRested }}>
+              {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested">{face}</span>)}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="don-cards">
+          {Array.from({ length: P.donActive }, (_, i) => (
+            <span key={`a${i}`} className={`don-card ${grab ? 'don-drag' : ''}`} onPointerDown={grab} />
+          ))}
+          {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested" />)}
+        </div>
+      )}
       <div className="don-legend">
         <b>{P.donActive}</b> utilisable{P.donActive > 1 ? 's' : ''}
         {P.donRested > 0 && <> · {P.donRested} épuisée{P.donRested > 1 ? 's' : ''}</>}

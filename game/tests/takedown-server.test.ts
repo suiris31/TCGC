@@ -130,3 +130,27 @@ test('interrupteur : la face dessinée porte le nom, le numéro et la couleur de
     app.close();
   }
 });
+
+test('interrupteur : avec les visuels coupés, la liste des DON!! le dit (le plateau garde ses jetons dorés)', async () => {
+  db.prepare("INSERT INTO cards (product_id, group_id, name, full_name, variant, number) VALUES (434340, 1, 'DON!! Card', 'DON!! Card', NULL, 'DON!!')").run();
+  db.prepare("INSERT INTO cards (product_id, group_id, name, full_name, variant, number) VALUES (482236, 1, 'DON!! Card (Gold)', 'DON!! Card (Gold)', NULL, 'DON!!')").run();
+  const { donRoutes } = await import('../../server/game-don.js' as string);
+  const list = async (images: boolean) => {
+    const app = express();
+    donRoutes(app, { flags: { ...NONE, images } });
+    const listener = app.listen(0, '127.0.0.1');
+    await new Promise((resolve) => listener.once('listening', resolve));
+    try {
+      const res = await fetch(`http://127.0.0.1:${(listener.address() as AddressInfo).port}/api/game/don`);
+      return await res.json() as { dons: { id: string }[]; drawn?: boolean };
+    } finally {
+      listener.close();
+    }
+  };
+  const open = await list(false);
+  assert.deepEqual(open.dons.map((d) => d.id), ['434340', '482236']);
+  assert.equal(open.drawn, undefined, 'visuels servis : pas de champ drawn');
+  const cut = await list(true);
+  assert.deepEqual(cut.dons.map((d) => d.id), ['434340'], 'seule la standard reste proposée');
+  assert.equal(cut.drawn, true);
+});

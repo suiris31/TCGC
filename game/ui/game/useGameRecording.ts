@@ -13,6 +13,7 @@ import { act } from '../../engine/engine.ts';
 import type { GameState, PlayerId } from '../../engine/types.ts';
 import { flushQueue, keepForLater, saveRecord } from '../archiveClient.ts';
 import type { Config } from '../setup/config.ts';
+import { gameLooks } from '../table/donLooks.ts';
 
 // Version du programme enregistrée avec chaque partie
 const ENGINE = typeof __ENGINE__ === 'string' ? __ENGINE__ : 'inconnue';
@@ -71,7 +72,7 @@ export function useGameRecording({ human, mode, onBegin }: { human: PlayerId; mo
       id: r.id, engine: ENGINE, startedAt: r.startedAt, now: new Date().toISOString(), endedAt: r.endedAt,
       config: r.config, human, practice: r.practice, initial: r.initial, current,
       moves: moves.current, reviews: reviews.current, extra: r.extra, undos: r.undos, abandoned,
-      mode: recordMode.current,
+      mode: recordMode.current, looks: gameLooks(current),
     });
     return rec.decisions.length ? rec : null; // quittée avant ton premier choix : rien à garder
   }, [human]);
