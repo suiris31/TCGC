@@ -1,4 +1,4 @@
-// Partie en ligne : salle d'attente (code à transmettre), puis plateau. Le plateau est celui de la partie contre l'IA
+// Partie en ligne : connexion, salle d'attente (code à transmettre, WaitingRoom.tsx) ou salle fermée, puis plateau. Le plateau est celui de la partie contre l'IA
 // (contrôleur commun, game/ui/table/), avec la vue envoyée par le serveur : pas de coach, pas de retour en arrière,
 // pas de marques « sans intérêt » (aides désactivées), et chaque choix part au serveur, qui arbitre. En fin de partie,
 // son gain en Berry (tâche 2.5), sur l'écran de fin commun (end/EndScreen.tsx).
@@ -9,6 +9,7 @@ import { loadSummaries } from '../archiveClient.ts';
 import { navigate, useLeaveGuard } from '../routes.ts';
 import { EndScreen } from '../end/EndScreen.tsx';
 import { GameGain, useGameGain } from '../economy/GameGain.tsx';
+import { AsyncState, Button, Screen } from '../kit/index.ts';
 import { LeaveDialog, TableScreen } from '../table/TableScreen.tsx';
 import { useGameKeys } from '../table/useGameKeys.ts';
 import { useTable } from '../table/useTable.ts';
@@ -32,22 +33,26 @@ async function archivedId(view: LiveView, game: GameState): Promise<string> {
 
 export function OnlineMatch({ id, onLeave }: { id: string; onLeave: () => void }) {
   const { view, connected, error, refresh } = useMatch(id);
+  const back = { label: 'Accueil', onBack: onLeave, 'data-ui': 'room.back' };
   if (!view) {
     return (
-      <div className="setup lobby">
-        {error ? <p className="danger">Impossible d’ouvrir la partie : {error}</p> : <p className="op-muted"><span className="op-spinner" /> Connexion à la partie…</p>}
-        <button className="op-btn op-btn-ghost" onClick={onLeave}>Retour</button>
-      </div>
+      <Screen className="op-lobby" data-ui={error ? 'room.error' : 'room.loading'} title="Jouer avec un ami" back={back}>
+        <AsyncState loading={!error} loadingText="Connexion à la partie…" error={error && `Impossible d’ouvrir la partie : ${error}`} onRetry={refresh} />
+      </Screen>
     );
   }
   if (view.status === 'waiting') return <WaitingRoom view={view} onLeave={onLeave} />;
   if (view.status === 'cancelled' || view.status === 'expired' || !view.state) {
+    const expired = view.status === 'expired';
     return (
-      <div className="setup lobby">
-        <h2>{view.status === 'expired' ? 'La salle a expiré' : 'La salle est fermée'}</h2>
-        <p className="op-muted">Personne ne l’a rejointe à temps. Crée une nouvelle salle et envoie son code à ton ami.</p>
-        <button className="op-btn op-btn-primary" onClick={onLeave}>Retour</button>
-      </div>
+      <Screen className="op-lobby" data-ui="room.closed" title={expired ? 'La salle a expiré' : 'La salle est fermée'} subtitle="Jouer avec un ami" back={back}>
+        <div className="op-lobby-body">
+          <section className="op-lobby-card is-main">
+            <p>{expired ? 'Personne n’est entré dans la salle à temps (15 minutes).' : 'Cette salle a été fermée avant le début de la partie.'} Crée une nouvelle salle et envoie son code à ton ami.</p>
+            <Button variant="primary" size="big" wide onClick={() => navigate({ name: 'ami' }, { replace: true })} data-ui="room.new">Nouvelle partie avec un ami</Button>
+          </section>
+        </div>
+      </Screen>
     );
   }
   // les DON!! de chaque joueur : celles de son deck, dites par le serveur (table/DonArt.tsx)
