@@ -4,10 +4,11 @@ import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { HIDDEN } from '../engine/cards/index.ts';
 import { justPlayed } from './decision.ts';
 import { isTouch } from './device.ts';
-import { cardImage } from './images.ts';
 import { Icon, type IconName } from './kit/index.ts';
 import type { GestureSource } from './table/gestures.ts';
 import { cardLabel } from './table/a11y.ts';
+import { ArtImg, useCardArt } from './table/CardArt.tsx';
+import { cardOwner } from './table/cardArt.ts';
 import { DonImg, useDonArt } from './table/DonArt.tsx';
 
 export interface Preview {
@@ -124,7 +125,10 @@ export const CardView = memo(function CardView({ s, card, owner, size = 'field',
   onHover?: (p: Preview | null) => void;
   onGrab?: (source: GestureSource, e: PointerEvent<HTMLElement>) => void;
 }) {
-  if (hidden || card.num === HIDDEN) return <div className={`card card-${size} card-back`} data-ui="table.card" data-uid={card.uid} />;
+  const back = hidden || card.num === HIDDEN;
+  // visuel : la version choisie pour le deck de son propriétaire (tâche R3.12)
+  const art = useCardArt(s, back ? undefined : owner ?? cardOwner(s, card.uid), card.num);
+  if (back) return <div className={`card card-${size} card-back`} data-ui="table.card" data-uid={card.uid} />;
   const d = def(card.num);
   const f = findField(s, card.uid);
   const rested = f?.card.rested ?? false;
@@ -168,7 +172,7 @@ export const CardView = memo(function CardView({ s, card, owner, size = 'field',
       role={onClick ? 'button' : undefined} tabIndex={onClick ? -1 : undefined} aria-label={label}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover?.({ num: card.num, uid: card.uid, rect: e.currentTarget.getBoundingClientRect() }); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover?.(null); }}>
-      <img src={cardImage(d)} alt={d.name} draggable={false} loading={size === 'small' || size === 'pick' ? 'lazy' : undefined} />
+      <ArtImg art={art} alt={d.name} draggable={false} loading={size === 'small' || size === 'pick' ? 'lazy' : undefined} />
       {p !== null && size !== 'life' && (
         <span className={`badge badge-power ${trend(p, d.power)}`} title={`Puissance actuelle${trendText(p, d.power)}`}><Arrow now={p} base={d.power} />{p}</span>
       )}

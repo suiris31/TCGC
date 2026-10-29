@@ -5,7 +5,8 @@ import { cardStatus, HIDDEN } from '../engine/cards/index.ts';
 import { def, fieldCost, findField, power } from '../engine/rules.ts';
 import type { GameState, Modifier } from '../engine/types.ts';
 import type { Preview } from './CardView.tsx';
-import { cardImage } from './images.ts';
+import { ArtImg, useCardArt } from './table/CardArt.tsx';
+import { cardOwner } from './table/cardArt.ts';
 import { COLOR_LABEL, KEYWORD_LABEL, attributeLabel } from './labels.ts';
 
 export function EffectText({ text }: { text: string }) {
@@ -49,9 +50,11 @@ export function CardDetails({ s, num, uid }: { s?: GameState | null; num: string
   const d = def(num);
   const f = s && uid !== undefined ? findField(s, uid) : null;
   const mods = f && s ? s.mods.filter((m) => m.uid === f.card.uid) : [];
+  // carte d'une partie : la version choisie pour le deck de son propriétaire (tâche R3.12)
+  const art = useCardArt(s, s && uid !== undefined ? cardOwner(s, uid) : undefined, num);
   return (
     <>
-      <img src={cardImage(d)} alt={d.name} />
+      <ArtImg art={art} alt={d.name} />
       <div className="zoom-text">
         <strong className="zoom-name">{d.name}</strong>
         <div className="zoom-meta">

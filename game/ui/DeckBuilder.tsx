@@ -4,7 +4,10 @@
 // sur un écran étroit, catalogue, deck et bilan sont trois onglets ; sur un grand écran, trois colonnes.
 // Mode « cartes de la Cale » (deck d'aventure, HoldMode) : le même éditeur ne propose que les cartes possédées dans la
 // Cale du mode Aventure, au plus min(possédées, 4) par numéro, et enregistre le deck en mode 'aventure'.
+// Visuels du deck (R3.12) : toucher une carte de la liste du deck propose ses versions, « DON!! du deck » la galerie des
+// DON!! (builder/LooksPicker.tsx) ; le choix s'enregistre avec le deck, comme les cartes.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { DeckLooks } from '../data/looks.ts';
 import { CARDS, cardStatus, HIDDEN } from '../engine/cards/index.ts';
 import { anyNumber, DECK_SIZE, formatIssues, MAX_COPIES, playableErrors, type Regulations } from '../engine/deckRules.ts';
 import { deckSize, type DeckList } from '../engine/decks.ts';
@@ -14,6 +17,8 @@ import { chooseAdventureDeck } from './adventure/api.ts';
 import { ApiError, call } from './api.ts';
 import { holdLimit, holdProblems } from './adventure/hold.ts';
 import { fetchHoldState } from './adventure/holdState.ts';
+import { DonPicker, useDonList, VersionPicker } from './builder/LooksPicker.tsx';
+import { artVersions, holdVariants } from './builder/versions.ts';
 import type { Preview } from './CardView.tsx';
 import { CardThumb, CostCurve, DeckStats } from './DeckGuide.tsx';
 import { cardImage } from './images.ts';
@@ -26,13 +31,16 @@ import {
 } from './myDecks.ts';
 import { goUp, navigate, useLayer, useLeaveGuard, useRoute } from './routes.ts';
 import { DeckPicker } from './setup/DeckPicker.tsx';
+import { ArtImg, versionArt } from './table/CardArt.tsx';
 
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
-export interface Draft { id: string; name: string; leader: string; cards: Record<string, number> }
+// looks : visuels choisis (absent : ceux du deck enregistré, lus à l'ouverture de l'éditeur)
+export interface Draft { id: string; name: string; leader: string; cards: Record<string, number>; looks?: DeckLooks }
 
 // Mode « cartes de la Cale » : l'éditeur d'un deck d'aventure
 export interface HoldMode {
   hold: Record<string, number>;               // cartes de la Cale par numéro, toutes versions confondues (holdByNumber)
+  variants?: Record<string, Record<string, number>>;  // exemplaires de chaque version (holdVariants) : visuels permis
   chosen: string | null;                      // deck d'aventure choisi à l'ouverture de l'éditeur
   // choisir ce deck pour l'aventure ; renvoie le deck choisi (une erreur est montrée telle quelle)
   onChoose: (id: string) => Promise<string | null>;
@@ -40,8 +48,8 @@ export interface HoldMode {
 
 // Mode « cartes de la Cale », lu sur le serveur (pour ouvrir un deck d'aventure depuis « Mes decks »)
 export async function loadHoldMode(): Promise<HoldMode> {
-  const { byNumber, adventure } = await fetchHoldState();
-  return { hold: byNumber, chosen: adventure.deckId, onChoose: async (id) => (await chooseAdventureDeck(id)).deckId };
+  const { cards, byNumber, adventure } = await fetchHoldState();
+  return { hold: byNumber, variants: holdVariants(cards), chosen: adventure.deckId, onChoose: async (id) => (await chooseAdventureDeck(id)).deckId };
 }
 
 const COLOR_HEX: Record<string, string> = { Red: '#d9443a', Green: '#2f9e5b', Blue: '#2f6fd1', Purple: '#8a4fc9', Yellow: '#e2b623', Black: '#55556a' };
@@ -74,7 +82,7 @@ function useRegulations(): Regulations {
 // Nom d'une copie : « (copie) » reste visible même quand le nom d'origine est long (40 caractères au plus)
 export const copyName = (name: string) => `${name.slice(0, 32).trimEnd()} (copie)`;
 
-const draftOf = (d: MyDeck): Draft => ({ id: d.id, name: d.name, leader: d.leader, cards: { ...d.cards } });
+const draftOf = (d: MyDeck): Draft => ({ id: d.id, name: d.name, leader: d.leader, cards: { ...d.cards }, looks: d.looks ?? {} });
 
 // Mes decks (#play/decks) : une fenêtre du kit avec mes decks (le même sélecteur que pour jouer) ; un deck s'ouvre dans
 // l'éditeur à sa propre adresse (#play/decks/<id>) : le Retour revient à la liste. Un deck neuf n'a son adresse que
@@ -126,8 +134,8 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
   const copy = (id: string) => {
     setCopying(false);
     const src = deckInfo(id);
-    // la copie d'un deck d'aventure est un deck libre (toutes les cartes)
-    if (src) open({ id: newDeckId(), name: copyName(src.name), leader: src.leader, cards: { ...src.cards } }, true);
+    // la copie d'un deck d'aventure est un deck libre (toutes les cartes), avec les mêmes visuels
+    if (src) open({ id: newDeckId(), name: copyName(src.name), leader: src.leader, cards: { ...src.cards }, looks: (src as MyDeck).looks ?? {} }, true);
   };
 
   if (editing) {
@@ -250,7 +258,10 @@ type SaveState = 'saved' | 'saving' | 'pending' | 'error';
 export function DeckEditor({ initial, existing, hold, layered = false, onBack, onHover, onPlay }: {
   initial: Draft; existing: boolean; hold?: HoldMode; layered?: boolean; onBack: () => void; onHover: Hover; onPlay?: (id: string) => void;
 }) {
-  const [draft, setDraft] = useState<Draft>(initial);
+  // visuels : ceux du brouillon, sinon ceux du deck enregistré (l'éditeur du deck d'aventure ne les donne pas)
+  const [draft, setDraft] = useState<Draft>(() => ({ ...initial, looks: initial.looks ?? (deckInfo(initial.id) as MyDeck | undefined)?.looks ?? {} }));
+  const [artOf, setArtOf] = useState<string | null>(null);   // carte dont on choisit la version
+  const [donOpen, setDonOpen] = useState(false);
   const [pane, setPane] = useState<Pane>(Object.keys(initial.cards).length ? 'deck' : 'cards');
   const [save, setSaveState] = useState<SaveState>('pending');
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -385,6 +396,9 @@ export function DeckEditor({ initial, existing, hold, layered = false, onBack, o
     hold.onChoose(draft.id).then((id) => { setChosen(id); setChoosing(null); }, (e: Error) => setChoosing(e.message));
   };
   const isChosen = Boolean(hold) && chosen === draft.id;
+  const looks = draft.looks ?? {};
+  const setArt = (num: string, variant: string) => setDraft((d) => ({ ...d, looks: { ...d.looks, arts: { ...d.looks?.arts, [num]: variant } } }));
+  const setDon = (id: string | undefined) => setDraft((d) => ({ ...d, looks: { ...d.looks, don: id } }));
   const pickLeader = (leader: string) => {
     setChangeLeader(false);
     setDraft((d) => ({ ...d, leader, cards: Object.fromEntries(Object.entries(d.cards).filter(([n]) => fits(leader, n))) }));
@@ -415,7 +429,7 @@ export function DeckEditor({ initial, existing, hold, layered = false, onBack, o
         </header>
         <div className="db-summary">
           <span onClick={() => setChangeLeader(true)} className="db-leader-mini" title="Changer de Leader">
-            <CardThumb num={draft.leader} size="mini" onHover={onHover} />
+            <DeckThumb num={draft.leader} variant={looks.arts?.[draft.leader]} onHover={onHover} />
           </span>
           <div className="db-summary-text">
             <strong>{L.name}</strong>
@@ -447,7 +461,9 @@ export function DeckEditor({ initial, existing, hold, layered = false, onBack, o
             <CardBrowser leader={draft.leader} cards={draft.cards} full={size >= DECK_SIZE} owned={owned} hold={hold?.hold} limit={limit} onAdd={add} onHover={onHover} />
           </section>
           <section className={`db-pane ${pane === 'deck' ? 'on' : ''}`}>
-            <DeckContents cards={draft.cards} owned={owned} inHold={Boolean(hold)} limit={limit} onAdd={add} onHover={onHover} full={size >= DECK_SIZE} />
+            <DeckLooksBar leader={draft.leader} looks={looks} onArt={setArtOf} onDon={() => setDonOpen(true)} onHover={onHover} />
+            <DeckContents cards={draft.cards} owned={owned} inHold={Boolean(hold)} limit={limit} onAdd={add} onHover={onHover} full={size >= DECK_SIZE}
+              looks={looks} onArt={setArtOf} />
           </section>
           <section className={`db-pane ${pane === 'check' ? 'on' : ''}`}>
             <DeckCheck draft={draft} errors={rules} official={official} holdIssues={hold ? holdIssues : undefined} />
@@ -460,6 +476,11 @@ export function DeckEditor({ initial, existing, hold, layered = false, onBack, o
             </div>
           </section>
         </div>
+        {artOf && (
+          <VersionPicker num={artOf} chosen={looks.arts?.[artOf]} owned={hold ? hold.variants?.[artOf] ?? {} : undefined} adventure={Boolean(hold)}
+            onPick={(v) => setArt(artOf, v)} onClose={() => setArtOf(null)} />
+        )}
+        {donOpen && <DonPicker chosen={looks.don} onPick={setDon} onClose={() => setDonOpen(false)} />}
         {changeLeader && <LeaderPicker onClose={() => setChangeLeader(false)} onPick={pickLeader} onHover={onHover} only={hold?.hold} />}
         {leaving === 'ask' && (
           <Dialog title="Ce deck n’est pas enregistré" alert size="small" onClose={() => setLeaving(null)} history={false} data-ui="editor.unsaved"
@@ -552,9 +573,55 @@ function CardBrowser({ leader, cards, full, owned, hold, limit: copies, onAdd, o
   );
 }
 
-function DeckContents({ cards, owned, inHold, limit, onAdd, onHover, full }: {
+// Petite image d'une carte du deck dans sa version choisie (survol : le détail de la carte)
+function DeckThumb({ num, variant, onHover }: { num: string; variant: string | undefined; onHover: Hover }) {
+  return (
+    <span className="thumb thumb-mini op-db-thumb"
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') onHover({ num, rect: e.currentTarget.getBoundingClientRect() }); }}
+      onPointerLeave={(e) => { if (e.pointerType === 'mouse') onHover(null); }}>
+      <ArtImg art={versionArt(num, variant)} alt={def(num).name} draggable={false} />
+    </span>
+  );
+}
+
+// Image d'une carte du deck : un bouton qui propose ses versions quand elle en a plusieurs (sinon la vignette habituelle)
+function ArtThumb({ num, looks, onArt, onHover }: { num: string; looks: DeckLooks; onArt: (num: string) => void; onHover: Hover }) {
+  const count = artVersions(num, CARDS[num]).length;
+  if (count < 2) return <CardThumb num={num} size="mini" onHover={onHover} />;
+  return (
+    <button className="op-db-art" data-ui="editor.art" onClick={() => { onHover(null); onArt(num); }}
+      aria-label={`Choisir la version de ${def(num).name} (${count} versions)`} title={`${count} versions : touche pour choisir`}>
+      <DeckThumb num={num} variant={looks.arts?.[num]} onHover={onHover} />
+      <span className="op-db-art-badge" aria-hidden="true">🎨{count}</span>
+    </button>
+  );
+}
+
+// Visuels du deck, en tête de sa liste : la version du Leader et la DON!! du deck
+function DeckLooksBar({ leader, looks, onArt, onDon, onHover }: {
+  leader: string; looks: DeckLooks; onArt: (num: string) => void; onDon: () => void; onHover: Hover;
+}) {
+  const dons = useDonList();
+  const don = dons?.list.find((x) => x.id === looks.don) ?? dons?.list[0];
+  const several = artVersions(leader, CARDS[leader]).length > 1;
+  return (
+    <div className="op-db-looks">
+      <div className="op-db-looks-item">
+        <ArtThumb num={leader} looks={looks} onArt={onArt} onHover={onHover} />
+        <span className="op-small">Leader<br /><span className="op-muted">{several ? 'touche pour la version' : 'une seule version'}</span></span>
+      </div>
+      <button className="op-db-looks-item op-db-don" data-ui="editor.don" onClick={onDon}>
+        <span className="op-db-don-img">{don && !dons?.drawn ? <img src={`${import.meta.env.BASE_URL}${don.imageUrl}`} alt="" draggable={false} /> : <span className="op-db-don-token" />}</span>
+        <span className="op-small">DON!! du deck<br /><span className="op-muted">{looks.don && don ? don.label : 'Standard'}</span></span>
+      </button>
+    </div>
+  );
+}
+
+// looks, onArt : visuels choisis ; toucher une carte qui a plusieurs versions les propose
+function DeckContents({ cards, owned, inHold, limit, onAdd, onHover, full, looks, onArt }: {
   cards: Record<string, number>; owned: Record<string, number> | null; inHold: boolean; limit: (d: CardDef) => number;
-  onAdd: (num: string, delta: number) => void; onHover: Hover; full: boolean;
+  onAdd: (num: string, delta: number) => void; onHover: Hover; full: boolean; looks: DeckLooks; onArt: (num: string) => void;
 }) {
   const list = Object.entries(cards).map(([num, n]) => ({ num, n, d: def(num) }));
   if (!list.length) return <p className="op-muted db-empty">Ton deck est vide : ajoute des cartes depuis l’onglet « Ajouter des cartes ».</p>;
@@ -568,7 +635,7 @@ function DeckContents({ cards, owned, inHold, limit, onAdd, onHover, full }: {
             <h3>{label} ({group.reduce((s, c) => s + c.n, 0)})</h3>
             {group.map(({ num, n, d }) => (
               <div key={num} className="db-line">
-                <CardThumb num={num} size="mini" onHover={onHover} />
+                <ArtThumb num={num} looks={looks} onArt={onArt} onHover={onHover} />
                 <div className="db-line-text">
                   <span>{d.name}</span>
                   <span className="op-small op-muted">{num} · coût {d.cost ?? 0}{d.power !== null ? ` · ${d.power}` : ''}{d.counter ? ` · Contre +${d.counter}` : ''}

@@ -5,10 +5,11 @@ import { def, findField } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { tableEvents, type LeftTo } from './table/events.ts';
 import { sfx } from './sound.ts';
-import { cardImage } from './images.ts';
+import { ArtImg, useCardArt } from './table/CardArt.tsx';
+import { cardOwner } from './table/cardArt.ts';
 import { useReducedMotion } from './settings.ts';
 
-interface Ghost { id: number; num: string; rect: DOMRect; label: string }
+interface Ghost { id: number; num: string; owner?: PlayerId; rect: DOMRect; label: string }
 interface Float { id: number; x: number; y: number; text: string; kind: 'good' | 'bad' | 'don' | 'info' }
 interface Tick { id: number; who: string; mine: boolean; text: string }
 interface Arrow { x1: number; y1: number; x2: number; y2: number; mine: boolean }
@@ -54,7 +55,7 @@ export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: Gam
   const [ticks, setTicks] = useState<Tick[]>([]);
   const [arrow, setArrow] = useState<Arrow | null>(null);
   const [banner, setBanner] = useState<{ id: number; text: string; sub: string; mine: boolean } | null>(null);
-  const [spot, setSpot] = useState<{ id: number; num: string; caption: string } | null>(null);
+  const [spot, setSpot] = useState<{ id: number; num: string; owner: PlayerId; caption: string } | null>(null);
   const [band, setBand] = useState<DOMRect | null>(null);
 
   const later = (fn: () => void, ms: number) => setTimeout(fn, ms);
@@ -79,7 +80,7 @@ export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: Gam
           case 'left': {
             const r = old.get(e.uid);
             if (!r) break;
-            newGhosts.push({ id: nextId++, num: e.num, rect: r, label: LEFT_LABEL[e.to] });
+            newGhosts.push({ id: nextId++, num: e.num, owner: cardOwner(b, e.uid) ?? cardOwner(a, e.uid), rect: r, label: LEFT_LABEL[e.to] });
             sound = 'ko';
             break;
           }
@@ -122,7 +123,7 @@ export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: Gam
           case 'activate': {
             const id = nextId++;
             const who = e.player === human ? 'Tu actives' : `${b.players[e.player].name} active`;
-            setSpot({ id, num: e.num, caption: `${who} ${ACTIVATE_LABEL[e.timing]}` });
+            setSpot({ id, num: e.num, owner: e.player, caption: `${who} ${ACTIVATE_LABEL[e.timing]}` });
             later(() => setSpot((x) => (x?.id === id ? null : x)), 1700);
             sound = 'event';
             break;
@@ -196,7 +197,7 @@ export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: Gam
       )}
       {ghosts.map((g) => (
         <div key={g.id} className={`fx-ghost ${g.label === 'KO' ? 'ghost-ko' : 'ghost-leave'}`} style={{ left: g.rect.left, top: g.rect.top, width: g.rect.width, height: g.rect.height }}>
-          <img src={cardImage(def(g.num))} alt="" />
+          <FxArt s={game} owner={g.owner} num={g.num} />
           <span className="ghost-label">{g.label}</span>
         </div>
       ))}
@@ -217,13 +218,18 @@ export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: Gam
       )}
       {spot && (
         <div key={spot.id} className="fx-spot">
-          <img src={cardImage(def(spot.num))} alt="" />
+          <FxArt s={game} owner={spot.owner} num={spot.num} />
           <span>{spot.caption}</span>
         </div>
       )}
     </div>
   );
 });
+
+// Visuel d'une carte animée : la version choisie pour le deck de son propriétaire (tâche R3.12)
+function FxArt({ s, owner, num }: { s: GameState; owner: PlayerId | undefined; num: string }) {
+  return <ArtImg art={useCardArt(s, owner, num)} alt="" />;
+}
 
 // Présentation de la partie : les deux Leaders face à face
 // Appelle onDone après un délai, une seule fois (même si le composant est redessiné entre-temps)
@@ -242,9 +248,9 @@ export function Intro({ s, onDone }: { s: GameState; onDone: () => void }) {
   const [a, b] = s.players;
   return (
     <div className="intro" data-ui="table.intro" onClick={onDone}>
-      <div className="intro-side intro-left"><img src={cardImage(def(a.leader.num))} alt="" /><span>{a.name}</span></div>
+      <div className="intro-side intro-left"><FxArt s={s} owner={0} num={a.leader.num} /><span>{a.name}</span></div>
       <div className="intro-vs">VS</div>
-      <div className="intro-side intro-right"><img src={cardImage(def(b.leader.num))} alt="" /><span>{b.name}</span></div>
+      <div className="intro-side intro-right"><FxArt s={s} owner={1} num={b.leader.num} /><span>{b.name}</span></div>
     </div>
   );
 }

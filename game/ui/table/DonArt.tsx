@@ -17,6 +17,10 @@ export function DonLooks({ looks, children }: { looks: SeatLooks | undefined; ch
   return <GivenLooks.Provider value={looks ?? NO_LOOKS}>{children}</GivenLooks.Provider>;
 }
 
+// Visuels donnés par le serveur (partie en ligne) ; null hors de <DonLooks> : ceux de mes decks. Lu aussi pour les
+// versions des cartes (table/CardArt.tsx)
+export const useGivenLooks = () => useContext(GivenLooks);
+
 // ---------- Liste des DON!! (lue une fois) et images qui n'ont pas pu se charger ----------
 
 let catalog: DonCatalog | null = null;

@@ -140,3 +140,32 @@
 /* cibles au doigt : boutons − et + des cartes, lien vers Mes decks (44 px) */
 .db-card-btns .icon-btn, .db-line-btns .icon-btn { min-height: 44px; min-width: 44px; }
 .deck-mine-note .op-link { display: inline-flex; align-items: center; min-height: 44px; }
+/* Visuels d'un deck (R3.12) : version de chaque carte et DON!! du deck (builder/LooksPicker.tsx) */
+.op-db-looks { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.6rem; }
+.op-db-looks-item { display: flex; align-items: center; gap: 0.6rem; flex: 1 1 12rem; min-height: 44px; padding: 0.4rem 0.6rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); color: var(--text); text-align: left; font: inherit; }
+.op-db-don { cursor: pointer; }
+@media (hover: hover) { .op-db-don:hover { border-color: var(--accent); } }
+.op-db-don-img { flex-shrink: 0; width: 3.6rem; aspect-ratio: 63 / 88; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 3px 8px var(--black-a45); }
+.op-db-don-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.op-db-don-token { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, var(--don-light), var(--don-mid) 55%, var(--don-dark)); }
+.op-db-thumb { display: block; }
+.op-db-art { position: relative; flex-shrink: 0; padding: 0; border: 0; background: none; border-radius: 0.5rem; cursor: pointer; }
+.op-db-art .thumb { cursor: pointer; }
+.op-db-art:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-db-art-badge { position: absolute; right: 0.15rem; bottom: 0.15rem; padding: 0 0.3rem; border-radius: 0.4rem; background: var(--ink-a92); color: var(--accent); font-size: 0.75rem; font-weight: 800; line-height: 1.5; pointer-events: none; }
+/* une hauteur maximale absolue : celle du kit (min(88vh, 100%)) ne limite pas la rangée de sa grille, et une galerie
+   très haute (224 DON!!) sortait de l'écran sur ordinateur */
+.opc .op-kit-layer:not(.is-sheet) .op-kit-dialog.op-looks { max-height: 88vh; }
+.op-looks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 0.6rem; }
+.op-looks-grid.is-don { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); }
+.op-looks-item { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.35rem; border-radius: 10px; background: var(--surface); border: 2px solid var(--line); color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: border-color var(--dur-fast), transform var(--dur-fast); }
+.op-looks-item img { width: 100%; aspect-ratio: 63 / 88; object-fit: cover; border-radius: 6px; background: var(--bg-2); }
+@media (hover: hover) { .op-looks-item:not(:disabled):hover { border-color: var(--accent-a60); transform: translateY(-2px); } }
+.op-looks-item.is-on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-a35); }
+.op-looks-item.is-missing { cursor: not-allowed; opacity: 0.55; }
+.op-looks-item.is-missing img { filter: grayscale(1); }
+.op-looks-name { font-size: 0.85rem; font-weight: 700; }
+.op-looks-note { font-size: 0.75rem; color: var(--muted); }
+.op-looks-item.is-missing .op-looks-note { color: var(--text); font-style: italic; }
+:where(.opc.is-compact) .op-looks-grid { grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr)); gap: 0.45rem; }
+:where(.opc.is-compact) .op-looks-grid.is-don { grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr)); }
