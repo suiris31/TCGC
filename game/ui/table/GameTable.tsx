@@ -7,6 +7,7 @@
 // Sur ordinateur (op-wide), les camps sont en miroir : les Personnages côté centre, et chaque main dans la rangée
 // du fond de son camp ; la bande centrale montre le combat, la prévision d'attaque et le dernier coup de l'adversaire.
 import { useMemo, type ReactNode } from 'react';
+import { playerNames, sayLog } from '../../coach/logText.ts';
 import { other } from '../../engine/rules.ts';
 import type { GameState, PlayerId } from '../../engine/types.ts';
 import { Hand, OpponentHand, PlayerZone, type BoardUi } from '../Board.tsx';
@@ -32,7 +33,8 @@ export function GameTable({ state, seat, ui = READ_ONLY, epoch = 0, top, alert, 
 }) {
   const opp = other(seat);
   const wide = !useDevice().compact;
-  const move = wide && !state.battle && state.winner === null && shownMove === undefined ? lastMove(state, seat) : null;
+  const last = wide && !state.battle && state.winner === null && shownMove === undefined ? lastMove(state, seat) : null;
+  const move = last === null ? null : sayLog({ player: opp, text: last }, seat, playerNames(state));
   // les mains, mémorisées : passées aux zones (memo), elles ne les font pas redessiner à chaque rendu de l'écran
   const oppHand = useMemo(() => <OpponentHand s={state} p={opp} />, [state, opp]);
   const myHand = useMemo(() => <Hand s={state} p={seat} ui={ui} />, [state, seat, ui]);
@@ -48,7 +50,7 @@ export function GameTable({ state, seat, ui = READ_ONLY, epoch = 0, top, alert, 
         {state.winner === null && shownMove}
         {move && (
           <div className="op-last-move" data-ui="table.last-move">
-            <b>{state.players[opp].name}</b> {move}
+            <b>{move.who}</b> {move.text}
           </div>
         )}
       </div>

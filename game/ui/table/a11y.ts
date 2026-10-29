@@ -4,6 +4,7 @@
 // Les fonctions pures sont testées par game/tests/a11y.test.ts ; useBoardFocus et useAnnouncement les branchent sur
 // le plateau (TableScreen).
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
+import { playerNames, sayLogLine, sayReason } from '../../coach/logText.ts';
 import { name, power } from '../../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../../engine/types.ts';
 import type { CardLook } from '../CardView.tsx';
@@ -239,7 +240,7 @@ export function newLogLines(prev: GameState | null, next: GameState, seat: Playe
   if (!prev || next.log.length <= prev.log.length) return [];
   return next.log.slice(prev.log.length)
     .filter((l) => l.only === undefined || l.only === seat)
-    .map((l) => (l.player === null ? l.text : `${next.players[l.player].name} ${l.text}`))
+    .map((l) => sayLogLine(l, seat, playerNames(next)))
     .slice(-max);
 }
 
@@ -253,7 +254,7 @@ export interface PromptInput {
 
 // Qui doit faire quoi, en une phrase (la barre d'action dit la même chose, avec ses boutons)
 export function promptText({ state: s, seat, opponent, targeting, preview }: PromptInput): string {
-  if (s.winner !== null) return `${s.winner === seat ? 'Victoire !' : 'Défaite.'}${s.winReason ? ` ${s.winReason}` : ''}`;
+  if (s.winner !== null) return `${s.winner === seat ? 'Victoire !' : 'Défaite.'}${s.winReason ? ` ${sayReason(s, seat)}` : ''}`;
   const d = s.decision;
   if (!d || d.player !== seat) return `${opponent} joue.`;
   if (targeting) {

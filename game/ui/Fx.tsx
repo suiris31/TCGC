@@ -1,6 +1,7 @@
 // Effets visuels et sonores : à chaque changement de la partie, on compare l'avant et l'après pour montrer ce qui
 // s'est passé (carte jouée, KO, Vie perdue, bonus de puissance, DON!! données, attaque, Événement, début de tour).
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { playerNames, sayLog } from '../coach/logText.ts';
 import { def, findField } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import { tableEvents, type LeftTo } from './table/events.ts';
@@ -11,7 +12,7 @@ import { useReducedMotion } from './settings.ts';
 
 interface Ghost { id: number; num: string; owner?: PlayerId; rect: DOMRect; label: string }
 interface Float { id: number; x: number; y: number; text: string; kind: 'good' | 'bad' | 'don' | 'info' }
-interface Tick { id: number; who: string; mine: boolean; text: string }
+interface Tick { id: number; who: string | null; mine: boolean; text: string }
 interface Arrow { x1: number; y1: number; x2: number; y2: number; mine: boolean }
 
 let nextId = 1;
@@ -138,14 +139,14 @@ export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: Gam
           }
         }
       }
-      // fil des annonces : les phrases du journal qui disent une action (le journal reste le texte du moteur ; les
-      // effets ci-dessus ne le lisent pas)
+      // fil des annonces : les phrases du journal qui disent une action, à la deuxième personne (coach/logText.ts ; le
+      // journal reste le texte du moteur, les effets ci-dessus ne le lisent pas)
       const fresh = b.log.length >= a.log.length ? b.log.slice(a.log.length) : [];
       const newTicks: Tick[] = [];
       for (const l of fresh) {
         if (l.only !== undefined && l.only !== human) continue;
         if (l.player === null) continue;
-        if (TICK.test(l.text)) newTicks.push({ id: nextId++, who: b.players[l.player].name, mine: l.player === human, text: l.text });
+        if (TICK.test(l.text)) newTicks.push({ id: nextId++, mine: l.player === human, ...sayLog(l, human, playerNames(b)) });
       }
       if (newTicks.length) {
         const kept = newTicks.slice(-3);
@@ -207,7 +208,7 @@ export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: Gam
         <div className={band.width < 600 ? 'fx-ticker ticker-narrow' : 'fx-ticker'} style={band.width < 600
           ? { left: band.left + 6, right: window.innerWidth - band.right + 6, top: band.top + 2, maxHeight: Math.max(48, band.height * 0.42) }
           : { right: window.innerWidth - band.right + 8, top: band.top + 4, maxHeight: band.height - 8, width: Math.min(360, band.width * 0.3) }}>
-          {ticks.map((t) => <div key={t.id} className={`tick ${t.mine ? 'tick-me' : 'tick-opp'}`}><b className="tick-who">{t.who}</b> {t.text}</div>)}
+          {ticks.map((t) => <div key={t.id} className={`tick ${t.mine ? 'tick-me' : 'tick-opp'}`}>{t.who && <><b className="tick-who">{t.who}</b> </>}{t.text}</div>)}
         </div>
       )}
       {banner && (

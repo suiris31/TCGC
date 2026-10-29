@@ -3,6 +3,7 @@
 // Le mode (contre l'IA, en ligne, atelier ; le classé à l'étape 3) donne le contrôleur (useTable) et remplit les
 // emplacements : ce qui est écrit dans l'en-tête, l'onglet Coach, les bandeaux, la fin de partie, « Quitter ».
 import { useRef, type ReactNode } from 'react';
+import { sayReason } from '../../coach/logText.ts';
 import { def, findField, power } from '../../engine/rules.ts';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { Celebration, Intro } from '../Fx.tsx';
@@ -68,7 +69,7 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
     </div>
   ) : reopenEnd && table.over && !table.celebrate && !table.showEnd ? (
     <div className="action-bar">
-      <div className="bar-text"><strong>{won ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{s.winReason}</span></div>
+      <div className="bar-text"><strong>{won ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{sayReason(s, board.seat)}</span></div>
       <div className="bar-buttons">
         <button data-ui="table.reopen-end" className="op-btn op-btn-primary" onClick={() => table.setShowEnd(true)}>Voir le résultat</button>
       </div>

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { LEVELS, type Level } from '../ai/search.ts';
 import { playMode, replayRecord, type GameRecord, type GameSummary, type PlayMode } from '../coach/archive.ts';
+import { sayLog, sayText } from '../coach/logText.ts';
 import { progress, type Axis, type Group, type Period, type Progress } from '../coach/progress.ts';
 import { buildRecap, MISTAKE, type Recap } from '../coach/review.ts';
 import { def } from '../engine/rules.ts';
@@ -489,7 +490,7 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
       <div className="detail-head">
         <h3>{deckName(rec.config.myDeck)} {holdMine(rec) && <HoldMark />} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} {rec.opponentHoldDeck && <HoldMark />} <span className="op-small op-muted">· {against}</span></h3>
         <p>
-          <span className={cls}>{label}</span>{rec.winReason ? ` · ${rec.winReason}` : ''} · {plural(rec.turns, 'tour')} · {minutesText((Date.parse(end) - Date.parse(rec.startedAt)) / 60000)}
+          <span className={cls}>{label}</span>{rec.winReason ? ` · ${sayText(rec.winReason, rec.human, names)}` : ''} · {plural(rec.turns, 'tour')} · {minutesText((Date.parse(end) - Date.parse(rec.startedAt)) / 60000)}
           {' · '}{rec.wentFirst ? 'tu commençais' : `${oppName} commençait`}
         </p>
         <p className="op-small op-muted">
@@ -519,12 +520,15 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
       <details className="detail-log">
         <summary>Journal complet de la partie ({rec.log.length} lignes)</summary>
         <ol className="log-lines">
-          {rec.log.filter((l) => l.only === undefined || l.only === rec.human).map((l, i, all) => (
-            <li key={i} className={l.player === rec.human ? 'log-me' : l.player === null ? 'log-sys' : 'log-opp'}>
-              {(i === 0 || all[i - 1].turn !== l.turn) && <span className="log-turn">Tour {l.turn}</span>}
-              {l.player !== null && <b>{names[l.player]} </b>}{l.text}
-            </li>
-          ))}
+          {rec.log.filter((l) => l.only === undefined || l.only === rec.human).map((l, i, all) => {
+            const said = sayLog(l, rec.human, names);
+            return (
+              <li key={i} className={l.player === rec.human ? 'log-me' : l.player === null ? 'log-sys' : 'log-opp'}>
+                {(i === 0 || all[i - 1].turn !== l.turn) && <span className="log-turn">Tour {l.turn}</span>}
+                {said.who && <b>{said.who} </b>}{said.text}
+              </li>
+            );
+          })}
         </ol>
       </details>
       <p className="op-small op-muted">Partie {rec.id} · version {rec.engine}</p>
