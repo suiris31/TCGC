@@ -1,0 +1,16 @@
+/* Rythme de l'IA (R2.10) : la bande de ses dernières décisions (‹ 2/5 ›), le bouton de pause de l'en-tête et la barre
+   d'action pendant la pause (table/AiPace.tsx) */
+.op-ai-moves.has-nav { display: flex; align-items: center; gap: var(--space-1); padding-top: 0; padding-bottom: 0; padding-left: var(--space-1); }
+.op-ai-move { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.op-ai-count { flex-shrink: 0; font-size: 0.857rem; font-variant-numeric: tabular-nums; }
+.op-ai-nav {
+  flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: var(--radius-s);
+  background: transparent; color: var(--text); font-size: 1.286rem; line-height: 1; cursor: pointer;
+}
+.op-ai-nav:hover:not(:disabled) { background: var(--blue-a22); }
+.op-ai-nav:disabled { opacity: 0.35; cursor: default; }
+/* en pause, le bouton « Reprendre » de l'en-tête se voit */
+.icon-btn.icon-paused { border-color: var(--warn); color: var(--warn); }
+.op-paused-bar { border-top-color: var(--warn); }
+/* téléphone : la bande (montrée en pause seulement) prend toute la largeur */
+:where(.opc.is-compact) .op-ai-moves { max-width: 100%; width: 100%; margin: 0; }

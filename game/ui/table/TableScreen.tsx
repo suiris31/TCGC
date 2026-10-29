@@ -30,6 +30,8 @@ export interface TableScreenProps {
   sideNote?: ReactNode;          // une note en bas du panneau
   alert?: ReactNode;             // bandeau d'alerte sous l'en-tête
   center?: ReactNode;            // bandeau au centre du plateau
+  lastMove?: ReactNode;          // le dernier coup de l'adversaire, au centre (sinon : lu dans le journal, sur ordinateur)
+  bar?: ReactNode;               // une barre à la place de la barre d'action (l'IA en pause)
   hint?: { state: 'idle' | 'loading' | 'ready'; ask: () => void };  // bouton « Conseil » de la barre d'action
   sending?: boolean;             // ton choix est parti, la réponse est attendue (en ligne) : « Envoi… »
   reopenEnd?: boolean;           // après « Voir le plateau », la barre propose « Voir le résultat » (tous les modes)
@@ -38,7 +40,7 @@ export interface TableScreenProps {
   leave?: ReactNode;             // la fenêtre « Quitter la partie ? », quand elle est ouverte (LeaveDialog)
 }
 
-export function TableScreen({ table, opponent, thinking, top, decks, coach, sideNote, alert, center, hint, sending, reopenEnd, celebration, end, leave }: TableScreenProps) {
+export function TableScreen({ table, opponent, thinking, top, decks, coach, sideNote, alert, center, lastMove, bar: barSlot, hint, sending, reopenEnd, celebration, end, leave }: TableScreenProps) {
   const { board } = table;
   // au clavier : les flèches dans une zone, Tab d'une zone à l'autre ; la consigne et les actions jouées sont lues
   const root = useRef<HTMLDivElement>(null);
@@ -71,7 +73,7 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
         <button data-ui="table.reopen-end" className="op-btn op-btn-primary" onClick={() => table.setShowEnd(true)}>Voir le résultat</button>
       </div>
     </div>
-  ) : (
+  ) : barSlot ?? (
     <ActionBar
       s={s}
       d={s.decision}
@@ -96,7 +98,7 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
   return (
     <div className={folded ? 'game op-side-collapsed' : 'game'} data-ui="table" ref={root}>
       <div className="op-sr-only" aria-live="polite" aria-atomic="true" data-ui="table.live">{announcement}</div>
-      <GameTable state={s} seat={board.seat} ui={board.ui} epoch={table.epoch} alert={alert} center={<>{aim}{center}</>} bar={bar}
+      <GameTable state={s} seat={board.seat} ui={board.ui} epoch={table.epoch} alert={alert} center={<>{aim}{center}</>} bar={bar} lastMove={lastMove}
         top={<TopBar table={table} {...top} guideDeck={decks.mine} theirs={decks.theirsName} coach={Boolean(coach)} />} />
       <SidePanel table={table} coach={coach} footer={sideNote} collapsed={folded} onCollapse={board.compact ? undefined : setCollapsed} />
       <DecisionLayer board={board} />
