@@ -9,7 +9,8 @@
 }
 .op-ai-nav:hover:not(:disabled) { background: var(--blue-a22); }
 .op-ai-nav:disabled { opacity: 0.35; cursor: default; }
-/* en pause, le bouton « Reprendre » de l'en-tête se voit */
+/* pendant la pause, le bouton « Reprendre » de l’en-tête se voit (sa taille est celle des autres boutons de l’en-tête :
+   44 px sur téléphone ; sur ordinateur, plus grand, il ferait grandir l’en-tête à chaque tour de l’IA) */
 .icon-btn.icon-paused { border-color: var(--warn); color: var(--warn); }
 .op-paused-bar { border-top-color: var(--warn); }
 /* téléphone : la bande (montrée en pause seulement) prend toute la largeur */
