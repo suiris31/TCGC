@@ -16,6 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser } from './cdp.mjs';
 import { compare } from './compare.mjs';
+import { COMPLETE_PARCOURS, COMPLETE_SCREENS, installComplete } from './complet.mjs';
 import { measure } from './mesures.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -95,10 +96,13 @@ const SCREENS = {
   '24-clavier-fin': 'Au clavier : partie finie, mouvements réduits',
   '25-salon-decks': 'Salon en ligne : choix du deck',
   '26-salle': 'Salle d’attente en ligne (code à envoyer)',
+  ...COMPLETE_SCREENS,
 };
 const PARCOURS = ['accueil', 'partie', 'aventure', 'decks', 'parties', 'salon'];
-// Parcours joués seulement quand --only les demande (la référence de l'étape ne les contient pas)
-const EXTRA = ['atelier', 'clavier'];
+// Parcours joués seulement quand --only les demande (la référence de l'étape ne les contient pas) ; « --only tout » :
+// tous les parcours sauf l'atelier (parcours complets de la tâche R4.1 : scripts/ui/complet.mjs)
+const EXTRA = [...COMPLETE_PARCOURS, 'clavier', 'atelier'];
+const ALL = [...PARCOURS, ...EXTRA.filter((p) => p !== 'atelier')];
 
 // Pages « plateau » de l'atelier (#play/atelier/plateau-<état>, tâche R0.2), lues dans game/ui/atelier : toutes sous le
 // numéro 30, suivi du nom de l'état (un nouvel état ne renumérote pas les autres)
@@ -150,7 +154,9 @@ class Tour {
       const x = (Math.max(0, r.left) + Math.min(innerWidth, r.right)) / 2;
       const y = (Math.max(0, r.top) + Math.min(innerHeight, r.bottom)) / 2;
       const hit = document.elementFromPoint(x, y);
-      return { x, y, onTop: Boolean(hit && (hit === el || el.contains(hit))), disabled: Boolean(el.disabled) };
+      const onTop = Boolean(hit && (hit === el || el.contains(hit)));
+      const by = onTop || !hit ? '' : `${hit.closest('[data-ui]')?.getAttribute('data-ui') ?? ''} ${hit.tagName.toLowerCase()}.${String(hit.className?.baseVal ?? hit.className ?? '').trim().split(/\s+/).slice(0, 2).join('.')}`.trim();
+      return { x, y, onTop, by, disabled: Boolean(el.disabled) };
     }, sel, index);
   }
 
@@ -169,7 +175,7 @@ class Tour {
     if (!at) throw new Error(`introuvable : ${sel}`);
     if (at.onTop) await this.page.pointAt(at.x, at.y);
     else {
-      this.warnings.push(`${sel} caché par un autre élément : clic direct`);
+      this.warnings.push(`${sel} caché par un autre élément (${at.by}) : clic direct`);
       await this.page.call((sel, index) => [...document.querySelectorAll(sel)].filter((el) => el.getBoundingClientRect().width > 0)[index].click(), sel, index);
     }
     await sleep(200);
@@ -689,6 +695,8 @@ class Tour {
   }
 }
 
+installComplete(Tour, { SEED, MY_DECK, AI_DECK, FORMATS });
+
 // Erreur relevée, sans l'adresse du serveur ni les chiffres variables (pour comparer deux lancements)
 function errorText(e, base) {
   const strip = (s) => String(s ?? '').split(base).join('').replace(/\d+/g, '#');
@@ -766,7 +774,7 @@ function parseArgs(argv) {
     if (k === '--port') a.port = Number(v());
     else if (k === '--db') a.db = v();
     else if (k === '--out') a.out = v();
-    else if (k === '--only') a.only = v().split(',').map((s) => s.trim()).filter(Boolean);
+    else if (k === '--only') a.only = v().split(',').map((s) => s.trim()).filter(Boolean).flatMap((p) => (p === 'tout' ? ALL : [p]));
     else if (k === '--formats') a.formats = v().split(',').map((s) => s.trim()).filter(Boolean);
     else if (k === '--headed') a.headed = true;
     else if (k === '--compare') a.compare = [v(), v()];
@@ -873,6 +881,8 @@ async function main() {
       await page.setFormat(format);
       await page.addInitScript(INIT);
       const tour = new Tour(page, format, server.base, out, log);
+      tour.db = db;
+      tour.init = INIT;
       log(`— ${name} (${format.width}×${format.height})`);
       try {
         await signup(page, server.base, name);

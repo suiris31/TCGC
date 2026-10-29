@@ -113,6 +113,8 @@ export function App({ onImmersive, configured, home }: {
   // Le plateau (contrôleur commun, table/) : l'aide, les réglages, le guide et la carte en grand servent aussi à
   // l'écran de la partie rapide
   const table = useTable({ state: game, seat: HUMAN, active: rec.humanTurn, choose, aids: true, recommended: coach.recommended });
+  // « P » : pause de l'IA (la fonction suit le dernier rendu)
+  const pauseKey = useRef(() => {});
   const { help, setHelp, guide, setGuide } = table;
   const cardZoom = table.board.zoom;
   useRecordingEnd(rec, { human: HUMAN, celebrate: table.celebrate, claim, onEnd: configured?.onEnd });
@@ -185,7 +187,7 @@ export function App({ onImmersive, configured, home }: {
   };
 
   // Raccourcis clavier (Échap ferme aussi Mes parties et Mes decks)
-  useGameKeys(table, { undo: back, escape: () => showScreen(null) });
+  useGameKeys(table, { undo: back, escape: () => showScreen(null), pause: () => pauseKey.current() });
 
   // Rejouer un moment d'une partie archivée (depuis « Mes parties ») : comme « Revoir ce moment » du récap
   const resumeArchived = (saved: GameRecord, moveId: number) => {
@@ -291,6 +293,7 @@ export function App({ onImmersive, configured, home }: {
   // hors combat : le panneau du combat prend la place)
   const aiTurn = game.decision?.player === AI;
   const pauseButton = !over && (game.active === AI || opponent.paused);
+  pauseKey.current = () => { if (opponent.paused) opponent.resume(); else if (pauseButton) opponent.pause(); };
   const aiMoves = shownMoves(opponent.moves, game.turn);
   const showMoves = opponent.paused ? !(table.board.compact && game.battle) : !table.board.compact && !game.battle;
 

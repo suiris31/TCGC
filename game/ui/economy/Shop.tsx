@@ -183,7 +183,7 @@ function ShopShelf({ offer, balance, onBuy, onContents }: {
         </span>
         <span className="op-shop-buy">
           <span className="op-shop-price">{berry(cost)}</span>
-          <button className="op-btn op-btn-primary" disabled={balance === undefined || missing > 0} onClick={() => onBuy(offer, what)}>Acheter</button>
+          <button className="op-btn op-btn-primary" disabled={balance === undefined || missing > 0} onClick={() => onBuy(offer, what)} data-ui={`shop.buy-${what}`}>Acheter</button>
           {missing > 0 && <span className="op-small op-muted">Il te manque {berry(missing)}</span>}
         </span>
       </div>

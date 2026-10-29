@@ -65,6 +65,8 @@
 :where(.opc.is-portrait) .card.card-life { margin-top: calc(var(--cw) * -0.76); }
 /* une carte épuisée reste dans sa place (tournée et réduite) pour que 5 Personnages tiennent sur la largeur */
 :where(.opc.is-portrait) .chars .card-rested, :where(.opc.is-portrait) .leader-col .card-rested { transform: rotate(90deg) scale(0.72); margin: 0; }
+/* la pastille de puissance d'une carte épuisée réduite reste lisible (11,5 px à l'écran, comme le compteur de DON!! de don.css) */
+:where(.opc.is-portrait) .chars .card-rested .badge-power, :where(.opc.is-portrait) .leader-col .card-rested .badge-power { font-size: max(var(--badge-font), calc(11.5px / 0.72)); }
 /* la main : des cartes plus grandes, qui se chevauchent d'un quart (le coût et le haut de chaque carte restent
    visibles) et défilent du doigt ; la carte touchée se lève et grandit */
 :where(.opc.is-portrait) .hand { flex: 100 1 auto; justify-content: flex-start; height: auto; min-height: calc(var(--cw) * 1.15 * 1.396 + 0.9rem); max-height: calc(var(--cw) * 2 * 1.396 + 0.9rem); padding: 0.6rem 0.5rem 0.3rem; container-type: size; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding: 0 0.5rem; overscroll-behavior-x: contain; scrollbar-width: none; }

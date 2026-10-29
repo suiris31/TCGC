@@ -134,7 +134,7 @@ test('plateau : en ligne (sans les aides), les mêmes cartes brillent que contre
   }
 });
 
-test('raccourcis : Échap, Entrée (fin du tour), Ctrl+Z, « ? », et les touches gardées par un champ', () => {
+test('raccourcis : Échap, Entrée (fin du tour), Ctrl+Z, « ? », « P », et les touches gardées par un champ', () => {
   const key = (k: string, more: Record<string, unknown> = {}) => gameKey({ key: k, defaultPrevented: false, target: { tagName: 'BODY' }, ...more });
   assert.equal(key('Escape'), 'escape');
   assert.equal(key('Enter'), 'end-turn');
@@ -143,6 +143,9 @@ test('raccourcis : Échap, Entrée (fin du tour), Ctrl+Z, « ? », et les touche
   assert.equal(key('z', { ctrlKey: true }), 'undo');
   assert.equal(key('Z', { metaKey: true }), 'undo');
   assert.equal(key('?'), 'help');
+  assert.equal(key('p'), 'pause');
+  assert.equal(key('P'), 'pause');
+  assert.equal(key('p', { ctrlKey: true }), null, 'Ctrl+P reste au navigateur (imprimer)');
   assert.equal(key('a'), null);
   assert.equal(key('Escape', { target: { tagName: 'SELECT' } }), null, 'une liste déroulante garde ses touches');
 });

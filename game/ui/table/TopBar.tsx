@@ -52,8 +52,8 @@ export function TopBar({ table, brand, match, matchTitle, rival, phase, status, 
       {status}
       <div className="top-actions">
         {pause && (pause.paused
-          ? <button className="icon-btn icon-paused" data-ui="table.resume" onClick={pause.onResume} title="Reprendre : l’IA joue de nouveau d’elle-même" aria-label="Reprendre le jeu de l’IA">▶</button>
-          : <button className="icon-btn" data-ui="table.pause" onClick={pause.onPause} title="Mettre l’IA en pause (puis la faire jouer une décision à la fois)" aria-label="Mettre l’IA en pause">⏸</button>)}
+          ? <button className="icon-btn icon-paused" data-ui="table.resume" onClick={pause.onResume} title="Reprendre : l’IA joue de nouveau d’elle-même (P)" aria-label="Reprendre le jeu de l’IA">▶</button>
+          : <button className="icon-btn" data-ui="table.pause" onClick={pause.onPause} title="Mettre l’IA en pause, puis la faire jouer une décision à la fois (P)" aria-label="Mettre l’IA en pause">⏸</button>)}
         {undo && <button className="icon-btn" data-ui="table.undo" onClick={undo.onClick} disabled={undo.disabled} title="Revenir avant ton dernier choix (Ctrl+Z)" aria-label="Revenir avant ton dernier choix">↶</button>}
         {board.compact ? (
           <>

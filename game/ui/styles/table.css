@@ -6,6 +6,9 @@
 .table { position: relative; display: flex; flex-direction: column; min-width: 0; height: 100%; padding: 0 0.857rem 0;
   background: radial-gradient(ellipse 80% 55% at 50% 50%, var(--table-glow) 0%, var(--table-mid) 55%, var(--bg) 100%); overflow: hidden; }
 .op-topbar { display: flex; align-items: center; gap: 0.857rem; padding: 0.571rem 0; }
+/* boutons de l'en-tête : 44 px au moins, comme au doigt (sur téléphone : table-compact.css) */
+.op-topbar .icon-btn { width: max(44px, 2.75rem); height: max(44px, 2.75rem); }
+.op-topbar .btn-small { min-height: max(44px, 2.75rem); }
 .op-brand { font-weight: 900; color: var(--accent); white-space: nowrap; }
 .match { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
 .match .vs { opacity: 0.6; }
