@@ -69,7 +69,8 @@
 .opc .op-kit-async-title { color: var(--text); font-weight: 700; font-size: 1.1rem; }
 
 /* ---------- Fenêtres ---------- */
-.opc .op-kit-layer { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: 1rem; }
+/* une rangée de la hauteur de la couche : la hauteur maximale d'une fenêtre (100 %) se rapporte à la place disponible */
+.opc .op-kit-layer { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; grid-template-rows: minmax(0, 1fr); place-items: center; padding: 1rem; }
 .opc .op-kit-layer.is-reduced { inset: auto 0 0 0; padding: 0; display: block; pointer-events: none; }
 .opc .op-kit-backdrop {
   position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(2px);
@@ -78,8 +79,7 @@
 .opc .op-kit-backdrop[hidden], .opc .op-kit-dialog[hidden] { display: none; }
 .opc .op-kit-dialog {
   position: relative; display: flex; flex-direction: column; width: min(36rem, 100%); min-width: 0;
-  /* la couche a 1rem de marge ; un pourcentage ne limiterait rien (la rangée de la grille a la hauteur du contenu) */
-  max-height: min(88vh, calc(100dvh - 2rem));
+  max-height: min(88vh, 100%);
   background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; color: var(--text);
   box-shadow: 0 24px 60px color-mix(in srgb, var(--bg) 85%, transparent); outline: none;
   animation: op-kit-pop var(--dur-base) ease-out;
@@ -102,7 +102,7 @@
 /* téléphone : une fiche qui monte du bas, les boutons collés en bas */
 .opc .op-kit-layer.is-sheet { place-items: end stretch; padding: 0; }
 .opc .op-kit-layer.is-sheet .op-kit-dialog {
-  width: 100%; max-height: 92dvh; border-radius: 18px 18px 0 0; border-bottom: 0;
+  width: 100%; max-height: min(92dvh, 100%); border-radius: 18px 18px 0 0; border-bottom: 0;
   animation: op-kit-up var(--dur-base) ease-out;
 }
 .opc .op-kit-layer.is-sheet .op-kit-dialog-head { padding-left: 1rem; padding-top: 0.4rem; }
