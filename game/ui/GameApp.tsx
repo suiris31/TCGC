@@ -38,6 +38,7 @@ import './styles/home.css';
 import './styles/end.css';
 import './styles/table-compact.css';
 import './styles/don.css';
+import './styles/pace.css';
 
 // Atelier des écrans du jeu (#play/atelier) : chargé seulement quand on l'ouvre
 const Atelier = lazy(() => import('./atelier/Atelier.tsx').then((m) => ({ default: m.Atelier })));

@@ -24,6 +24,8 @@ import { useCoach } from './game/useCoach.ts';
 import { useGameRecording, useRecordingEnd } from './game/useGameRecording.ts';
 import { loadQuickChoice, matchupName, RANDOM_DECK, randomDeck, recordKey, saveQuickChoice, useRecords, type Config } from './setup/config.ts';
 import { QuickPlay } from './setup/QuickPlay.tsx';
+import { AiMovesBand, PausedBar } from './table/AiPace.tsx';
+import { shownMoves } from './table/pace.ts';
 import { CoachTab } from './table/SidePanel.tsx';
 import { LeaveDialog, TableScreen } from './table/TableScreen.tsx';
 import { useGameKeys } from './table/useGameKeys.ts';
@@ -87,11 +89,12 @@ export function App({ onImmersive, configured, home }: {
   // le gain à zéro (onBegin, appelé après le rendu : table et coach existent alors)
   const rec = useGameRecording({
     human: HUMAN, mode: configured?.mode,
-    onBegin: ({ intro }) => { coach.clearHint(); resetGain(); table.restart({ intro }); void coach.pump(); },
+    onBegin: ({ intro }) => { coach.clearHint(); resetGain(); opponent.reset(); table.restart({ intro }); void coach.pump(); },
   });
   const { game, practice } = rec;
   const session = rec.session ?? config;
-  const thinking = useAiOpponent(game, rec.setGame, AI, session.level, settings.speed);
+  // l'IA, sa pause et ses dernières décisions (revues dans la bande centrale)
+  const opponent = useAiOpponent(game, rec.setGame, AI, session.level, settings.speed);
   const coach = useCoach({
     game, human: HUMAN, humanTurn: rec.humanTurn, autoCoach: settings.autoCoach,
     moves: rec.moves, reviews: rec.reviews, reviewed: rec.reviewed, onReviewed: rec.setReviewed,
@@ -174,7 +177,10 @@ export function App({ onImmersive, configured, home }: {
   // Retour en arrière (une partie imposée finie est déjà envoyée et comptée : on ne revient plus dessus)
   const back = () => {
     if (configured && game?.winner !== null) return;
-    if (rec.back()) table.reset();
+    if (rec.back()) {
+      table.reset();
+      opponent.forget();
+    }
   };
 
   // Raccourcis clavier (Échap ferme aussi Mes parties et Mes decks)
@@ -279,18 +285,26 @@ export function App({ onImmersive, configured, home }: {
   const over = game.winner !== null;
   const won = game.winner === HUMAN;
   const { hintNow } = coach;
+  // pause de l'IA : le bouton pendant son tour (et tant qu'elle est en pause) ; la barre quand c'est à elle de décider ;
+  // ses décisions dans la bande centrale (pendant un combat, seulement en pause ; sur téléphone, seulement en pause et
+  // hors combat : le panneau du combat prend la place)
+  const aiTurn = game.decision?.player === AI;
+  const pauseButton = !over && (game.active === AI || opponent.paused);
+  const aiMoves = shownMoves(opponent.moves, game.turn);
+  const showMoves = opponent.paused ? !(table.board.compact && game.battle) : !table.board.compact && !game.battle;
 
   return (
     <TableScreen
       table={table}
       opponent="L’IA"
-      thinking={thinking}
+      thinking={opponent.thinking}
       top={{
         brand: '☠ OP Coach',
         match: <>{deckLabel(session.myDeck, session.myDeckName)} <span className="vs">contre</span> {deckLabel(session.aiDeck, session.aiDeckName)} · IA {LEVELS[session.level].name}</>,
         rival: 'IA',
         phase: phaseLabel(game, HUMAN),
         undo: { onClick: back, disabled: !rec.canUndo || (Boolean(configured) && over) },
+        pause: pauseButton ? { paused: opponent.paused, onPause: opponent.pause, onResume: opponent.resume } : undefined,
         leave: configured
           ? { label: over ? 'Suite →' : 'Quitter', title: over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre', onClick: configured.onLeave }
           : { ...LEAVE_GAME, onClick: leave },
@@ -298,6 +312,8 @@ export function App({ onImmersive, configured, home }: {
       decks={{ mine: session.myDeck, theirs: session.aiDeck, theirsName: 'l’IA' }}
       coach={<CoachTab table={table} analysis={hintNow?.analysis ?? null} loading={Boolean(hintNow && !hintNow.analysis)} onAsk={coach.askHint} />}
       center={practice && <div className="practice">Entraînement depuis un moment revu : cette partie ne compte pas dans ton bilan.</div>}
+      lastMove={showMoves ? <AiMovesBand moves={aiMoves} name="IA" /> : null}
+      bar={opponent.paused && aiTurn && !over ? <PausedBar held={opponent.held} onStep={opponent.step} onResume={opponent.resume} /> : undefined}
       hint={{ state: hintNow ? (hintNow.analysis ? 'ready' : 'loading') : 'idle', ask: coach.askHint }}
       leave={confirmLeave && !over && (
         <LeaveDialog onStay={() => setConfirmLeave(false)} text={configured
