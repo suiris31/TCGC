@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { LEVELS, type Level } from '../ai/search.ts';
 import { replayRecord, type GameRecord, type Replayed } from '../coach/archive.ts';
+import { sayReason } from '../coach/logText.ts';
 import { DECKS } from '../engine/decks.ts';
 import { newGame } from '../engine/engine.ts';
 import type { PlayerId } from '../engine/types.ts';
@@ -308,7 +309,7 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
         <EndScreen
           mode={configured ? 'aventure' : 'ia'}
           won={won}
-          reason={game.winReason ?? ''}
+          reason={sayReason(game, HUMAN)}
           turns={game.turn}
           matchup={configured ? undefined : <>Bilan {matchupName(session)} : {recordText(records[recordKey(session)])}</>}
           note={practice && (configured

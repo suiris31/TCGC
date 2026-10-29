@@ -3,6 +3,7 @@
 // pas de marques « sans intérêt » (aides désactivées), et chaque choix part au serveur, qui arbitre. En fin de partie,
 // son gain en Berry (tâche 2.5), sur l'écran de fin commun (end/EndScreen.tsx).
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { sayReason } from '../../coach/logText.ts';
 import { DECKS } from '../../engine/decks.ts';
 import type { GameState } from '../../engine/types.ts';
 import { loadSummaries } from '../archiveClient.ts';
@@ -134,7 +135,7 @@ function OnlineBoard({ view, game, connected, refresh, onLeave }: { view: LiveVi
         <EndScreen
           mode="en-ligne"
           won={won}
-          reason={game.winReason ?? ''}
+          reason={sayReason(game, seat)}
           turns={game.turn}
           matchup={<>{myDeck} contre {oppName} · {oppDeck}{you.hold && opponent?.hold ? ' · partie avec decks de la Cale' : ''}</>}
           note="Le coach était désactivé pendant la partie. Elle est rangée dans « Mes parties » : tu peux l’y revoir et rejouer un moment contre l’IA."

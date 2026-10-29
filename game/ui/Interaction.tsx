@@ -1,5 +1,6 @@
 // Interactions : menu d'actions d'une carte, barre d'action (la question en cours et ses boutons), panneau de combat
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { sayReason } from '../coach/logText.ts';
 import { def, findField, name, power } from '../engine/rules.ts';
 import type { Decision, GameState, Option, PlayerId } from '../engine/types.ts';
 import type { CardAction } from './decision.ts';
@@ -119,7 +120,7 @@ export function ActionBar({ s, d, human, thinking, aiName, targeting, preview, h
   // écran tactile : la cible touchée est choisie, l'attaque part avec ce bouton
   onConfirmAttack?: () => void;
 }) {
-  if (s.winner !== null) return <div className="action-bar"><div className="bar-text"><strong>{s.winner === human ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{s.winReason}</span></div></div>;
+  if (s.winner !== null) return <div className="action-bar"><div className="bar-text"><strong>{s.winner === human ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{sayReason(s, human)}</span></div></div>;
   // qui doit faire quoi (table/barText.ts)
   const text = barText({ state: s, decision: d, human, opponent: aiName, thinking, hasCardActions, touch });
   if (!d || d.player !== human) {

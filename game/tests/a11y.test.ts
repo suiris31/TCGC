@@ -2,6 +2,7 @@
 // cartes au clavier, et ce qu'annonce la région aria-live (actions jouées, consigne)
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { playerNames, sayLogLine } from '../coach/logText.ts';
 import { act } from '../engine/engine.ts';
 import { boardState } from '../ui/atelier/plateau/etats.ts';
 import { cardLabel, moveIndex, newLogLines, promptText, tabStop, zoneLabel, zoneMove, type CardLabelInput } from '../ui/table/a11y.ts';
@@ -60,7 +61,7 @@ test('accessibilité : la région aria-live annonce les nouvelles lignes du jour
   assert.ok(lines.length > 0 && lines.length <= 4, lines.join(' | '));
   const fresh = after.log.slice(before.log.length).filter((l) => l.only === undefined || l.only === 0);
   const last = fresh.at(-1)!;
-  assert.equal(lines.at(-1), last.player === null ? last.text : `${after.players[last.player].name} ${last.text}`);
+  assert.equal(lines.at(-1), sayLogLine(last, 0, playerNames(after)));   // à la deuxième personne, comme le journal
   // une information secrète de l'adversaire n'est pas lue
   const secret = { ...after, log: [...before.log, { turn: after.turn, player: 1 as const, text: 'regarde la carte X', only: 1 as const }] };
   assert.deepEqual(newLogLines(before, secret, 0), []);

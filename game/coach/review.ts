@@ -5,6 +5,7 @@ import { uselessReason } from '../ai/prune.ts';
 import type { Analysis, OptionStat } from '../ai/search.ts';
 import { def, fieldCost, findField, handCost, hasType } from '../engine/rules.ts';
 import type { GameState, LogEntry, PlayerId } from '../engine/types.ts';
+import { playerNames, sayLogLine } from './logText.ts';
 
 // Une décision du joueur : l'état au moment de choisir (state.decision) et son choix
 export interface Move {
@@ -252,11 +253,11 @@ export interface Recap {
 
 const KEY_EVENT = /perd 1 Vie|mis KO|touche le Leader|Déclenchement|joue |active |placé|renvoyé|ajoute .* Vie/;
 
-function eventsBetween(log: LogEntry[], from: number, to: number, final: GameState): string[] {
+function eventsBetween(log: LogEntry[], from: number, to: number, final: GameState, human: PlayerId): string[] {
   return log.slice(from, to)
     .filter((l) => l.player !== null && l.only === undefined && KEY_EVENT.test(l.text))
     .slice(-6)
-    .map((l) => `${final.players[l.player!].name} ${l.text}`);
+    .map((l) => sayLogLine(l, human, playerNames(final)));
 }
 
 export function buildRecap(final: GameState, moves: Move[], reviews: Map<number, MoveReview>, human: PlayerId): Recap {
@@ -281,7 +282,7 @@ export function buildRecap(final: GameState, moves: Move[], reviews: Map<number,
         turn: b.turn,
         from: a.chosenRate,
         to: b.bestRate,
-        events: eventsBetween(final.log, done[i].state.log.length, done[i + 1].state.log.length, final),
+        events: eventsBetween(final.log, done[i].state.log.length, done[i + 1].state.log.length, final, human),
       });
     }
   }

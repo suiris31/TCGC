@@ -1,6 +1,7 @@
 // Le contenu du panneau à côté du plateau : la décision en cours et tous ses choix, le journal de la partie
 import { useEffect, useRef } from 'react';
-import type { Decision, GameState, Option } from '../engine/types.ts';
+import { playerNames, sayLog } from '../coach/logText.ts';
+import type { Decision, GameState, Option, PlayerId } from '../engine/types.ts';
 
 const GROUPS: Record<string, string> = {
   play: 'Jouer une carte',
@@ -46,16 +47,22 @@ export function DecisionBox({ decision, focus, notes, onChoose, onClearFocus }: 
   );
 }
 
-export function GameLog({ s, human }: { s: GameState; human: number }) {
+// Le journal, dit à la deuxième personne (« Tu joues en premier », « IA touche ton Leader » : coach/logText.ts)
+export function GameLog({ s, human }: { s: GameState; human: PlayerId }) {
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [s.log.length]);
+  const names = playerNames(s);
   return (
     <div className="log">
-      {s.log.map((l, i) => (l.only !== undefined && l.only !== human ? null : (
-        <div key={i} className={`log-line ${l.player === null ? 'log-sys' : l.player === human ? 'log-me' : 'log-opp'} ${l.text.startsWith('—') ? 'log-turn' : ''}`}>
-          {l.player !== null && !l.text.startsWith('—') && <b>{s.players[l.player].name} </b>}{l.only !== undefined && <span className="op-chip">secret</span>} {l.text}
-        </div>
-      )))}
+      {s.log.map((l, i) => {
+        if (l.only !== undefined && l.only !== human) return null;
+        const said = sayLog(l, human, names);
+        return (
+          <div key={i} className={`log-line ${l.player === null ? 'log-sys' : l.player === human ? 'log-me' : 'log-opp'} ${l.text.startsWith('—') ? 'log-turn' : ''}`}>
+            {said.who && <b>{said.who} </b>}{l.only !== undefined && <span className="op-chip">secret</span>} {said.text}
+          </div>
+        );
+      })}
       <div ref={end} />
     </div>
   );

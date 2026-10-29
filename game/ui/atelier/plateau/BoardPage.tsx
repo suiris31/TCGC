@@ -4,6 +4,7 @@
 // de fin du mode demandé (contre l'IA, aventure, en ligne), avec un gain de démonstration.
 import { useCallback, useMemo, useState } from 'react';
 import { LEVELS } from '../../../ai/search.ts';
+import { sayReason } from '../../../coach/logText.ts';
 import { buildRecap, isReviewable } from '../../../coach/review.ts';
 import { act } from '../../../engine/engine.ts';
 import type { GameState } from '../../../engine/types.ts';
@@ -95,7 +96,7 @@ function FixedTable({ fixed, mode, onLeave }: { fixed: BoardState; mode: EndMode
       hint={{ state: 'idle', ask: () => undefined }}
       reopenEnd
       end={(
-        <EndScreen mode={mode} won={won} reason={game.winReason ?? ''} turns={game.turn}
+        <EndScreen mode={mode} won={won} reason={sayReason(game, ME)} turns={game.turn}
           matchup={mode === 'ia' ? `Bilan ${mine} contre ${theirs} (${LEVEL}) : aucune partie` : `${mine} contre ${theirs}`}
           note={mode === 'en-ligne' ? 'Le coach était désactivé pendant la partie. Elle est rangée dans « Mes parties » : tu peux l’y revoir et rejouer un moment contre l’IA.' : undefined}
           gain={mode === 'aventure' ? undefined : <GameGain gain={demoGain(won, mode)} onRetry={() => undefined} />}
