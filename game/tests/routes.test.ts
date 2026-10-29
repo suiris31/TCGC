@@ -170,7 +170,7 @@ test('les boutons « ← » reviennent en arrière quand l’écran précédent 
   nav.navigate({ name: 'aventure' });
   nav.navigate({ name: 'aventure', screen: { kind: 'chapter', id: 'c1' } });
   nav.navigate({ name: 'aventure', screen: { kind: 'deck' } });
-  // « ← Retour » du deck : le chapitre d'où l'on vient
+  // retour depuis le deck : le chapitre d'où l'on vient
   nav.goBack({ name: 'aventure' });
   await w.settle();
   assert.deepEqual(nav.current(), { name: 'aventure', screen: { kind: 'chapter', id: 'c1' } });

@@ -3,7 +3,7 @@
 // d'aventure) : l'IA adverse ne connaît pas sa liste, comme dans l'aventure. Premier joueur alterné, graines fixes.
 //   node --no-warnings scripts/game/adventure-balance.ts [parties par chapitre] [--chapitres id,id] [--joueur deck]
 //     [--niveau n] [--recrues] [--adversaire deck] [--fils n] [--rapport fichier.md]
-// --joueur prend un deck du registre ou un fichier .json { name, leader, cards } (un deck de la Cale amélioré par la
+// --joueur prend un deck du registre ou un fichier .json { name, leader, cards } (un deck d'aventure amélioré par la
 // boutique, par exemple : tâche 2.7). --adversaire impose le deck adverse (registre ou fichier .json) aux chapitres
 // choisis, pour essayer une autre liste.
 // --niveau impose un niveau à tous les adversaires (pour comparer la force des listes sans le coût de la simulation).

@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { DECKS } from '../../engine/decks.ts';
 import { Button, Screen } from '../kit/index.ts';
+import { ADVENTURE_DECK } from '../texts.ts';
 import { cancelRoom, type LiveView } from './api.ts';
 import { minutesLeft, roomLink } from './room.ts';
 
@@ -75,7 +76,7 @@ export function WaitingRoom({ view, onLeave }: { view: LiveView; onLeave: () => 
   );
 }
 
-// Repère d'un deck de la Cale (cartes gagnées dans l'Aventure, vérifiées par le serveur au début de la partie)
+// Repère d'un deck d'aventure (cartes gagnées dans l'Aventure, vérifiées par le serveur au début de la partie)
 export function HoldMark() {
-  return <span className="op-hold-mark" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure, vérifiées au début de la partie">🧭 Cale</span>;
+  return <span className="op-hold-mark" title={`${ADVENTURE_DECK.markHelp}, vérifiées au début de la partie`}>{ADVENTURE_DECK.mark}</span>;
 }

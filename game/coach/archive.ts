@@ -71,7 +71,7 @@ export interface GameRecord {
   log: LogEntry[];
   mode?: 'solo' | 'online' | 'aventure';  // en ligne contre un autre joueur, chapitre de l'Aventure (absent : contre l'IA, voir playMode)
   opponent?: string;              // partie en ligne : pseudo de l'adversaire
-  holdDeck?: true;                // partie en ligne : mon deck était un deck de la Cale (game/online/match.ts)
+  holdDeck?: true;                // partie en ligne : mon deck était un deck d'aventure (game/online/match.ts)
   opponentHoldDeck?: true;        // partie en ligne : celui de l'adversaire aussi
   looks?: { [player in PlayerId]?: DeckLooks };  // visuels choisis de chaque joueur (cosmétique ; absent : visuels de base)
 }

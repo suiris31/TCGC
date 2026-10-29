@@ -12,6 +12,7 @@ import { Button, Screen } from '../kit/index.ts';
 import { isAdventureDeck, loadMyDecks, newDeckId, playable, useMyDecks, type MyDeck } from '../myDecks.ts';
 import { DeckPicker } from '../setup/DeckPicker.tsx';
 import { useSettings } from '../settings.ts';
+import { ADVENTURE_DECK, BACK } from '../texts.ts';
 import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { chooseAdventureDeck } from './api.ts';
 import { holdLimit } from './hold.ts';
@@ -66,7 +67,7 @@ export function AdventureDeckScreen({ onBack }: { onBack: () => void }) {
   const close = () => { setEditing(null); zoom.close(); };
 
   return (
-    <Screen title="Deck d’aventure" back={{ label: 'Carte', onBack, 'data-ui': 'adventure-deck.back' }} className="op-adeck" data-ui="adventure-deck">
+    <Screen title={ADVENTURE_DECK.title} back={{ label: BACK.map, onBack, 'data-ui': 'adventure-deck.back' }} className="op-adeck" data-ui="adventure-deck">
       <div className="op-adeck-body">
         {!data && !error && <p className="op-muted"><span className="op-spinner" /> Chargement de ta Cale…</p>}
         {(error || decksError) && (

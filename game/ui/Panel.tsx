@@ -1,6 +1,7 @@
 // Le contenu du panneau à côté du plateau : la décision en cours et tous ses choix, le journal de la partie
 import { useEffect, useRef } from 'react';
 import type { Decision, GameState, Option } from '../engine/types.ts';
+import { quoteCardNames } from './texts.ts';
 
 const GROUPS: Record<string, string> = {
   play: 'Jouer une carte',
@@ -28,7 +29,7 @@ export function DecisionBox({ decision, focus, notes, onChoose, onClearFocus }: 
   }
   return (
     <div className="decision">
-      <p className="prompt">{decision.prompt}</p>
+      <p className="prompt">{quoteCardNames(decision.prompt)}</p>
       {focus !== null && <button className="op-link" onClick={onClearFocus}>← tous les choix</button>}
       {[...groups].map(([group, list]) => (
         <div key={group} className={`option-group ${list.length > 6 && list.every((o) => o.label.length <= 8) ? 'option-grid' : ''}`}>

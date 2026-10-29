@@ -16,7 +16,7 @@ const CHAPTER_CASES: { name: string; interrupted?: Interrupted; blocked?: string
   { name: 'Partie interrompue', interrupted: { kind: 'resume', turns: 6, at } },
   { name: 'Victoire pas comptée', interrupted: { kind: 'unsent', at } },
   { name: 'Déjà gagné', won: true },
-  { name: 'Deck incomplet', blocked: 'Ton deck d’aventure est incomplet : termine-le dans « Mon deck ».' },
+  { name: 'Deck incomplet', blocked: 'Ton deck d’aventure est incomplet : termine-le dans « Deck d’aventure ».' },
   { name: 'Erreur', error: 'Cette partie ne peut plus être reprise : le jeu a été mis à jour depuis. Lance une nouvelle partie.' },
 ];
 
@@ -70,7 +70,7 @@ function Demo() {
         <ChapterScreen key={`${c.id}-${view.i}`} arc={EAST_BLUE} chapter={c} status={chapterCase.won ? 'won' : 'open'} wins={chapterCase.won ? 2 : 0}
           deckName={chapterCase.blocked ? undefined : 'Aventure : deck de démonstration'} blocked={chapterCase.blocked}
           interrupted={chapterCase.interrupted} error={chapterCase.error}
-          onFight={say('Combattre')} onResume={say('Reprendre')} onCount={say('Faire compter')} onDeck={say('Mon deck')} onBack={say('Carte')} />
+          onFight={say('Combattre')} onResume={say('Reprendre')} onCount={say('Faire compter')} onDeck={say('Deck d’aventure')} onBack={say('Carte')} />
       )}
     </div>
   );

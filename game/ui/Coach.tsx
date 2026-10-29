@@ -4,6 +4,7 @@ import type { Analysis } from '../ai/search.ts';
 import type { MoveReview, Recap, SideStats } from '../coach/review.ts';
 import type { Decision } from '../engine/types.ts';
 import { isTouch } from './device.ts';
+import { quoteCardNames } from './texts.ts';
 
 export const pct = (rate: number) => `${Math.round(rate * 100)} %`;
 
@@ -99,7 +100,7 @@ export function ReviewItem({ r, kind, onReplay }: { r: MoveReview; kind: 'bad' |
         <b>Tour {r.turn} · {KIND[r.kind] ?? r.kind}</b>
         {kind === 'bad' ? <span className="op-chip chip-bad">−{Math.round(r.delta * 100)} points</span> : <span className="op-chip chip-good">bon choix</span>}
       </div>
-      {!generic && <div className="op-small op-muted">{r.prompt}</div>}
+      {!generic && <div className="op-small op-muted">{quoteCardNames(r.prompt)}</div>}
       <div>Tu as choisi : <b>{r.choiceLabel}</b> <span className="op-muted">({pct(r.chosenRate)} de chances de gagner)</span></div>
       {r.useless && <div className="op-small op-muted">Ce choix ne pouvait rien apporter : {r.useless}.</div>}
       {kind === 'bad' ? (

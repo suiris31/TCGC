@@ -1,5 +1,5 @@
 /* Aventure : la Cale, le deck d'aventure, le parcours (accueil, chapitres, dialogues, combats, fin de partie),
-   le bilan de l'arc, et le repère des decks de la Cale (choix des decks, partie en ligne). */
+   le bilan de l'arc, et le repère des decks d'aventure (Mes parties, partie avec un ami). */
 .op-hold, .op-adeck { gap: 1.1rem; }
 .op-adeck-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 1rem; }
 .op-adeck-head h1 { margin: 0; font-size: 1.8rem; color: var(--accent); }
@@ -50,7 +50,6 @@
 .op-adeck-chosen > p { grid-column: 1 / -1; margin: 0; }
 .op-adeck-curve { min-width: 0; }
 .op-adeck-actions { margin-top: 0.7rem; }
-.db-tile.op-db-chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .op-db-tag { align-self: flex-start; margin-top: 0.15rem; }
 .op-db-holdnote { margin: 0; padding: 0.4rem 1.4rem; border-bottom: 1px solid var(--line); }
 .op-db-adventure { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
@@ -207,9 +206,7 @@
 :where(.opc.is-landscape) .op-adv-finale h2 { font-size: 1.3rem; }
 :where(.opc.is-landscape) .op-adv-finale-list li { padding: 0.1rem 0.5rem; }
 .opc.is-reduced-motion .op-adv-layer > .setup, .opc.is-reduced-motion .op-adv-layer > .op-kit-screen, .opc.is-reduced-motion .op-adv-finale-flag { animation: none; }
-/* Repère d'un deck de la Cale (deck d'aventure) : sur sa tuile dans le choix des decks, et pendant la partie en ligne */
-.deck-tile.op-deck-hold .deck-name { color: var(--accent); }
-.op-hold-badge { position: absolute; top: 0.4rem; left: 0.4rem; padding: 0.1rem 0.45rem; border-radius: 999px; background: var(--ink-2-a85); border: 1px solid var(--accent-a70); color: var(--accent); font-size: 0.72rem; font-weight: 700; pointer-events: none; }
+/* Repère d'un deck d'aventure (Mes parties, partie avec un ami) et note sur son état (salon) */
 .op-hold-mark { display: inline-block; padding: 0 0.35rem; border-radius: 999px; border: 1px solid var(--accent-a60); color: var(--accent); font-size: 0.85em; white-space: nowrap; }
 .op-hold-note { margin-top: 0.7rem; padding: 0.55rem 0.8rem; border-radius: 10px; border: 1px solid var(--accent-a45); background: var(--accent-a08); font-size: 0.9rem; line-height: 1.45; }
 .op-hold-note-bad { border-color: var(--red-2-a60); background: var(--red-2-a10); }

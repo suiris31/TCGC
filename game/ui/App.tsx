@@ -11,6 +11,7 @@ import { HelpModal } from './Modals.tsx';
 import { currentRoute, goBack, goUp, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
 import { useSettings } from './settings.ts';
 import { SettingsPanel } from './SettingsPanel.tsx';
+import { ADVENTURE_DECK, BACK, backText, LEAVE_GAME } from './texts.ts';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
 import { deckInfo, deckLabel, playable } from './myDecks.ts';
@@ -134,7 +135,7 @@ export function App({ onImmersive, configured, home }: {
   const fullScreen = game !== null || history || builder || guide !== null || help;
   useEffect(() => onImmersive?.(fullScreen), [fullScreen, onImmersive]);
 
-  // L'adresse quitte la partie (« Menu », Retour après la fin) : la partie se ferme comme avec « Menu ». #play/jeu
+  // L'adresse quitte la partie (« Quitter », Retour après la fin) : la partie se ferme comme avec « Quitter ». #play/jeu
   // ouvert sans partie (rechargement) : l'accueil
   const shownRoute = useRef(route.name);
   useEffect(() => {
@@ -220,7 +221,7 @@ export function App({ onImmersive, configured, home }: {
       return (
         <div className="opc-wait">
           {launchError
-            ? <>Ton deck n’est pas jouable : complète-le dans « Mon deck ». <button className="op-btn op-btn-ghost" onClick={configured.onLeave}>Retour</button></>
+            ? <>Ton deck d’aventure n’est pas jouable : complète-le dans « {ADVENTURE_DECK.title} ». <button className="op-btn op-btn-ghost" onClick={configured.onLeave}>{backText(BACK.chapter)}</button></>
             : <><span className="op-spinner" /> Préparation de la partie…</>}
         </div>
       );
@@ -256,7 +257,7 @@ export function App({ onImmersive, configured, home }: {
     });
   };
 
-  // « Menu » : retour à l'écran d'avant la partie (l'adresse quitte #play/jeu, la partie se ferme alors)
+  // « Quitter » : retour à l'écran d'avant la partie (l'adresse quitte #play/jeu, la partie se ferme alors)
   const leave = () => {
     if (routed && currentRoute().name === 'jeu') return goBack(HOME);
     rec.quit();
@@ -292,7 +293,7 @@ export function App({ onImmersive, configured, home }: {
         undo: { onClick: back, disabled: !rec.canUndo || (Boolean(configured) && over) },
         leave: configured
           ? { label: over ? 'Suite →' : 'Quitter', title: over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre', onClick: configured.onLeave }
-          : { label: 'Menu', onClick: leave },
+          : { ...LEAVE_GAME, onClick: leave },
       }}
       decks={{ mine: session.myDeck, theirs: session.aiDeck, theirsName: 'l’IA' }}
       coach={<CoachTab table={table} analysis={hintNow?.analysis ?? null} loading={Boolean(hintNow && !hintNow.analysis)} onAsk={coach.askHint} />}
