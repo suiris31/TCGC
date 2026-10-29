@@ -21,19 +21,17 @@ import { EndScreen } from './end/EndScreen.tsx';
 import { useAiOpponent } from './game/useAiOpponent.ts';
 import { useCoach } from './game/useCoach.ts';
 import { useGameRecording, useRecordingEnd } from './game/useGameRecording.ts';
-import { matchupName, RANDOM_DECK, randomDeck, recordKey, useRecords, type Config } from './setup/config.ts';
-import { SetupScreen, type AdventureEntry, type OnlineEntry } from './setup/SetupScreen.tsx';
+import { loadQuickChoice, matchupName, RANDOM_DECK, randomDeck, recordKey, saveQuickChoice, useRecords, type Config } from './setup/config.ts';
+import { QuickPlay } from './setup/QuickPlay.tsx';
 import { CoachTab } from './table/SidePanel.tsx';
 import { LeaveDialog, TableScreen } from './table/TableScreen.tsx';
 import { useGameKeys } from './table/useGameKeys.ts';
 import { useTable } from './table/useTable.ts';
 
-export type { AdventureEntry, OnlineEntry };
-
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
 
-// Partie lancée par un autre écran (mode Aventure) : decks et niveau imposés, pas d'écran de départ. La partie commence
+// Partie lancée par un autre écran (mode Aventure) : decks et niveau imposés, pas d'écran de choix. La partie commence
 // dès l'affichage (le joueur l'a demandée), ou reprend une partie interrompue (resume, déjà rejouée). onEnd : la partie
 // est finie (après l'écran de victoire ou de défaite) ; saved donne l'identifiant de l'enregistrement final une fois
 // qu'il est sur le serveur. onLeave : « Quitter » pendant la partie, « Suite » après ; l'écran appelant décide (une
@@ -62,22 +60,24 @@ const configOf = (rec: GameRecord): Config => ({
   ...(rec.config.myDeckName ? { myDeckName: rec.config.myDeckName } : {}), ...(rec.config.aiDeckName ? { aiDeckName: rec.config.aiDeckName } : {}),
 });
 
-// notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
-// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame) ; home : l'accueil du jeu
-// (home/Home.tsx), montré à la place de l'écran de départ hors de #play/rapide (et sous Mes decks et Mes parties),
-// avec de quoi y reprendre une partie rapide interrompue et ouvrir l'aide et les réglages (ceux de la touche « ? »)
-export function App({ notice, onImmersive, online, adventure, configured, home }: {
-  notice?: string;
+// onImmersive : une partie occupe tout l'écran (TCGC masque alors sa barre d'onglets) ; configured : partie imposée par
+// le mode Aventure (voir ConfiguredGame) ; home : l'accueil du jeu (home/Home.tsx), montré à la place de l'écran de la
+// partie rapide (setup/QuickPlay.tsx) hors de #play/rapide (et sous Mes decks et Mes parties), avec de quoi y reprendre
+// une partie rapide interrompue et ouvrir l'aide et les réglages (ceux de la touche « ? »)
+export function App({ onImmersive, configured, home }: {
   onImmersive?: (on: boolean) => void;
-  online?: OnlineEntry;
-  adventure?: AdventureEntry;
   configured?: ConfiguredGame;
   home?: (actions: HomeActions) => ReactNode;
 }) {
   const [settings, updateSettings] = useSettings();
   const [config, setConfig] = useState<Config>(() => configured
     ? { myDeck: configured.myDeck, aiDeck: configured.aiDeck, first: 'random', level: configured.level }
-    : { myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
+    : loadQuickChoice());
+  // choix faits sur l'écran de la partie rapide (ou « Jouer » de l'éditeur) : gardés pour la prochaine visite
+  const chooseQuick = useCallback((c: Config) => {
+    setConfig(c);
+    saveQuickChoice(c);
+  }, []);
   // Gain de la partie libre (Berry) : demandé au serveur une fois la partie finie et enregistrée (l'aventure le demande
   // elle-même, avec le résultat du chapitre)
   const { gain, claim, retry: retryGain, reset: resetGain } = useGameGain();
@@ -106,7 +106,7 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
   }, [play, advice, pump]);
 
   // Le plateau (contrôleur commun, table/) : l'aide, les réglages, le guide et la carte en grand servent aussi à
-  // l'écran de départ
+  // l'écran de la partie rapide
   const table = useTable({ state: game, seat: HUMAN, active: rec.humanTurn, choose, aids: true, recommended: coach.recommended });
   const { help, setHelp, guide, setGuide } = table;
   const cardZoom = table.board.zoom;
@@ -129,13 +129,13 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
   // Retour du navigateur pendant la partie : « Quitter la partie ? » (la partie est enregistrée)
   useLeaveGuard(game !== null && game.winner === null, () => setConfirmLeave(true));
 
-  // une partie, ou une fenêtre ouverte sur l'écran de départ (guide, Mes parties, Mes decks et l'éditeur, aide), occupe
+  // une partie, ou une fenêtre ouverte sur l'écran de la partie rapide (guide, Mes parties, Mes decks, aide), occupe
   // tout l'écran
   const fullScreen = game !== null || history || builder || guide !== null || help;
   useEffect(() => onImmersive?.(fullScreen), [fullScreen, onImmersive]);
 
   // L'adresse quitte la partie (« Menu », Retour après la fin) : la partie se ferme comme avec « Menu ». #play/jeu
-  // ouvert sans partie (rechargement) : l'écran de départ
+  // ouvert sans partie (rechargement) : l'accueil
   const shownRoute = useRef(route.name);
   useEffect(() => {
     if (!routed) return;
@@ -227,14 +227,17 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
     }
     return (
       <>
-        {home && route.name !== 'rapide' ? home({ resume: resumeQuick, help: () => setHelp(true), settings: () => table.setSettingsOpen(true) }) : <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
-          onSettings={() => table.setSettingsOpen(true)} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />}
-        {home && route.name !== 'rapide' && help && <HelpModal onClose={() => setHelp(false)} />}
+        {home && route.name !== 'rapide' ? home({ resume: resumeQuick, help: () => setHelp(true), settings: () => table.setSettingsOpen(true) }) : (
+          <QuickPlay config={config} records={records} onChange={chooseQuick} onStart={start} onBack={() => goUp(HOME)}
+            onHelp={() => setHelp(true)} onSettings={() => table.setSettingsOpen(true)} onGuide={setGuide}
+            onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
+        )}
+        {help && <HelpModal onClose={() => setHelp(false)} />}
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { showScreen(null); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
         {builder && (
           <DeckBuilderScreen onClose={() => { showScreen(null); cardZoom.close(); }} onHover={cardZoom.onHover}
-            onPlay={(id) => { cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); navigate({ name: 'rapide' }); }} />
+            onPlay={(id) => { cardZoom.close(); chooseQuick({ ...config, myDeck: id }); navigate({ name: 'rapide' }); }} />
         )}
         {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
         {table.settingsOpen && <SettingsPanel onClose={() => table.setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
@@ -259,7 +262,7 @@ export function App({ notice, onImmersive, online, adventure, configured, home }
     rec.quit();
   };
   // « Accueil » après la partie : l'accueil du jeu, même quand la partie a été lancée depuis #play/rapide (goBack
-  // ramènerait à l'écran de départ)
+  // ramènerait à l'écran de la partie rapide)
   const goHome = () => {
     if (routed && currentRoute().name === 'jeu') return goUp(HOME);
     rec.quit();

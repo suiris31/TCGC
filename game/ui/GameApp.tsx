@@ -8,7 +8,6 @@ import { Home } from './home/Home.tsx';
 import { ApiError, call } from './api.ts';
 import { setArchiveUser } from './archiveClient.ts';
 import { deviceClasses, useDevice } from './device.ts';
-import { currentMatches, type CurrentMatch } from './online/api.ts';
 import { Lobby } from './online/Lobby.tsx';
 import { OnlineMatch } from './online/OnlineMatch.tsx';
 import { goBack, goUp, HOME, navigate, useRoute } from './routes.ts';
@@ -115,7 +114,6 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   // rouvre
   const route = useRoute();
   const solo = SOLO.has(route.name);
-  const [current, setCurrent] = useState<CurrentMatch | null>(null);
 
   setArchiveUser(userId);
 
@@ -148,14 +146,6 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
   const device = useDevice();
 
   useEffect(() => () => onImmersive(false), [onImmersive]);
-
-  // partie en ligne ou salle en cours : proposée sur l'écran de la partie rapide (l'accueil la cherche lui-même)
-  useEffect(() => {
-    if (route.name !== 'rapide') return;
-    let cancelled = false;
-    currentMatches().then((list) => { if (!cancelled) setCurrent(list.find((m) => m.status === 'playing') ?? list[0] ?? null); }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [route.name]);
 
   // salon, partie en ligne, aventure, boutique, atelier : tout l'écran
   useEffect(() => {
@@ -190,15 +180,7 @@ function GameShell({ userId, notice, onImmersive }: GameAppProps) {
             <Atelier page={route.page} onPage={(page) => navigate({ name: 'atelier', page })} onBack={() => goUp(HOME)} />
           </Suspense>
         ) : (
-          <App notice={notice} onImmersive={immersive} home={(actions) => <Home notice={notice} {...actions} />} adventure={{ onOpen: () => navigate({ name: 'aventure' }) }} online={{
-            onOpen: () => navigate({ name: 'ami' }),
-            resume: current ? {
-              label: current.status === 'playing'
-                ? `Partie en cours contre ${current.opponent} : elle t’attend.`
-                : `Ta salle ${current.code} attend ton ami.`,
-              onResume: () => navigate({ name: 'partie', id: current.id }),
-            } : undefined,
-          }} />
+          <App onImmersive={immersive} home={(actions) => <Home notice={notice} {...actions} />} />
         )
       ) : state === 'loading' ? (
         <div className="opc-wait" data-ui="game.loading"><span className="op-spinner" /> Chargement du jeu…</div>
