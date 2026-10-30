@@ -17,6 +17,7 @@ const OLD_FILE = path.join(config.dataDir, 'game-cards.json');  // ancien format
 const MAX_AGE = 24 * 3600_000;
 let ready = null; // { json, gzip, legacy, fetchedAt }
 let running = null;
+let enImages = new Map(); // numéro -> visuels de la liste anglaise (« EB05-001 », « EB05-001_p1 »...)
 
 // Ancien format (VF, avant le 7 octobre 2026), pour une page ouverte avant cette mise à jour : son code attend des
 // couleurs, types et attributs en français. À retirer quand plus aucune page de cette époque ne peut être ouverte.
@@ -38,6 +39,8 @@ const packed = (value) => {
 
 function use(catalog) {
   loadCardData(catalog.cards);
+  enImages = new Map(Object.entries(catalog.cards).map(([number, card]) => [number,
+    [...new Set([card, ...(card.versions ?? [])].filter((v) => v.lang === 'en').map((v) => v.imageId))]]));
   const needed = neededCards();
   ready = {
     ...packed({ engine: ENGINE, cards: Object.fromEntries(playableCards().map((n) => [n, catalog.cards[n]])) }),
@@ -85,6 +88,11 @@ export function ensureGameCards({ log = console.log } = {}) {
 
 export function gameCards() {
   return ready;
+}
+
+// Visuels VO d'un numéro (secours des versions que TCGplayer n'a pas encore illustrées, voir server/cards.js)
+export function enImagesOf(number) {
+  return enImages.get(number) ?? [];
 }
 
 // Grands visuels VO (cartes qui n'existent pas en VF) : téléchargés à la demande depuis la liste officielle anglaise,

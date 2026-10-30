@@ -1,7 +1,9 @@
 // Requêtes sur le catalogue et la collection, mises en forme pour l'API.
 // viewer = { userId, source } : l'utilisateur connecté (sa collection) et sa source de prix
+import fs from 'node:fs';
 import { db, transaction } from './db.js';
-import { cdnImage } from './images.js';
+import { enImagesOf } from './game-cards.js';
+import { cdnImage, thumbPath } from './images.js';
 import { priceInsight } from './insight.js';
 import { takedown } from './takedown.js';
 import { estimateEurSql, priceJoins, toEur, valueHistory } from './valuation.js';
@@ -94,8 +96,28 @@ function formatPrice(row, viewer) {
   return { eur, source, cardmarket, tcgplayer };
 }
 
+// Version que TCGplayer n'a pas encore illustrée (souvent les parallèles d'une nouvelle extension, des semaines après
+// la sortie) : visuel officiel Bandai à la place. Le VF que l'index lui a rattaché, sinon la parallèle VO quand le
+// numéro n'en a qu'une et une seule version spéciale, sinon l'illustration normale de la carte. null quand TCGplayer
+// a le visuel. row : product_id, number, variant, fr_image.
+function bandaiVisual(row) {
+  if (!row.number || fs.existsSync(thumbPath(row.product_id))) return null;
+  const fr = (id) => ({ image: `img-fr/${id}.jpg`, imageLarge: `img-fr-hd/${id}.webp` });
+  const en = (id) => ({ image: `img-en-hd/${id}.webp`, imageLarge: `img-en-hd/${id}.webp` });
+  if (row.fr_image) return fr(row.fr_image);
+  const enList = enImagesOf(row.number);
+  if (row.variant !== null) {
+    const parallels = enList.filter((id) => /_p\d+$/.test(id));
+    const special = db.prepare('SELECT COUNT(*) AS n FROM cards WHERE number = ? AND variant IS NOT NULL').get(row.number).n;
+    if (parallels.length === 1 && special === 1) return en(parallels[0]);
+  }
+  if (db.prepare('SELECT 1 FROM fr_cards WHERE image_id = ?').get(row.number)) return fr(row.number);
+  return enList.includes(row.number) ? en(row.number) : null;
+}
+
 export function formatCard(row, viewer) {
   const price = formatPrice(row, viewer);
+  const bandai = bandaiVisual(row);
   return {
     id: row.product_id,
     name: row.name,
@@ -116,9 +138,10 @@ export function formatCard(row, viewer) {
     setCode: row.set_code,
     setName: row.set_name,
     releaseDate: row.published_on?.slice(0, 10) ?? null,
-    image: `img/${row.product_id}.jpg`,
+    image: bandai?.image ?? `img/${row.product_id}.jpg`,
     // interrupteur de retrait : plus de visuel chargé chez TCGplayer, la face dessinée de server/takedown.js
-    imageLarge: takedown.images ? `img/${row.product_id}.jpg` : cdnImage(row.product_id, 'in_1000x1000'),
+    imageLarge: bandai?.imageLarge
+      ?? (takedown.images ? `img/${row.product_id}.jpg` : cdnImage(row.product_id, 'in_1000x1000')),
     // Visuel VF officiel quand la carte existe en français
     imageFr: row.fr_image ? `img-fr/${row.fr_image}.jpg` : null,
     imageFrLarge: row.fr_image ? `img-fr-hd/${row.fr_image}.webp` : null,
@@ -275,8 +298,8 @@ export function collectionSets(viewer, { all = false } = {}) {
 
   // Illustration : la carte possédée la plus chère du set, à défaut la plus chère du set
   const covers = new Map(db.prepare(`
-    SELECT group_id, product_id, fr_image, owned_fr, owned_en FROM (
-      SELECT c.group_id, c.product_id, own.owned_fr, own.owned_en,
+    SELECT group_id, product_id, number, variant, fr_image, owned_fr, owned_en FROM (
+      SELECT c.group_id, c.product_id, c.number, c.variant, own.owned_fr, own.owned_en,
              (SELECT MIN(f.image_id) FROM fr_cards f WHERE f.product_id = c.product_id) AS fr_image,
              ROW_NUMBER() OVER (
                PARTITION BY c.group_id ORDER BY own.owned IS NULL, ${estimate} IS NULL, ${estimate} DESC, c.product_id
@@ -299,7 +322,7 @@ export function collectionSets(viewer, { all = false } = {}) {
       valueEur: Math.round(s.value_eur * 100) / 100,
       cover: cover && {
         id: cover.product_id,
-        image: `img/${cover.product_id}.jpg`,
+        image: bandaiVisual(cover)?.image ?? `img/${cover.product_id}.jpg`,
         imageFr: cover.fr_image ? `img-fr/${cover.fr_image}.jpg` : null,
         // langue de l'exemplaire possédé (VF en priorité), null si la carte n'est pas possédée
         ownedLang: cover.owned_fr > 0 ? 'fr' : cover.owned_en > 0 ? 'en' : null,

@@ -181,12 +181,62 @@ async function doBuildIndex(log, batchSize) {
   return index;
 }
 
+// Versions d'une extension récente encore sans visuel TCGplayer (souvent ses parallèles, illustrées des semaines après
+// la sortie), par numéro. Les plus anciennes sans visuel (versions tamponnées...) n'en auront sans doute jamais.
+const RECENT_DAYS = 120;
+const PARALLEL = /_p\d+$/;
+
+function awaitingThumbs() {
+  const since = new Date(Date.now() - RECENT_DAYS * 86400_000).toISOString().slice(0, 10);
+  const byNumber = new Map();
+  for (const r of db.prepare(`SELECT c.product_id, c.number FROM cards c JOIN sets s ON s.group_id = c.group_id
+    WHERE c.number IS NOT NULL AND (s.published_on IS NULL OR s.published_on >= ?)`).all(since)) {
+    if (index.tcgPos.has(r.product_id)) continue;
+    if (!byNumber.has(r.number)) byNumber.set(r.number, []);
+    byNumber.get(r.number).push(r.product_id);
+  }
+  return byNumber;
+}
+
+// Une parallèle VF ressemble souvent assez à la version normale pour lui être rattachée à tort quand sa propre version
+// attend son visuel TCGplayer : tant que c'est le cas, elle n'est rattachée à une version illustrée que si c'est
+// clairement la même illustration (rattachements faits avant cette règle compris : ils sont retirés puis refaits)
+function detachUncertain(awaiting) {
+  const keep = [];
+  const frDone = [];
+  let k = 0;
+  index.sources.forEach((source, pos) => {
+    if (source === 'fr') {
+      const imageId = index.frDone[k++];
+      const productId = index.ids[pos];
+      const tcg = index.tcgPos.get(productId);
+      const waiting = awaiting.get(imageId.replace(/_[a-z]\d+$/i, ''));
+      if (PARALLEL.test(imageId) && waiting && tcg !== undefined && cosine(pos, tcg) < CERTAIN_FR_MATCH) return;
+      frDone.push(imageId);
+    }
+    keep.push(pos);
+  });
+  if (keep.length === index.ids.length) return 0;
+  const { dim } = index;
+  const vectors = new Float32Array(keep.length * dim);
+  keep.forEach((pos, i) => vectors.set(index.vectors.subarray(pos * dim, (pos + 1) * dim), i * dim));
+  const removed = index.ids.length - keep.length;
+  saveIndex({ ids: keep.map((p) => index.ids[p]), sources: keep.map((p) => index.sources[p]), frDone, dim, vectors });
+  return removed;
+}
+
 // Rattache chaque visuel VF à la variante du catalogue qui a le même code et l'illustration la plus proche
 async function indexFrench(log, batchSize) {
+  const awaiting = awaitingThumbs();
+  const detached = detachUncertain(awaiting);
+  if (detached) log(`Visuels VF : ${detached} parallèle${detached > 1 ? 's' : ''} à rattacher de nouveau`);
   const done = new Set(index.frDone);
   const todo = db.prepare('SELECT image_id, number FROM fr_cards ORDER BY image_id').all()
     .filter((r) => !done.has(r.image_id) && fs.existsSync(frImagePath(r.image_id)));
-  if (!todo.length) return;
+  if (!todo.length) {
+    if (detached) saveFrenchMapping();
+    return;
+  }
 
   const variants = new Map(); // code -> [{ productId, pos, common }]
   const rows = db.prepare(`SELECT c.product_id, c.number, c.variant, ${TCG_USD_SQL} AS price
@@ -200,6 +250,7 @@ async function indexFrench(log, batchSize) {
 
   log(`Index de reconnaissance : ${todo.length} visuels VF à analyser...`);
   const entries = [];
+  const deferred = new Map(); // numéro -> parallèles VF en attente du visuel TCGplayer de leur version
   let unmatched = 0;
   for (let i = 0; i < todo.length; i += batchSize) {
     const batch = todo.slice(i, i + batchSize);
@@ -208,6 +259,11 @@ async function indexFrench(log, batchSize) {
       const candidates = (variants.get(r.number) ?? [])
         .map((c) => ({ ...c, score: dot(vectors[k], c.pos) }))
         .sort((a, b) => b.score - a.score);
+      if (PARALLEL.test(r.image_id) && awaiting.has(r.number) && !(candidates[0]?.score >= CERTAIN_FR_MATCH)) {
+        if (!deferred.has(r.number)) deferred.set(r.number, []);
+        deferred.get(r.number).push({ imageId: r.image_id, vector: vectors[k] });
+        return;
+      }
       // Illustration trop différente de toutes les versions connues : on ne rattache pas au hasard
       if (!candidates.length || candidates[0].score < MIN_FR_MATCH) {
         unmatched++;
@@ -220,23 +276,41 @@ async function indexFrench(log, batchSize) {
     });
     if (i > 0 && (i / batchSize) % 50 === 0) log(`  ${i + batch.length}/${todo.length}`);
   }
+  // Une seule parallèle VF en attente et une seule version en attente (sans visuel VF) pour ce numéro : ce sont les
+  // mêmes. Sinon on ne devine pas : elles attendent le visuel TCGplayer et seront comparées à la prochaine mise à jour.
+  const withFrench = new Set(index.ids.filter((_, pos) => index.sources[pos] === 'fr'));
+  let waiting = 0;
+  for (const [number, images] of deferred) {
+    const versions = awaiting.get(number).filter((id) => !withFrench.has(id));
+    if (images.length === 1 && versions.length === 1) {
+      entries.push({ productId: versions[0], source: 'fr', imageId: images[0].imageId, vector: images[0].vector });
+    } else {
+      waiting += images.length;
+    }
+  }
   if (entries.length) appendToIndex(entries);
   saveFrenchMapping();
-  log(`Visuels VF : ${entries.length} ajoutés à la reconnaissance${unmatched ? `, ${unmatched} sans équivalent au catalogue` : ''}`);
+  log(`Visuels VF : ${entries.length} ajoutés à la reconnaissance${unmatched ? `, ${unmatched} sans équivalent au catalogue` : ''}`
+    + `${waiting ? `, ${waiting} parallèle${waiting > 1 ? 's' : ''} en attente du visuel TCGplayer` : ''}`);
 }
 
-// Recopie dans fr_cards la carte du catalogue à laquelle chaque visuel VF de l'index est rattaché
+// Recopie dans fr_cards la carte du catalogue à laquelle chaque visuel VF de l'index est rattaché (les visuels retirés
+// de l'index, en attente d'être rattachés de nouveau, n'ont plus de carte)
 function saveFrenchMapping() {
   const frPositions = [];
   index.sources.forEach((s, i) => { if (s === 'fr') frPositions.push(i); });
   const update = db.prepare('UPDATE fr_cards SET product_id = ? WHERE image_id = ?');
   transaction(() => {
+    db.exec('UPDATE fr_cards SET product_id = NULL');
     frPositions.forEach((pos, k) => update.run(index.ids[pos], index.frDone[k]));
   });
 }
 
 // En dessous, un visuel VF ne ressemble vraiment à aucune version de son code dans le catalogue
 const MIN_FR_MATCH = 0.6;
+// Au-dessus, c'est clairement la même illustration (médiane d'un visuel VF avec sa bonne version : 0,96 ; une autre
+// parallèle du même numéro dépasse 0,95 dans moins de 1 % des cas)
+const CERTAIN_FR_MATCH = 0.95;
 
 // ---------- Recherche ----------
 

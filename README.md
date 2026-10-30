@@ -238,6 +238,7 @@ open with the 📜 button.
 | Catalog (cards, printings, images) | TCGplayer, through the public daily mirror [tcgcsv.com](https://tcgcsv.com) |
 | French cards | Official French card list [fr.onepiece-cardgame.com](https://fr.onepiece-cardgame.com/cardlist/): French names and artwork (refreshed weekly) |
 | Game cards (Play tab) | Official French and English card lists ([en.onepiece-cardgame.com](https://en.onepiece-cardgame.com/cardlist/)): every card, in French when it exists, otherwise in English (refreshed daily) |
+| Fallback images | Official French and English card lists, for printings TCGplayer hasn't illustrated yet (often a new set's parallels): the French image matched to the printing, otherwise the English parallel when there is only one, otherwise the regular artwork. The TCGplayer image takes over as soon as it is published. |
 | Prices (default) | **Cardmarket** price trend in € (daily public files). The reference market in Europe, but it doesn't separate languages. |
 | Prices (fallback or by choice) | TCGplayer "market price" (average of recent US sales, English cards), converted to € at the daily ECB rate |
 | Recognition | DINOv2 vision model running locally: every image (TCGplayer English + official French) becomes a vector and the photo is compared against all of them. The band where official images carry a "SAMPLE" watermark is blurred on both sides, otherwise real (unwatermarked) cards are poorly recognized. |
