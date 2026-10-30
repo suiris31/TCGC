@@ -198,20 +198,31 @@ function awaitingThumbs() {
   return byNumber;
 }
 
-// Une parallèle VF ressemble souvent assez à la version normale pour lui être rattachée à tort quand sa propre version
-// attend son visuel TCGplayer : tant que c'est le cas, elle n'est rattachée à une version illustrée que si c'est
-// clairement la même illustration (rattachements faits avant cette règle compris : ils sont retirés puis refaits)
+// Rattachements VF à refaire (retirés de l'index, ils sont rattachés de nouveau juste après) :
+// - une parallèle VF ressemble souvent assez à la version normale pour lui être rattachée à tort quand sa propre
+//   version attend son visuel TCGplayer : tant que c'est le cas, elle ne reste rattachée à une version illustrée que
+//   si c'est clairement la même illustration ;
+// - quand TCGplayer publie enfin le visuel d'une version, un visuel VF qui lui ressemble nettement plus qu'à la
+//   version à laquelle il est rattaché change de version.
 function detachUncertain(awaiting) {
+  const illustrated = new Map(); // numéro -> positions des visuels TCGplayer de ses versions
+  for (const r of db.prepare('SELECT product_id, number FROM cards WHERE number IS NOT NULL').all()) {
+    const pos = index.tcgPos.get(r.product_id);
+    if (pos === undefined) continue;
+    if (!illustrated.has(r.number)) illustrated.set(r.number, []);
+    illustrated.get(r.number).push(pos);
+  }
   const keep = [];
   const frDone = [];
   let k = 0;
   index.sources.forEach((source, pos) => {
     if (source === 'fr') {
       const imageId = index.frDone[k++];
-      const productId = index.ids[pos];
-      const tcg = index.tcgPos.get(productId);
-      const waiting = awaiting.get(imageId.replace(/_[a-z]\d+$/i, ''));
-      if (PARALLEL.test(imageId) && waiting && tcg !== undefined && cosine(pos, tcg) < CERTAIN_FR_MATCH) return;
+      const number = imageId.replace(/_[a-z]\d+$/i, '');
+      const tcg = index.tcgPos.get(index.ids[pos]);
+      const score = tcg === undefined ? CERTAIN_FR_MATCH : cosine(pos, tcg);
+      if (PARALLEL.test(imageId) && awaiting.has(number) && score < CERTAIN_FR_MATCH) return;
+      if ((illustrated.get(number) ?? []).some((other) => cosine(pos, other) > score + BETTER_FR_MATCH)) return;
       frDone.push(imageId);
     }
     keep.push(pos);
@@ -229,7 +240,7 @@ function detachUncertain(awaiting) {
 async function indexFrench(log, batchSize) {
   const awaiting = awaitingThumbs();
   const detached = detachUncertain(awaiting);
-  if (detached) log(`Visuels VF : ${detached} parallèle${detached > 1 ? 's' : ''} à rattacher de nouveau`);
+  if (detached) log(`Visuels VF : ${detached} à rattacher de nouveau`);
   const done = new Set(index.frDone);
   const todo = db.prepare('SELECT image_id, number FROM fr_cards ORDER BY image_id').all()
     .filter((r) => !done.has(r.image_id) && fs.existsSync(frImagePath(r.image_id)));
@@ -250,7 +261,7 @@ async function indexFrench(log, batchSize) {
 
   log(`Index de reconnaissance : ${todo.length} visuels VF à analyser...`);
   const entries = [];
-  const deferred = new Map(); // numéro -> parallèles VF en attente du visuel TCGplayer de leur version
+  const deferred = new Map(); // numéro -> visuels VF en attente du visuel TCGplayer de leur version
   let unmatched = 0;
   for (let i = 0; i < todo.length; i += batchSize) {
     const batch = todo.slice(i, i + batchSize);
@@ -259,7 +270,8 @@ async function indexFrench(log, batchSize) {
       const candidates = (variants.get(r.number) ?? [])
         .map((c) => ({ ...c, score: dot(vectors[k], c.pos) }))
         .sort((a, b) => b.score - a.score);
-      if (PARALLEL.test(r.image_id) && awaiting.has(r.number) && !(candidates[0]?.score >= CERTAIN_FR_MATCH)) {
+      const threshold = PARALLEL.test(r.image_id) ? CERTAIN_FR_MATCH : MIN_FR_MATCH;
+      if (awaiting.has(r.number) && !(candidates[0]?.score >= threshold)) {
         if (!deferred.has(r.number)) deferred.set(r.number, []);
         deferred.get(r.number).push({ imageId: r.image_id, vector: vectors[k] });
         return;
@@ -276,22 +288,30 @@ async function indexFrench(log, batchSize) {
     });
     if (i > 0 && (i / batchSize) % 50 === 0) log(`  ${i + batch.length}/${todo.length}`);
   }
-  // Une seule parallèle VF en attente et une seule version en attente (sans visuel VF) pour ce numéro : ce sont les
-  // mêmes. Sinon on ne devine pas : elles attendent le visuel TCGplayer et seront comparées à la prochaine mise à jour.
+  // Visuels VF en attente, rattachés sans comparaison quand il n'y a pas de doute : le visuel normal à la seule version
+  // normale en attente, puis une seule parallèle à la seule version en attente qui reste (sans visuel VF). Sinon on ne
+  // devine pas : ils attendent le visuel TCGplayer et seront comparés à la prochaine mise à jour.
   const withFrench = new Set(index.ids.filter((_, pos) => index.sources[pos] === 'fr'));
+  const normal = new Set(db.prepare('SELECT product_id FROM cards WHERE variant IS NULL').all().map((r) => r.product_id));
   let waiting = 0;
   for (const [number, images] of deferred) {
-    const versions = awaiting.get(number).filter((id) => !withFrench.has(id));
-    if (images.length === 1 && versions.length === 1) {
-      entries.push({ productId: versions[0], source: 'fr', imageId: images[0].imageId, vector: images[0].vector });
-    } else {
-      waiting += images.length;
-    }
+    const pair = (image, versions) => {
+      if (versions.length !== 1) return false;
+      entries.push({ productId: versions[0], source: 'fr', imageId: image.imageId, vector: image.vector });
+      withFrench.add(versions[0]);
+      return true;
+    };
+    const pending = () => awaiting.get(number).filter((id) => !withFrench.has(id));
+    const normals = images.filter((im) => !PARALLEL.test(im.imageId));
+    const parallels = images.filter((im) => PARALLEL.test(im.imageId));
+    if (normals.length === 1 && pair(normals[0], pending().filter((id) => normal.has(id)))) normals.pop();
+    if (parallels.length === 1 && pair(parallels[0], pending())) parallels.pop();
+    waiting += normals.length + parallels.length;
   }
   if (entries.length) appendToIndex(entries);
   saveFrenchMapping();
   log(`Visuels VF : ${entries.length} ajoutés à la reconnaissance${unmatched ? `, ${unmatched} sans équivalent au catalogue` : ''}`
-    + `${waiting ? `, ${waiting} parallèle${waiting > 1 ? 's' : ''} en attente du visuel TCGplayer` : ''}`);
+    + `${waiting ? `, ${waiting} visuel${waiting > 1 ? 's' : ''} en attente du visuel TCGplayer` : ''}`);
 }
 
 // Recopie dans fr_cards la carte du catalogue à laquelle chaque visuel VF de l'index est rattaché (les visuels retirés
@@ -311,6 +331,8 @@ const MIN_FR_MATCH = 0.6;
 // Au-dessus, c'est clairement la même illustration (médiane d'un visuel VF avec sa bonne version : 0,96 ; une autre
 // parallèle du même numéro dépasse 0,95 dans moins de 1 % des cas)
 const CERTAIN_FR_MATCH = 0.95;
+// Écart au-delà duquel une autre version ressemble nettement plus (le rattachement départage à 0,015 près)
+const BETTER_FR_MATCH = 0.02;
 
 // ---------- Recherche ----------
 

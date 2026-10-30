@@ -69,10 +69,17 @@ async function doSync(log, force) {
     if (!fresh || force) throw err;
   }
   const full = !fresh || force || !known.size;
-  const todo = !series ? [] : full ? series : series.filter((s) => !known.has(s.id));
+  // Une extension sortie il y a moins d'un mois est relue à chaque passage : Bandai y ajoute ses parallèles dans les
+  // jours qui suivent la sortie (EB-05 : 61 visuels le jour de la sortie, 96 ensuite)
+  const since = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  // codes sans tiret des deux côtés : « EB05 » chez TCGplayer, « [EB-05] » chez Bandai
+  const recent = new Set(db.prepare('SELECT code FROM sets WHERE code IS NOT NULL AND published_on >= ?').all(since)
+    .map((r) => r.code.replace(/-/g, '')));
+  const isRecent = (s) => recent.has(s.name.match(/\[([^\]]+)\]\s*$/)?.[1].replace(/-/g, ''));
+  const todo = !series ? [] : full ? series : series.filter((s) => !known.has(s.id) || isRecent(s));
   if (todo.length) {
     log(full ? `Cartes VF : ${series.length} séries sur le site officiel français...`
-      : `Cartes VF : nouvelle${todo.length > 1 ? 's' : ''} série${todo.length > 1 ? 's' : ''} ${todo.map((s) => s.name).join(', ')}...`);
+      : `Cartes VF : série${todo.length > 1 ? 's' : ''} ${todo.map((s) => s.name).join(', ')}...`);
     const all = [];
     for (const s of todo) {
       const html = await getText(`${BASE}/cardlist/?series=${s.id}`);
