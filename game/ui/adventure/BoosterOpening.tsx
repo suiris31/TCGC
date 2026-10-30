@@ -238,7 +238,7 @@ function Pack({ set, cards, opening, onOpen }: { set: string; cards: number; ope
   return (
     <button type="button" className={`op-bo-pack${opening ? ' is-opening' : ''}${tear > 0 ? ' is-tearing' : ''}`}
       style={{ ...packColors(set), '--tear': opening ? 0 : tear } as CSSProperties} aria-label={`Ouvrir le booster ${set}`}
-      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; setTear(0); }} onClick={click}>
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; setTear(0); }} onClick={click} data-ui="opening.pack">
       <PackArt set={set} cards={cards} />
     </button>
   );
@@ -751,7 +751,7 @@ export function BoosterOpening({ content, boosters: toOpen, draw, owned, onDone,
           {settings.sound ? '🔊' : '🔇'}
         </button>
       </header>
-      <div className={`op-bo-body op-bo-at-${stage.kind}`}>
+      <div className={`op-bo-body op-bo-at-${stage.kind}`} data-stage={stage.kind}>
         {stage.kind === 'choose' && (
           <div className="op-bo-main">
             <Fan set={set} count={total} cards={size} />
@@ -792,8 +792,8 @@ export function BoosterOpening({ content, boosters: toOpen, draw, owned, onDone,
         {stage.kind === 'recap' && <Recap entries={entries} known={owned !== undefined} left={left} fail={fail} />}
         {(primary || secondary) && (
           <div className="op-bo-actions">
-            {secondary && <button type="button" className="op-btn op-btn-ghost btn-big" onClick={secondary.run} disabled={secondary.disabled}>{secondary.label}</button>}
-            {primary && <button ref={primaryRef} type="button" className="op-btn op-btn-primary btn-big" onClick={primary.run} disabled={primary.disabled}>{primary.label}</button>}
+            {secondary && <button type="button" className="op-btn op-btn-ghost btn-big" onClick={secondary.run} disabled={secondary.disabled} data-ui="opening.secondary">{secondary.label}</button>}
+            {primary && <button ref={primaryRef} type="button" className="op-btn op-btn-primary btn-big" onClick={primary.run} disabled={primary.disabled} data-ui="opening.primary">{primary.label}</button>}
           </div>
         )}
       </div>

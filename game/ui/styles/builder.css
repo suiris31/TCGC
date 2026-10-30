@@ -153,9 +153,6 @@
 .op-db-art .thumb { cursor: pointer; }
 .op-db-art:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .op-db-art-badge { position: absolute; right: 0.15rem; bottom: 0.15rem; padding: 0 0.3rem; border-radius: 0.4rem; background: var(--ink-a92); color: var(--accent); font-size: 0.75rem; font-weight: 800; line-height: 1.5; pointer-events: none; }
-/* une hauteur maximale absolue : celle du kit (min(88vh, 100%)) ne limite pas la rangée de sa grille, et une galerie
-   très haute (224 DON!!) sortait de l'écran sur ordinateur */
-.opc .op-kit-layer:not(.is-sheet) .op-kit-dialog.op-looks { max-height: 88vh; }
 .op-looks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 0.6rem; }
 .op-looks-grid.is-don { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); }
 .op-looks-item { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.35rem; border-radius: 10px; background: var(--surface); border: 2px solid var(--line); color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: border-color var(--dur-fast), transform var(--dur-fast); }

@@ -2,6 +2,8 @@
 .op-bo { position: fixed; inset: 0; z-index: var(--z-boosters); display: flex; flex-direction: column; overflow: hidden; color: var(--text); background: radial-gradient(ellipse 75% 60% at 50% 40%, var(--bo-bg-2) 0%, var(--table-mid) 58%, var(--bo-bg-0) 100%); animation: op-fade 0.25s ease-out; }
 .opc:not(.opc-full) .op-bo { bottom: calc(var(--tabbar-h, 64px) + var(--safe-bottom, 0px)); }
 .op-bo-head { display: flex; align-items: center; gap: 0.8rem; padding: calc(0.6rem + env(safe-area-inset-top, 0px)) 1rem 0.3rem; }
+/* le bouton du son : 44 px au moins, aussi au doigt (les .icon-btn compacts sont plus petits) */
+.op-bo-head .icon-btn { width: max(44px, 2.75rem); height: max(44px, 2.75rem); }
 .op-bo-title { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.8rem; }
 .op-bo-title strong { font-size: 1.3rem; color: var(--accent); }
 .op-bo-stop { flex: none; }

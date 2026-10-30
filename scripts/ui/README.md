@@ -19,7 +19,7 @@ npm run ui:tour -- --port 3501 --out C:/chemin/vers/dossier-avant
 | `--port <n>` | port du serveur d'essai (celui de ta tâche, `01-contrats.md` § 14.1) | 3500 |
 | `--db <fichier>` | base dont on fait une copie (jamais `tcgc.db`, refusée) | `data/tcgc-test.db` |
 | `--out <dossier>` | dossier des captures et rapports | dossier temporaire daté (affiché) |
-| `--only <a,b>` | seulement ces parcours : `accueil`, `partie`, `aventure`, `decks`, `parties`, `salon`, `atelier`, `clavier` | tous sauf `atelier` |
+| `--only <a,b>` | seulement ces parcours : `accueil`, `partie`, `aventure`, `decks`, `parties`, `salon` (parcours de la référence), `continuer`, `fin`, `chapitre`, `boosters`, `visuels`, `en-ligne`, `retour`, `mouvements` (parcours complets), `clavier`, `atelier` ; **`tout`** = tous sauf `atelier` | ceux de la référence |
 | `--formats <a,b>` | seulement ces formats : `desktop`, `portrait`, `paysage` | les 3 |
 | `--headed` | Chrome visible (pour regarder un parcours) | sans écran |
 | `--compare <avant> <après>` | compare deux dossiers (voir plus bas) | |
@@ -27,7 +27,8 @@ npm run ui:tour -- --port 3501 --out C:/chemin/vers/dossier-avant
 - **Lance `npm run build` avant** : le serveur d'essai sert l'interface construite (`dist/`). L'outil prévient si le
   build est plus ancien que le code de `game/ui` ou `web/src`.
 - Chrome ou Edge est cherché dans les dossiers habituels de Windows ; sinon, donne son chemin dans `CHROME_PATH`.
-- Durée : environ 4 minutes pour les 3 formats.
+- Durée : environ 4 minutes pour les 3 formats (parcours de la référence, sur une machine peu chargée) ; avec
+  `--only tout`, compter 30 à 60 minutes (parties jouées jusqu'au bout) : lance-le en arrière-plan.
 - Code de sortie : 0 si tout s'est joué, 1 si un parcours a échoué (il est noté dans le rapport, avec une capture
   `echec-<parcours>-<format>.png`, et les autres parcours continuent), 2 si l'outil n'a pas pu démarrer.
 
@@ -59,7 +60,25 @@ Les numéros sont fixes : un écran garde le sien même avec `--only`.
 | `parties` | 20 Mes parties (la partie rapide abandonnée y figure si `partie` a été joué) |
 | `salon` | 21 salon en ligne (« Jouer avec un ami ») · 25 choix du deck du salon · 26 salle d’attente (salle créée, puis fermée) |
 | `atelier` | 30 chaque page « plateau » de l'atelier (`#play/atelier/plateau-<état>`, états fixés de `game/ui/atelier/plateau/etats.ts`) : `30-plateau-<état>-<format>.png`. **Seulement avec `--only atelier`** (hors de la référence de l'étape) |
+| `continuer` | 27 accueil avec « Continuer » (la partie rapide laissée par `partie`, sinon une nouvelle, interrompue) · 28 la partie reprise depuis l'accueil |
+| `fin` | partie rapide **jouée jusqu'au bout** (politique simple : jouer, donner les DON!!, attaquer le Leader, ne pas bloquer) : 33 tour de l'IA mis en pause (`table.pause`) · 34 une décision de l'IA pas à pas (`table.step`), puis reprise · 29 écran de fin · 31 récapitulatif du coach · « Voir le plateau », « Voir le résultat », puis 32 détail de la partie dans Mes parties (`#play/parties/<id>`) |
+| `chapitre` | chapitre 1 de l'aventure **gagné** (le joueur suit le conseil du coach ; jusqu'à 4 essais avec « Retenter ») : 35 fin de la partie · 36 récompenses · 37 accueil après la victoire |
+| `boosters` | 2 500 ฿ posés sur la copie de la base, puis : 38 achat d'un display (confirmation) · 39 un booster révélé (« Un par un ») · 40 « Finir plus tard » après le 2e · page rechargée · 41 la Cale et ses 22 boosters · « Tout ouvrir » · 42 récapitulatif ; les boosters à ouvrir sont comptés par l'API à chaque étape |
+| `visuels` | copie de ST-32 dans Mes decks : 43 versions du Leader · 44 DON!! proposées · 45 version et DON!! choisies (enregistrées) · « Jouer » avec ce deck : 46 le plateau montre la version du Leader et la DON!! choisie (vérifié par les adresses des visuels) |
+| `en-ligne` | partie **à deux comptes jouée jusqu'au bout** : je crée la salle (format du parcours), un ami (`tour-<format>-ami`, sur ordinateur, dans un contexte à part) la rejoint par le lien `#play/salle/<CODE>` : 47 plateau en ligne · 48 écran de fin. Les erreurs de la page de l'ami sont notées en avertissement |
+| `retour` | le **Retour d'Android** (`history.back()`) à chaque niveau, adresse et écran vérifiés : choix d'un deck → partie rapide → accueil ; réglages ; chapitre, Cale, deck d'aventure → carte → accueil ; boutique ; choix du Leader → Mes decks, éditeur d'un deck pas enregistré (question, « Abandonner ») → Mes decks → accueil ; Mes parties ; choix du deck du salon → salon → accueil ; pendant une partie : 49 « Quitter la partie ? », « Non » (la partie continue), puis « Oui » |
+| `mouvements` | le réglage « Animations réduites » (`settings.motion`) dans les 3 formats, sans la classe `ui-tour-still` : aucune animation en boucle sur l'accueil, la main de départ, le plateau (50) et la carte de l'aventure ; puis le réglage est retiré |
 | `clavier` | 22 menu d'une carte ouvert par Entrée · 23 cible d'une attaque choisie par les flèches · 24 fin de la partie. **Seulement avec `--only clavier`**, sur ordinateur (`--formats desktop` ; les formats tactiles notent « sur ordinateur seulement ») |
+
+Les parcours complets (tâche R4.1, `scripts/ui/complet.mjs`) ne sont joués qu'avec `--only` ; pour tout jouer :
+
+```bash
+npm run ui:tour -- --port 3581 --only tout --out <dossier>
+```
+
+Les parties jouées jusqu'au bout (`fin`, `chapitre`, `en-ligne`, `clavier`) suivent le hasard de la graine fixe, mais
+pas le fil de calcul du coach (aventure) ni l'ordre d'arrivée des messages en ligne : leurs écrans de fin et leurs
+nombres de tours peuvent changer d'un lancement à l'autre (comparer plutôt les mesures que les pixels).
 
 **Le parcours `clavier`** (tâche R2.8) joue une partie rapide **entière** contre l'IA, sans souris après « Lancer la
 partie » : Tab et les flèches amènent le focus, Entrée choisit (main de départ, cartes jouées, DON!! données au Leader,
@@ -166,9 +185,12 @@ Convention `data-ui="<écran>.<élément>"` (`01-contrats.md`, § 14.4). On ne l
 |---|---|
 | accueil (`home`) | `home`, `home.quick`, `home.history`, `home.decks`, `home.help`, `home.settings`, `home.adventure`, `home.online`, `home.online-resume` |
 | partie rapide (`quick`, R3.2) | `quick`, `quick.back`, `quick.help`, `quick.settings`, `quick.decks`, `quick.history` (ces deux-là dans le menu « ⋯ » `screen.more`), `quick.my-deck`, `quick.ai-deck` (ouvrent le choix des decks `quick.picker`, retour `quick.picker-back`), `quick.my-deck-guide`, `quick.ai-deck-guide`, `quick.summary`, `quick.note`, `quick.record`, `home.level-<1..4>`, `home.first-<random\|me\|ai>`, `home.start` ; tuiles `deck.tile-<id du deck>` (la même tuile partout : partie rapide, salon, Mes decks, deck d’aventure), `deck.random`, `deck.guide` |
-| plateau (`table`) | `table`, `table.zone-me`, `table.zone-opp`, `table.leader`, `table.hand`, `table.opp-hand`, `table.card` (toute carte), `table.don`, `table.pile`, `table.undo`, `table.sound`, `table.panel`, `table.panel-close`, `table.settings`, `table.guide`, `table.help` (sur téléphone, `table.sound`, `table.settings`, `table.guide` et `table.help` sont dans le menu « ⋯ » `table.more`, R2.4), `table.leave`, `table.tab-<journal\|coach\|choix>`, `table.end-turn`, `table.option-<id de l'option>`, `table.hint`, `table.confirm-attack`, `table.cancel-target`, `table.intro`, `table.celebration`, `table.live` (région aria-live : consigne et actions jouées, R2.8) ; « Quitter la partie ? » : `leave`, `leave.yes`, `leave.no` ; en ligne (même plateau, contrôleur commun `game/ui/table/`, R2.1) : `table.sending` (choix envoyé, réponse attendue), `table.reopen-end` (rouvrir la fin de partie), `leave.resign` (abandonner) |
+| plateau (`table`) | `table`, `table.pause`, `table.resume`, `table.step`, `table.paused` (pause de l'IA, R2.10 ; touche « P »), `table.zone-me`, `table.zone-opp`, `table.leader`, `table.hand`, `table.opp-hand`, `table.card` (toute carte), `table.don`, `table.pile`, `table.undo`, `table.sound`, `table.panel`, `table.panel-close`, `table.settings`, `table.guide`, `table.help` (sur téléphone, `table.sound`, `table.settings`, `table.guide` et `table.help` sont dans le menu « ⋯ » `table.more`, R2.4), `table.leave`, `table.tab-<journal\|coach\|choix>`, `table.end-turn`, `table.option-<id de l'option>`, `table.hint`, `table.confirm-attack`, `table.cancel-target`, `table.intro`, `table.celebration`, `table.live` (région aria-live : consigne et actions jouées, R2.8) ; « Quitter la partie ? » : `leave`, `leave.yes`, `leave.no` ; en ligne (même plateau, contrôleur commun `game/ui/table/`, R2.1) : `table.sending` (choix envoyé, réponse attendue), `table.reopen-end` (rouvrir la fin de partie), `leave.resign` (abandonner) |
 | menu d'une carte | `menu`, `menu.<play\|event\|act\|don\|attack\|block\|counter\|cevent\|choose>`, `menu.close` |
 | fenêtres du plateau | `mulligan.keep`, `mulligan.redraw`, `picker.choose`, `picker.option-<id>`, `trigger.activate`, `trigger.hand`, `cost.option`, `confirm-end.ok`, `confirm-end.cancel`, `confirm-end.never`, `trash.close`, `help.close`, `zoom.close`, fin d'une partie d'aventure `end`, `end.next`, `end.board` |
+| boutique et ouverture (R4.1) | `shop`, `shop.back`, `shop.buy-booster`, `shop.buy-display`, `shop.confirm`, `shop.confirm-buy`, `shop.bought`, `shop.open`, `shop.later` ; ouverture `opening` (étape dans `data-stage` : `choose`, `pack`, `reveal`, `burst`, `recap`), `opening.pack`, `opening.primary`, `opening.secondary`, `opening.stop`, `opening.left` ; Cale `hold.open-all` |
+| fin de partie (R3.3) | `end`, `end.result`, `end.recap`, `end.progress`, `end.next`, `end.restart`, `end.board`, `end.history`, `end.home`, `table.reopen-end` ; récompenses de l'aventure `rewards`, `rewards.retry`, `rewards.open`, `rewards.later`, `rewards.recap`, `rewards.map` |
+| éditeur, visuels (R3.12) | `editor.art`, `editor.don`, `looks.versions`, `looks.version-<variant>`, `looks.don`, `looks.don-item`, `looks.don-standard` |
 | aventure | `adventure.welcome`, `adventure.sail`, `adventure.map`, `adventure.back`, `adventure.settings`, `adventure.boosters`, `adventure.hold`, `adventure.deck`, `adventure.shop`, `adventure.go`, `adventure.summary` ; `chapter`, `chapter.back`, `chapter.bubble`, `chapter.skip`, `chapter.next`, `chapter.deck`, `chapter.fight`, `chapter.resume`, `chapter.count` ; `hold`, `hold.back` ; `adventure-deck`, `adventure-deck.back`, `adventure-deck.edit`, `adventure-deck.copy`, `adventure-deck.edit-one`, `adventure-deck.new` ; `shop`, `shop.back` |
 | decks | `decks` (fermée par son `dialog.close`), `decks.new`, `decks.copy`, `decks.copy-dialog`, `decks.copy-one`, `decks.play`, `decks.import`, `import`, `import.go`, `leaders`, `leaders.item`, `editor`, `editor.back`, `editor.save`, `editor.play`, `editor.pane-<…>`, `editor.unsaved` (`editor.stay`, `editor.retry`, `editor.discard`) |
 | parties | `history` (fenêtre du kit, fermée par son `dialog.close`), `history.tab-<progress\|axes\|games>`, `history.mode-<all\|solo\|aventure\|online>` |
@@ -183,7 +205,8 @@ dans le parcours qui l'ouvre.
 
 ## Fichiers
 
-- `tour.mjs` : options, serveur d'essai, compte de test, parcours, rapports ;
+- `tour.mjs` : options, serveur d'essai, compte de test, parcours de la référence, rapports ;
+- `complet.mjs` : les parcours complets (R4.1), ajoutés à la classe `Tour` de `tour.mjs` ;
 - `cdp.mjs` : le pilote de Chrome (lancement, onglet isolé, formats, clics et touchers, captures, erreurs) ;
 - `mesures.mjs` : les mesures d'un écran, exécutées dans la page ;
 - `compare.mjs` et `png.mjs` : la comparaison de deux dossiers (lecture et écriture PNG sans dépendance).

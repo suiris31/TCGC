@@ -75,4 +75,4 @@
 :where(.opc.is-compact) .op-lobby-join > .op-kit-btn { flex: 1 1 auto; }
 :where(.opc.is-compact) .room-code { font-size: 2rem; }
 :where(.opc.is-compact) .op-room-actions > .op-kit-btn { flex: 1 1 auto; }
-:where(.opc.is-compact) .presence { font-size: 0.75rem; }
+:where(.opc.is-compact) .presence { font-size: max(11px, 0.75rem); }

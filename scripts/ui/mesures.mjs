@@ -75,8 +75,11 @@ export function measure({ minTarget = 44, minFont = 11, max = 30 } = {}) {
       const m = el.getScreenCTM?.();
       return m ? Math.hypot(m.a, m.b) : 1;
     }
+    // offsetWidth est arrondi au pixel : sur un petit élément (un « ● » de 8 px), l'arrondi seul ferait croire à une
+    // réduction ; on ne compte un agrandissement ou une réduction qu'au-delà d'un pixel d'écart
     const w = el.offsetWidth;
-    return w > 0 ? el.getBoundingClientRect().width / w : 1;
+    const rw = el.getBoundingClientRect().width;
+    return w > 0 && Math.abs(rw - w) > 1 ? rw / w : 1;
   };
   const tiny = [];
   let texts = 0;

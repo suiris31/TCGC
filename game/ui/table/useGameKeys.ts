@@ -1,10 +1,10 @@
 // Raccourcis clavier de la partie : Échap ferme ce qui est ouvert, Entrée finit le tour, Ctrl+Z revient avant ton
-// dernier choix (contre l'IA seulement), « ? » ouvre ou ferme l'aide
+// dernier choix (contre l'IA seulement), « ? » ouvre ou ferme l'aide, « P » met l'IA en pause ou la reprend (contre l'IA)
 import { useEffect, useRef } from 'react';
 import { isEndTurnKey, type KeyInput } from '../keys.ts';
 import type { Table } from './useTable.ts';
 
-export type GameKey = 'escape' | 'end-turn' | 'undo' | 'help';
+export type GameKey = 'escape' | 'end-turn' | 'undo' | 'help' | 'pause';
 
 // La touche, en geste de la partie (fonction pure, testée par game/tests/table.test.ts). Une liste déroulante garde
 // ses touches.
@@ -14,11 +14,13 @@ export function gameKey(e: KeyInput): GameKey | null {
   if (isEndTurnKey(e)) return 'end-turn';
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') return 'undo';
   if (e.key === '?') return 'help';
+  if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey) return 'pause';
   return null;
 }
 
-// undo : retour en arrière (absent : Ctrl+Z ne fait rien) ; escape : ce que l'écran ferme en plus du plateau
-export function useGameKeys(table: Table, extra: { undo?: () => void; escape?: () => void } = {}) {
+// undo : retour en arrière (absent : Ctrl+Z ne fait rien) ; escape : ce que l'écran ferme en plus du plateau ;
+// pause : met l'IA en pause ou la reprend (absent : « P » ne fait rien)
+export function useGameKeys(table: Table, extra: { undo?: () => void; escape?: () => void; pause?: () => void } = {}) {
   const latest = useRef({ table, extra });
   latest.current = { table, extra };
   useEffect(() => {
@@ -37,6 +39,9 @@ export function useGameKeys(table: Table, extra: { undo?: () => void; escape?: (
           break;
         case 'help':
           t.setHelp((h) => !h);
+          break;
+        case 'pause':
+          x.pause?.();
           break;
       }
     };

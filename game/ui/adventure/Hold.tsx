@@ -131,7 +131,7 @@ export function HoldView({ cards, boosters, onBack, onShop, onOpen, opening = fa
             <div className="op-hold-boosters-head">
               <h2>{boosters.length > 1 ? `${boosters.length} boosters à ouvrir` : 'Un booster à ouvrir'}</h2>
               {boosters.length > 1 && (
-                <button className="op-btn op-btn-primary" disabled={opening} onClick={() => onOpen(boosters.map((b) => b.id))}>
+                <button className="op-btn op-btn-primary" disabled={opening} onClick={() => onOpen(boosters.map((b) => b.id))} data-ui="hold.open-all">
                   {opening ? 'Ouverture…' : `Tout ouvrir (${boosters.length})`}
                 </button>
               )}

@@ -208,7 +208,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             <>
               <h3>Raccourcis</h3>
               <ul>
-                <li>Échap : fermer un menu ou annuler une attaque · Entrée : fin du tour · Ctrl+Z : revenir en arrière · ? : cette aide</li>
+                <li>Échap : fermer un menu ou annuler une attaque · Entrée : fin du tour · Ctrl+Z : revenir en arrière · P : mettre l’IA en pause ou la reprendre · ? : cette aide</li>
               </ul>
             </>
           )}

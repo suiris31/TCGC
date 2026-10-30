@@ -82,7 +82,7 @@
 /* Mes parties dans la fenêtre du kit (tâche R3.8) : grande fenêtre de hauteur fixe (elle ne saute pas d'un onglet à
    l'autre), vues et filtre par mode en haut, collés pendant le défilement */
 .opc .op-kit-dialog.op-history { min-width: 0; width: min(84rem, 100%); height: min(92vh, 100%); max-height: min(92vh, 100%); }
-.opc .op-kit-layer.is-sheet .op-kit-dialog.op-history { height: 94dvh; max-height: 94dvh; }
+.opc .op-kit-layer.is-sheet .op-kit-dialog.op-history { height: min(94dvh, 100%); max-height: min(94dvh, 100%); }
 .op-history-bar {
   position: sticky; top: -0.4rem; z-index: var(--z-raise); display: flex; flex-wrap: wrap; align-items: center;
   gap: 0.5rem 1rem; margin: -0.4rem 0 0.8rem; padding: 0.4rem 0 0.6rem; background: var(--bg-2); border-bottom: 1px solid var(--line);
