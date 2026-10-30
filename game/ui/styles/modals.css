@@ -2,6 +2,8 @@
    (mulligan, choix, déclenchement, coût, fin du tour, défausse, aide : Dialog du kit) et la bulle de la première partie. */
 /* hors partie, la barre d'onglets de TCGC reste visible : les fenêtres s'arrêtent au-dessus d'elle */
 .opc:not(.opc-full) .modal { bottom: calc(var(--tabbar-h, 64px) + var(--safe-bottom, 0px)); }
+/* de même pour les fenêtres du kit : sinon le bas d'une fiche (ses boutons) passe sous la barre d'onglets de TCGC */
+.opc:not(.opc-full) .op-kit-layer { bottom: calc(var(--tabbar-h, 64px) + var(--safe-bottom, 0px)); }
 .modal { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; background: var(--backdrop-a72); backdrop-filter: blur(2px); animation: op-fade 0.15s ease-out; }
 .modal-box { max-width: 51.429rem; width: calc(100% - 2.857rem); max-height: 88vh; overflow: auto; padding: 1.429rem; background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; gap: 0.857rem; box-shadow: 0 24px 60px var(--black-a60); animation: pop 0.18s ease-out; }
 .modal-wide { max-width: 74.286rem; }

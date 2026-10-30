@@ -1,13 +1,14 @@
 // Le plateau : pour chaque joueur, ses piles (deck, Défausse), sa Vie, son Leader, son Lieu, ses 5 places de
 // Personnage et ses DON!! ; ta main en éventail en bas, la main adverse (cachée) en haut. Sur ordinateur, chaque camp
 // a deux rangées (les Personnages côté centre) et la main est dans la rangée du fond, à côté du Leader et des DON!!.
-import type { PointerEvent, ReactNode } from 'react';
+import { memo, type PointerEvent, type ReactNode } from 'react';
 import { def, knows, other } from '../engine/rules.ts';
 import type { Card, GameState, PlayerId } from '../engine/types.ts';
 import { CardView, type CardLook, type Preview } from './CardView.tsx';
-import { cardImage } from './images.ts';
+import { ArtImg, useCardArt } from './table/CardArt.tsx';
 import type { GestureSource } from './table/gestures.ts';
 import { zoneLabel } from './table/a11y.ts';
+import { DonImg, useDonArt } from './table/DonArt.tsx';
 
 export interface BoardUi {
   looks: Map<number, CardLook>;
@@ -18,28 +19,55 @@ export interface BoardUi {
   donDraggable: boolean;
 }
 
-function Pile({ label, count, onClick, top }: { label: string; count: number; onClick?: () => void; top?: string }) {
+// Visuel d'une carte du joueur p hors du terrain (dessus de la Défausse, carte adverse connue) : la version choisie pour
+// son deck (tâche R3.12)
+function OwnArt({ s, p, num, alt = '' }: { s: GameState; p: PlayerId; num: string; alt?: string }) {
+  return <ArtImg art={useCardArt(s, p, num)} alt={alt} />;
+}
+
+function Pile({ label, count, onClick, top }: { label: string; count: number; onClick?: () => void; top?: ReactNode }) {
   return (
     <button className={`pile ${onClick ? 'pile-click' : ''} ${count === 0 ? 'pile-empty' : ''}`} data-ui="table.pile" onClick={onClick} disabled={!onClick}
       title={onClick ? `${label} : voir les cartes` : label}>
-      {top ? <img src={cardImage(def(top))} alt="" /> : <span className="pile-back" />}
+      {top ?? <span className="pile-back" />}
       <span className="pile-count">{count}</span>
       <span className="pile-label">{label}</span>
     </button>
   );
 }
 
+// Les DON!! d'un joueur : son deck DON!! (la réserve), puis sa zone de Coût, les redressées sur une rangée et les
+// épuisées (tournées) sur une autre ; elles se chevauchent quand il y en a beaucoup. Avec le visuel de la DON!! de son
+// deck (table/DonArt.tsx), sinon des jetons dorés.
 function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me: boolean }) {
   const P = s.players[p];
+  const art = useDonArt(s, p);
   const grab = me && ui.donDraggable && ui.onGrab ? (e: PointerEvent<HTMLElement>) => ui.onGrab!({ from: 'don' }, e) : undefined;
+  const face = art && <DonImg src={art} />;
   return (
-    <div className="don-pool" data-ui="table.don" title={`DON!! : ${P.donActive} redressées (utilisables), ${P.donRested} épuisées, ${P.donDeck} dans le deck DON!!`}>
-      <div className="don-cards">
-        {Array.from({ length: P.donActive }, (_, i) => (
-          <span key={`a${i}`} className={`don-card ${grab ? 'don-drag' : ''}`} onPointerDown={grab} />
-        ))}
-        {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested" />)}
-      </div>
+    <div className={`don-pool ${art ? 'op-don-arts' : ''}`} data-ui="table.don" title={`DON!! : ${P.donActive} redressées (utilisables), ${P.donRested} épuisées, ${P.donDeck} dans le deck DON!!`}>
+      {art ? (
+        <div className="op-don-table">
+          {P.donDeck > 0 && <span className="op-don-deck" aria-hidden="true">{face}<b>{P.donDeck}</b></span>}
+          <div className="op-don-rows">
+            <div className="don-cards op-don-row" style={{ ['--n' as string]: P.donActive }}>
+              {Array.from({ length: P.donActive }, (_, i) => (
+                <span key={`a${i}`} className={`don-card ${grab ? 'don-drag' : ''}`} onPointerDown={grab}>{face}</span>
+              ))}
+            </div>
+            <div className="don-cards op-don-row is-rested" style={{ ['--n' as string]: P.donRested }}>
+              {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested">{face}</span>)}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="don-cards">
+          {Array.from({ length: P.donActive }, (_, i) => (
+            <span key={`a${i}`} className={`don-card ${grab ? 'don-drag' : ''}`} onPointerDown={grab} />
+          ))}
+          {Array.from({ length: P.donRested }, (_, i) => <span key={`r${i}`} className="don-card don-rested" />)}
+        </div>
+      )}
       <div className="don-legend">
         <b>{P.donActive}</b> utilisable{P.donActive > 1 ? 's' : ''}
         {P.donRested > 0 && <> · {P.donRested} épuisée{P.donRested > 1 ? 's' : ''}</>}
@@ -49,8 +77,10 @@ function DonPool({ s, p, ui, me }: { s: GameState; p: PlayerId; ui: BoardUi; me:
   );
 }
 
-// hand : la main du joueur, dans la rangée du fond (ordinateur)
-export function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; me: boolean; ui: BoardUi; hand?: ReactNode }) {
+// hand : la main du joueur, dans la rangée du fond (ordinateur).
+// Les zones et les mains sont en memo : elles ne sont redessinées que si la partie ou le contrôleur (ui, stable entre
+// deux survols) changent.
+export const PlayerZone = memo(function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; me: boolean; ui: BoardUi; hand?: ReactNode }) {
   const P = s.players[p];
   const view = (card: Card, size: 'field' | 'life' = 'field') => (
     <CardView key={card.uid} s={s} card={card} owner={p} size={size} look={ui.looks.get(card.uid)}
@@ -62,7 +92,7 @@ export function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; 
       <div className="zone-row">
         <div className="piles">
           <Pile label="Deck" count={P.deck.length} />
-          <Pile label="Défausse" count={P.trash.length} top={P.trash.at(-1)?.num} onClick={P.trash.length ? () => ui.onTrash(p) : undefined} />
+          <Pile label="Défausse" count={P.trash.length} top={P.trash.length ? <OwnArt s={s} p={p} num={P.trash.at(-1)!.num} /> : undefined} onClick={P.trash.length ? () => ui.onTrash(p) : undefined} />
         </div>
         <div className="life-col" title="Vie : quand le Leader est touché, la carte du dessus va dans la main. À 0 Vie, le coup suivant fait perdre la partie.">
           <div className="life-stack">
@@ -87,10 +117,10 @@ export function PlayerZone({ s, p, me, ui, hand }: { s: GameState; p: PlayerId; 
       </div>
     </section>
   );
-}
+});
 
 // Ta main, en éventail (les cartes se chevauchent quand il y en a beaucoup)
-export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
+export const Hand = memo(function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
   const cards = s.players[p].hand;
   const overlap = cards.length > 7 ? Math.min(60, (cards.length - 7) * 9 + 18) : 0;
   return (
@@ -103,18 +133,18 @@ export function Hand({ s, p, ui }: { s: GameState; p: PlayerId; ui: BoardUi }) {
       {!cards.length && <div className="hand-empty">Main vide</div>}
     </div>
   );
-}
+});
 
 // Main adverse : le dos des cartes et leur nombre ; face visible, les cartes que tu connais (révélées : renvoyées en
 // main, ajoutées à la main en les révélant...)
-export function OpponentHand({ s, p }: { s: GameState; p: PlayerId }) {
+export const OpponentHand = memo(function OpponentHand({ s, p }: { s: GameState; p: PlayerId }) {
   const n = s.players[p].hand.length;
   return (
     <div className="opp-hand" data-ui="table.opp-hand" title={`${s.players[p].name} a ${n} carte${n > 1 ? 's' : ''} en main`}>
       {s.players[p].hand.map((c) => (knows(s, other(p), c.uid)
-        ? <div key={c.uid} className="card card-opp-hand card-known" title={`Carte connue : ${def(c.num).name}`}><img src={cardImage(def(c.num))} alt={def(c.num).name} /></div>
+        ? <div key={c.uid} className="card card-opp-hand card-known" title={`Carte connue : ${def(c.num).name}`}><OwnArt s={s} p={p} num={c.num} alt={def(c.num).name} /></div>
         : <div key={c.uid} className="card card-back card-opp-hand" />))}
       <span className="opp-hand-count">{n} en main</span>
     </div>
   );
-}
+});

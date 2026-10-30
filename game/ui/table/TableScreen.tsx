@@ -3,6 +3,7 @@
 // Le mode (contre l'IA, en ligne, atelier ; le classé à l'étape 3) donne le contrôleur (useTable) et remplit les
 // emplacements : ce qui est écrit dans l'en-tête, l'onglet Coach, les bandeaux, la fin de partie, « Quitter ».
 import { useRef, type ReactNode } from 'react';
+import { sayReason } from '../../coach/logText.ts';
 import { def, findField, power } from '../../engine/rules.ts';
 import { DeckGuideModal } from '../DeckGuide.tsx';
 import { Celebration, Intro } from '../Fx.tsx';
@@ -30,15 +31,17 @@ export interface TableScreenProps {
   sideNote?: ReactNode;          // une note en bas du panneau
   alert?: ReactNode;             // bandeau d'alerte sous l'en-tête
   center?: ReactNode;            // bandeau au centre du plateau
+  lastMove?: ReactNode;          // le dernier coup de l'adversaire, au centre (sinon : lu dans le journal, sur ordinateur)
+  bar?: ReactNode;               // une barre à la place de la barre d'action (l'IA en pause)
   hint?: { state: 'idle' | 'loading' | 'ready'; ask: () => void };  // bouton « Conseil » de la barre d'action
   sending?: boolean;             // ton choix est parti, la réponse est attendue (en ligne) : « Envoi… »
-  reopenEnd?: boolean;           // après « Voir le plateau », la barre propose « Voir le résultat » (en ligne)
+  reopenEnd?: boolean;           // après « Voir le plateau », la barre propose « Voir le résultat » (tous les modes)
   celebration?: string;          // la phrase sous « Victoire ! » ou « Défaite »
-  end?: ReactNode;               // la fin de partie (son contenu arrête le clic, qui sinon la referme)
+  end?: ReactNode;               // la fin de partie (EndScreen, end/ ; son contenu arrête le clic, qui sinon la referme)
   leave?: ReactNode;             // la fenêtre « Quitter la partie ? », quand elle est ouverte (LeaveDialog)
 }
 
-export function TableScreen({ table, opponent, thinking, top, decks, coach, sideNote, alert, center, hint, sending, reopenEnd, celebration, end, leave }: TableScreenProps) {
+export function TableScreen({ table, opponent, thinking, top, decks, coach, sideNote, alert, center, lastMove, bar: barSlot, hint, sending, reopenEnd, celebration, end, leave }: TableScreenProps) {
   const { board } = table;
   // au clavier : les flèches dans une zone, Tab d'une zone à l'autre ; la consigne et les actions jouées sont lues
   const root = useRef<HTMLDivElement>(null);
@@ -66,12 +69,12 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
     </div>
   ) : reopenEnd && table.over && !table.celebrate && !table.showEnd ? (
     <div className="action-bar">
-      <div className="bar-text"><strong>{won ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{s.winReason}</span></div>
+      <div className="bar-text"><strong>{won ? 'Victoire !' : 'Défaite.'}</strong> <span className="op-muted">{sayReason(s, board.seat)}</span></div>
       <div className="bar-buttons">
         <button data-ui="table.reopen-end" className="op-btn op-btn-primary" onClick={() => table.setShowEnd(true)}>Voir le résultat</button>
       </div>
     </div>
-  ) : (
+  ) : barSlot ?? (
     <ActionBar
       s={s}
       d={s.decision}
@@ -96,7 +99,7 @@ export function TableScreen({ table, opponent, thinking, top, decks, coach, side
   return (
     <div className={folded ? 'game op-side-collapsed' : 'game'} data-ui="table" ref={root}>
       <div className="op-sr-only" aria-live="polite" aria-atomic="true" data-ui="table.live">{announcement}</div>
-      <GameTable state={s} seat={board.seat} ui={board.ui} epoch={table.epoch} alert={alert} center={<>{aim}{center}</>} bar={bar}
+      <GameTable state={s} seat={board.seat} ui={board.ui} epoch={table.epoch} alert={alert} center={<>{aim}{center}</>} bar={bar} lastMove={lastMove}
         top={<TopBar table={table} {...top} guideDeck={decks.mine} theirs={decks.theirsName} coach={Boolean(coach)} />} />
       <SidePanel table={table} coach={coach} footer={sideNote} collapsed={folded} onCollapse={board.compact ? undefined : setCollapsed} />
       <DecisionLayer board={board} />
@@ -130,6 +133,3 @@ export function LeaveDialog({ text, onStay, children }: { text: string; onStay: 
     </div>
   );
 }
-
-// Le contenu d'une fenêtre de fin de partie arrête le clic (un clic à côté referme la fenêtre)
-export const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();

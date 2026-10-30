@@ -1,0 +1,49 @@
+/* Les vraies DON!! sur le plateau (tâche R2.11, Board.tsx, CardView.tsx, table/DonArt.tsx) : le visuel de la DON!! du
+   deck de chaque joueur dans sa réserve, sa zone de Coût et sous les cartes qui en ont reçu. Sans visuel, les jetons
+   dorés de table.css et les losanges de card.css restent. */
+
+/* Le visuel, partout : dans un jeton (et sa copie qui suit le pointeur quand on la glisse, hors de la réserve) */
+.don-card .op-don-img, .op-don-deck .op-don-img, .op-don-tuck .op-don-img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; pointer-events: none; }
+.don-card:has(.op-don-img) { overflow: hidden; background: var(--surface); }
+
+/* La réserve et la zone de Coût : la pile du deck DON!!, puis les DON!! redressées sur une rangée et les épuisées,
+   tournées, sur une autre ; chaque rangée tient dans sa place (les cartes se chevauchent s'il le faut). --dw : largeur
+   d'une DON!!, en largeurs de carte du plateau. */
+.don-pool.op-don-arts { --dw: calc(var(--cw) * 0.34); --dh: calc(var(--dw) * 1.396); --don-gap: 3px; }
+.op-don-table { display: flex; align-items: flex-start; gap: calc(var(--don-gap) * 2); min-width: 0; }
+.op-don-rows { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--don-gap); }
+.don-pool.op-don-arts .op-don-row { display: flex; flex-wrap: nowrap; gap: 0; min-height: 0; container-type: inline-size; }
+.don-pool.op-don-arts .op-don-row:empty { display: none; }
+.don-pool.op-don-arts .don-card { position: relative; flex-shrink: 0; width: var(--dw); height: var(--dh); border-radius: calc(var(--dw) * 0.07); }
+.don-pool.op-don-arts .don-card + .don-card { margin-left: min(var(--don-gap), calc((100cqi - var(--n) * var(--dw)) / (var(--n) - 1))); }
+/* épuisée : la DON!! est tournée (sa place aussi, pour que la rangée tienne), un peu assombrie */
+.don-pool.op-don-arts .don-rested { width: var(--dh); height: var(--dw); transform: none; filter: brightness(0.72) saturate(0.75); }
+.don-pool.op-don-arts .is-rested .don-card + .don-card { margin-left: min(var(--don-gap), calc((100cqi - var(--n) * var(--dh)) / (var(--n) - 1))); }
+.don-pool.op-don-arts .don-rested .op-don-img { position: absolute; left: 50%; top: 50%; width: var(--dw); height: var(--dh); transform: translate(-50%, -50%) rotate(90deg); }
+/* le deck DON!! : une pile (les cartes du dessous en tranches), un peu assombrie, avec son nombre */
+.op-don-deck { position: relative; flex-shrink: 0; width: var(--dw); height: var(--dh); margin-right: 4px; border-radius: calc(var(--dw) * 0.07); background: var(--surface); box-shadow: 1px 1px 0 var(--black-a60), 2px 2px 0 var(--white-a35), 3px 3px 0 var(--black-a60), 4px 4px 3px var(--black-a50); }
+.op-don-deck .op-don-img { filter: brightness(0.7); }
+.op-don-deck b { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 0 3px; border-radius: 4px; background: var(--ink-a92); font-size: max(11px, 0.786rem); line-height: 1.2; font-weight: 900; color: var(--text); }
+
+/* Téléphone : des DON!! un peu plus petites, pour que la zone de Coût ne grandisse pas la rangée du Leader */
+:where(.opc.is-compact) .don-pool.op-don-arts { --dw: calc(var(--cw) * 0.3); }
+
+/* DON!! données : de petites cartes glissées sous la carte, qui dépassent vers le centre de la table (au-dessus de mes
+   cartes ; au-dessous de celles de l'adversaire, et tournées comme vues de l'autre côté de la table). Celles d'un
+   Leader dépassent du côté de sa Vie (au-dessus, la rangée des Personnages les cacherait ; de l'autre côté, la zone de
+   Coût ou le Lieu, dessinés après lui). Leur nombre : la pastille « +N » (fond --ink-a92 de .don-chips b, card.css).
+   La carte isole ses plans : les DON!! passent sous son visuel, mais au-dessus du fond de la zone. */
+.card:has(> .op-don-under) { isolation: isolate; }
+.op-don-under { position: absolute; inset: 0; z-index: var(--z-under); pointer-events: none; }
+.op-don-tuck { position: absolute; width: 40cqi; height: calc(40cqi * 1.396); left: calc(5cqi + var(--i) * 25cqi); top: -14cqi; border-radius: 4cqi; box-shadow: 0 1px 3px var(--black-a60); }
+.zone-opp .op-don-tuck { top: auto; bottom: -14cqi; transform: rotate(180deg); }
+.leader-col .op-don-tuck { left: -13cqi; top: calc(8cqi + var(--i) * 30cqi); bottom: auto; transform: none; }
+.op-wide .zone-opp .leader-col .op-don-tuck { left: auto; right: -13cqi; }
+.op-don-count b { margin-left: 0; font-size: max(11px, 0.786rem); }
+/* sur une carte épuisée (tournée), le nombre reste droit, comme la puissance */
+.card-rested .op-don-count { transform: rotate(-90deg); }
+/* téléphone en portrait : la carte épuisée est aussi réduite (0,72, table-compact.css) ; le nombre garde 11 px */
+:where(.opc.is-portrait) .chars .card-rested .op-don-count b, :where(.opc.is-portrait) .leader-col .card-rested .op-don-count b { font-size: calc(11.5px / 0.72); }
+
+/* la DON!! glissée au doigt : en grand, pour qu'on la voie au-dessus du doigt (un jeton de téléphone fait 23 px) */
+:where(.opc.is-compact) .op-gesture-ghost.don-card { scale: 2; }

@@ -1,48 +1,82 @@
-// Partie en ligne, avant que l'ami arrive : le code de la salle à lui envoyer, et l'attente
-import { useState } from 'react';
+// Partie en ligne, avant que l'ami arrive (tâche R3.7) : le code de la salle, « Envoyer le code » (partage du
+// téléphone, sinon copie) et « Copier le lien », l'attente avec le temps qui reste. « ← Accueil » laisse la salle
+// ouverte (l'accueil la propose dans « Continuer ») ; « Fermer la salle » l'annule.
+import { useEffect, useState } from 'react';
 import { DECKS } from '../../engine/decks.ts';
+import { Button, Screen } from '../kit/index.ts';
+import { ADVENTURE_DECK } from '../texts.ts';
 import { cancelRoom, type LiveView } from './api.ts';
+import { minutesLeft, roomLink } from './room.ts';
 
 export function WaitingRoom({ view, onLeave }: { view: LiveView; onLeave: () => void }) {
-  const [copied, setCopied] = useState<string | null>(null);
+  const [said, setSaid] = useState<{ good: boolean; text: string } | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, []);
   const code = view.code ?? '';
-  const link = `${window.location.origin}${window.location.pathname}#play/salle/${code}`;
-  const share = async () => {
-    const text = `Rejoins-moi pour une partie de ONE PIECE CARD GAME sur Ma Collection One Piece : code ${code}`;
+  const link = roomLink(code, window.location);
+  const text = `Rejoins-moi pour une partie de ONE PIECE CARD GAME sur Ma Collection One Piece : code ${code}`;
+  const copy = async (what: string) => {
     try {
-      if (navigator.share) await navigator.share({ title: 'Partie en ligne', text, url: link });
-      else {
-        await navigator.clipboard.writeText(`${text}\n${link}`);
-        setCopied('Lien et code copiés : colle-les dans un message à ton ami.');
-      }
+      await navigator.clipboard.writeText(what);
+      setSaid({ good: true, text: 'Lien et code copiés : colle-les dans un message à ton ami.' });
+    } catch {
+      setSaid({ good: false, text: 'Copie impossible ici : recopie le code à la main.' });
+    }
+  };
+  // partage du système (téléphone, et certains ordinateurs) ; sinon la copie fait l'affaire
+  const canShare = typeof navigator.share === 'function';
+  const share = async () => {
+    try {
+      await navigator.share({ title: 'Partie en ligne', text, url: link });
     } catch {
       // partage annulé
     }
   };
   const close = async () => {
+    setClosing(true);
     await cancelRoom(view.id).catch(() => {});
     onLeave();
   };
-  const minutes = view.expiresAt ? Math.max(0, Math.round((new Date(view.expiresAt).getTime() - Date.now()) / 60_000)) : null;
+  const minutes = minutesLeft(view.expiresAt, now);
   return (
-    <div className="setup lobby">
-      <header className="setup-head">
-        <h1>🌐 Ta salle est ouverte</h1>
-        <p className="op-muted">Donne ce code à ton ami. Il l’entre dans <b>Jouer → Jouer avec un ami → Rejoindre</b>, ou ouvre le lien que tu lui envoies.</p>
-      </header>
-      <div className="room-code" aria-label="Code de la salle">{code}</div>
-      <div className="lobby-actions">
-        <button className="op-btn op-btn-primary btn-big" onClick={share}>Envoyer le code</button>
-        <button className="op-btn op-btn-ghost" onClick={close}>Fermer la salle</button>
+    <Screen
+      className="op-lobby op-room"
+      data-ui="room"
+      title="Ta salle est ouverte"
+      subtitle="Jouer avec un ami"
+      back={{ label: 'Accueil', onBack: onLeave, 'data-ui': 'room.back' }}
+    >
+      <div className="op-lobby-body">
+        <section className="op-lobby-card is-main op-room-card" aria-labelledby="op-room-code-label">
+          <p id="op-room-code-label" className="op-room-label">Code de la salle</p>
+          <div className="room-code" data-ui="room.code" aria-label={`Code de la salle : ${code.split('').join(' ')}`}>{code}</div>
+          <div className="op-room-actions">
+            {canShare && <Button variant="primary" size="big" onClick={() => void share()} data-ui="room.share">Envoyer le code</Button>}
+            <Button variant={canShare ? 'secondary' : 'primary'} size={canShare ? 'normal' : 'big'} onClick={() => void copy(`${text}\n${link}`)} data-ui="room.copy">
+              {canShare ? 'Copier le lien' : 'Copier le code et le lien'}
+            </Button>
+          </div>
+          {said && <p className={said.good ? 'good op-room-said' : 'danger op-room-said'} role="status">{said.text}</p>}
+          <p className="op-room-wait" role="status">
+            <span className="op-spinner" aria-hidden="true" /> En attente de ton ami… La partie commence dès qu’il entre dans la salle
+            {minutes !== null ? ` (encore ${minutes} min)` : ''}.
+          </p>
+        </section>
+        <section className="op-lobby-card op-room-help">
+          <p>Ton ami ouvre le lien que tu lui envoies, ou entre le code dans <b>Jouer → Jouer avec un ami → Rejoindre</b>.</p>
+          <p className="op-room-deck">Ton deck : <b>{view.you.deckName ?? DECKS[view.you.deck]?.name ?? view.you.deck}</b>{view.you.hold && <> <HoldMark /></>}</p>
+          <Button variant="quiet" busy={closing} onClick={() => void close()} data-ui="room.close">Fermer la salle</Button>
+        </section>
       </div>
-      {copied && <p className="good">{copied}</p>}
-      <p className="op-muted"><span className="op-spinner" /> En attente de ton ami… La partie commence dès qu’il rejoint la salle{minutes !== null ? ` (encore ${minutes} min)` : ''}.</p>
-      <p className="op-small op-muted">Ton deck : {view.you.deckName ?? DECKS[view.you.deck]?.name ?? view.you.deck}{view.you.hold && <> <HoldMark /></>}</p>
-    </div>
+    </Screen>
   );
 }
 
-// Repère d'un deck de la Cale (cartes gagnées dans l'Aventure, vérifiées par le serveur au début de la partie)
+// Repère d'un deck d'aventure (cartes gagnées dans l'Aventure, vérifiées par le serveur au début de la partie)
 export function HoldMark() {
-  return <span className="op-hold-mark" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure, vérifiées au début de la partie">🧭 Cale</span>;
+  return <span className="op-hold-mark" title={`${ADVENTURE_DECK.markHelp}, vérifiées au début de la partie`}>{ADVENTURE_DECK.mark}</span>;
 }

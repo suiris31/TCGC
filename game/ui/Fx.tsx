@@ -1,15 +1,18 @@
 // Effets visuels et sonores : à chaque changement de la partie, on compare l'avant et l'après pour montrer ce qui
 // s'est passé (carte jouée, KO, Vie perdue, bonus de puissance, DON!! données, attaque, Événement, début de tour).
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { def, findField, power } from '../engine/rules.ts';
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { playerNames, sayLog } from '../coach/logText.ts';
+import { def, findField } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
+import { tableEvents, type LeftTo } from './table/events.ts';
 import { sfx } from './sound.ts';
-import { cardImage } from './images.ts';
+import { ArtImg, useCardArt } from './table/CardArt.tsx';
+import { cardOwner } from './table/cardArt.ts';
 import { useReducedMotion } from './settings.ts';
 
-interface Ghost { id: number; num: string; rect: DOMRect; label: string }
+interface Ghost { id: number; num: string; owner?: PlayerId; rect: DOMRect; label: string }
 interface Float { id: number; x: number; y: number; text: string; kind: 'good' | 'bad' | 'don' | 'info' }
-interface Tick { id: number; who: string; mine: boolean; text: string }
+interface Tick { id: number; who: string | null; mine: boolean; text: string }
 interface Arrow { x1: number; y1: number; x2: number; y2: number; mine: boolean }
 
 let nextId = 1;
@@ -23,15 +26,6 @@ function measure(): Map<number, DOMRect> {
   return m;
 }
 
-function fieldUids(s: GameState): Map<number, PlayerId> {
-  const m = new Map<number, PlayerId>();
-  for (const p of [0, 1] as PlayerId[]) {
-    const P = s.players[p];
-    for (const c of [P.leader, ...P.chars, ...(P.stage ? [P.stage] : [])]) m.set(c.uid, p);
-  }
-  return m;
-}
-
 function flashCards(selector: string, cls: string, ms: number) {
   document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
     el.classList.remove(cls);
@@ -41,9 +35,14 @@ function flashCards(selector: string, cls: string, ms: number) {
   });
 }
 
+// Ce que devient une carte qui quitte le terrain, et la capacité activée (carte montrée en grand)
+const LEFT_LABEL: Record<LeftTo, string> = { trash: 'KO', hand: 'Renvoyé en main', life: 'Dans la Vie', deck: 'Sous le deck', gone: 'Retiré' };
+const ACTIVATE_LABEL = { main: '[Principale]', counter: '[Contre]', trigger: '[Déclenchement]' } as const;
+
 const TICK = /^(joue |active |.+\) attaque |contre avec|bloque avec|l'attaque|perd 1 Vie|déclare|ajoute|place |retourne|regarde|défausse|renvoie)|est mis KO|ne peut pas|est placé|est renvoyé|est ajouté/;
 
-export function FxLayer({ game, human, epoch }: { game: GameState; human: PlayerId; epoch: number }) {
+// memo : un survol ou une fenêtre ouverte ne redessine pas la couche des effets (elle ne dépend que de la partie)
+export const FxLayer = memo(function FxLayer({ game, human, epoch }: { game: GameState; human: PlayerId; epoch: number }) {
   // Animations réduites : pas d'arrivée, de tremblement ni d'éclat sur les cartes ; les annonces (bandeau, fil, carte
   // activée, nombres) restent le temps prévu, mais immobiles (styles/a11y.css)
   const reduced = useReducedMotion();
@@ -57,7 +56,7 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
   const [ticks, setTicks] = useState<Tick[]>([]);
   const [arrow, setArrow] = useState<Arrow | null>(null);
   const [banner, setBanner] = useState<{ id: number; text: string; sub: string; mine: boolean } | null>(null);
-  const [spot, setSpot] = useState<{ id: number; num: string; caption: string } | null>(null);
+  const [spot, setSpot] = useState<{ id: number; num: string; owner: PlayerId; caption: string } | null>(null);
   const [band, setBand] = useState<DOMRect | null>(null);
 
   const later = (fn: () => void, ms: number) => setTimeout(fn, ms);
@@ -69,8 +68,6 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
     if (prev && prev.epoch === epoch && prev.game !== game) {
       const a = prev.game;
       const b = game;
-      const before = fieldUids(a);
-      const after = fieldUids(b);
       const newGhosts: Ghost[] = [];
       const newFloats: Float[] = [];
       const addFloat = (uid: number, text: string, kind: Float['kind'], dy = 0) => {
@@ -78,94 +75,83 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
         if (r) newFloats.push({ id: nextId++, x: r.left + r.width / 2, y: r.top + r.height / 2 + dy, text, kind });
       };
       let sound: Parameters<typeof sfx>[0] | null = null;
-      // cartes qui ont quitté le terrain
-      for (const [uid, owner] of before) {
-        if (after.has(uid)) continue;
-        const r = old.get(uid);
-        const P = b.players[owner];
-        const num = [...a.players[owner].chars, ...(a.players[owner].stage ? [a.players[owner].stage!] : [])].find((c) => c.uid === uid)?.num;
-        if (!r || !num) continue;
-        const label = P.trash.some((c) => c.uid === uid) ? 'KO' : P.hand.some((c) => c.uid === uid) ? 'Renvoyé en main' : P.life.some((c) => c.uid === uid) ? 'Dans la Vie' : P.deck.some((c) => c.uid === uid) ? 'Sous le deck' : 'Retiré';
-        newGhosts.push({ id: nextId++, num, rect: r, label });
-        sound = 'ko';
-      }
-      // cartes arrivées sur le terrain ou dans ta main
-      const entered = [...after.keys()].filter((uid) => !before.has(uid));
-      if (entered.length) sound ??= 'play';
-      for (const uid of entered) flash(`.table [data-uid="${uid}"]`, 'fx-enter', 800);
-      const handBefore = new Set(a.players[human].hand.map((c) => c.uid));
-      const drawn = b.players[human].hand.filter((c) => !handBefore.has(c.uid));
-      for (const c of drawn) flash(`.table [data-uid="${c.uid}"]`, 'fx-draw', 700);
-      if (drawn.length && !sound) sound = 'draw';
-      // DON!! données et puissance
-      const turnChanged = a.turn !== b.turn || a.active !== b.active;
-      const battleEnded = Boolean(a.battle) && !b.battle;
-      for (const [uid] of after) {
-        if (!before.has(uid)) continue;
-        const fa = findField(a, uid)!;
-        const fb = findField(b, uid)!;
-        const dDon = fb.card.don - fa.card.don;
-        if (dDon > 0) {
-          addFloat(uid, `+${dDon} DON!!`, 'don', -30);
-          sound ??= 'don';
+      // ce qui s'est passé, déduit en comparant les deux états (table/events.ts), dans l'ordre où on le montre
+      for (const e of tableEvents(a, b, human)) {
+        switch (e.kind) {
+          case 'left': {
+            const r = old.get(e.uid);
+            if (!r) break;
+            newGhosts.push({ id: nextId++, num: e.num, owner: cardOwner(b, e.uid) ?? cardOwner(a, e.uid), rect: r, label: LEFT_LABEL[e.to] });
+            sound = 'ko';
+            break;
+          }
+          case 'entered':
+            sound ??= 'play';
+            flash(`.table [data-uid="${e.uid}"]`, 'fx-enter', 800);
+            break;
+          case 'drawn':
+            flash(`.table [data-uid="${e.uid}"]`, 'fx-draw', 700);
+            sound ??= 'draw';
+            break;
+          case 'don':
+            addFloat(e.uid, `+${e.count} DON!!`, 'don', -30);
+            sound ??= 'don';
+            break;
+          case 'power':
+            addFloat(e.uid, `${e.delta > 0 ? '+' : '−'}${Math.abs(e.delta)}`, e.delta > 0 ? 'good' : 'bad', 10);
+            break;
+          case 'life':
+            if (e.delta < 0) {
+              addFloat(e.leader, `−${-e.delta} Vie`, 'bad', -10);
+              flash(`[data-zone="${e.player}"]`, 'fx-shake', 500);
+              flash(`.table [data-uid="${e.leader}"]`, 'fx-hit', 600);
+              sound = 'hit';
+            } else {
+              addFloat(e.leader, `+${e.delta} Vie`, 'good', -10);
+            }
+            break;
+          case 'donGained': {
+            const pool = document.querySelector(`[data-zone="${e.player}"] .don-pool`)?.getBoundingClientRect();
+            if (pool) newFloats.push({ id: nextId++, x: pool.left + pool.width / 2, y: pool.top + 10, text: `+${e.count} DON!!`, kind: 'don' });
+            break;
+          }
+          case 'attack':
+            sound = 'attack';
+            break;
+          case 'counter':
+            sound = 'shield';
+            break;
+          case 'activate': {
+            const id = nextId++;
+            const who = e.player === human ? 'Tu actives' : `${b.players[e.player].name} active`;
+            setSpot({ id, num: e.num, owner: e.player, caption: `${who} ${ACTIVATE_LABEL[e.timing]}` });
+            later(() => setSpot((x) => (x?.id === id ? null : x)), 1700);
+            sound = 'event';
+            break;
+          }
+          case 'turn': {
+            const id = nextId++;
+            const mine = e.player === human;
+            setBanner({ id, text: mine ? 'À toi de jouer !' : 'Tour de l’IA', sub: `Tour ${e.turn}`, mine });
+            later(() => setBanner((x) => (x?.id === id ? null : x)), 1400);
+            if (mine) sound = 'turn';
+            break;
+          }
         }
-        if (fb.stage || turnChanged || dDon !== 0 || (battleEnded && power(b, uid) < power(a, uid))) continue;
-        const dp = power(b, uid) - power(a, uid);
-        if (Math.abs(dp) >= 1000) addFloat(uid, `${dp > 0 ? '+' : '−'}${Math.abs(dp)}`, dp > 0 ? 'good' : 'bad', 10);
       }
-      // Vies (sauf la mise en place, après les mains de départ)
-      for (const p of a.flow.stage === 'mulligan' ? [] : [0, 1] as PlayerId[]) {
-        const dl = b.players[p].life.length - a.players[p].life.length;
-        if (dl < 0) {
-          addFloat(b.players[p].leader.uid, `−${-dl} Vie`, 'bad', -10);
-          flash(`[data-zone="${p}"]`, 'fx-shake', 500);
-          flash(`.table [data-uid="${b.players[p].leader.uid}"]`, 'fx-hit', 600);
-          sound = 'hit';
-        } else if (dl > 0) {
-          addFloat(b.players[p].leader.uid, `+${dl} Vie`, 'good', -10);
-        }
-      }
-      // nouvelles DON!! (phase DON!! ou effets)
-      for (const p of [0, 1] as PlayerId[]) {
-        const count = (s: GameState) => s.players[p].donActive + s.players[p].donRested + [s.players[p].leader, ...s.players[p].chars].reduce((n, c) => n + c.don, 0);
-        const gained = count(b) - count(a);
-        const pool = document.querySelector(`[data-zone="${p}"] .don-pool`)?.getBoundingClientRect();
-        if (gained > 0 && pool) newFloats.push({ id: nextId++, x: pool.left + pool.width / 2, y: pool.top + 10, text: `+${gained} DON!!`, kind: 'don' });
-      }
-      if (!a.battle && b.battle) sound = 'attack';
-      // journal : annonces, Événements, Contres
+      // fil des annonces : les phrases du journal qui disent une action, à la deuxième personne (coach/logText.ts ; le
+      // journal reste le texte du moteur, les effets ci-dessus ne le lisent pas)
       const fresh = b.log.length >= a.log.length ? b.log.slice(a.log.length) : [];
       const newTicks: Tick[] = [];
       for (const l of fresh) {
         if (l.only !== undefined && l.only !== human) continue;
         if (l.player === null) continue;
-        if (l.text.startsWith('contre avec')) sound = 'shield';
-        const ev = l.text.match(/^active (.+) \[(Principale|Contre)\]$/) ?? l.text.match(/révèle (.+) et active son \[Déclenchement\]$/);
-        if (ev) {
-          const cardName = ev[1];
-          const owner = b.players[l.player];
-          const card = [...owner.trash, ...owner.chars, ...owner.hand].reverse().find((c) => def(c.num).name === cardName);
-          if (card) {
-            const id = nextId++;
-            setSpot({ id, num: card.num, caption: `${l.player === human ? 'Tu actives' : `${owner.name} active`} ${ev[2] ? `[${ev[2]}]` : '[Déclenchement]'}` });
-            later(() => setSpot((x) => (x?.id === id ? null : x)), 1700);
-            sound = 'event';
-          }
-        }
-        if (TICK.test(l.text)) newTicks.push({ id: nextId++, who: b.players[l.player].name, mine: l.player === human, text: l.text });
+        if (TICK.test(l.text)) newTicks.push({ id: nextId++, mine: l.player === human, ...sayLog(l, human, playerNames(b)) });
       }
       if (newTicks.length) {
         const kept = newTicks.slice(-3);
         setTicks((t) => [...t, ...kept].slice(-4));
         for (const t of kept) later(() => setTicks((x) => x.filter((y) => y.id !== t.id)), 3200);
-      }
-      // nouveau tour
-      if (a.turn !== b.turn && b.turn > 0 && b.flow.stage !== 'mulligan') {
-        const id = nextId++;
-        const mine = b.active === human;
-        setBanner({ id, text: mine ? 'À toi de jouer !' : 'Tour de l’IA', sub: `Tour ${b.turn}`, mine });
-        later(() => setBanner((x) => (x?.id === id ? null : x)), 1400);
-        if (mine) sound = 'turn';
       }
       if (newGhosts.length) {
         setGhosts((g) => [...g, ...newGhosts]);
@@ -212,7 +198,7 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
       )}
       {ghosts.map((g) => (
         <div key={g.id} className={`fx-ghost ${g.label === 'KO' ? 'ghost-ko' : 'ghost-leave'}`} style={{ left: g.rect.left, top: g.rect.top, width: g.rect.width, height: g.rect.height }}>
-          <img src={cardImage(def(g.num))} alt="" />
+          <FxArt s={game} owner={g.owner} num={g.num} />
           <span className="ghost-label">{g.label}</span>
         </div>
       ))}
@@ -222,7 +208,7 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
         <div className={band.width < 600 ? 'fx-ticker ticker-narrow' : 'fx-ticker'} style={band.width < 600
           ? { left: band.left + 6, right: window.innerWidth - band.right + 6, top: band.top + 2, maxHeight: Math.max(48, band.height * 0.42) }
           : { right: window.innerWidth - band.right + 8, top: band.top + 4, maxHeight: band.height - 8, width: Math.min(360, band.width * 0.3) }}>
-          {ticks.map((t) => <div key={t.id} className={`tick ${t.mine ? 'tick-me' : 'tick-opp'}`}><b className="tick-who">{t.who}</b> {t.text}</div>)}
+          {ticks.map((t) => <div key={t.id} className={`tick ${t.mine ? 'tick-me' : 'tick-opp'}`}>{t.who && <><b className="tick-who">{t.who}</b> </>}{t.text}</div>)}
         </div>
       )}
       {banner && (
@@ -233,12 +219,17 @@ export function FxLayer({ game, human, epoch }: { game: GameState; human: Player
       )}
       {spot && (
         <div key={spot.id} className="fx-spot">
-          <img src={cardImage(def(spot.num))} alt="" />
+          <FxArt s={game} owner={spot.owner} num={spot.num} />
           <span>{spot.caption}</span>
         </div>
       )}
     </div>
   );
+});
+
+// Visuel d'une carte animée : la version choisie pour le deck de son propriétaire (tâche R3.12)
+function FxArt({ s, owner, num }: { s: GameState; owner: PlayerId | undefined; num: string }) {
+  return <ArtImg art={useCardArt(s, owner, num)} alt="" />;
 }
 
 // Présentation de la partie : les deux Leaders face à face
@@ -258,9 +249,9 @@ export function Intro({ s, onDone }: { s: GameState; onDone: () => void }) {
   const [a, b] = s.players;
   return (
     <div className="intro" data-ui="table.intro" onClick={onDone}>
-      <div className="intro-side intro-left"><img src={cardImage(def(a.leader.num))} alt="" /><span>{a.name}</span></div>
+      <div className="intro-side intro-left"><FxArt s={s} owner={0} num={a.leader.num} /><span>{a.name}</span></div>
       <div className="intro-vs">VS</div>
-      <div className="intro-side intro-right"><img src={cardImage(def(b.leader.num))} alt="" /><span>{b.name}</span></div>
+      <div className="intro-side intro-right"><FxArt s={s} owner={1} num={b.leader.num} /><span>{b.name}</span></div>
     </div>
   );
 }

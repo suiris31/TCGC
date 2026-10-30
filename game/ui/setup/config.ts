@@ -21,6 +21,42 @@ export interface Config {
   aiDeckName?: string;
 }
 
+// Choix de la partie rapide, mémorisés dans le navigateur (tâche R3.2) : un rechargement ou une autre visite les garde.
+// Seuls les choix faits sur l'écran de la partie rapide (ou « Jouer » de l'éditeur) y sont écrits, pas les réglages
+// d'une partie reprise.
+export const QUICK_KEY = 'tcgc.game.quick';
+export const DEFAULT_CONFIG: Config = { myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 };
+
+export function readQuickChoice(raw: string | null): Config {
+  try {
+    const v: unknown = raw ? JSON.parse(raw) : null;
+    if (!v || typeof v !== 'object') return DEFAULT_CONFIG;
+    const o = v as Record<string, unknown>;
+    return {
+      myDeck: typeof o.myDeck === 'string' && o.myDeck ? o.myDeck : DEFAULT_CONFIG.myDeck,
+      aiDeck: typeof o.aiDeck === 'string' && o.aiDeck ? o.aiDeck : DEFAULT_CONFIG.aiDeck,
+      first: o.first === 'me' || o.first === 'ai' || o.first === 'random' ? o.first : DEFAULT_CONFIG.first,
+      level: typeof o.level === 'number' && o.level in LEVELS ? o.level as Level : DEFAULT_CONFIG.level,
+    };
+  } catch {
+    return DEFAULT_CONFIG;
+  }
+}
+
+export function loadQuickChoice(): Config {
+  try {
+    return readQuickChoice(localStorage.getItem(QUICK_KEY));
+  } catch {
+    return DEFAULT_CONFIG;
+  }
+}
+
+export function saveQuickChoice(c: Config) {
+  try {
+    localStorage.setItem(QUICK_KEY, JSON.stringify({ myDeck: c.myDeck, aiDeck: c.aiDeck, first: c.first, level: c.level }));
+  } catch { /* stockage indisponible (navigation privée) : les choix valent pour cette visite */ }
+}
+
 // Adversaire « Aléatoire » : un deck du registre (méta ou pour débutant) tiré au sort au lancement de chaque partie,
 // autre que le sien quand c'est possible (jamais un adversaire de l'aventure)
 export const RANDOM_DECK = 'random';

@@ -1,6 +1,8 @@
 // « Mes parties » : toutes tes parties sauvegardées, ta progression, tes axes de progrès et le détail de chaque partie
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { LEVELS, type Level } from '../ai/search.ts';
 import { playMode, replayRecord, type GameRecord, type GameSummary, type PlayMode } from '../coach/archive.ts';
+import { sayLog, sayText } from '../coach/logText.ts';
 import { progress, type Axis, type Group, type Period, type Progress } from '../coach/progress.ts';
 import { buildRecap, MISTAKE, type Recap } from '../coach/review.ts';
 import { def } from '../engine/rules.ts';
@@ -14,20 +16,20 @@ import { GameGain, useGameGain } from './economy/GameGain.tsx';
 import { Dialog } from './kit/index.ts';
 import { deckLabel, isAdventureDeck } from './myDecks.ts';
 import { goUp, HOME, navigate, useRoute } from './routes.ts';
+import { ADVENTURE_DECK, BACK, backText, MODES } from './texts.ts';
 
 type Hover = (p: (Preview & { rect?: DOMRect }) | null) => void;
 type Tab = 'progress' | 'axes' | 'games';
 type Filter = 'all' | PlayMode;
 
-const FILTERS: [Filter, string][] = [['all', 'Tout'], ['solo', 'Contre l’IA'], ['aventure', '🧭 Aventure'], ['online', '🌐 En ligne']];
+const FILTERS: [Filter, string][] = [['all', 'Tout'], ['solo', `⚔️ ${MODES.quick}`], ['aventure', `🧭 ${MODES.adventure}`], ['online', '🌐 Avec un ami']];
 const NONE: Record<Filter, string> = {
   all: 'Aucune partie enregistrée',
-  solo: 'Aucune partie contre l’IA',
+  solo: 'Aucune partie rapide',
   aventure: 'Aucune partie d’aventure',
-  online: 'Aucune partie en ligne',
+  online: 'Aucune partie avec un ami',
 };
 
-const LEVEL = ['', 'Débutant', 'Confirmé', 'Expert', 'IA entraînée'];
 const STATUS: Record<GameSummary['status'], [string, string]> = {
   won: ['Victoire', 'res-win'],
   lost: ['Défaite', 'res-loss'],
@@ -44,8 +46,8 @@ function rememberNames(list: GameSummary[]) {
     if (g.config.aiDeckName) savedNames.set(g.config.aiDeck, g.config.aiDeckName);
   }
 }
-// Deck de la Cale (deck d'aventure) : noté dans la partie en ligne, sinon d'après mes decks
-const HoldMark = () => <span className="op-hold-mark" title="Deck de la Cale : seulement des cartes gagnées dans l’Aventure">🧭 Cale</span>;
+// Deck d'aventure : noté dans la partie en ligne, sinon d'après mes decks
+const HoldMark = () => <span className="op-hold-mark" title={ADVENTURE_DECK.markHelp}>{ADVENTURE_DECK.mark}</span>;
 const holdMine = (g: Pick<GameSummary, 'holdDeck' | 'config'>) => Boolean(g.holdDeck) || isAdventureDeck(g.config.myDeck);
 const pctOr = (x: number | null) => (x === null ? '—' : pct(x));
 const num = (x: number | null, digits = 1) => (x === null ? '—' : x.toLocaleString('fr-FR', { maximumFractionDigits: digits }));
@@ -86,7 +88,7 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
   }, [modes]);
   const shown = useMemo(() => (list ?? []).filter((g) => filter === 'all' || modes.get(g.id) === filter), [list, modes, filter]);
   // le coach n'analyse pas les parties en ligne : la progression porte sur celles contre l'IA et d'aventure, sauf
-  // avec le filtre « En ligne » (résultats seulement)
+  // avec le filtre « Avec un ami » (résultats seulement)
   const coached = filter !== 'online';
   const prog = useMemo(() => (list ? progress(coached ? shown.filter((g) => modes.get(g.id) !== 'online') : shown) : null), [list, shown, modes, coached]);
   const onlineGames = useMemo(() => shown.filter((g) => modes.get(g.id) === 'online').reverse(), [shown, modes]);
@@ -141,7 +143,7 @@ export function HistoryScreen({ onClose, onResume, onHover }: { onClose: () => v
             : tab === 'progress' ? <ProgressTab p={prog} coached={coached} />
               : tab === 'axes' ? (coached
                 ? <AxesTab p={prog} onResume={resume} onOpen={openGame} onHover={onHover} />
-                : <p className="op-muted">Le coach est désactivé pendant les parties en ligne : elles n’ont pas d’axes de progrès. Choisis « Tout », « Contre l’IA » ou « Aventure » pour voir les tiens.</p>)
+                : <p className="op-muted">Le coach est désactivé pendant les parties en ligne : elles n’ont pas d’axes de progrès. Choisis « Tout », « Partie rapide » ou « Aventure » pour voir les tiens.</p>)
                 : <GamesTab p={coached ? prog : null} online={onlineGames} filter={filter} modes={modes} onOpen={openGame} />)}
       </div>
     </Dialog>
@@ -380,15 +382,15 @@ function AxesTab({ p, onResume, onOpen, onHover }: { p: Progress; onResume: (id:
 
 // ---------- Liste et détail des parties ----------
 
-// p : parties contre l'IA et d'aventure (absent avec le filtre « En ligne ») ; modes : mode de chaque partie
+// p : parties contre l'IA et d'aventure (absent avec le filtre « Avec un ami ») ; modes : mode de chaque partie
 function GamesTab({ p, online, filter, modes, onOpen }: { p: Progress | null; online: GameSummary[]; filter: Filter; modes: Map<string, PlayMode>; onOpen: (id: string) => void }) {
   const adventure = filter === 'aventure' || (filter === 'all' && Boolean(p?.rows.some((r) => modes.get(r.id) === 'aventure')));
-  const title = filter === 'aventure' ? '🧭 Aventure' : adventure ? 'Contre l’IA et dans l’Aventure' : 'Contre l’IA';
+  const title = filter === 'aventure' ? `🧭 ${MODES.adventure}` : adventure ? 'Parties rapides et Aventure' : 'Parties rapides';
   return (
     <>
       {online.length > 0 && (
         <section className="hist-section">
-          <h3>🌐 En ligne</h3>
+          <h3>🌐 Avec un ami</h3>
           <table className="op-stats hist-table hist-games">
             <thead><tr><th>Date</th><th>Ton deck</th><th>Adversaire</th><th>Résultat</th><th>Tours</th></tr></thead>
             <tbody>
@@ -416,7 +418,7 @@ function GamesTab({ p, online, filter, modes, onOpen }: { p: Progress | null; on
                 <tr key={r.id} onClick={() => onOpen(r.id)} className="hist-row">
                   <td>{dateText(r.date)}</td>
                   <td>{deckName(r.myDeck)} {isAdventureDeck(r.myDeck) && <HoldMark />}</td>
-                  <td>{deckName(r.aiDeck)} <span className="op-small op-muted">{LEVEL[r.level]}</span></td>
+                  <td>{deckName(r.aiDeck)} <span className="op-small op-muted">{LEVELS[r.level as Level]?.name}</span></td>
                   <td>
                     <span className={STATUS[r.status][1]}>{STATUS[r.status][0]}</span>
                     {r.practice && <span className="op-chip">entraînement</span>}
@@ -472,7 +474,7 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
       return { recap: null, problem: e instanceof Error ? e.message : String(e) };
     }
   }, [rec]);
-  if (error) return <><button className="op-link" onClick={onBack}>← Toutes les parties</button><p className="danger">{error}</p></>;
+  if (error) return <><button className="op-link" onClick={onBack}>{backText(BACK.history)}</button><p className="danger">{error}</p></>;
   if (!rec || !view) return <p className="op-muted">Chargement de la partie…</p>;
   const [label, cls] = STATUS[rec.status];
   const names = rec.initial.players.map((pl) => pl.name);
@@ -481,14 +483,14 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
   // partie en ligne contre un autre joueur : pas d'analyse du coach (désactivé pendant la partie)
   const online = rec.mode === 'online';
   const oppName = online ? rec.opponent ?? 'ton adversaire' : 'l’IA';
-  const against = online ? `${oppName}, en ligne` : `${playMode(rec) === 'aventure' ? 'Aventure, ' : ''}IA ${LEVEL[rec.config.level]}`;
+  const against = online ? `${oppName}, en ligne` : `${playMode(rec) === 'aventure' ? 'Aventure, ' : ''}IA ${LEVELS[rec.config.level as Level]?.name ?? ''}`;
   return (
     <div className="game-detail">
-      <button className="op-link" onClick={onBack}>← Toutes les parties</button>
+      <button className="op-link" onClick={onBack}>{backText(BACK.history)}</button>
       <div className="detail-head">
         <h3>{deckName(rec.config.myDeck)} {holdMine(rec) && <HoldMark />} <span className="op-muted">contre</span> {deckName(rec.config.aiDeck)} {rec.opponentHoldDeck && <HoldMark />} <span className="op-small op-muted">· {against}</span></h3>
         <p>
-          <span className={cls}>{label}</span>{rec.winReason ? ` · ${rec.winReason}` : ''} · {plural(rec.turns, 'tour')} · {minutesText((Date.parse(end) - Date.parse(rec.startedAt)) / 60000)}
+          <span className={cls}>{label}</span>{rec.winReason ? ` · ${sayText(rec.winReason, rec.human, names)}` : ''} · {plural(rec.turns, 'tour')} · {minutesText((Date.parse(end) - Date.parse(rec.startedAt)) / 60000)}
           {' · '}{rec.wentFirst ? 'tu commençais' : `${oppName} commençait`}
         </p>
         <p className="op-small op-muted">
@@ -518,12 +520,15 @@ function GameDetail({ id, onBack, onResume }: { id: string; onBack: () => void; 
       <details className="detail-log">
         <summary>Journal complet de la partie ({rec.log.length} lignes)</summary>
         <ol className="log-lines">
-          {rec.log.filter((l) => l.only === undefined || l.only === rec.human).map((l, i, all) => (
-            <li key={i} className={l.player === rec.human ? 'log-me' : l.player === null ? 'log-sys' : 'log-opp'}>
-              {(i === 0 || all[i - 1].turn !== l.turn) && <span className="log-turn">Tour {l.turn}</span>}
-              {l.player !== null && <b>{names[l.player]} </b>}{l.text}
-            </li>
-          ))}
+          {rec.log.filter((l) => l.only === undefined || l.only === rec.human).map((l, i, all) => {
+            const said = sayLog(l, rec.human, names);
+            return (
+              <li key={i} className={l.player === rec.human ? 'log-me' : l.player === null ? 'log-sys' : 'log-opp'}>
+                {(i === 0 || all[i - 1].turn !== l.turn) && <span className="log-turn">Tour {l.turn}</span>}
+                {said.who && <b>{said.who} </b>}{said.text}
+              </li>
+            );
+          })}
         </ol>
       </details>
       <p className="op-small op-muted">Partie {rec.id} · version {rec.engine}</p>

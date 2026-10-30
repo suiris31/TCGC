@@ -13,7 +13,7 @@ export interface CurrentMatch {
   opponent: string | null;
   deck: string;
   deckName?: string | null;
-  hold?: boolean;    // deck de la Cale
+  hold?: boolean;    // deck d'aventure
 }
 
 // Ancien nom de l'erreur des appels (avant le client unique game/ui/api.ts) : toute ApiError en est une

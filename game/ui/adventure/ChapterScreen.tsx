@@ -2,13 +2,21 @@
 // de celui qui parle), l'adversaire (son Leader, son deck, son niveau), les récompenses de la première victoire et le
 // bouton « Combattre ». Écran sans appel au serveur : AdventureApp lui donne l'état et reçoit les choix du joueur.
 // Rien ne se lance sans un appui sur « Combattre » (ou « Reprendre » pour une partie interrompue).
+// Depuis la tâche R3.5 : gabarit `Screen` du kit (« ← Carte »), « Combattre » dans la barre collée en bas (toujours
+// visible), guide du deck adverse (DeckGuideModal) ouvert depuis le panneau de l'adversaire.
 import { useEffect, useMemo, useState } from 'react';
 import type { Arc, Chapter, ChapterStatus, DialogueLine } from '../../adventure/types.ts';
 import { LEVELS } from '../../ai/search.ts';
 import { cardData } from '../../engine/cards/index.ts';
 import { DECKS } from '../../engine/decks.ts';
+import { DeckGuideModal } from '../DeckGuide.tsx';
+import { GUIDES } from '../deckGuides.ts';
 import { cardImage } from '../images.ts';
+import { Button, Screen } from '../kit/index.ts';
+import { useLayer } from '../routes.ts';
 import { sfx } from '../sound.ts';
+import { BACK } from '../texts.ts';
+import { CardZoom, useCardZoom } from '../Zoom.tsx';
 import { RewardList } from './RewardsScreen.tsx';
 
 const BASE = import.meta.env.BASE_URL;
@@ -110,7 +118,7 @@ export interface ChapterScreenProps {
   onFight: () => void;           // nouvelle partie
   onResume: () => void;          // reprendre la partie interrompue
   onCount: () => void;           // faire compter la victoire pas encore comptée
-  onDeck: () => void;            // ouvrir « Mon deck »
+  onDeck: () => void;            // ouvrir le deck d’aventure
   onBack: () => void;            // retour à la carte
 }
 
@@ -121,51 +129,70 @@ export function ChapterScreen(p: ChapterScreenProps) {
   const can = !p.blocked && !p.busy;
   const story = [...p.arc.chapters].filter((c) => !c.optional).sort((a, b) => a.order - b.order);
   const step = story.findIndex((c) => c.id === chapter.id);
+  // guide du deck adverse : fenêtre liée au Retour et à Échap ; le survol d'une carte l'agrandit
+  const [guide, setGuide] = useState(false);
+  const cardZoom = useCardZoom(1200);
+  const closeGuide = () => { setGuide(false); cardZoom.close(); };
+  useLayer(guide, closeGuide);
+  useEffect(() => {
+    if (!guide) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeGuide(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [guide]);
+  const hasGuide = Boolean(DECKS[chapter.opponent.deck]);
+  const fightVariant = p.interrupted ? 'secondary' : 'primary';
   return (
-    <div className="setup op-adv op-adv-chapter" data-ui="chapter">
-      <header className="op-adv-head">
-        <button className="op-btn op-btn-ghost btn-small" data-ui="chapter.back" onClick={p.onBack}>← Carte</button>
-        <div className="op-adv-title">
-          <span className="op-muted op-small">
-            {chapter.optional ? '⚔ Défi bonus' : `Chapitre ${step + 1} sur ${story.length}`} · {chapter.place}
-          </span>
-          <h1>{chapter.title}</h1>
+    <Screen
+      className="op-adv-screen op-adv-chapter"
+      data-ui="chapter"
+      back={{ label: BACK.map, onBack: p.onBack, 'data-ui': 'chapter.back' }}
+      title={chapter.title}
+      subtitle={`${chapter.optional ? '⚔ Défi bonus' : `Chapitre ${step + 1} sur ${story.length}`} · ${chapter.place}`}
+      extra={p.status === 'won' ? <span className="op-chip op-adv-won">✓ Gagné{p.wins > 1 ? ` ${p.wins} fois` : ''}</span> : undefined}
+      footer={(
+        <div className="op-adv-go">
+          <div className="op-adv-go-text op-small">
+            {p.deckName && <span>Ton deck : <strong>{p.deckName}</strong> · <button className="op-link" data-ui="chapter.deck" onClick={p.onDeck}>Changer</button></span>}
+            {p.blocked && <span className="op-warn">{p.blocked}</span>}
+            {p.interrupted?.kind === 'resume' && <span className="op-muted">Partie interrompue {when(p.interrupted.at)} (tour {p.interrupted.turns || 1}) : tu peux la reprendre.</span>}
+            {p.interrupted?.kind === 'unsent' && <span className="op-muted">Ta victoire du {when(p.interrupted.at)} n’a pas encore été comptée.</span>}
+            {p.error && <span className="danger">{p.error}</span>}
+            {p.busy && <span className="op-muted"><span className="op-spinner" /> {p.busy}</span>}
+          </div>
+          <div className="op-adv-go-actions">
+            {p.interrupted?.kind === 'unsent' && <Button variant="primary" data-ui="chapter.count" disabled={Boolean(p.busy)} onClick={p.onCount}>Faire compter ma victoire</Button>}
+            {p.interrupted?.kind === 'resume' && <Button variant="primary" data-ui="chapter.resume" disabled={!can} onClick={p.onResume}>▶ Reprendre la partie</Button>}
+            <Button variant={fightVariant} size={p.interrupted ? 'normal' : 'big'} data-ui="chapter.fight" disabled={!can} onClick={p.onFight}>
+              ⚔ {p.interrupted?.kind === 'resume' ? 'Nouvelle partie' : 'Combattre'}
+            </Button>
+          </div>
         </div>
-        {p.status === 'won' && <span className="op-chip op-adv-won">✓ Gagné{p.wins > 1 ? ` ${p.wins} fois` : ''}</span>}
-      </header>
+      )}
+    >
+      <div className="op-adv-page">
+        <Dialogue key={chapter.id} lines={chapter.intro} />
 
-      <Dialogue key={chapter.id} lines={chapter.intro} />
-
-      <div className="op-adv-grid">
-        <section className="op-adv-panel">
-          <h2>Ton adversaire</h2>
-          <OpponentCard chapter={chapter} />
-          {chapter.rules?.note && <p className="op-small op-adv-note">⚠ {chapter.rules.note}</p>}
-        </section>
-        <section className="op-adv-panel">
-          <h2>{p.status === 'won' ? 'Récompenses (déjà gagnées)' : 'Première victoire'}</h2>
-          <RewardList rewards={chapter.rewards} dim={p.status === 'won'} />
-          {p.status === 'won' && <p className="op-small op-muted">Tu peux rejouer ce chapitre pour t’entraîner : les récompenses ne se gagnent qu’une fois.</p>}
-        </section>
+        <div className="op-adv-grid">
+          <section className="op-adv-panel">
+            <h2>Ton adversaire</h2>
+            <OpponentCard chapter={chapter} />
+            {chapter.rules?.note && <p className="op-small op-adv-note">⚠ {chapter.rules.note}</p>}
+            {hasGuide && (
+              <Button variant="secondary" icon="deck" className="op-adv-guide" data-ui="chapter.guide" onClick={() => setGuide(true)}>
+                {GUIDES[chapter.opponent.deck] ? 'Guide de son deck' : 'Voir son deck'}
+              </Button>
+            )}
+          </section>
+          <section className="op-adv-panel">
+            <h2>{p.status === 'won' ? 'Récompenses (déjà gagnées)' : 'Première victoire'}</h2>
+            <RewardList rewards={chapter.rewards} dim={p.status === 'won'} />
+            {p.status === 'won' && <p className="op-small op-muted">Tu peux rejouer ce chapitre pour t’entraîner : les récompenses ne se gagnent qu’une fois.</p>}
+          </section>
+        </div>
       </div>
-
-      <div className="op-adv-go">
-        <div className="op-adv-go-text op-small">
-          {p.deckName && <span>Ton deck : <strong>{p.deckName}</strong> · <button className="op-link" data-ui="chapter.deck" onClick={p.onDeck}>Changer</button></span>}
-          {p.blocked && <span className="op-warn">{p.blocked}</span>}
-          {p.interrupted?.kind === 'resume' && <span className="op-muted">Partie interrompue {when(p.interrupted.at)} (tour {p.interrupted.turns || 1}) : tu peux la reprendre.</span>}
-          {p.interrupted?.kind === 'unsent' && <span className="op-muted">Ta victoire du {when(p.interrupted.at)} n’a pas encore été comptée.</span>}
-          {p.error && <span className="danger">{p.error}</span>}
-          {p.busy && <span className="op-muted"><span className="op-spinner" /> {p.busy}</span>}
-        </div>
-        <div className="op-adv-go-actions">
-          {p.interrupted?.kind === 'unsent' && <button className="op-btn op-btn-primary" data-ui="chapter.count" disabled={Boolean(p.busy)} onClick={p.onCount}>Faire compter ma victoire</button>}
-          {p.interrupted?.kind === 'resume' && <button className="op-btn op-btn-primary" data-ui="chapter.resume" disabled={!can} onClick={p.onResume}>▶ Reprendre la partie</button>}
-          <button className={p.interrupted ? 'op-btn op-btn-ghost' : 'op-btn op-btn-primary btn-big'} data-ui="chapter.fight" disabled={!can} onClick={p.onFight}>
-            ⚔ {p.interrupted?.kind === 'resume' ? 'Nouvelle partie' : 'Combattre'}
-          </button>
-        </div>
-      </div>
-    </div>
+      {guide && <DeckGuideModal deckId={chapter.opponent.deck} onClose={closeGuide} onHover={cardZoom.onHover} />}
+      {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
+    </Screen>
   );
 }

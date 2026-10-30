@@ -1,17 +1,21 @@
 // Mode Aventure (tâche 1.17) : le parcours complet, de l'accueil à la fin de l'arc.
 // - Premier passage : écran d'accueil, « Prendre la mer » donne le deck de départ (dans la Cale) et le deck d'aventure.
 // - Carte du monde (WorldMap) avec la progression lue sur le serveur ; une île verrouillée s'explique, une île ouverte
-//   ou gagnée ouvre son chapitre (ChapterScreen) ; « Ma Cale » et « Mon deck » ouvrent les écrans de la tâche 1.18 ;
+//   ou gagnée ouvre son chapitre (ChapterScreen) ; « Ma Cale » et « Deck d’aventure » ouvrent les écrans de la tâche 1.18 ;
 //   le solde de la bourse et « Boutique » ouvrent la boutique (tâche 2.3). Chaque écran a son adresse (routes.ts :
 //   #play/aventure, /chapitre/<id>, /cale, /deck, /boutique) : le Retour revient à l'écran précédent.
 // - « Combattre » lance la partie sur le plateau du jeu (App, partie imposée) : ton deck d'aventure contre le deck et le
 //   niveau du chapitre. Une partie quittée ou coupée (onglet fermé) se reprend depuis le chapitre.
-// - Fin de partie : l'enregistrement final est envoyé, puis le serveur rejoue la partie et donne les récompenses de la
-//   première victoire (RewardsScreen), puis le gain de la partie en Berry (barème de l'IA du chapitre, bonus du jour,
-//   coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening, chacun tiré au
-//   moment où on l'ouvre : useBoosterOpening) ou plus tard. Le plateau
-//   reste en place derrière l'écran de fin : le récap du coach reste accessible jusqu'au retour à la carte.
+// - Fin de partie, en deux écrans (tâche R3.3) : l'écran de fin commun sur le plateau (récap du coach), puis les
+//   récompenses (RewardsScreen). Dès la fin, l'enregistrement final est envoyé, le serveur rejoue la partie et donne
+//   les récompenses de la première victoire, puis le gain de la partie en Berry (barème de l'IA du chapitre, bonus du
+//   jour, coffre de la semaine), victoire ou défaite ; les boosters s'ouvrent tout de suite (BoosterOpening, chacun
+//   tiré au moment où on l'ouvre : useBoosterOpening) ou plus tard. Le plateau reste en place derrière les
+//   récompenses : le récap du coach reste accessible jusqu'au retour à la carte. « Retenter » relance la partie.
 // Rien ne se lance sans un choix explicite ; les refus et erreurs du serveur s'affichent tels quels (en français).
+// Depuis la tâche R3.5 : l'accueil, la carte, le chapitre et la Cale ont l'en-tête du kit (`Screen`) et un seul libellé
+// de retour (« ← Accueil » vers l'accueil du jeu, « ← Carte » vers la carte) ; sur la carte, « Y aller » est dans la
+// barre du bas.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ARCS, findChapter } from '../../adventure/arcs.ts';
 import { arcFinished, chapterStatuses, currentChapter, requiredChapters } from '../../adventure/progress.ts';
@@ -23,7 +27,8 @@ import { App } from '../App.tsx';
 import { flushQueue, loadRecord, loadSummaries, whenSaved } from '../archiveClient.ts';
 import { deckInfo, loadMyDecks, playable, useMyDecks } from '../myDecks.ts';
 import { goBack, goUp, navigate, useRoute, type AdventureScreen } from '../routes.ts';
-import { IconButton } from '../kit/index.ts';
+import { useDevice } from '../device.ts';
+import { Button, Screen } from '../kit/index.ts';
 import { useSettings } from '../settings.ts';
 import { SettingsPanel } from '../SettingsPanel.tsx';
 import { useGameGain } from '../economy/GameGain.tsx';
@@ -31,6 +36,7 @@ import { ShopScreen } from '../economy/Shop.tsx';
 import { useBoosterOpening } from '../economy/useBoosterOpening.ts';
 import { refreshWallet, useWallet, WalletBadge } from '../economy/Wallet.tsx';
 import { boosterSfx, setSoundEnabled } from '../sound.ts';
+import { ADVENTURE_DECK, BACK, backText } from '../texts.ts';
 import { AdventureDeckScreen } from './AdventureDeck.tsx';
 import { ArcSummary } from './ArcSummary.tsx';
 import { AdventureApiError, loadAdventure, sendChapterResult, startArc, wonChapters, type AdventureState, type WonBooster } from './api.ts';
@@ -232,7 +238,8 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
     ).finally(then);
   }, [reload]);
 
-  // La partie est finie (écran de victoire ou de défaite passé) : place au dialogue de fin et au résultat
+  // La partie est finie (écran de victoire ou de défaite passé) : le résultat part au serveur pendant que le plateau
+  // montre le récap du coach ; « Récompenses → » (onLeaveBoard) mène ensuite au dialogue de fin et au résultat
   const onEnd = ({ won, saved }: { won: boolean; saved: Promise<string> }) => {
     if (!match) return;
     setOutcome({ chapter: match.chapter, won, recordId: saved });
@@ -242,7 +249,6 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       setSent(null);
       gainOf();
     }
-    setBoard(false);
   };
 
   // « Quitter » pendant la partie : retour au chapitre (le plateau disparaît, la partie est enregistrée et reprenable) ;
@@ -298,7 +304,7 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
       <div className="opc-wait op-adv-wait">
         <span className="danger">{loadError}</span>
         <button className="op-btn op-btn-ghost" onClick={() => void reload()}>Réessayer</button>
-        <button className="op-btn op-btn-ghost" onClick={onBack}>← Retour au jeu</button>
+        <button className="op-btn op-btn-ghost" onClick={onBack}>{backText(BACK.home)}</button>
       </div>
     ) : <div className="opc-wait"><span className="op-spinner" /> Chargement de ton aventure…</div>;
   } else if (!started) {
@@ -310,20 +316,20 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
         onOpen={openBoosters} onLater={toMap}
         onResend={() => outcome.recordId && send(outcome.chapter, outcome.recordId)}
         onRecap={match ? () => setBoard(true) : undefined}
-        onRetry={() => { const id = outcome.chapter; resetMatch(); if (chapterId === id) prepareChapter(id); else openChapter(id); }}
+        onRetry={() => { const id = outcome.chapter; resetMatch(); if (chapterId === id) fight(); else openChapter(id); }}
         onMap={toMap} />
     );
   } else if (screen.kind === 'hold') {
-    content = <HoldScreen onBack={() => goBack(MAP)} />;
+    content = <HoldScreen onBack={() => goBack(MAP)} onShop={() => setScreen({ kind: 'shop' })} />;
   } else if (screen.kind === 'shop') {
-    content = <ShopScreen onBack={() => goBack(MAP)} />;
+    content = <ShopScreen back={BACK.map} onBack={() => goBack(MAP)} />;
   } else if (screen.kind === 'deck') {
     content = <AdventureDeckScreen onBack={() => goBack(MAP)} />;
   } else if (screen.kind === 'chapter' && chapterOf(screen.id)) {
     const chapter = chapterOf(screen.id)!;
-    const blocked = !adv.deckId ? 'Tu n’as pas de deck d’aventure : choisis-en un dans « Mon deck ».'
+    const blocked = !adv.deckId ? `Tu n’as pas de deck d’aventure : choisis-en un dans « ${ADVENTURE_DECK.title} ».`
       : !deck ? 'Chargement de ton deck…'
-        : !playable(deck) ? 'Ton deck d’aventure est incomplet : termine-le dans « Mon deck ».'
+        : !playable(deck) ? `Ton deck d’aventure est incomplet : termine-le dans « ${ADVENTURE_DECK.title} ».`
           : !DECKS[chapter.opponent.deck] ? 'Le deck de cet adversaire n’est pas encore jouable.'
             : chapter.opponent.level === 4 && rlOk === false ? 'Ce défi se joue contre l’IA entraînée, qui n’est pas installée sur ce serveur.'
               : chapter.opponent.level === 4 && rlOk === null ? 'Vérification de l’IA entraînée…'
@@ -380,10 +386,8 @@ export function AdventureApp({ onBack }: { onBack: () => void }) {
 function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: string; onSail: () => void; onBack: () => void }) {
   const starter = ARC.starterDeck ? DECKS[ARC.starterDeck] : undefined;
   return (
-    <div className="setup op-adv op-adv-welcome" data-ui="adventure.welcome">
-      <header className="op-adv-head">
-        <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.back" onClick={onBack}>← Jeu</button>
-      </header>
+    <Screen className="op-adv-screen op-adv-welcome" data-ui="adventure.welcome" title="Aventure"
+      back={{ label: BACK.home, onBack, 'data-ui': 'adventure.back' }}>
       <div className="op-adv-welcome-body">
         <div className="op-adv-welcome-ship" aria-hidden="true">⛵</div>
         <h1>Ton aventure commence à East Blue</h1>
@@ -398,12 +402,12 @@ function Welcome({ busy, error, onSail, onBack }: { busy?: string; error?: strin
           </p>
         )}
         {error && <p className="danger">{error}</p>}
-        <button className="op-btn op-btn-primary btn-big" data-ui="adventure.sail" disabled={Boolean(busy)} onClick={onSail}>
-          {busy ? <><span className="op-spinner" /> {busy}</> : '⚓ Prendre la mer'}
-        </button>
+        <Button variant="primary" size="big" data-ui="adventure.sail" busy={Boolean(busy)} onClick={onSail}>
+          {busy ?? '⚓ Prendre la mer'}
+        </Button>
         <p className="op-small op-muted op-adv-fan">Projet de fan non officiel et gratuit, sans lien avec Bandai, Shueisha ou Toei Animation.</p>
       </div>
-    </div>
+    </Screen>
   );
 }
 
@@ -430,41 +434,52 @@ function MapScreen({ adv, statuses, current, picked, finished, busy, error, onPi
   const needed = locked ? requiredChapters(ARC, locked).filter((id) => statuses[id] !== 'won').map((id) => ARC.chapters.find((c) => c.id === id)!) : [];
   const waiting = adv.boosters.length;
   const { wallet } = useWallet();
+  const { portrait } = useDevice();
+  // les écrans de l'aventure : dans l'en-tête sur ordinateur et en paysage, en rangée sous l'en-tête en portrait
+  const nav = (
+    <nav className="op-adv-nav" aria-label="Aventure">
+      {waiting > 0 && (
+        <Button variant="secondary" className="op-adv-gift" data-ui="adventure.boosters" busy={busy} onClick={onOpenBoosters} title="Ouvrir tes boosters gagnés (ils restent aussi dans ta Cale)">
+          <PackIcon set={adv.boosters[0].set} /> {waiting}<span className="op-adv-wide"> booster{waiting > 1 ? 's' : ''} à ouvrir</span>
+        </Button>
+      )}
+      <Button variant="secondary" icon="hold" data-ui="adventure.hold" onClick={onHold}>Ma Cale</Button>
+      <Button variant="secondary" icon="deck" data-ui="adventure.deck" onClick={onDeck}>{ADVENTURE_DECK.title}</Button>
+      <Button variant="secondary" icon="shop" data-ui="adventure.shop" onClick={onShop}>Boutique</Button>
+    </nav>
+  );
+  const strip = error ? <span className="danger op-small">{error}</span>
+    : locked ? (
+      <span>🔒 <strong>{locked.place}</strong> n’est pas encore accessible : gagne d’abord {needed.map((c, i) => (
+        <span key={c.id}>{i ? ' et ' : ''}« {c.title} » ({c.place})</span>
+      ))}.</span>
+    ) : finished ? (
+      <span>🏴‍☠️ <strong>East Blue est terminé !</strong> La suite du voyage arrive bientôt. Tu peux rejouer chaque chapitre.</span>
+    ) : next ? (
+      <span>Prochaine étape : <strong>{next.place}</strong> · {next.title}</span>
+    ) : null;
   return (
-    <div className="setup op-adv op-adv-map" data-ui="adventure.map">
-      <header className="op-adv-head">
-        <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.back" onClick={onBack}>← Jeu</button>
-        <h1 className="op-adv-map-title">{ARC.title}</h1>
-        <WalletBadge wallet={wallet} onClick={onShop} />
-        <IconButton icon="settings" label="Réglages" variant="quiet" data-ui="adventure.settings" onClick={onSettings} />
-        <div className="op-adv-head-actions">
-          {waiting > 0 && (
-            <button className="op-btn btn-small op-adv-gift" data-ui="adventure.boosters" disabled={busy} onClick={onOpenBoosters} title="Ouvrir tes boosters gagnés (ils restent aussi dans ta Cale)">
-              {busy ? <span className="op-spinner" /> : <PackIcon set={adv.boosters[0].set} />} {waiting} booster{waiting > 1 ? 's' : ''}<span className="op-adv-wide"> à ouvrir</span>
-            </button>
+    <Screen
+      className="op-adv-screen op-adv-map"
+      data-ui="adventure.map"
+      back={{ label: BACK.home, onBack, 'data-ui': 'adventure.back' }}
+      title={<span className="op-adv-map-title">{ARC.title}</span>}
+      extra={<>{!portrait && nav}<WalletBadge wallet={wallet} onClick={onShop} /></>}
+      actions={[{ id: 'settings', label: 'Réglages', icon: 'settings', onClick: onSettings, 'data-ui': 'adventure.settings' }]}
+      footer={(
+        <div className="op-adv-strip">
+          <div className="op-adv-strip-text">{strip}</div>
+          {next && !locked && !error && (
+            <Button variant="primary" data-ui="adventure.go" onClick={() => onChapter(next.id)}>⚓ Y aller</Button>
           )}
-          <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.hold" onClick={onHold}>🧰 Ma Cale</button>
-          <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.deck" onClick={onDeck}>🃏 Mon deck</button>
-          <button className="op-btn op-btn-ghost btn-small" data-ui="adventure.shop" onClick={onShop}>🏪 Boutique</button>
+          {finished && !locked && !error && <Button variant="secondary" data-ui="adventure.summary" onClick={onSummary}>📜 Bilan</Button>}
         </div>
-      </header>
-      <WorldMap arcs={ARCS} statuses={statuses} current={current} onPick={onPick} selected={picked} />
-      <div className="op-adv-strip">
-        {error ? <span className="danger op-small">{error}</span>
-          : locked ? (
-            <span>🔒 <strong>{locked.place}</strong> n’est pas encore accessible : gagne d’abord {needed.map((c, i) => (
-              <span key={c.id}>{i ? ' et ' : ''}« {c.title} » ({c.place})</span>
-            ))}.</span>
-          ) : finished ? (
-            <span>🏴‍☠️ <strong>East Blue est terminé !</strong> La suite du voyage arrive bientôt. Tu peux rejouer chaque chapitre.</span>
-          ) : next ? (
-            <span>Prochaine étape : <strong>{next.place}</strong> · {next.title}</span>
-          ) : null}
-        {next && !locked && !error && (
-          <button className="op-btn op-btn-primary" data-ui="adventure.go" onClick={() => onChapter(next.id)}>⚓ Y aller</button>
-        )}
-        {finished && !locked && !error && <button className="op-btn op-btn-ghost" data-ui="adventure.summary" onClick={onSummary}>📜 Bilan</button>}
+      )}
+    >
+      <div className="op-adv-page op-adv-map-page">
+        {portrait && nav}
+        <WorldMap arcs={ARCS} statuses={statuses} current={current} onPick={onPick} selected={picked} />
       </div>
-    </div>
+    </Screen>
   );
 }

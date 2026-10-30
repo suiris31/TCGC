@@ -2,7 +2,7 @@
 // le serveur (game/online/match.ts), envoi en temps réel de la vue de chaque joueur par un flux SSE (Server-Sent
 // Events). Le flux passe par le bloc nginx existant : pas de tampon (X-Accel-Buffering) et un signe de vie toutes les
 // 25 s, sous le délai de 120 s de nginx.
-// Un deck de la Cale (deck d'aventure, mode 'aventure') n'entre dans une partie que si son joueur possède encore toutes
+// Un deck d'aventure (mode 'aventure', cartes de la Cale) n'entre dans une partie que si son joueur possède encore toutes
 // ses cartes (holdErrors, relu dans la Cale au moment de créer la salle et au moment où la partie commence).
 //   POST /api/game/matches                 créer une salle { deck }
 //   POST /api/game/matches/join            rejoindre une salle { code, deck }
@@ -72,7 +72,7 @@ function requireCards() {
   if (!gameCards()) throw new MatchError('cards_loading', 'Informations des cartes en cours de téléchargement, réessaie dans un instant', 503);
 }
 
-// Problèmes d'un deck de la Cale : cartes qui manquent dans la Cale de son joueur (échangées depuis, par exemple)
+// Problèmes d'un deck d'aventure : cartes qui manquent dans la Cale de son joueur (échangées depuis, par exemple)
 function holdProblems(p) {
   return p.hold ? holdErrors(p.userId, p.list.leader, p.list.cards) : [];
 }
@@ -83,7 +83,7 @@ function holdMessage(errors, others = false) {
   return `${others ? errors[0].replace(/ta Cale/g, 'sa Cale') : errors[0]}${more}`;
 }
 
-// Deck personnalisé : relu dans la base (seulement ceux du compte) ; sa liste reste côté serveur. Un deck de la Cale est
+// Deck personnalisé : relu dans la base (seulement ceux du compte) ; sa liste reste côté serveur. Un deck d'aventure est
 // refusé s'il lui manque des cartes. Ses visuels (looks) sont gardés à part : la liste jouée par le moteur n'en a pas.
 export function player(user, deck) {
   const saved = typeof deck === 'string' && deck.startsWith('PERSO-') ? deckOf(user.id, deck) : null;
@@ -171,11 +171,11 @@ export function enterRoom(user, rawCode, deck, now = new Date()) {
   if (!row) throw new MatchError('unknown_room', 'Aucune salle ouverte avec ce code', 404);
   const m = load(row.id);
   const guest = player(user, deck);
-  // l'hôte a pu échanger des cartes de son deck de la Cale depuis l'ouverture de la salle : elle se ferme
+  // l'hôte a pu échanger des cartes de son deck d'aventure depuis l'ouverture de la salle : elle se ferme
   const hostErrors = guest.userId === m.host.userId ? [] : holdProblems(m.host);
   if (hostErrors.length) {
     close(m, 'cancelled', now);
-    throw new MatchError('host_hold_incomplete', `${m.host.name} n'a plus toutes les cartes de son deck de la Cale (${holdMessage(hostErrors, true)}) : `
+    throw new MatchError('host_hold_incomplete', `${m.host.name} n'a plus toutes les cartes de son deck d'aventure (${holdMessage(hostErrors, true)}) : `
       + 'la salle est fermée. Demande-lui d’en ouvrir une nouvelle.', 409);
   }
   joinMatch(m, guest, now, crypto.randomInt(2 ** 31));

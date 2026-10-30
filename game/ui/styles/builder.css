@@ -20,6 +20,9 @@
 .db-leader img { width: 100%; border-radius: 6px; }
 .db-text { width: 100%; box-sizing: border-box; font: 0.9rem/1.4 ui-monospace, Consolas, monospace; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 0.6rem; resize: vertical; }
 .db-head .db-name { flex: 1; min-width: 0; font-size: 1.1rem; font-weight: 700; }
+/* le nom du deck est une zone de texte d'une ligne qui grandit avec lui : jamais coupé */
+.db-name { height: auto; min-height: 2.5rem; padding: 0.4rem 0.6rem; line-height: 1.35; resize: none; overflow: hidden; field-sizing: content; overflow-wrap: anywhere; }
+.db-save { flex: 0 1 auto; text-align: right; }
 .db-summary { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 1.4rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .db-leader-mini { cursor: pointer; }
 .db-summary-text { display: flex; flex-direction: column; flex: 1; min-width: 8rem; }
@@ -59,3 +62,107 @@
 .db-danger-zone { margin-top: 0.6rem; }
 .db-delete { background: var(--red); color: var(--white); }
 .deck-mine-note { margin: -0.2rem 0 0.5rem; }
+
+/* Choix d'un deck (DeckPicker) et tuile d'un deck (DeckTile), la même partout : partie rapide, ami, Mes decks, deck
+   d'aventure (tâche R3.4). La tuile est un cadre ; son bouton principal (.deck-tile-main) la remplit, les boutons
+   propres à l'écran (guide, Jouer, Modifier) sont dessous. */
+.op-deck-picker { display: flex; flex-direction: column; min-width: 0; }
+.deck-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.857rem; }
+.deck-filter { display: flex; flex-wrap: wrap; gap: 0.429rem; margin-bottom: 0.571rem; }
+.deck-chip { height: 2.143rem; padding: 0 0.857rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 700; }
+.deck-chip[style] { border-left: 0.429rem solid var(--c1); }
+.deck-chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.deck-group + .deck-group { margin-top: 0.857rem; }
+.deck-group h3 { margin: 0 0 0.429rem; font-size: 0.929rem; color: var(--muted); font-weight: 700; }
+.deck-tile { position: relative; display: flex; flex-direction: column; align-items: stretch; min-width: 0; border-radius: 14px; overflow: hidden; border: 2px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--c1), var(--c2)) border-box; color: var(--text); text-align: left; transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s; opacity: 0.75; }
+.deck-tile.is-plain { opacity: 1; }
+@media (hover: hover) { .deck-tile:hover { transform: translateY(-3px); opacity: 1; } }
+.deck-tile.on { opacity: 1; box-shadow: 0 0 0 3px var(--accent), 0 10px 30px var(--black-a45); transform: translateY(-3px); }
+.deck-tile-main, .deck-random { display: flex; flex-direction: column; align-items: stretch; flex: 1 0 auto; gap: 0.1rem; width: 100%; min-width: 0; padding: 0 0 0.571rem; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.deck-tile-main:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.deck-tile img { width: 100%; height: 9.286rem; object-fit: cover; object-position: center 22%; }
+.deck-random { --c1: var(--accent); --c2: var(--accent); }
+.deck-random-dice { display: grid; place-items: center; height: 9.286rem; font-size: 3.5rem; background: var(--surface-2); }
+/* le nom en entier, sur plusieurs lignes s'il le faut */
+.deck-name { padding: 0.5rem 0.714rem 0; font-weight: 800; overflow-wrap: anywhere; }
+.deck-id { padding: 0 0.714rem; font-size: 0.857rem; color: var(--muted); overflow-wrap: anywhere; }
+.deck-styles { padding: 0 0.7rem; font-size: 0.8rem; color: var(--text-cool); }
+.deck-styles.deck-status { font-weight: 700; }
+.deck-styles.deck-status.db-ok { color: var(--green); }
+.deck-styles.deck-status.db-ko { color: var(--red); }
+.deck-tile-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0 0.6rem 0.571rem; }
+.deck-tile-actions > * { flex: 1 1 auto; }
+.deck-guide-btn { padding: 0.25rem 0.5rem; border-radius: 0.5rem; text-align: center; font-size: 0.85rem; font-weight: 700; color: var(--text); background: var(--white-a07); border: 1px solid var(--line); }
+@media (hover: hover) { .deck-guide-btn:hover { border-color: var(--accent); color: var(--accent); } }
+/* repère des decks d'aventure (cartes gagnées dans l'Aventure), et du deck choisi pour l'aventure */
+.deck-tile.op-deck-adventure .deck-name { color: var(--accent); }
+.op-deck-badge { position: absolute; top: 0.4rem; left: 0.4rem; width: max-content; max-width: calc(100% - 0.8rem); padding: 0.1rem 0.45rem; border-radius: 999px; background: var(--ink-2-a85); border: 1px solid var(--accent-a70); color: var(--accent); font-size: 0.8rem; font-weight: 700; pointer-events: none; }
+.op-deck-badge.is-chosen { background: var(--accent); color: var(--accent-ink); }
+@media (max-width: 1250px) {
+  .deck-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+:where(.opc.is-portrait) .deck-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+:where(.opc.is-portrait) .deck-tile img, :where(.opc.is-portrait) .deck-random-dice { height: 5.2rem; }
+:where(.opc.is-portrait) .deck-random-dice { font-size: 2.4rem; }
+:where(.opc.is-portrait) .deck-name { padding: 0.4rem 0.45rem 0; font-size: 0.85rem; }
+:where(.opc.is-portrait) .deck-id { padding: 0 0.45rem; font-size: 0.8rem; }
+:where(.opc.is-portrait) .deck-styles { display: none; }
+:where(.opc.is-portrait) .deck-styles.deck-status { display: block; padding: 0 0.45rem; }
+:where(.opc.is-portrait) .deck-tile-actions { padding: 0 0.4rem 0.45rem; gap: 0.3rem; }
+:where(.opc.is-portrait) .deck-guide-btn { padding: 0.2rem 0.3rem; font-size: 0.8rem; }
+:where(.opc.is-portrait) .op-deck-badge { top: 0.25rem; left: 0.25rem; max-width: calc(100% - 0.5rem); padding: 0 0.35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Mes decks (fenêtre du kit) et l'éditeur sur téléphone */
+.db-list-dialog .db-actions { margin-bottom: 0.9rem; }
+.db-list-dialog .op-deck-picker + p { margin-top: 0.8rem; }
+.deck-play-btn { color: var(--accent); border-color: var(--accent-a70); }
+:where(.opc.is-compact) .db-head { flex-wrap: wrap; }
+/* portrait : le nom sur toute la largeur, sous « ← Mes decks » */
+:where(.opc.is-portrait) .db-head .db-name { order: 3; flex: 1 0 100%; }
+:where(.opc.is-portrait) .db-head .db-save { flex: 1; }
+/* paysage : en-tête et résumé resserrés, pour laisser la hauteur aux cartes */
+:where(.opc.is-landscape) .db-head { flex-wrap: nowrap; gap: 0.6rem; padding: calc(0.25rem + env(safe-area-inset-top, 0px)) 0.8rem 0.25rem; }
+:where(.opc.is-landscape) .db-head .db-name { font-size: 1rem; padding: 0.3rem 0.5rem; }
+:where(.opc.is-landscape) .db-summary { flex-wrap: nowrap; gap: 0.6rem; padding: 0.25rem 0.8rem; }
+:where(.opc.is-landscape) .db-leader-mini { display: none; }
+:where(.opc.is-landscape) .db-summary-text { flex-direction: row; align-items: baseline; gap: 0.5rem; min-width: 0; white-space: nowrap; overflow: hidden; }
+:where(.opc.is-landscape) .db-count { font-size: 1.05rem; }
+:where(.opc.is-landscape) .op-db-holdnote { margin: 0.2rem 0.8rem 0; }
+:where(.opc.is-landscape) .history-tabs.db-tabs { margin: 0.3rem 0.8rem 0; }
+:where(.opc.is-landscape) .db-panes { padding: 0.5rem 0.8rem 0.8rem; }
+/* Deck d'aventure : le deck choisi (résumé, courbe), puis le sélecteur de mes decks d'aventure */
+.op-adeck-chosen-text { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+.op-adeck-chosen-text h2 { margin: 0; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.op-adeck-chosen-text p { margin: 0; }
+.op-adeck-body { display: flex; flex-direction: column; gap: 1.2rem; width: 100%; max-width: 78rem; margin: 0 auto; }
+.op-adeck .op-adeck-curve { max-width: 34rem; }
+.op-adeck section > h2 { margin: 0 0 0.6rem; font-size: 1.05rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+/* cibles au doigt : boutons − et + des cartes, lien vers Mes decks (44 px) */
+.db-card-btns .icon-btn, .db-line-btns .icon-btn { min-height: 44px; min-width: 44px; }
+.deck-mine-note .op-link { display: inline-flex; align-items: center; min-height: 44px; }
+/* Visuels d'un deck (R3.12) : version de chaque carte et DON!! du deck (builder/LooksPicker.tsx) */
+.op-db-looks { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.6rem; }
+.op-db-looks-item { display: flex; align-items: center; gap: 0.6rem; flex: 1 1 12rem; min-height: 44px; padding: 0.4rem 0.6rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); color: var(--text); text-align: left; font: inherit; }
+.op-db-don { cursor: pointer; }
+@media (hover: hover) { .op-db-don:hover { border-color: var(--accent); } }
+.op-db-don-img { flex-shrink: 0; width: 3.6rem; aspect-ratio: 63 / 88; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 3px 8px var(--black-a45); }
+.op-db-don-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.op-db-don-token { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, var(--don-light), var(--don-mid) 55%, var(--don-dark)); }
+.op-db-thumb { display: block; }
+.op-db-art { position: relative; flex-shrink: 0; padding: 0; border: 0; background: none; border-radius: 0.5rem; cursor: pointer; }
+.op-db-art .thumb { cursor: pointer; }
+.op-db-art:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-db-art-badge { position: absolute; right: 0.15rem; bottom: 0.15rem; padding: 0 0.3rem; border-radius: 0.4rem; background: var(--ink-a92); color: var(--accent); font-size: 0.75rem; font-weight: 800; line-height: 1.5; pointer-events: none; }
+.op-looks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 0.6rem; }
+.op-looks-grid.is-don { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); }
+.op-looks-item { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.35rem; border-radius: 10px; background: var(--surface); border: 2px solid var(--line); color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: border-color var(--dur-fast), transform var(--dur-fast); }
+.op-looks-item img { width: 100%; aspect-ratio: 63 / 88; object-fit: cover; border-radius: 6px; background: var(--bg-2); }
+@media (hover: hover) { .op-looks-item:not(:disabled):hover { border-color: var(--accent-a60); transform: translateY(-2px); } }
+.op-looks-item.is-on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-a35); }
+.op-looks-item.is-missing { cursor: not-allowed; opacity: 0.55; }
+.op-looks-item.is-missing img { filter: grayscale(1); }
+.op-looks-name { font-size: 0.85rem; font-weight: 700; }
+.op-looks-note { font-size: 0.75rem; color: var(--muted); }
+.op-looks-item.is-missing .op-looks-note { color: var(--text); font-style: italic; }
+:where(.opc.is-compact) .op-looks-grid { grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr)); gap: 0.45rem; }
+:where(.opc.is-compact) .op-looks-grid.is-don { grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr)); }

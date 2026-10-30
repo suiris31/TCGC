@@ -1,9 +1,10 @@
-// Interface du coach : conseil pendant la partie et récap de fin de partie
-import type { ReactNode } from 'react';
+// Interface du coach : conseil pendant la partie et récap de fin de partie (affiché par l'écran de fin, end/EndScreen.tsx,
+// et par Mes parties)
 import type { Analysis } from '../ai/search.ts';
 import type { MoveReview, Recap, SideStats } from '../coach/review.ts';
 import type { Decision } from '../engine/types.ts';
 import { isTouch } from './device.ts';
+import { quoteCardNames } from './texts.ts';
 
 export const pct = (rate: number) => `${Math.round(rate * 100)} %`;
 
@@ -65,7 +66,8 @@ export function CoachHint({ decision, analysis, loading, onAsk, onChoose }: {
   );
 }
 
-// Courbe de tes chances de gagner après chacun de tes choix ; les erreurs en rouge
+// Courbe de tes chances de gagner après chacun de tes choix ; les erreurs en rouge. Les graduations sont du texte
+// posé sur le dessin (en % de sa taille) : elles gardent leur taille quand le dessin rétrécit (téléphone)
 export function Curve({ recap }: { recap: Recap }) {
   const W = 640;
   const H = 130;
@@ -75,15 +77,18 @@ export function Curve({ recap }: { recap: Recap }) {
   const y = (r: number) => 6 + (1 - r) * (H - 12);
   const mistakes = new Set(recap.mistakes.map((m) => m.id));
   const turns = pts.map((p, i) => ({ i, turn: p.turn })).filter((p, k, all) => k === 0 || all[k - 1].turn !== p.turn);
+  const at = (px: number, py: number) => ({ left: `${(px / W) * 100}%`, top: `${(py / H) * 100}%` });
   return (
-    <svg className="curve" viewBox={`0 0 ${W} ${H + 16}`} role="img" aria-label="Tes chances de gagner au fil de la partie">
-      <line x1={0} x2={W} y1={y(0.5)} y2={y(0.5)} className="curve-mid" />
-      {turns.map((t) => <line key={t.i} x1={x(t.i)} x2={x(t.i)} y1={0} y2={H} className="curve-turn" />)}
-      {turns.filter((_, k) => k % 2 === 0).map((t) => <text key={t.i} x={x(t.i) + 2} y={H + 13} className="curve-text">T{t.turn}</text>)}
-      <polyline points={pts.map((p, i) => `${x(i)},${y(p.rate)}`).join(' ')} className="curve-line" />
-      {pts.map((p, i) => (mistakes.has(p.id) ? <circle key={p.id} cx={x(i)} cy={y(p.rate)} r={4.5} className="curve-bad" /> : null))}
-      <text x={4} y={y(0.5) - 4} className="curve-text">50 %</text>
-    </svg>
+    <div className="curve-box"><div className="curve-plot">
+      <svg className="curve" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Tes chances de gagner au fil de la partie">
+        <line x1={0} x2={W} y1={y(0.5)} y2={y(0.5)} className="curve-mid" />
+        {turns.map((t) => <line key={t.i} x1={x(t.i)} x2={x(t.i)} y1={0} y2={H} className="curve-turn" />)}
+        <polyline points={pts.map((p, i) => `${x(i)},${y(p.rate)}`).join(' ')} className="curve-line" />
+        {pts.map((p, i) => (mistakes.has(p.id) ? <circle key={p.id} cx={x(i)} cy={y(p.rate)} r={4.5} className="curve-bad" /> : null))}
+      </svg>
+      {turns.filter((_, k) => k % 2 === 0).map((t) => <span key={t.i} className="curve-label" aria-hidden="true" style={at(x(t.i) + 2, H)}>T{t.turn}</span>)}
+      <span className="curve-label is-mid" aria-hidden="true" style={at(0, y(0.5))}>50 %</span>
+    </div></div>
   );
 }
 
@@ -95,7 +100,7 @@ export function ReviewItem({ r, kind, onReplay }: { r: MoveReview; kind: 'bad' |
         <b>Tour {r.turn} · {KIND[r.kind] ?? r.kind}</b>
         {kind === 'bad' ? <span className="op-chip chip-bad">−{Math.round(r.delta * 100)} points</span> : <span className="op-chip chip-good">bon choix</span>}
       </div>
-      {!generic && <div className="op-small op-muted">{r.prompt}</div>}
+      {!generic && <div className="op-small op-muted">{quoteCardNames(r.prompt)}</div>}
       <div>Tu as choisi : <b>{r.choiceLabel}</b> <span className="op-muted">({pct(r.chosenRate)} de chances de gagner)</span></div>
       {r.useless && <div className="op-small op-muted">Ce choix ne pouvait rien apporter : {r.useless}.</div>}
       {kind === 'bad' ? (
@@ -187,54 +192,5 @@ export function RecapBody({ recap, onReplay }: { recap: Recap; onReplay?: (id: n
         {recap.tips.length ? <ul className="tips">{recap.tips.map((t, i) => <li key={i}>{t}</li>)}</ul> : <p className="op-muted">Rien à signaler.</p>}
       </section>
     </>
-  );
-}
-
-// Fenêtre de fin de partie : résultat, bilan de la confrontation, gains de la partie (Berry), puis le récap du coach
-export function EndScreen({ won, reason, turns, matchup, record, practice, gain, progress, recap, onReplay, onRestart, onBoard, onMenu, onHistory }: {
-  won: boolean;
-  reason: string;
-  turns: number;
-  matchup: string;
-  record: RecordLine | undefined;
-  practice: boolean;
-  gain?: ReactNode;
-  progress: { done: number; total: number };
-  recap: Recap | null;
-  onReplay: (id: number) => void;
-  onRestart: () => void;
-  onBoard: () => void;
-  onMenu: () => void;
-  onHistory: () => void;
-}) {
-  return (
-    <div className="modal-box recap">
-      <div className="recap-top">
-        <h2 className={won ? 'win' : 'loss'}>{won ? 'Victoire !' : 'Défaite'}</h2>
-        <p>{reason} · {turns} tours</p>
-        <p className="op-small op-muted">
-          {practice ? 'Partie reprise depuis un moment revu : elle ne compte pas dans ton bilan. ' : ''}
-          Bilan {matchup} : {recordText(record)}
-        </p>
-      </div>
-
-      {gain}
-
-      {!recap && (
-        <div className="progress">
-          <div className="op-small">Le coach analyse tes décisions… {progress.done}/{progress.total}</div>
-          <div className="progress-bar"><span style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} /></div>
-        </div>
-      )}
-
-      {recap && <RecapBody recap={recap} onReplay={onReplay} />}
-
-      <div className="end-actions">
-        <button className="op-btn" onClick={onRestart}>Rejouer</button>
-        <button className="op-btn op-btn-ghost" onClick={onBoard}>Voir le plateau</button>
-        <button className="op-btn op-btn-ghost" onClick={onHistory}>📈 Mes parties</button>
-        <button className="op-btn op-btn-ghost" onClick={onMenu}>Menu</button>
-      </div>
-    </div>
   );
 }

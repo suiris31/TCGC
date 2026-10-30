@@ -223,7 +223,7 @@ export function createNavigator(win: HistoryWindow): Navigator {
       return () => { listeners.delete(listener); };
     },
     navigate,
-    // « ← Retour » : l'écran précédent s'il est du jeu, sinon le repli
+    // bouton de retour : l'écran précédent s'il est du jeu, sinon le repli
     goBack(fallback) {
       if (!layers.length && entryOf(win.history.state)?.from) back();
       else navigate(fallback, { replace: true });

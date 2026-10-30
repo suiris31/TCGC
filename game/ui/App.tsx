@@ -1,37 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { LEVELS, type Level } from '../ai/search.ts';
 import { replayRecord, type GameRecord, type Replayed } from '../coach/archive.ts';
+import { sayReason } from '../coach/logText.ts';
 import { DECKS } from '../engine/decks.ts';
 import { newGame } from '../engine/engine.ts';
 import type { PlayerId } from '../engine/types.ts';
-import { EndScreen } from './Coach.tsx';
+import { flushQueue, whenSaved } from './archiveClient.ts';
+import { recordText } from './Coach.tsx';
 import { phaseLabel } from './decision.ts';
-import { currentRoute, goBack, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
+import { HelpModal } from './Modals.tsx';
+import { currentRoute, goBack, goUp, HOME, navigate, useLeaveGuard, useRoute } from './routes.ts';
 import { useSettings } from './settings.ts';
 import { SettingsPanel } from './SettingsPanel.tsx';
+import { ADVENTURE_DECK, BACK, backText, LEAVE_GAME } from './texts.ts';
 import { DeckBuilderScreen } from './DeckBuilder.tsx';
 import { DeckGuideModal } from './DeckGuide.tsx';
 import { deckInfo, deckLabel, playable } from './myDecks.ts';
 import { CardZoom } from './Zoom.tsx';
 import { HistoryScreen } from './History.tsx';
 import { GameGain, useGameGain } from './economy/GameGain.tsx';
-import { AdventureEnd } from './game/AdventureEnd.tsx';
+import { EndScreen } from './end/EndScreen.tsx';
 import { useAiOpponent } from './game/useAiOpponent.ts';
 import { useCoach } from './game/useCoach.ts';
 import { useGameRecording, useRecordingEnd } from './game/useGameRecording.ts';
-import { matchupName, RANDOM_DECK, randomDeck, recordKey, useRecords, type Config } from './setup/config.ts';
-import { SetupScreen, type AdventureEntry, type OnlineEntry } from './setup/SetupScreen.tsx';
+import { loadQuickChoice, matchupName, RANDOM_DECK, randomDeck, recordKey, saveQuickChoice, useRecords, type Config } from './setup/config.ts';
+import { QuickPlay } from './setup/QuickPlay.tsx';
+import { AiMovesBand, PausedBar } from './table/AiPace.tsx';
+import { shownMoves } from './table/pace.ts';
 import { CoachTab } from './table/SidePanel.tsx';
-import { LeaveDialog, stop, TableScreen } from './table/TableScreen.tsx';
+import { LeaveDialog, TableScreen } from './table/TableScreen.tsx';
 import { useGameKeys } from './table/useGameKeys.ts';
 import { useTable } from './table/useTable.ts';
-
-export type { AdventureEntry, OnlineEntry };
 
 const HUMAN: PlayerId = 0;
 const AI: PlayerId = 1;
 
-// Partie lancée par un autre écran (mode Aventure) : decks et niveau imposés, pas d'écran de départ. La partie commence
+// Partie lancée par un autre écran (mode Aventure) : decks et niveau imposés, pas d'écran de choix. La partie commence
 // dès l'affichage (le joueur l'a demandée), ou reprend une partie interrompue (resume, déjà rejouée). onEnd : la partie
 // est finie (après l'écran de victoire ou de défaite) ; saved donne l'identifiant de l'enregistrement final une fois
 // qu'il est sur le serveur. onLeave : « Quitter » pendant la partie, « Suite » après ; l'écran appelant décide (une
@@ -47,25 +51,37 @@ export interface ConfiguredGame {
   onLeave: () => void;
 }
 
+// Ce que l'accueil (home/Home.tsx) demande à App
+export interface HomeActions {
+  resume: (saved: GameRecord, replayed: Replayed) => void;
+  help: () => void;
+  settings: () => void;
+}
+
 // Réglages d'une partie enregistrée (reprise, moment revu)
 const configOf = (rec: GameRecord): Config => ({
   myDeck: rec.config.myDeck, aiDeck: rec.config.aiDeck, level: rec.config.level as Level, first: rec.config.first,
   ...(rec.config.myDeckName ? { myDeckName: rec.config.myDeckName } : {}), ...(rec.config.aiDeckName ? { aiDeckName: rec.config.aiDeckName } : {}),
 });
 
-// notice : message affiché sur l'écran de départ ; onImmersive : une partie occupe tout l'écran (TCGC masque alors sa
-// barre d'onglets) ; configured : partie imposée par le mode Aventure (voir ConfiguredGame)
-export function App({ notice, onImmersive, online, adventure, configured }: {
-  notice?: string;
+// onImmersive : une partie occupe tout l'écran (TCGC masque alors sa barre d'onglets) ; configured : partie imposée par
+// le mode Aventure (voir ConfiguredGame) ; home : l'accueil du jeu (home/Home.tsx), montré à la place de l'écran de la
+// partie rapide (setup/QuickPlay.tsx) hors de #play/rapide (et sous Mes decks et Mes parties), avec de quoi y reprendre
+// une partie rapide interrompue et ouvrir l'aide et les réglages (ceux de la touche « ? »)
+export function App({ onImmersive, configured, home }: {
   onImmersive?: (on: boolean) => void;
-  online?: OnlineEntry;
-  adventure?: AdventureEntry;
   configured?: ConfiguredGame;
+  home?: (actions: HomeActions) => ReactNode;
 }) {
   const [settings, updateSettings] = useSettings();
   const [config, setConfig] = useState<Config>(() => configured
     ? { myDeck: configured.myDeck, aiDeck: configured.aiDeck, first: 'random', level: configured.level }
-    : { myDeck: 'ST-35', aiDeck: 'ST-32', first: 'random', level: 2 });
+    : loadQuickChoice());
+  // choix faits sur l'écran de la partie rapide (ou « Jouer » de l'éditeur) : gardés pour la prochaine visite
+  const chooseQuick = useCallback((c: Config) => {
+    setConfig(c);
+    saveQuickChoice(c);
+  }, []);
   // Gain de la partie libre (Berry) : demandé au serveur une fois la partie finie et enregistrée (l'aventure le demande
   // elle-même, avec le résultat du chapitre)
   const { gain, claim, retry: retryGain, reset: resetGain } = useGameGain();
@@ -74,11 +90,12 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   // le gain à zéro (onBegin, appelé après le rendu : table et coach existent alors)
   const rec = useGameRecording({
     human: HUMAN, mode: configured?.mode,
-    onBegin: ({ intro }) => { coach.clearHint(); resetGain(); table.restart({ intro }); void coach.pump(); },
+    onBegin: ({ intro }) => { coach.clearHint(); resetGain(); opponent.reset(); table.restart({ intro }); void coach.pump(); },
   });
   const { game, practice } = rec;
   const session = rec.session ?? config;
-  const thinking = useAiOpponent(game, rec.setGame, AI, session.level, settings.speed);
+  // l'IA, sa pause et ses dernières décisions (revues dans la bande centrale)
+  const opponent = useAiOpponent(game, rec.setGame, AI, session.level, settings.speed);
   const coach = useCoach({
     game, human: HUMAN, humanTurn: rec.humanTurn, autoCoach: settings.autoCoach,
     moves: rec.moves, reviews: rec.reviews, reviewed: rec.reviewed, onReviewed: rec.setReviewed,
@@ -94,8 +111,10 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   }, [play, advice, pump]);
 
   // Le plateau (contrôleur commun, table/) : l'aide, les réglages, le guide et la carte en grand servent aussi à
-  // l'écran de départ
+  // l'écran de la partie rapide
   const table = useTable({ state: game, seat: HUMAN, active: rec.humanTurn, choose, aids: true, recommended: coach.recommended });
+  // « P » : pause de l'IA (la fonction suit le dernier rendu)
+  const pauseKey = useRef(() => {});
   const { help, setHelp, guide, setGuide } = table;
   const cardZoom = table.board.zoom;
   useRecordingEnd(rec, { human: HUMAN, celebrate: table.celebrate, claim, onEnd: configured?.onEnd });
@@ -117,12 +136,13 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   // Retour du navigateur pendant la partie : « Quitter la partie ? » (la partie est enregistrée)
   useLeaveGuard(game !== null && game.winner === null, () => setConfirmLeave(true));
 
-  // une partie, ou une fenêtre ouverte sur l'écran de départ (guide, Mes parties, aide), occupe tout l'écran
-  const fullScreen = game !== null || history || guide !== null || help;
+  // une partie, ou une fenêtre ouverte sur l'écran de la partie rapide (guide, Mes parties, Mes decks, aide), occupe
+  // tout l'écran
+  const fullScreen = game !== null || history || builder || guide !== null || help;
   useEffect(() => onImmersive?.(fullScreen), [fullScreen, onImmersive]);
 
-  // L'adresse quitte la partie (« Menu », Retour après la fin) : la partie se ferme comme avec « Menu ». #play/jeu
-  // ouvert sans partie (rechargement) : l'écran de départ
+  // L'adresse quitte la partie (« Quitter », Retour après la fin) : la partie se ferme comme avec « Quitter ». #play/jeu
+  // ouvert sans partie (rechargement) : l'accueil
   const shownRoute = useRef(route.name);
   useEffect(() => {
     if (!routed) return;
@@ -160,11 +180,14 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
   // Retour en arrière (une partie imposée finie est déjà envoyée et comptée : on ne revient plus dessus)
   const back = () => {
     if (configured && game?.winner !== null) return;
-    if (rec.back()) table.reset();
+    if (rec.back()) {
+      table.reset();
+      opponent.forget();
+    }
   };
 
   // Raccourcis clavier (Échap ferme aussi Mes parties et Mes decks)
-  useGameKeys(table, { undo: back, escape: () => showScreen(null) });
+  useGameKeys(table, { undo: back, escape: () => showScreen(null), pause: () => pauseKey.current() });
 
   // Rejouer un moment d'une partie archivée (depuis « Mes parties ») : comme « Revoir ce moment » du récap
   const resumeArchived = (saved: GameRecord, moveId: number) => {
@@ -186,6 +209,12 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     rec.begin({ state: replayed.final, config: cfg, moves: replayed.moves, reviews: saved.reviews, continues: saved });
   };
 
+  // Partie rapide interrompue, reprise depuis l'accueil (« Continuer ») : à l'adresse de la partie
+  const resumeQuick = (saved: GameRecord, replayed: Replayed) => {
+    resumeInterrupted(saved, replayed);
+    if (routed) navigate({ name: 'jeu' });
+  };
+
   // Partie imposée : lancée (ou reprise) dès l'affichage
   const launched = useRef(false);
   const [launchError, setLaunchError] = useState(false);
@@ -201,20 +230,24 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
       return (
         <div className="opc-wait">
           {launchError
-            ? <>Ton deck n’est pas jouable : complète-le dans « Mon deck ». <button className="op-btn op-btn-ghost" onClick={configured.onLeave}>Retour</button></>
+            ? <>Ton deck d’aventure n’est pas jouable : complète-le dans « {ADVENTURE_DECK.title} ». <button className="op-btn op-btn-ghost" onClick={configured.onLeave}>{backText(BACK.chapter)}</button></>
             : <><span className="op-spinner" /> Préparation de la partie…</>}
         </div>
       );
     }
     return (
       <>
-        <SetupScreen notice={notice} online={online} adventure={adventure} config={config} records={records} onChange={setConfig} onStart={start} onHelp={() => setHelp(true)} help={help} closeHelp={() => setHelp(false)}
-          onSettings={() => table.setSettingsOpen(true)} onGuide={setGuide} onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
+        {home && route.name !== 'rapide' ? home({ resume: resumeQuick, help: () => setHelp(true), settings: () => table.setSettingsOpen(true) }) : (
+          <QuickPlay config={config} records={records} onChange={chooseQuick} onStart={start} onBack={() => goUp(HOME)}
+            onHelp={() => setHelp(true)} onSettings={() => table.setSettingsOpen(true)} onGuide={setGuide}
+            onHistory={() => showScreen('parties')} onBuilder={() => showScreen('decks')} />
+        )}
+        {help && <HelpModal onClose={() => setHelp(false)} />}
         {guide && <DeckGuideModal deckId={guide} onClose={() => { setGuide(null); cardZoom.close(); }} onHover={cardZoom.onHover} />}
         {history && <HistoryScreen onClose={() => { showScreen(null); cardZoom.close(); }} onResume={resumeArchived} onHover={cardZoom.onHover} />}
         {builder && (
           <DeckBuilderScreen onClose={() => { showScreen(null); cardZoom.close(); }} onHover={cardZoom.onHover}
-            onPlay={(id) => { showScreen(null); cardZoom.close(); setConfig((c) => ({ ...c, myDeck: id })); }} />
+            onPlay={(id) => { cardZoom.close(); chooseQuick({ ...config, myDeck: id }); navigate({ name: 'rapide' }); }} />
         )}
         {cardZoom.zoom && <CardZoom preview={cardZoom.zoom} onClose={cardZoom.close} />}
         {table.settingsOpen && <SettingsPanel onClose={() => table.setSettingsOpen(false)} onHelp={() => setHelp(true)} />}
@@ -233,33 +266,58 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
     });
   };
 
-  // « Menu » : retour à l'écran d'avant la partie (l'adresse quitte #play/jeu, la partie se ferme alors)
+  // « Quitter » : retour à l'écran d'avant la partie (l'adresse quitte #play/jeu, la partie se ferme alors)
   const leave = () => {
     if (routed && currentRoute().name === 'jeu') return goBack(HOME);
     rec.quit();
   };
+  // « Accueil » après la partie : l'accueil du jeu, même quand la partie a été lancée depuis #play/rapide (goBack
+  // ramènerait à l'écran de la partie rapide)
+  const goHome = () => {
+    if (routed && currentRoute().name === 'jeu') return goUp(HOME);
+    rec.quit();
+  };
+  // « Mes parties » après la partie : son détail, une fois l'enregistrement sur le serveur (sinon la liste)
+  const openHistory = () => {
+    const id = rec.gameId;
+    flushQueue();
+    void whenSaved().then(() => true, () => false).then((saved) => {
+      if (currentRoute().name === 'jeu') navigate(saved && id ? { name: 'parties', id } : { name: 'parties' }, { replace: true });
+    });
+  };
   const over = game.winner !== null;
   const won = game.winner === HUMAN;
   const { hintNow } = coach;
+  // pause de l'IA : le bouton pendant son tour (et tant qu'elle est en pause) ; la barre quand c'est à elle de décider ;
+  // ses décisions dans la bande centrale (pendant un combat, seulement en pause ; sur téléphone, seulement en pause et
+  // hors combat : le panneau du combat prend la place)
+  const aiTurn = game.decision?.player === AI;
+  const pauseButton = !over && (game.active === AI || opponent.paused);
+  pauseKey.current = () => { if (opponent.paused) opponent.resume(); else if (pauseButton) opponent.pause(); };
+  const aiMoves = shownMoves(opponent.moves, game.turn);
+  const showMoves = opponent.paused ? !(table.board.compact && game.battle) : !table.board.compact && !game.battle;
 
   return (
     <TableScreen
       table={table}
       opponent="L’IA"
-      thinking={thinking}
+      thinking={opponent.thinking}
       top={{
         brand: '☠ OP Coach',
         match: <>{deckLabel(session.myDeck, session.myDeckName)} <span className="vs">contre</span> {deckLabel(session.aiDeck, session.aiDeckName)} · IA {LEVELS[session.level].name}</>,
         rival: 'IA',
         phase: phaseLabel(game, HUMAN),
         undo: { onClick: back, disabled: !rec.canUndo || (Boolean(configured) && over) },
+        pause: pauseButton ? { paused: opponent.paused, onPause: opponent.pause, onResume: opponent.resume } : undefined,
         leave: configured
           ? { label: over ? 'Suite →' : 'Quitter', title: over ? 'Suite de l’aventure' : 'Quitter la partie : tu pourras la reprendre depuis le chapitre', onClick: configured.onLeave }
-          : { label: 'Menu', onClick: leave },
+          : { ...LEAVE_GAME, onClick: leave },
       }}
       decks={{ mine: session.myDeck, theirs: session.aiDeck, theirsName: 'l’IA' }}
       coach={<CoachTab table={table} analysis={hintNow?.analysis ?? null} loading={Boolean(hintNow && !hintNow.analysis)} onAsk={coach.askHint} />}
       center={practice && <div className="practice">Entraînement depuis un moment revu : cette partie ne compte pas dans ton bilan.</div>}
+      lastMove={showMoves ? <AiMovesBand moves={aiMoves} name="IA" /> : null}
+      bar={opponent.paused && aiTurn && !over ? <PausedBar held={opponent.held} onStep={opponent.step} onResume={opponent.resume} /> : undefined}
       hint={{ state: hintNow ? (hintNow.analysis ? 'ready' : 'loading') : 'idle', ask: coach.askHint }}
       leave={confirmLeave && !over && (
         <LeaveDialog onStay={() => setConfirmLeave(false)} text={configured
@@ -269,28 +327,27 @@ export function App({ notice, onImmersive, online, adventure, configured }: {
           <button className="op-btn op-btn-primary" data-ui="leave.no" onClick={() => setConfirmLeave(false)}>Continuer la partie</button>
         </LeaveDialog>
       )}
+      reopenEnd
       end={(
-        <div className="modal-wrap" onClick={stop}>
-          {configured ? (
-            <AdventureEnd game={game} won={won} practice={practice} recap={coach.recap} progress={coach.progress} onReplay={replay}
-              onNext={configured.onLeave} onBoard={() => table.setShowEnd(false)} />
-          ) : <EndScreen
-            won={won}
-            reason={game.winReason ?? ''}
-            turns={game.turn}
-            matchup={matchupName(session)}
-            record={records[recordKey(session)]}
-            practice={practice}
-            gain={<GameGain gain={gain} onRetry={retryGain} />}
-            progress={coach.progress}
-            recap={coach.recap}
-            onReplay={replay}
-            onRestart={start}
-            onBoard={() => table.setShowEnd(false)}
-            onMenu={leave}
-            onHistory={() => (routed ? navigate({ name: 'parties' }, { replace: true }) : leave())}
-          />}
-        </div>
+        <EndScreen
+          mode={configured ? 'aventure' : 'ia'}
+          won={won}
+          reason={sayReason(game, HUMAN)}
+          turns={game.turn}
+          matchup={configured ? undefined : <>Bilan {matchupName(session)} : {recordText(records[recordKey(session)])}</>}
+          note={practice && (configured
+            ? 'Partie reprise depuis un moment revu : elle ne compte pas pour l’aventure.'
+            : 'Partie reprise depuis un moment revu : elle ne compte pas dans ton bilan.')}
+          gain={configured ? undefined : <GameGain gain={gain} onRetry={retryGain} />}
+          coach={{ recap: coach.recap, progress: coach.progress, onReplay: replay }}
+          onRestart={configured ? undefined : start}
+          // aventure : le récap, puis les récompenses (le résultat du chapitre et le gain sont déjà demandés au serveur)
+          onNext={configured?.onLeave}
+          nextLabel={won && !practice ? 'Récompenses →' : 'Suite de l’aventure →'}
+          onHistory={configured ? undefined : openHistory}
+          onHome={configured ? undefined : goHome}
+          onBoard={() => table.setShowEnd(false)}
+        />
       )}
     />
   );

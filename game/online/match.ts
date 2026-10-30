@@ -19,7 +19,7 @@ export interface MatchPlayer {
   name: string;
   deck: string;      // identifiant : deck du registre, ou PERSO-... (deck personnalisé du joueur)
   list?: DeckList;   // deck personnalisé : sa liste, lue dans la base par le serveur ; jamais envoyée à l'adversaire
-  hold?: boolean;    // deck de la Cale (deck d'aventure) : le serveur a vérifié que le joueur en possède toutes les cartes
+  hold?: boolean;    // deck d'aventure (cartes de la Cale) : le serveur a vérifié que le joueur en possède toutes les cartes
   looks?: DeckLooks; // visuels choisis du deck personnalisé (cosmétique : jamais dans le moteur)
 }
 
@@ -45,7 +45,7 @@ export interface MatchView {
   status: MatchStatus;
   code: string | null;        // seulement pour l'hôte d'une salle en attente
   seat: Seat;
-  you: { name: string; deck: string; deckName: string; hold?: true };   // hold : deck de la Cale (absent sinon)
+  you: { name: string; deck: string; deckName: string; hold?: true };   // hold : deck d'aventure (absent sinon)
   opponent: { name: string; deck: string; deckName: string; hold?: true } | null;
   seq: number;                // numéro du coup attendu (à renvoyer avec le choix)
   state: GameState | null;    // vue expurgée
@@ -85,7 +85,7 @@ const deckName = (p: MatchPlayer) => p.list?.name ?? DECKS[p.deck]?.name ?? p.de
 const holdDeck = (p: MatchPlayer | null | undefined) => p?.hold === true;
 const holdMark = (p: MatchPlayer) => (holdDeck(p) ? { hold: true as const } : {});
 
-// Partie « avec deck de la Cale » : les deux joueurs jouent un deck de la Cale (préparation du classé de l'étape 3)
+// Partie « entre decks d'aventure » : les deux joueurs jouent un deck d'aventure (préparation du classé de l'étape 3)
 export const holdMatch = (m: Match) => holdDeck(m.host) && holdDeck(m.guest);
 
 export function createMatch(id: string, code: string, host: MatchPlayer, now: Date, engine: string): Match {
@@ -178,7 +178,7 @@ export function viewOf(m: Match, seat: Seat): MatchView {
 
 // La partie terminée, telle qu'elle est rangée dans « Mes parties » de chaque joueur (sans analyse du coach : il
 // était désactivé pendant la partie). Les décisions du joueur sont retrouvées en rejouant les coups.
-// holdDeck / opponentHoldDeck : présents (true) seulement pour un deck de la Cale.
+// holdDeck / opponentHoldDeck : présents (true) seulement pour un deck d'aventure.
 export function recordFor(m: Match, seat: Seat, now: Date): GameRecord & { mode: 'online'; opponent: string; holdDeck?: true; opponentHoldDeck?: true } {
   if (!m.initial || !m.state || !m.guest || !m.startedAt) throw new MatchError('not_started', 'La partie n’a pas commencé', 409);
   const moves: Move[] = [];

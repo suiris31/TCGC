@@ -16,6 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser } from './cdp.mjs';
 import { compare } from './compare.mjs';
+import { COMPLETE_PARCOURS, COMPLETE_SCREENS, installComplete } from './complet.mjs';
 import { measure } from './mesures.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -93,10 +94,15 @@ const SCREENS = {
   '22-clavier-menu': 'Au clavier : menu d’une carte ouvert par Entrée',
   '23-clavier-cible': 'Au clavier : cible d’une attaque choisie par les flèches',
   '24-clavier-fin': 'Au clavier : partie finie, mouvements réduits',
+  '25-salon-decks': 'Salon en ligne : choix du deck',
+  '26-salle': 'Salle d’attente en ligne (code à envoyer)',
+  ...COMPLETE_SCREENS,
 };
 const PARCOURS = ['accueil', 'partie', 'aventure', 'decks', 'parties', 'salon'];
-// Parcours joués seulement quand --only les demande (la référence de l'étape ne les contient pas)
-const EXTRA = ['atelier', 'clavier'];
+// Parcours joués seulement quand --only les demande (la référence de l'étape ne les contient pas) ; « --only tout » :
+// tous les parcours sauf l'atelier (parcours complets de la tâche R4.1 : scripts/ui/complet.mjs)
+const EXTRA = [...COMPLETE_PARCOURS, 'clavier', 'atelier'];
+const ALL = [...PARCOURS, ...EXTRA.filter((p) => p !== 'atelier')];
 
 // Pages « plateau » de l'atelier (#play/atelier/plateau-<état>, tâche R0.2), lues dans game/ui/atelier : toutes sous le
 // numéro 30, suivi du nom de l'état (un nouvel état ne renumérote pas les autres)
@@ -148,7 +154,9 @@ class Tour {
       const x = (Math.max(0, r.left) + Math.min(innerWidth, r.right)) / 2;
       const y = (Math.max(0, r.top) + Math.min(innerHeight, r.bottom)) / 2;
       const hit = document.elementFromPoint(x, y);
-      return { x, y, onTop: Boolean(hit && (hit === el || el.contains(hit))), disabled: Boolean(el.disabled) };
+      const onTop = Boolean(hit && (hit === el || el.contains(hit)));
+      const by = onTop || !hit ? '' : `${hit.closest('[data-ui]')?.getAttribute('data-ui') ?? ''} ${hit.tagName.toLowerCase()}.${String(hit.className?.baseVal ?? hit.className ?? '').trim().split(/\s+/).slice(0, 2).join('.')}`.trim();
+      return { x, y, onTop, by, disabled: Boolean(el.disabled) };
     }, sel, index);
   }
 
@@ -167,7 +175,7 @@ class Tour {
     if (!at) throw new Error(`introuvable : ${sel}`);
     if (at.onTop) await this.page.pointAt(at.x, at.y);
     else {
-      this.warnings.push(`${sel} caché par un autre élément : clic direct`);
+      this.warnings.push(`${sel} caché par un autre élément (${at.by}) : clic direct`);
       await this.page.call((sel, index) => [...document.querySelectorAll(sel)].filter((el) => el.getBoundingClientRect().width > 0)[index].click(), sel, index);
     }
     await sleep(200);
@@ -199,6 +207,24 @@ class Tour {
     await this.waitUi(ui('home'), 'écran de départ du jeu', 60000);
   }
 
+  // Écran de la partie rapide (choix des decks, niveau, « Lancer la partie »), ouvert depuis l'accueil (R3.1)
+  async quick() {
+    await this.home();
+    await this.tap(ui('home.quick'));
+    await this.waitUi(ui('home.start'), 'écran de la partie rapide');
+  }
+
+  // Decks fixés de la partie rapide (ceux par défaut, gardés d'une visite à l'autre, peuvent changer) : chaque deck
+  // s'ouvre sur l'écran de choix des decks, qui revient à la partie rapide une fois le deck touché (R3.2)
+  async quickDecks() {
+    for (const [side, deck] of [['quick.my-deck', MY_DECK], ['quick.ai-deck', AI_DECK]]) {
+      await this.tap(ui(side));
+      await this.waitUi(ui('quick.picker'), 'choix d’un deck');
+      await this.tap(`${ui('quick.picker')} ${ui(`deck.tile-${deck}`)}`);
+      await this.waitUi(ui('home.start'), 'retour à la partie rapide');
+    }
+  }
+
   // ---------- Parcours ----------
 
   async accueil() {
@@ -212,11 +238,9 @@ class Tour {
   }
 
   async partie() {
-    await this.home();
-    // decks fixés (ceux par défaut peuvent changer) : les Personnages de ST-01 coûtent peu, il en a dès le premier tour.
-    // Chaque deck est dans les deux listes (« Ton deck » d'abord, puis « Ton adversaire »)
-    await this.tap(ui(`deck.tile-${MY_DECK}`), 0);
-    await this.tap(ui(`deck.tile-${AI_DECK}`), 1);
+    await this.quick();
+    // les Personnages de ST-01 coûtent peu : il en a dès le premier tour
+    await this.quickDecks();
     await this.tap(ui('home.level-1'));
     await this.tap(ui('home.first-ai'));
     await this.page.evaluate(`window.__uiTourSeed(${SEED})`);
@@ -298,7 +322,7 @@ class Tour {
     }
 
     await this.tap(ui('table.leave'));
-    await this.waitUi(ui('home'), 'retour à l’écran de départ');
+    await this.waitUi(ui('quick'), 'retour à la partie rapide');
   }
 
   // Avance jusqu'à ma prochaine décision principale : garde la main de départ, refuse les choix facultatifs, ne bloque
@@ -394,7 +418,7 @@ class Tour {
     await this.capture('19-editeur');
     await this.tap(ui('editor.back'));
     await this.waitUi(ui('decks'));
-    await this.tap(ui('decks.close'));
+    await this.tap(`${ui('decks')} ${ui('dialog.close')}`);
     await this.waitUi(ui('home'));
   }
 
@@ -412,7 +436,17 @@ class Tour {
     await this.tap(ui('home.online'));
     await this.waitUi(ui('lobby'), 'salon en ligne');
     await this.capture('21-salon');
-    await this.tap(ui('lobby.back'));
+    // le deck rappelé se change dans le sélecteur commun (fenêtre)
+    await this.tap(ui('lobby.deck'));
+    await this.waitUi(ui('lobby.decks'), 'choix du deck du salon');
+    await this.capture('25-salon-decks', { pause: 600 });
+    await this.tap(`${ui('lobby.decks')} ${ui('dialog.close')}`);
+    await this.waitGone(ui('lobby.decks'));
+    // « Créer une salle » : la salle d'attente et son code, puis la salle est fermée (retour à l'accueil)
+    await this.tap(ui('lobby.create'));
+    await this.waitUi(ui('room.code'), 'salle d’attente');
+    await this.capture('26-salle');
+    await this.tap(ui('room.close'));
     await this.waitUi(ui('home'));
   }
 
@@ -490,11 +524,10 @@ class Tour {
     });
     await media(true);
     try {
-      await this.home();
+      await this.quick();
       await this.page.call(() => document.documentElement.classList.remove('ui-tour-still'));
       if (!(await this.has('.opc.is-reduced-motion'))) throw new Error('mouvements réduits demandés par l’appareil : la classe is-reduced-motion manque');
-      await this.tap(ui(`deck.tile-${MY_DECK}`), 0);
-      await this.tap(ui(`deck.tile-${AI_DECK}`), 1);
+      await this.quickDecks();
       await this.tap(ui('home.level-1'));
       await this.tap(ui('home.first-ai'));
       await this.page.evaluate(`window.__uiTourSeed(${SEED})`);
@@ -662,6 +695,8 @@ class Tour {
   }
 }
 
+installComplete(Tour, { SEED, MY_DECK, AI_DECK, FORMATS });
+
 // Erreur relevée, sans l'adresse du serveur ni les chiffres variables (pour comparer deux lancements)
 function errorText(e, base) {
   const strip = (s) => String(s ?? '').split(base).join('').replace(/\d+/g, '#');
@@ -739,7 +774,7 @@ function parseArgs(argv) {
     if (k === '--port') a.port = Number(v());
     else if (k === '--db') a.db = v();
     else if (k === '--out') a.out = v();
-    else if (k === '--only') a.only = v().split(',').map((s) => s.trim()).filter(Boolean);
+    else if (k === '--only') a.only = v().split(',').map((s) => s.trim()).filter(Boolean).flatMap((p) => (p === 'tout' ? ALL : [p]));
     else if (k === '--formats') a.formats = v().split(',').map((s) => s.trim()).filter(Boolean);
     else if (k === '--headed') a.headed = true;
     else if (k === '--compare') a.compare = [v(), v()];
@@ -846,6 +881,8 @@ async function main() {
       await page.setFormat(format);
       await page.addInitScript(INIT);
       const tour = new Tour(page, format, server.base, out, log);
+      tour.db = db;
+      tour.init = INIT;
       log(`— ${name} (${format.width}×${format.height})`);
       try {
         await signup(page, server.base, name);

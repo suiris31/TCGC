@@ -1,8 +1,9 @@
 // DON!! proposées pour un deck (onglet Jouer, choix cosmétique d'un deck : looks.don, voir game-decks.js). Ce sont les
 // cartes « DON!! » de la collection (table cards, synchronisée avec TCGplayer), dont les visuels sont relayés par
 // /img/<id>.jpg comme dans la collection (coupés par TAKEDOWN_IMAGES, voir takedown.js).
-//   GET /api/game/don    { dons: [{ id, label, imageUrl }] } : la DON!! standard d'abord (choix par défaut), puis les
-//                        autres de la plus ancienne à la plus récente
+//   GET /api/game/don    { dons: [{ id, label, imageUrl }], drawn? } : la DON!! standard d'abord (choix par défaut),
+//                        puis les autres de la plus ancienne à la plus récente ; drawn: true quand les visuels sont
+//                        coupés (TAKEDOWN_IMAGES) : le plateau garde alors ses jetons dorés (game/ui/table/DonArt.tsx)
 // Les impressions d'un même visuel sont regroupées : la DON!! standard des decks de démarrage, ou une DON!! rééditée
 // sous le même nom (« DON!! Card (Yamato) » des deux Premium Booster). Seules les DON!! « Alternate Art » des
 // extensions portent le même nom pour des visuels différents : elles restent séparées par extension. L'identifiant d'un
@@ -50,11 +51,11 @@ export function isKnownDon(id) {
   return typeof id === 'string' && /^\d{1,12}$/.test(id) && allDons().some((d) => d.id === id);
 }
 
-export function donRoutes(app) {
+export function donRoutes(app, { flags = takedown } = {}) {
   app.get('/api/game/don', (req, res) => {
     const dons = allDons();
     res.setHeader('Cache-Control', 'no-store');
     // visuels coupés : chaque DON!! serait la même face dessinée, seule la standard est proposée
-    res.json({ dons: takedown.images ? dons.slice(0, 1) : dons });
+    res.json(flags.images ? { dons: dons.slice(0, 1), drawn: true } : { dons });
   });
 }

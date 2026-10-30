@@ -4,16 +4,21 @@
 // 2.6 : « Échanger mes doublons » (game/ui/economy/Duplicates.tsx) et le comptoir (Counter.tsx), aussi depuis une carte.
 // Une carte de la Cale peut manquer du catalogue du navigateur (cartes SP d'autres extensions, cartes pas encore
 // jouables) : son visuel vient alors du relais de l'appli (img-en-hd/<numéro>.webp), comme dans BoosterOpening.
-import { useMemo, useState } from 'react';
+// Depuis la tâche R3.5 : gabarit `Screen` du kit (« ← Carte »), lien vers la boutique quand aucun booster n'attend,
+// filtres et tri repliés sur téléphone (« Filtres et tri »).
+import { useMemo, useState, type ReactNode } from 'react';
 import { findChapter } from '../../adventure/arcs.ts';
 import { BOOSTER_SETS } from '../../boosters/sets/index.ts';
 import { ECONOMY } from '../../economy/config.ts';
 import { cardData } from '../../engine/cards/index.ts';
 import type { Category, Color } from '../../engine/types.ts';
+import { useDevice } from '../device.ts';
 import { CounterScreen, counterPrice } from '../economy/Counter.tsx';
 import { DuplicatesDialog, duplicateCount } from '../economy/Duplicates.tsx';
 import { berry } from '../economy/Wallet.tsx';
 import { useBoosterOpening } from '../economy/useBoosterOpening.ts';
+import { Button, Screen } from '../kit/index.ts';
+import { BACK } from '../texts.ts';
 import { EffectText } from '../Zoom.tsx';
 import { boosterChapter, holdByNumber, type HoldCard, type WonBooster } from './api.ts';
 import { BoosterOpening } from './BoosterOpening.tsx';
@@ -40,7 +45,8 @@ function boosterOrigin(b: WonBooster): string {
 
 // ---------- L'écran, relié au serveur ----------
 
-export function HoldScreen({ onBack }: { onBack: () => void }) {
+// onShop : ouvre la boutique (lien du message « Pas de booster à ouvrir »)
+export function HoldScreen({ onBack, onShop }: { onBack: () => void; onShop?: () => void }) {
   const { data, error, reload } = useHoldState();
   // Ouverture (tâche R3.6) : chaque booster est tiré sur le serveur au moment où on l'ouvre ; ceux qu'on n'ouvre pas
   // restent ici. La Cale est relue après.
@@ -50,20 +56,19 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
   const [duplicates, setDuplicates] = useState(false);
 
   if (opening.props) return <BoosterOpening {...opening.props} />;
-  if (counter) return <CounterScreen focus={counter.focus} onBack={() => { setCounter(null); void reload(); }} />;
+  if (counter) return <CounterScreen focus={counter.focus} back={BACK.hold} onBack={() => { setCounter(null); void reload(); }} />;
   if (!data) {
     return (
-      <div className="setup op-hold" data-ui="hold">
-        <HoldHead onBack={onBack} />
+      <HoldFrame onBack={onBack}>
         {error
-          ? <p className="danger">{error} <button className="op-btn op-btn-ghost btn-small" onClick={() => void reload()}>Réessayer</button></p>
+          ? <p className="danger">{error} <Button variant="secondary" icon="retry" onClick={() => void reload()}>Réessayer</Button></p>
           : <p className="op-muted"><span className="op-spinner" /> Chargement de ta Cale…</p>}
-      </div>
+      </HoldFrame>
     );
   }
   return (
     <>
-      <HoldView cards={data.cards} boosters={data.adventure.boosters} onBack={onBack} opening={opening.busy}
+      <HoldView cards={data.cards} boosters={data.adventure.boosters} onBack={onBack} onShop={onShop} opening={opening.busy}
         onOpen={(ids) => void opening.start(data.adventure.boosters.filter((b) => ids.includes(b.id)))}
         notice={opening.error ?? error} onDuplicates={() => setDuplicates(true)} onCounter={(focus) => setCounter({ focus })} />
       {duplicates && <DuplicatesDialog onClose={() => setDuplicates(false)} onExchanged={() => void reload()} />}
@@ -71,23 +76,24 @@ export function HoldScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-function HoldHead({ onBack, summary }: { onBack: () => void; summary?: string }) {
+// L'écran de la Cale : en-tête du kit (retour à la carte, résumé du contenu en sous-titre), contenu qui défile
+function HoldFrame({ onBack, summary, children }: { onBack: () => void; summary?: string; children: ReactNode }) {
   return (
-    <header className="op-hold-head">
-      <button className="op-btn op-btn-ghost" data-ui="hold.back" onClick={onBack}>← Retour</button>
-      <h1>🧰 Ma Cale</h1>
-      {summary && <span className="op-muted op-small op-hold-summary">{summary}</span>}
-    </header>
+    <Screen className="op-adv-screen" data-ui="hold" title="Ma Cale" subtitle={summary}
+      back={{ label: BACK.map, onBack, 'data-ui': 'hold.back' }}>
+      <div className="op-adv-page op-hold">{children}</div>
+    </Screen>
   );
 }
 
 // ---------- L'écran, sans serveur (aussi pour l'atelier) ----------
 
-// onDuplicates : bouton « Échanger mes doublons » ; onCounter : comptoir (focus : carte à y chercher)
-export function HoldView({ cards, boosters, onBack, onOpen, opening = false, notice, onDuplicates, onCounter }: {
+// onDuplicates : bouton « Échanger mes doublons » ; onCounter : comptoir (focus : carte à y chercher) ; onShop : boutique
+export function HoldView({ cards, boosters, onBack, onShop, onOpen, opening = false, notice, onDuplicates, onCounter }: {
   cards: HoldCard[];
   boosters: WonBooster[];
   onBack: () => void;
+  onShop?: () => void;
   onOpen: (ids: string[]) => void;
   opening?: boolean;
   notice?: string | null;
@@ -103,17 +109,21 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
   const [limit, setLimit] = useState(PAGE);
   const [zoom, setZoom] = useState<HoldEntry | null>(null);
   const [rates, setRates] = useState(false);
+  // téléphone : les filtres et le tri sont repliés derrière un bouton (la recherche reste visible)
+  const { compact } = useDevice();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const shown = sortHold(filterHold(entries, filter), sort);
   const sum = holdSummary(entries);
   const set = (patch: Partial<HoldFilter>) => { setFilter((f) => ({ ...f, ...patch })); setLimit(PAGE); };
   const filtered = Object.entries(filter).some(([, v]) => v !== '');
+  const active = Object.entries(filter).filter(([k, v]) => k !== 'q' && v !== '').length + (sort !== 'number' ? 1 : 0);
+  const folded = compact && !filtersOpen;
   const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
   return (
-    <div className="setup op-hold" data-ui="hold">
-      <HoldHead onBack={onBack} summary={sum.cards
-        ? `${plural(sum.cards, 'carte')} · ${plural(sum.kinds, 'sorte')}${sum.special ? ` · ${plural(sum.special, 'version')} spéciale${sum.special > 1 ? 's' : ''}` : ''}`
-        : undefined} />
+    <HoldFrame onBack={onBack} summary={sum.cards
+      ? `${plural(sum.cards, 'carte')} · ${plural(sum.kinds, 'sorte')}${sum.special ? ` · ${plural(sum.special, 'version')} spéciale${sum.special > 1 ? 's' : ''}` : ''}`
+      : undefined}>
 
       <section className="op-hold-boosters">
         {boosters.length > 0 ? (
@@ -121,7 +131,7 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
             <div className="op-hold-boosters-head">
               <h2>{boosters.length > 1 ? `${boosters.length} boosters à ouvrir` : 'Un booster à ouvrir'}</h2>
               {boosters.length > 1 && (
-                <button className="op-btn op-btn-primary" disabled={opening} onClick={() => onOpen(boosters.map((b) => b.id))}>
+                <button className="op-btn op-btn-primary" disabled={opening} onClick={() => onOpen(boosters.map((b) => b.id))} data-ui="hold.open-all">
                   {opening ? 'Ouverture…' : `Tout ouvrir (${boosters.length})`}
                 </button>
               )}
@@ -140,7 +150,10 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
             </div>
           </>
         ) : (
-          <p className="op-small op-muted op-hold-noboosters">Pas de booster à ouvrir : chaque première victoire d’un chapitre en rapporte.</p>
+          <p className="op-small op-muted op-hold-noboosters">
+            Pas de booster à ouvrir : chaque première victoire d’un chapitre en rapporte, ou{' '}
+            {onShop ? <button className="op-link op-small" data-ui="hold.shop" onClick={onShop}>achète-en à la boutique</button> : 'achète-en à la boutique'}.
+          </p>
         )}
         <p className="op-small op-muted op-hold-legal">
           {FREE_NOTICE} <button className="op-link op-small" onClick={() => setRates(true)}>Taux de tirage</button>
@@ -165,35 +178,43 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
             )}
           </div>
         )}
-        {entries.length > 0 && <div className="db-filters op-hold-filters">
+        {entries.length > 0 && <div className={`db-filters op-hold-filters${folded ? ' is-folded' : ''}`}>
           <input className="db-search" value={filter.q} onChange={(e) => set({ q: e.target.value })} placeholder="Nom ou numéro" aria-label="Rechercher une carte" />
-          <select value={filter.color} onChange={(e) => set({ color: e.target.value as Color | '' })} aria-label="Couleur">
-            <option value="">Toutes couleurs</option>
-            {COLORS.map(([c, label]) => <option key={c} value={c}>{label}</option>)}
-          </select>
-          <select value={filter.category} onChange={(e) => set({ category: e.target.value as Category | '' })} aria-label="Type de carte">
-            <option value="">Tous types</option>
-            {CATEGORIES.map(([c, label]) => <option key={c} value={c}>{label}</option>)}
-          </select>
-          <select value={filter.rarity} onChange={(e) => set({ rarity: e.target.value })} aria-label="Rareté">
-            <option value="">Toutes raretés</option>
-            {choices.rarities.map((r) => <option key={r} value={r}>{RARITY_LABELS[r] ?? r} ({r})</option>)}
-          </select>
-          <select value={filter.set} onChange={(e) => set({ set: e.target.value })} aria-label="Extension">
-            <option value="">Toutes extensions</option>
-            {choices.sets.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select value={filter.version} onChange={(e) => set({ version: e.target.value as HoldFilter['version'] })} aria-label="Version">
-            <option value="">Toutes versions</option>
-            <option value="base">Normales</option>
-            <option value="special">Spéciales (parallèles, SP)</option>
-          </select>
-          <label className="op-hold-sort">
-            <span className="op-small op-muted">Tri</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value as HoldSort)} aria-label="Trier par">
-              {Object.entries(SORT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+          {compact && (
+            <Button variant="secondary" className="op-hold-filters-toggle" aria-expanded={filtersOpen} data-ui="hold.filters"
+              onClick={() => setFiltersOpen((o) => !o)}>
+              {filtersOpen ? 'Masquer les filtres' : `Filtres et tri${active ? ` (${active})` : ''}`}
+            </Button>
+          )}
+          {!folded && <>
+            <select value={filter.color} onChange={(e) => set({ color: e.target.value as Color | '' })} aria-label="Couleur">
+              <option value="">Toutes couleurs</option>
+              {COLORS.map(([c, label]) => <option key={c} value={c}>{label}</option>)}
             </select>
-          </label>
+            <select value={filter.category} onChange={(e) => set({ category: e.target.value as Category | '' })} aria-label="Type de carte">
+              <option value="">Tous types</option>
+              {CATEGORIES.map(([c, label]) => <option key={c} value={c}>{label}</option>)}
+            </select>
+            <select value={filter.rarity} onChange={(e) => set({ rarity: e.target.value })} aria-label="Rareté">
+              <option value="">Toutes raretés</option>
+              {choices.rarities.map((r) => <option key={r} value={r}>{RARITY_LABELS[r] ?? r} ({r})</option>)}
+            </select>
+            <select value={filter.set} onChange={(e) => set({ set: e.target.value })} aria-label="Extension">
+              <option value="">Toutes extensions</option>
+              {choices.sets.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={filter.version} onChange={(e) => set({ version: e.target.value as HoldFilter['version'] })} aria-label="Version">
+              <option value="">Toutes versions</option>
+              <option value="base">Normales</option>
+              <option value="special">Spéciales (parallèles, SP)</option>
+            </select>
+            <label className="op-hold-sort">
+              <span className="op-small op-muted">Tri</span>
+              <select value={sort} onChange={(e) => setSort(e.target.value as HoldSort)} aria-label="Trier par">
+                {Object.entries(SORT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+              </select>
+            </label>
+          </>}
         </div>}
         {entries.length === 0 ? (
           <div className="history-empty">
@@ -230,7 +251,7 @@ export function HoldView({ cards, boosters, onBack, onOpen, opening = false, not
       {zoom && <HoldCardZoom entry={zoom} owned={owned[zoom.number] ?? 0} onClose={() => setZoom(null)}
         onCounter={onCounter && (() => { setZoom(null); onCounter(zoom.number); })} />}
       {rates && <BoosterRates sets={[...new Set(boosters.map((b) => b.set))]} onClose={() => setRates(false)} />}
-    </div>
+    </HoldFrame>
   );
 }
 

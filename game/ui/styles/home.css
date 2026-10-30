@@ -1,0 +1,130 @@
+/* Accueil de « Jouer » (tâche R3.1, game/ui/home/Home.tsx) : en-tête du kit (titre, bourse, aide, réglages), bloc
+   « Continuer », carte de l'Aventure en vedette, modes de jeu, accès secondaires. Tout tient dans un écran de téléphone
+   en portrait (au plus le bas des accès secondaires sous la ligne de flottaison). L'accueil n'est pas en plein écran :
+   .opc s'arrête au-dessus de la barre d'onglets de TCGC (base.css), aucun bouton ne passe dessous. */
+.op-home-body { max-width: 60rem; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
+.op-home-body > .setup-notice { margin: 0; max-width: none; }
+.op-home .op-kit-screen-title { letter-spacing: 0.5px; }
+.op-home-wallet { flex: none; display: inline-flex; }
+.op-home-label { margin: 0; color: var(--muted); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ---------- Continuer ---------- */
+.op-home-continue { display: flex; flex-direction: column; gap: var(--space-2); }
+.op-home-row {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-radius: var(--radius-l); background: var(--surface); border: 1px solid var(--accent-a40);
+  box-shadow: inset 0.25rem 0 0 var(--accent);
+  animation: op-home-in var(--dur-slow) ease-out both;
+}
+.op-home-row-icon { flex: none; font-size: 1.5rem; line-height: 1; }
+.op-home-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.op-home-row-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-home-row-detail { color: var(--muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-home-row-error { color: var(--red-soft); font-size: 0.85rem; }
+.op-home-row-actions { flex: none; display: flex; align-items: center; gap: var(--space-1); }
+.op-home-vs { color: var(--muted); font-weight: 600; }
+@keyframes op-home-in { from { opacity: 0; transform: translateY(0.4rem); } to { opacity: 1; transform: none; } }
+
+/* ---------- Aventure ---------- */
+.op-home-adv {
+  position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) 15rem; min-height: 13rem;
+  border-radius: var(--radius-xl); border: 1px solid var(--accent-a45);
+  background: linear-gradient(120deg, var(--surface-2) 0%, var(--surface) 55%, var(--table-glow) 100%);
+  box-shadow: var(--shadow-1), 0 0 2.5rem var(--accent-a10);
+}
+.op-home-adv.is-loading .op-home-adv-body > * { opacity: 0.6; }
+.op-home-adv-body { position: relative; z-index: var(--z-raise); grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5) var(--space-6); }
+.op-home-adv-title { margin: 0; font-size: 1.75rem; line-height: 1.15; color: var(--accent); }
+.op-home-adv-text { margin: 0; color: var(--text-soft); max-width: 36rem; }
+.op-home-adv-progress { display: flex; align-items: center; gap: var(--space-2); }
+.op-home-adv-dots { display: flex; gap: 0.3rem; }
+.op-home-adv-dots i { width: 1.6rem; height: 0.4rem; border-radius: var(--radius-pill); background: var(--white-a15); }
+.op-home-adv-dots i.is-won { background: var(--accent); }
+.op-home-adv-dots i.is-next { background: var(--accent-a40); animation: op-home-next 1.6s ease-in-out infinite; }
+@keyframes op-home-next { 50% { background: var(--accent-a80); } }
+.op-home-adv-count { color: var(--muted); font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.op-home-adv-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: auto; padding-top: var(--space-2); }
+/* la mer, ses vagues et le bateau (dessinés en CSS, rien de Bandai) */
+.op-home-adv-sea {
+  grid-column: 2; grid-row: 1; position: relative; overflow: hidden;
+  background:
+    radial-gradient(circle at 70% 28%, var(--accent-a35) 0 1.6rem, var(--accent-a00) 4.5rem),
+    linear-gradient(180deg, var(--accent-a00) 0 55%, var(--blue-a22) 55% 100%);
+}
+.op-home-adv-sea::before, .op-home-adv-sea::after {
+  content: ''; position: absolute; left: -50%; right: -50%; height: 2rem; border-radius: 45%;
+  background: var(--blue-a22); animation: op-home-wave 7s ease-in-out infinite;
+}
+.op-home-adv-sea::before { bottom: 18%; }
+.op-home-adv-sea::after { bottom: 4%; background: var(--blue-a45); animation-duration: 9s; animation-direction: reverse; }
+.op-home-adv-ship {
+  position: absolute; left: 40%; bottom: 30%; z-index: var(--z-raise); font-size: 4.2rem; line-height: 1;
+  filter: drop-shadow(0 0.4rem 0.6rem var(--black-a50)); animation: op-home-ship 4.5s ease-in-out infinite;
+}
+@keyframes op-home-wave { 50% { transform: translateX(12%); } }
+@keyframes op-home-ship { 50% { transform: translateY(-0.35rem) rotate(-4deg); } }
+
+/* ---------- Modes de jeu ---------- */
+.op-home-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-3); }
+.op-home-mode {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: var(--space-3); align-items: center;
+  min-height: 4.5rem; margin: 0; padding: var(--space-3) var(--space-4); text-align: left;
+  border-radius: var(--radius-l); border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  transition: transform var(--dur-fast), border-color var(--dur-base), background-color var(--dur-base);
+}
+.op-home-mode.is-online { background: linear-gradient(180deg, var(--blue-a08), var(--surface)); border-color: var(--blue-a45); }
+.op-home-mode-icon { grid-row: 1 / 3; font-size: 1.9rem; line-height: 1; }
+.op-home-mode-title { font-size: 1.1rem; font-weight: 800; }
+.op-home-mode-text { color: var(--muted); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) {
+  .op-home-mode:hover { transform: translateY(-2px); border-color: var(--accent); }
+}
+.op-home-mode:active { transform: translateY(1px); }
+.op-home-mode:focus-visible, .op-home-link:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+/* ---------- Accès secondaires ---------- */
+.op-home-more { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.op-home-link {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: max(44px, 3rem); margin: 0;
+  padding: 0 var(--space-2); border-radius: var(--radius-m); border: 1px solid var(--line); background: var(--bg-2);
+  color: var(--text); font-weight: 700; transition: border-color var(--dur-base), color var(--dur-base);
+}
+.op-home-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.op-home-link .op-icon { color: var(--accent); }
+@media (hover: hover) { .op-home-link:hover { border-color: var(--accent); color: var(--accent); } }
+.op-home-foot { margin: 0; text-align: center; font-size: 0.85rem; }
+
+/* ---------- Téléphone ---------- */
+:where(.opc.is-compact) .op-home-body { gap: var(--space-3); }
+:where(.opc.is-compact) .op-home .op-kit-screen-title { font-size: 1.3rem; white-space: nowrap; }
+:where(.opc.is-compact) .op-home-wallet .op-wallet-badge { padding: 0 0.55rem 0 0.4rem; }
+:where(.opc.is-compact) .op-home-row { gap: var(--space-2); padding-left: var(--space-2); }
+:where(.opc.is-compact) .op-home-row-icon { font-size: 1.25rem; }
+/* les noms des decks passent sur deux lignes plutôt que d'être coupés */
+:where(.opc.is-compact) .op-home-row-text strong { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.25; }
+:where(.opc.is-compact) .op-home-adv { min-height: 0; }
+:where(.opc.is-compact) .op-home-adv-body { padding: var(--space-3) var(--space-4) var(--space-4); }
+:where(.opc.is-compact) .op-home-adv-title { font-size: 1.35rem; }
+:where(.opc.is-compact) .op-home-adv-text { font-size: 0.9rem; }
+/* la mer passe en fond, à droite : les boutons prennent toute la largeur de la carte */
+:where(.opc.is-portrait) .op-home-adv { grid-template-columns: minmax(0, 1fr); }
+:where(.opc.is-portrait) .op-home-adv-sea { grid-column: 1; justify-self: end; width: 5.5rem; }
+:where(.opc.is-portrait) .op-home-adv-body > :not(.op-home-adv-actions) { margin-right: 4.5rem; }
+:where(.opc.is-portrait) .op-home-adv-ship { left: 12%; bottom: 34%; font-size: 2.6rem; }
+:where(.opc.is-portrait) .op-home-row-icon { display: none; }
+:where(.opc.is-portrait) .op-home-row { padding-left: var(--space-3); }
+:where(.opc.is-portrait) .op-home-adv-actions { flex-wrap: nowrap; }
+:where(.opc.is-portrait) .op-home-adv-actions > .op-kit-btn-big { flex: 1 1 auto; padding: 0 var(--space-3); }
+:where(.opc.is-portrait) .op-home-adv-actions > .op-kit-btn-quiet { flex: none; padding: 0 var(--space-2); }
+:where(.opc.is-portrait) .op-home-modes { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+:where(.opc.is-portrait) .op-home-mode { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; padding: var(--space-2) var(--space-3); row-gap: 0.1rem; }
+:where(.opc.is-portrait) .op-home-mode-icon { grid-row: auto; font-size: 1.5rem; }
+:where(.opc.is-portrait) .op-home-mode-title { font-size: 1rem; }
+:where(.opc.is-portrait) .op-home-mode-text { white-space: normal; font-size: 0.8rem; line-height: 1.25; }
+:where(.opc.is-portrait) .op-home-link { flex-direction: column; gap: 0.1rem; padding: var(--space-1); font-size: 0.85rem; }
+:where(.opc.is-landscape) .op-home-adv { grid-template-columns: minmax(0, 1fr) 9rem; }
+:where(.opc.is-landscape) .op-home-adv-ship { font-size: 3rem; left: 30%; }
+:where(.opc.is-landscape) .op-home-adv-body { gap: var(--space-1); padding: var(--space-2) var(--space-4) var(--space-3); }
+:where(.opc.is-landscape) .op-home-adv-title { font-size: 1.2rem; }
+:where(.opc.is-landscape) .op-home-adv-actions { padding-top: var(--space-1); }
+:where(.opc.is-landscape) .op-home-adv-actions > .op-kit-btn-big { min-height: max(44px, 2.75rem); font-size: 1rem; }

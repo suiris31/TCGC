@@ -185,11 +185,11 @@ export function EarnHelp() {
       <summary>Comment gagner des Berry ?</summary>
       <ul>
         <li>
-          <strong>Contre l’IA</strong> (parties libres et chapitres rejoués) : {levels.map(([l, name], i) => (
+          <strong>Contre l’IA</strong> (parties rapides et chapitres de l’aventure) : {levels.map(([l, name], i) => (
             <span key={l}>{i ? ', ' : ''}{name} {berry(e.ai.win[l])}</span>
           ))} par victoire ; une défaite rapporte un peu ({berry(e.ai.loss[1])} à {berry(e.ai.loss[4])}).
         </li>
-        <li><strong>En ligne</strong> : {berry(e.online.win)} par victoire, {berry(e.online.loss)} par défaite.</li>
+        <li><strong>Avec un ami</strong> : {berry(e.online.win)} par victoire, {berry(e.online.loss)} par défaite.</li>
         <li>
           <strong>Aventure</strong> : la première victoire d’un chapitre rapporte {berry(e.adventure.firstWin)}
           ({berry(e.adventure.firstWinBonus)} pour un défi, {berry(e.adventure.firstWinFinal)} pour la fin d’un arc ; le défi ultime de Mihawk : un display et {berry(e.shop.OP03.display)}).

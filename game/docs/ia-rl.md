@@ -366,7 +366,7 @@ sont pas encore dans les decks.
 | Moteur | `actInPlace` (sans copie), corrections ci-dessus ; aucune règle dupliquée |
 | Entraînement | `rl/opcg_rl/` (envpool, obs, model, policy, ppo, league, evaluation, elo, checkpoint, logger, device, config, seeds, runtime), `rl/train.py`, `rl/config/*.yaml` |
 | Évaluation et analyse | `rl/evaluate.py`, `rl/play.py`, `rl/benchmark.py` |
-| Export et intégration | `rl/export_onnx.py`, `game/ai/rl.ts`, `game/ai/worker.ts`, `game/ai/client.ts`, `game/ui/App.tsx` (niveau « IA entraînée ») |
+| Export et intégration | `rl/export_onnx.py`, `game/ai/rl.ts`, `game/ai/worker.ts`, `game/ai/client.ts`, `game/ui/setup/QuickPlay.tsx` (choix du niveau « IA entraînée »), `game/ui/game/useAiOpponent.ts` (l'IA qui joue la partie) |
 | Tests | `game/tests/rl-env.test.ts`, `game/tests/view.test.ts` (fuites), `rl/tests/` |
 
 ### 11.3 Mesures (ordinateur de développement : 4 cœurs, sans GPU, catalogue synthétique)

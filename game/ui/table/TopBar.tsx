@@ -1,7 +1,7 @@
 // En-tête du plateau : la marque, les decks en présence, le tour et la phase, un emplacement d'état (présence de
-// l'adversaire en ligne ; l'horloge du classé à l'étape 3), puis les boutons (retour en arrière, son, panneau,
-// réglages, guide du deck, aide, quitter). Sur téléphone, les boutons font 44 px : le retour en arrière, le panneau et
-// « Quitter » restent en vue, le son, les réglages, le guide et l'aide passent dans le menu « ⋯ ».
+// l'adversaire en ligne ; l'horloge du classé à l'étape 3), puis les boutons (pause de l'IA, retour en arrière, son,
+// panneau, réglages, guide du deck, aide, quitter). Sur téléphone, les boutons font 44 px : la pause, le retour en
+// arrière, le panneau et « Quitter » restent en vue, le son, les réglages, le guide et l'aide passent dans le menu « ⋯ ».
 import type { ReactNode } from 'react';
 import { MoreMenu, type ScreenAction } from '../kit/index.ts';
 import { useSettings } from '../settings.ts';
@@ -16,12 +16,13 @@ export interface TopBarSlots {
   phase?: string;                                        // la phase en mots, sur ordinateur (sinon : à qui le tour)
   status?: ReactNode;                                    // emplacement après la pastille du tour
   undo?: { onClick: () => void; disabled: boolean };     // retour en arrière (contre l'IA)
+  pause?: { paused: boolean; onPause: () => void; onResume: () => void };  // pause de l'IA (pendant son tour)
   leave: { label: string; title?: string; onClick: () => void };
 }
 
 // guideDeck : le deck dont le guide s'ouvre ; theirs : l'adversaire dans les phrases (« l’IA », « ton adversaire ») ;
 // coach : le panneau a un onglet Coach
-export function TopBar({ table, brand, match, matchTitle, rival, phase, status, undo, leave, guideDeck, theirs, coach }: TopBarSlots & {
+export function TopBar({ table, brand, match, matchTitle, rival, phase, status, undo, pause, leave, guideDeck, theirs, coach }: TopBarSlots & {
   table: Table;
   guideDeck: string;
   theirs: string;
@@ -50,6 +51,9 @@ export function TopBar({ table, brand, match, matchTitle, rival, phase, status, 
       </div>
       {status}
       <div className="top-actions">
+        {pause && (pause.paused
+          ? <button className="icon-btn icon-paused" data-ui="table.resume" onClick={pause.onResume} title="Reprendre : l’IA joue de nouveau d’elle-même (P)" aria-label="Reprendre le jeu de l’IA">▶</button>
+          : <button className="icon-btn" data-ui="table.pause" onClick={pause.onPause} title="Mettre l’IA en pause, puis la faire jouer une décision à la fois (P)" aria-label="Mettre l’IA en pause">⏸</button>)}
         {undo && <button className="icon-btn" data-ui="table.undo" onClick={undo.onClick} disabled={undo.disabled} title="Revenir avant ton dernier choix (Ctrl+Z)" aria-label="Revenir avant ton dernier choix">↶</button>}
         {board.compact ? (
           <>
