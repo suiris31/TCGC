@@ -146,6 +146,7 @@ test('raccourcis : Échap, Entrée (fin du tour), Ctrl+Z, « ? », « P », et l
   assert.equal(key('p'), 'pause');
   assert.equal(key('P'), 'pause');
   assert.equal(key('p', { ctrlKey: true }), null, 'Ctrl+P reste au navigateur (imprimer)');
+  assert.equal(key('p', { target: { tagName: 'INPUT' } }), null, 'un « p » tapé dans un champ ne met pas l’IA en pause');
   assert.equal(key('a'), null);
   assert.equal(key('Escape', { target: { tagName: 'SELECT' } }), null, 'une liste déroulante garde ses touches');
 });

@@ -6,6 +6,12 @@ import type { Table } from './useTable.ts';
 
 export type GameKey = 'escape' | 'end-turn' | 'undo' | 'help' | 'pause';
 
+// Le focus est dans un champ où l'on écrit
+function typing(target: KeyInput['target']): boolean {
+  const el = target as { tagName?: string; isContentEditable?: boolean } | null;
+  return Boolean(el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'));
+}
+
 // La touche, en geste de la partie (fonction pure, testée par game/tests/table.test.ts). Une liste déroulante garde
 // ses touches.
 export function gameKey(e: KeyInput): GameKey | null {
@@ -14,7 +20,8 @@ export function gameKey(e: KeyInput): GameKey | null {
   if (isEndTurnKey(e)) return 'end-turn';
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') return 'undo';
   if (e.key === '?') return 'help';
-  if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey) return 'pause';
+  // « P » : pas pendant qu'on écrit dans un champ (filtre de Mes parties, recherche de Mes decks)
+  if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey && !typing(e.target)) return 'pause';
   return null;
 }
 
