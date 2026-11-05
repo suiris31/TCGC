@@ -338,6 +338,15 @@ function knob(d: Draft, c: CaseCtx, cond: Cond, want: boolean): boolean {
     case 'and': return want ? cond.all.every((x) => knob(d, c, x, true)) : knob(d, c, cond.all[0], false) && cond.all.slice(1).every((x) => knob(d, c, x, true));
     case 'or': return want ? knob(d, c, cond.any[0], true) : cond.any.every((x) => knob(d, c, x, false));
     case 'not': return knob(d, c, cond.cond, !want);
+    // famille « cartes » (C2.3) : la carte du dessus du deck, que l'effet révèle (revealTop)
+    case 'revealed': {
+      const cat = cond.filter.category?.length === 1 ? cond.filter.category[0] : 'CHARACTER';
+      const fits = matching(cond.filter, c.exclude, cat);
+      const top = want ? fits[0] : decoys(cond.filter, c.exclude, 1, { num: fits[0] ?? c.filler })[0]?.num;
+      if (!top || fitsFilter(top, cond.filter) !== want) return false;
+      d.deckTop[0].unshift(top);
+      return true;
+    }
     default: return false;
   }
 }
@@ -425,6 +434,7 @@ interface Model {
   touched: Set<number>;     // cartes visées par l'effet (un leurre visé ailleurs n'est plus un leurre)
   truth: Map<number, boolean | null>;
   variant: Variant;
+  revealed?: number;        // famille « cartes » (C2.3) : la carte révélée du dessus du deck (revealTop)
 }
 
 const mc = (c: { uid: number; num: string; rested?: boolean; don?: number }): MCard => ({ uid: c.uid, num: c.num, rested: Boolean(c.rested), don: c.don ?? 0 });
@@ -489,6 +499,10 @@ function evalCond(m: Model, cond: Cond): boolean | null {
     case 'and': { const v = cond.all.map((x) => evalCond(m, x)); return v.includes(null) ? null : v.every(Boolean); }
     case 'or': { const v = cond.any.map((x) => evalCond(m, x)); return v.includes(null) ? null : v.some(Boolean); }
     case 'not': { const v = evalCond(m, cond.cond); return v === null ? null : !v; }
+    case 'revealed': {
+      const top = m.sides[0].deck[0];
+      return Boolean(top) && top.uid === m.revealed && fitsFilter(top.num, cond.filter);
+    }
     default: return null;
   }
 }
@@ -570,7 +584,7 @@ function apply(m: Model, a: Action): boolean {
     case 'draw': { const k = n0(a.n, me.deck.length); me.hand.push(...me.deck.splice(0, k)); return k > 0; }
     case 'discard': {
       const list = me.hand.filter((c) => !a.filter || fitsFilter(c.num, a.filter));
-      const k = n0(a.n, list.length);
+      const k = m.variant.none && a.upTo ? 0 : n0(a.n, list.length);
       for (const c of list.slice(0, k)) { me.hand.splice(me.hand.indexOf(c), 1); me.trash.push(c); m.touched.add(c.uid); }
       return k > 0;
     }
@@ -602,7 +616,7 @@ function apply(m: Model, a: Action): boolean {
     case 'trashToHand': case 'trashToBottom': {
       const P = a.kind === 'trashToBottom' ? S(a.side) : me;
       const list = P.trash.filter((c) => fitsFilter(c.num, a.filter));
-      const upTo = a.kind === 'trashToHand' && a.upTo;
+      const upTo = Boolean(a.upTo);
       const k = m.variant.none && upTo ? 0 : n0(a.count, list.length);
       for (const c of list.slice(0, k)) { P.trash.splice(P.trash.indexOf(c), 1); (a.kind === 'trashToHand' ? P.hand : P.deck).push(c); m.touched.add(c.uid); }
       return k > 0;
@@ -641,7 +655,34 @@ function apply(m: Model, a: Action): boolean {
       (a.kind === 'lifeToHand' ? P.hand : P.trash).push(...cards);
       return k > 0;
     }
-    case 'handToBottom': { const k = n0(a.n, me.hand.length); me.deck.push(...me.hand.splice(0, k)); return k > 0; }
+    case 'handToBottom': {
+      // au-dessus ou au-dessous (where, C2.3) : le nombre de cartes de chaque zone est le même
+      const k = n0(a.n, me.hand.length);
+      me.deck.push(...me.hand.splice(0, k));
+      return k > 0;
+    }
+    // famille « cartes » (C2.3) : réorganiser le dessus du deck ne change aucun nombre
+    case 'arrangeTop': return me.deck.length > 0;
+    case 'revealTop': {
+      const top = me.deck[0];
+      if (!top) return false;
+      m.revealed = top.uid;
+      return true;
+    }
+    case 'playRevealed': {
+      const top = me.deck[0];
+      if (!top || top.uid !== m.revealed || CARDS[top.num]?.category !== 'CHARACTER' || me.chars.length >= 5) return false;
+      me.deck.shift();
+      me.chars.push({ ...top, rested: Boolean(a.rested) });
+      m.touched.add(top.uid);
+      return true;
+    }
+    case 'revealedToBottom': {
+      const top = me.deck[0];
+      if (!top || top.uid !== m.revealed) return false;
+      me.deck.push(me.deck.shift()!);
+      return true;
+    }
     case 'oppHandToBottom': { const k = n0(a.n, opp.hand.length); opp.deck.push(...opp.hand.splice(0, k)); return k > 0; }
     case 'handToLife': {
       const list = me.hand.filter((c) => fitsFilter(c.num, a.filter));
@@ -665,6 +706,9 @@ function payCost(m: Model, parts: CostPart[]): boolean | null {
       case 'donMinus': if (me.donActive + me.donRested + [me.leader, ...me.chars].reduce((s, x) => s + x.don, 0) < c.n) return false; break;
       case 'discard': if (me.hand.filter((x) => !c.filter || fitsFilter(x.num, c.filter)).length < c.n) return false; break;
       case 'trashTop': if (me.deck.length < c.n) return false; break;
+      // famille « cartes » (C2.3)
+      case 'reveal': if (me.hand.filter((x) => !c.filter || fitsFilter(x.num, c.filter)).length < c.n) return false; break;
+      case 'trashToBottom': if (me.trash.filter((x) => !c.filter || fitsFilter(x.num, c.filter)).length < c.n) return false; break;
       case 'lifeToHand': if (!me.life.length) return false; break;
       case 'restSelf': if (!selfOnField || selfOnField.rested) return false; break;
       case 'trashSelf': if (!selfOnField || selfOnField === me.leader) return false; break;
@@ -682,6 +726,11 @@ function payCost(m: Model, parts: CostPart[]): boolean | null {
         break;
       }
       case 'trashTop': me.trash.push(...me.deck.splice(0, c.n)); break;
+      case 'trashToBottom': {
+        const list = me.trash.filter((x) => !c.filter || fitsFilter(x.num, c.filter)).slice(0, c.n);
+        for (const x of list) { me.trash.splice(me.trash.indexOf(x), 1); me.deck.push(x); m.touched.add(x.uid); }
+        break;
+      }
       case 'lifeToHand': me.hand.push(...me.life.splice(0, 1)); break;
       case 'restSelf': selfOnField!.rested = true; break;
       case 'trashSelf': removeFromField(m, 0, selfOnField!, 'trash'); break;
@@ -714,18 +763,56 @@ function runSteps(m: Model, steps: Step[]): void {
   }
 }
 
+// Ce que dit `useful` de la brique compilée (pas « ce que l'effet ferait ») : vrai, faux, ou null si le modèle ne le sait
+// pas. Famille « cartes » (C2.3) seulement ; les étapes : seq (l'une sert), when (condition, puis l'effet), may.
+function usefulSteps(m: Model, steps: Step[]): boolean | null {
+  let unknown = false;
+  for (const st of steps) {
+    let v: boolean | null;
+    if ('chooseOne' in st) v = null;
+    else {
+      const inner = 'action' in st ? usefulAction(m, st.action) : usefulSteps(m, 'group' in st ? st.group : st.may);
+      const c = st.cond ? (st.cond.kind === 'revealed' ? m.sides[0].deck.length > 0 : evalCond(m, st.cond)) : true;
+      v = c === false ? false : c === null || inner === null ? null : inner;
+    }
+    if (v === true) return true;
+    if (v === null) unknown = true;
+  }
+  return unknown ? null : false;
+}
+
+function usefulAction(m: Model, a: Action): boolean | null {
+  const [me, opp] = m.sides;
+  const fits = (list: MCard[], f?: Filter) => list.some((c) => !f || fitsFilter(c.num, f));
+  switch (a.kind) {
+    case 'draw': case 'search': case 'arrangeTop': case 'revealTop': return me.deck.length > 0;
+    case 'discard': return !a.filter && !a.upTo ? true : a.upTo ? false : fits(me.hand, a.filter);
+    case 'oppDiscard': case 'oppHandToBottom': return opp.hand.length > 0;
+    case 'trashTop': return a.side === 'own' ? true : opp.deck.length > 0;
+    case 'trashToHand': return fits(me.trash, a.filter);
+    case 'trashToBottom': return fits(m.sides[a.side === 'own' ? 0 : 1].trash, a.filter);
+    case 'handToBottom': return me.hand.length > 0;
+    case 'playRevealed': return Boolean(me.deck[0]) && CARDS[me.deck[0].num]?.category === 'CHARACTER';
+    case 'revealedToBottom': return false;
+    default: return null;
+  }
+}
+
 function simulate(m: Model, ab: Ability): void {
   if (ab.condition) {
     const v = evalCond(m, ab.condition);
     if (v === null) m.unchecked.push(`condition ${ab.condition.kind}`);
     else if (!v) return;
   }
-  if (ab.don) {
+  if (ab.don && ab.timing !== 'onKO') {
     const selfCard = [m.sides[0].leader, ...m.sides[0].chars].find((c) => c.uid === m.self);
     if (!selfCard || selfCard.don < ab.don) return;
   }
   if (ab.yourTurn && m.active !== 0) return;
   if (ab.oppTurn && m.active === 0) return;
+  // convention n° 1000 : un coût facultatif n'est proposé que si l'effet peut servir (compile.ts : when(useful)) ; le
+  // modèle le sait pour les sortes de la famille « cartes » (C2.3), sinon il paie comme avant
+  if (ab.cost?.length && ab.timing !== 'activateMain' && usefulSteps(m, ab.steps) === false) return;
   if (ab.cost?.length) {
     const paid = payCost(m, ab.cost);
     if (paid === null) return;

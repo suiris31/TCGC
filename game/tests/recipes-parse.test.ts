@@ -259,9 +259,10 @@ test('traducteur : « you may X » (facultatif), suites d\'une recherche (« The
     [{ action: { ...search, rest: 'bottom' } }]);
   assert.deepEqual(one('[On Play] Look at 5 cards from the top of your deck; reveal up to 1 red {Navy} type card and add it to your hand, then trash the rest.').steps,
     [{ action: { ...search, rest: 'trash' } }]);
-  // la suite en tête de phrase, puis le reste de la phrase (que le prototype de l'étude perdait)
+  // la suite en tête de phrase, puis le reste de la phrase (que le prototype de l'étude perdait) ; le « Then, » porte sur
+  // la suite, le reste suit avec « and » (C2.3 : l'aller-retour ne redit pas un second « Then »)
   assert.deepEqual(one('[On Play] Look at 5 cards from the top of your deck; reveal up to 1 red {Navy} type card and add it to your hand. Then, trash the rest and draw 1 card.').steps,
-    [{ action: { ...search, rest: 'trash' } }, { action: { kind: 'draw', n: 1 }, link: 'then' }]);
+    [{ action: { ...search, rest: 'trash' } }, { action: { kind: 'draw', n: 1 }, link: 'and' }]);
 });
 
 test('traducteur : [Déclenchement] (champ à part, ou laissé dans le texte de l\'effet)', () => {
