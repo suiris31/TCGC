@@ -318,7 +318,7 @@ class Compiler {
           return BC.lookTopTake(a.look, a.take, spec, a.rest, src, { hidden: a.hidden, shown: a.shown });
         }
         // jouer depuis le deck : seulement si le texte dit « Character card » (« play up to 1 [Upper Yard] » peut être un
-        // Lieu : le nom seul ne suffit pas, interprétation n° 1664)
+        // Lieu : le nom seul ne suffit pas, interprétation n° 1663)
         if (a.dest === 'play' && a.filter.category?.length === 1 && a.filter.category[0] === 'CHARACTER' && !a.hidden) {
           const spec = this.spec({ ...a.filter, category: undefined }, 'card');
           if (plain && a.take === 1) return B.lookTopPlay(a.look, spec, src, { rested: a.rested, rest: a.rest as 'bottom' | 'trash' });

@@ -772,6 +772,41 @@ Lectures fixées par le traducteur (`game/engine/recipes/parse/`) pour toutes le
       puissance ou le nom imprimés, eux, restent ceux de chaque carte. Une carte au même texte qu'une carte codée à la
       main est seulement signalée (le code se reprend à la main).
 
+## Famille « cartes » du traducteur (tâche C2.3), choix faits sans validation
+
+1660. **« Placez les cartes restantes au-dessus ou au-dessous du deck dans l'ordre de votre choix »** (après une
+      recherche) : chaque carte restante va, au choix du joueur, au-dessus ou au-dessous, puis il choisit l'ordre de
+      chaque groupe, comme pour « regardez N cartes ... placez-les au-dessus ou au-dessous » (brique `lookTopArrange`,
+      déjà utilisée par les cartes codées). La lecture « toutes au-dessus ou toutes au-dessous » donnerait un autre jeu :
+      à vérifier dans les Q&A officielles par les tâches « set » qui ont ces cartes (OP02-057, OP05-043, OP11-040,
+      OP11-104, OP08-053), doute à marquer si la réponse dit l'inverse.
+1661. **Une recherche a toujours sa phrase « cartes restantes »** : le traducteur lit la recherche puis la phrase « Then,
+      place the rest ... » (ou « trash the rest ») qui la complète. Le test de la famille vérifie sur tout le catalogue
+      qu'une recherche traduite a bien cette phrase ; sans elle, la destination ne serait pas écrite et la recette
+      supposerait « au-dessous ».
+1662. **« Révélez 1 carte du dessus de votre deck et jouez / ajoutez à votre main jusqu'à 1 ... »** : c'est une recherche
+      sur 1 carte, montrée aux deux joueurs (si elle n'est pas prise, l'adversaire la connaît encore une fois remise
+      dans le deck). « Regardez N cartes ... et ajoutez jusqu'à 1 carte à votre main » sans « révélez » : la carte prise
+      reste cachée à l'adversaire (seulement quand le texte ne met aucun filtre : un filtre demande de la montrer).
+1663. **Jouer depuis le deck** (« ... et jouez jusqu'à 1 ... ») n'est compilé que si le texte dit « carte Personnage » :
+      un nom seul (« jouez jusqu'à 1 [X] ») peut désigner un Lieu, que les briques « jouer » ne jouent pas ; ces cartes
+      restent aux tâches « set ». Plusieurs cartes jouées (« jusqu'à 2 ») : choisies une à une, la place sur le terrain
+      comptée ; comme `lookTopPlay`, les cartes restantes sont rangées avant que les cartes choisies soient jouées.
+1664. **Sans « jusqu'à »** (« Ajoutez 1 ... de votre Défausse à votre main », « Placez 2 cartes de votre Défausse
+      au-dessous ... ») : le joueur en prend autant qu'il peut, sans pouvoir refuser (pas de choix « Aucune »). Avec
+      « jusqu'à », chaque choix propose « Aucune autre ». La Défausse adverse placée sous son deck : c'est le joueur de
+      l'effet qui choisit les cartes, dans l'ordre où il les choisit.
+1665. **Carte révélée du dessus du deck** (« Révélez 1 carte du dessus de votre deck. Si cette carte est ..., ... ») : la
+      condition porte sur la carte révélée par cet effet, si elle est toujours au-dessus du deck ; si rien n'a été
+      révélé (condition plus haut fausse, deck vide), la condition est fausse. « If that card ... » n'est lu ainsi que
+      juste après cette révélation : ailleurs « that card » désigne autre chose (une carte de Vie révélée, une carte de
+      la main adverse, la cible d'un effet) et la phrase reste non comprise. « Puis, placez les cartes restantes
+      au-dessous de votre deck » après une révélation (OP07-048) : la carte révélée, si elle n'a pas été jouée.
+1666. **« Placez N cartes de votre main au-dessus de votre deck »** : chaque carte placée recouvre la précédente ; « au-dessus
+      ou au-dessous » : chaque carte au choix (comme 1660).
+1667. **Enchaînement** : « Then, place the rest ... and [action] » : le « Then » porte sur les cartes restantes, l'action
+      suit avec « and » (même jeu : les deux s'enchaînent dans l'ordre du texte).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
