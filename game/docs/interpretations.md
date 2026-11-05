@@ -723,6 +723,24 @@ Cartes de Baggy, Krieg et Arlong hors OP03 et ST-01 (`cards/aventure-b.ts`).
 472. **Baggy (ST25-004)** : l'effet peut être activé sans Leader [Baggy] (le coût est payé, rien n'est joué) ; l'IA et
      les aides ne le proposent pas. **Baggy (OP02-058)** : « autre que [Baggy] » exclut toutes les cartes nommées [Baggy].
 
+## Traducteur des cartes, squelette (tâche C1.4), choix faits sans validation
+
+Lectures fixées par le traducteur (`game/engine/recipes/parse/`) pour toutes les cartes à venir.
+
+1300. **« until the start of your next turn »** se lit comme la fin du prochain tour adverse (`oppNextEnd`), comme la
+      n° 389 : rien ne se passe entre les deux. Le prototype de l'étude C0 la lisait « jusqu'à la fin de votre prochain
+      tour », ce qui faisait durer l'effet un tour de trop. « during your opponent's next turn » (aucune carte
+      aujourd'hui) n'est pas traduit : l'effet ne commence qu'au tour adverse.
+1301. **Coût sans « You may »** (« X: Y », OP09-101 ; « X and you may Z: Y », OP08-082, OP10-065 ; « You can X: Y »,
+      OP01-031) : X est lu comme le coût de la capacité, comme « You may X: Y ».
+1302. **« If C, choose one: »** (OP06-065, OP12-060...) : la condition porte sur le choix tout entier ; « X, then choose
+      one: » (OP17-112) : le choix suit X avec « then ».
+1303. **« Then, place the rest ... and play ... »** (EB02-013, OP10-006...) : la phrase complète la recherche, puis la
+      suite de la phrase est une étape à part qui garde le lien « then ». Le prototype de l'étude perdait cette suite.
+1304. **[Trigger] laissé dans le texte de l'effet** (OP01-009) : lu comme le [Déclenchement] de la carte.
+1305. **« Your opponent chooses one: »** et **« Apply each of the following effects ...: »** ne sont pas traduits par le
+      squelette (rapportés « non compris ») : le format des recettes n'a pas de choix fait par l'adversaire.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
