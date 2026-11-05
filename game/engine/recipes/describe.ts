@@ -165,6 +165,8 @@ function enNoun(f: Filter, cats: Category[], many: boolean, card = false): strin
 }
 
 function enTarget(t: Target, ctx: Ctx): string {
+  if (t.that) return 'that card';
+  if (t.self && t.zone === 'hand') return 'this card in your hand';
   if (t.self) return t.leader ? 'this Leader' : t.characters ? 'this Character' : t.stage ? 'this Stage' : 'this card';
   const cats: Category[] = [...(t.leader ? ['LEADER' as const] : []), ...(t.characters ? ['CHARACTER' as const] : []), ...(t.stage ? ['STAGE' as const] : [])];
   void ctx;
@@ -267,6 +269,14 @@ function enCost(p: CostPart, ctx: Ctx): string {
 // Ses propres cartes sont le sujet de « gains » (« Up to 1 of your Leader or Character cards gains »), celles de
 // l'adversaire le complément de « Give »
 const enSubject = (t: Target) => t.self || t.side === 'own';
+// « Your opponent cannot activate [Blocker] » : tous les Personnages adverses, sans filtre (C2.2)
+// (filtre : seulement une limite de puissance ou de coût, « ... a [Blocker] Character that has 2000 or less power »)
+const allOpp = (t: Target) => t.side === 'opp' && t.count === 'all' && !t.leader && !t.stage && !t.self
+  && Object.keys(t.filter).every((k) => k === 'powerMax' || k === 'costMax');
+const enBlockerLimit = (f: Filter) => (f.powerMax !== undefined ? `a [Blocker] Character that has ${f.powerMax} or less power`
+  : f.costMax !== undefined ? `the [Blocker] of any Character with a cost of ${f.costMax} or less` : '[Blocker]');
+const frBlockerLimit = (f: Filter) => (f.powerMax !== undefined ? `le [Bloqueur] d'un Personnage de ${f.powerMax} de puissance ou moins`
+  : f.costMax !== undefined ? `le [Bloqueur] d'un Personnage de coût ${f.costMax} ou moins` : '[Bloqueur]');
 
 function enAction(a: Action, ctx: Ctx): string {
   const T = (t: Target) => enTarget(t, ctx);
@@ -279,7 +289,7 @@ function enAction(a: Action, ctx: Ctx): string {
     case 'toLife': return `Place ${T(a.target)} at the top of the owner's Life cards face-${a.faceUp ? 'up' : 'down'}`;
     case 'trashChar': return `Trash ${T(a.target)}`;
     case 'power': return enSubject(a.target)
-      ? `${upper(T(a.target))} gains ${sign(a.amount)} power${EN_DURATION[a.until]}`
+      ? `${upper(T(a.target))} gains ${a.target.that ? 'an additional ' : ''}${sign(a.amount)} power${EN_DURATION[a.until]}`
       : `Give ${T(a.target)} ${sign(a.amount)} power${EN_DURATION[a.until]}`;
     case 'cost': return enSubject(a.target)
       ? `${upper(T(a.target))} gains ${sign(a.amount)} cost${EN_DURATION[a.until]}`
@@ -287,8 +297,17 @@ function enAction(a: Action, ctx: Ctx): string {
     case 'powerSet': return `${upper(T(a.target))}'s base power becomes ${a.value}${EN_DURATION[a.until]}`;
     case 'keyword': return `${upper(T(a.target))} gains [${a.keyword}]${EN_DURATION[a.until]}`;
     case 'cantAttack': return `${upper(T(a.target))} cannot attack${a.what === 'leader' ? ' a Leader' : ''}${EN_DURATION[a.until]}`;
-    case 'cantBlock': return `${upper(T(a.target))} cannot activate [Blocker]${EN_DURATION[a.until]}`;
-    case 'cantBeKO': return `${upper(T(a.target))} cannot be KO'd${a.by === 'battle' ? ' in battle' : a.by === 'effect' ? ' by effects' : ''}${EN_DURATION[a.until]}`;
+    case 'cantBlock': return allOpp(a.target)
+      ? `Your opponent cannot activate ${enBlockerLimit(a.target.filter)}${EN_DURATION[a.until]}`
+      : `${upper(T(a.target))} cannot activate [Blocker]${EN_DURATION[a.until]}`;
+    case 'cantBeKO': {
+      const by = a.byAttribute ? ` in battle by <${a.byAttribute}> attribute cards` : a.by === 'battle' ? ' in battle' : a.by === 'effect' ? ' by effects'
+        : a.by === 'oppEffect' ? " by your opponent's effects" : '';
+      return `${upper(T(a.target))} cannot be KO'd${by}${EN_DURATION[a.until]}`;
+    }
+    case 'cantBeRested': return `${upper(T(a.target))} cannot be rested${EN_DURATION[a.until]}`;
+    case 'cantLeave': return `${upper(T(a.target))} cannot be removed from the field by your opponent's effects${EN_DURATION[a.until]}`;
+    case 'attackActive': return `${upper(T(a.target))} can also attack active Characters${EN_DURATION[a.until]}`;
     case 'cantRefresh': return `${upper(T(a.target))} will not become active in your opponent's next Refresh Phase`;
     case 'negate': return `Negate the effect of ${T(a.target)}${EN_DURATION[a.until]}`;
     case 'draw': return `Draw ${enCount(a.n, 'card', 'cards')}`;
@@ -367,10 +386,22 @@ function joinSteps(steps: Step[], render: (st: Step, pair: KwPair | null) => str
   return out;
 }
 
+// « This Character gains +1000 power and cannot be KO'd by effects » : deux étapes liées par « and » au même sujet (le
+// traducteur les lit avec le même sujet, C2.2) ; on ne redit pas le sujet de la seconde
+function sharedSubject(list: { st: Step }[], i: number, subject: (t: Target) => string): string | null {
+  const a = list[i - 1]?.st; const b = list[i]?.st;
+  if (!a || !b || b.link !== 'and' || b.cond || !('action' in a) || !('action' in b) || !('target' in a.action) || !('target' in b.action)) return null;
+  if (JSON.stringify(a.action.target) !== JSON.stringify(b.action.target)) return null;
+  return upper(subject(b.action.target));
+}
+
 function enSteps(steps: Step[], ctx: Ctx): string {
   let out = '';
-  joinSteps(steps, (st, pair) => (pair ? enKwPair(pair, ctx) : enStep(st, ctx))).forEach(({ st, body: b }, i) => {
+  const list = joinSteps(steps, (st, pair) => (pair ? enKwPair(pair, ctx) : enStep(st, ctx)));
+  list.forEach(({ st, body: b }, i) => {
     let body = b;
+    const same = sharedSubject(list, i, (t) => enTarget(t, ctx));
+    if (same && body.startsWith(`${same} `)) body = body.slice(same.length + 1);
     if (st.cond) body = `If ${enCond(st.cond, ctx)}, ${lower(body)}`;
     if (i === 0 && !st.link) { out = upper(body); return; }
     switch (st.link) {
@@ -524,6 +555,8 @@ function frNoun(f: Filter, cats: Category[], many: boolean, ctx: Ctx, card = fal
 }
 
 function frTarget(t: Target, ctx: Ctx): string {
+  if (t.that) return 'cette carte';
+  if (t.self && t.zone === 'hand') return 'cette carte de votre main';
   if (t.self) return t.leader ? 'ce Leader' : t.characters ? 'ce Personnage' : t.stage ? 'ce Lieu' : 'cette carte';
   const cats: Category[] = [...(t.leader ? ['LEADER' as const] : []), ...(t.characters ? ['CHARACTER' as const] : []), ...(t.stage ? ['STAGE' as const] : [])];
   const plain = !Object.keys(t.filter).length;
@@ -629,13 +662,22 @@ function frAction(a: Action, ctx: Ctx): string {
     case 'bottom': return `Placez ${T(a.target)} au-dessous du deck de son propriétaire`;
     case 'toLife': return `Placez ${T(a.target)} au-dessus de la Vie de son propriétaire, face ${a.faceUp ? 'visible' : 'cachée'}`;
     case 'trashChar': return `Placez ${T(a.target)} dans la Défausse de son propriétaire`;
-    case 'power': return `${upper(T(a.target))} gagne ${sign(a.amount)} de puissance${FR_DURATION[a.until]}`;
+    case 'power': return `${upper(T(a.target))} gagne ${a.target.that ? 'encore ' : ''}${sign(a.amount)} de puissance${FR_DURATION[a.until]}`;
     case 'cost': return `${upper(T(a.target))} gagne ${sign(a.amount)} de coût${FR_DURATION[a.until]}`;
     case 'powerSet': return `La puissance de base de ${T(a.target)} devient ${a.value}${FR_DURATION[a.until]}`;
     case 'keyword': return `${upper(T(a.target))} gagne [${FR_KEYWORD[a.keyword]}]${FR_DURATION[a.until]}`;
     case 'cantAttack': return `${upper(T(a.target))} ne peut pas attaquer${a.what === 'leader' ? ' de Leader' : ''}${FR_DURATION[a.until]}`;
-    case 'cantBlock': return `${upper(T(a.target))} ne peut pas activer [Bloqueur]${FR_DURATION[a.until]}`;
-    case 'cantBeKO': return `${upper(T(a.target))} ne peut pas être mis KO${a.by === 'battle' ? ' au combat' : a.by === 'effect' ? ' par des effets' : ''}${FR_DURATION[a.until]}`;
+    case 'cantBlock': return allOpp(a.target)
+      ? `Votre adversaire ne peut pas activer ${frBlockerLimit(a.target.filter)}${FR_DURATION[a.until]}`
+      : `${upper(T(a.target))} ne peut pas activer [Bloqueur]${FR_DURATION[a.until]}`;
+    case 'cantBeKO': {
+      const by = a.byAttribute ? ` au combat par des cartes <${a.byAttribute}>` : a.by === 'battle' ? ' au combat' : a.by === 'effect' ? ' par des effets'
+        : a.by === 'oppEffect' ? ' par les effets adverses' : '';
+      return `${upper(T(a.target))} ne peut pas être mis KO${by}${FR_DURATION[a.until]}`;
+    }
+    case 'cantBeRested': return `${upper(T(a.target))} ne peut pas être épuisé${FR_DURATION[a.until]}`;
+    case 'cantLeave': return `${upper(T(a.target))} ne peut pas quitter le terrain à cause des effets adverses${FR_DURATION[a.until]}`;
+    case 'attackActive': return `${upper(T(a.target))} peut aussi attaquer les Personnages redressés${FR_DURATION[a.until]}`;
     case 'cantRefresh': return `${upper(T(a.target))} ne se redresse pas lors de la prochaine phase de Redressement adverse`;
     case 'negate': return `Annulez les effets de ${T(a.target)}${FR_DURATION[a.until]}`;
     case 'draw': return `Piochez ${cartes(a.n)}`;
@@ -697,8 +739,11 @@ function frAction(a: Action, ctx: Ctx): string {
 
 function frSteps(steps: Step[], ctx: Ctx): string {
   let out = '';
-  joinSteps(steps, (st, pair) => (pair ? frKwPair(pair, ctx) : frStep(st, ctx))).forEach(({ st, body: b }, i) => {
+  const list = joinSteps(steps, (st, pair) => (pair ? frKwPair(pair, ctx) : frStep(st, ctx)));
+  list.forEach(({ st, body: b }, i) => {
     let body = b;
+    const same = sharedSubject(list, i, (t) => frTarget(t, ctx));
+    if (same && body.startsWith(`${same} `)) body = body.slice(same.length + 1);
     if (st.cond) body = `Si ${frCond(st.cond, ctx)}, ${lower(body)}`;
     if (i === 0 && !st.link) { out = upper(body); return; }
     switch (st.link) {

@@ -299,13 +299,14 @@ test('recettes : une recette vérifiée qui ne se compile pas reste « à faire 
   addRecipeSet({
     set: 'OP15',
     entries: {
-      [NUM]: { level: 'verified', recipe: { num: NUM, abilities: [ability({ timing: 'onPlay', steps: [{ action: { kind: 'power', target: oppChar({}), amount: -1000, until: 'nextTurn' } }] })] } },
+      [NUM]: { level: 'verified', recipe: { num: NUM, abilities: [ability({ timing: 'onPlay', steps: [{ action: { kind: 'activate', which: 'onKO' } }] })] } },
     },
   });
   assert.equal(confidence(NUM), 'todo');
   assert.equal(cardStatus(NUM), 'todo');
   const r = recipeCompiled(NUM)!;
-  assert.ok(!r.ok && r.missing.some((m) => m.includes('nextTurn')));
+  // (durée nextTurn compilée depuis C2.2 : l'exemple est une action qu'aucune famille ne compile)
+  assert.ok(!r.ok && r.missing.some((m) => m.includes('activate')));
   assert.equal(CARDS[NUM].onPlay, undefined);
 });
 
@@ -319,13 +320,14 @@ test('compilateur : ce qui n\'est pas exact est signalé, jamais approché', () 
   assert.match(missing(on([{ action: { kind: 'ko', target: { ...oppChar({}), upTo: false } } }])), /cible obligatoire/);
   assert.match(missing(on([{ action: { kind: 'ko', target: oppChar({}, 0) } }, { link: 'ifYouDo', action: { kind: 'draw', n: 1 } }])), /lien ifYouDo/);
   assert.match(missing(on([{ action: { kind: 'ko', target: { ...oppChar({}), count: 'all' } } }])), /action ko : tous/);
-  assert.match(missing(on([{ action: { kind: 'draw', n: 1 } }], { oncePerTurn: true })), /Une fois par tour/);
+  // (sans coût sur une carte du terrain : compilé depuis C2.2 ; sur un [Contre], la carte n'est pas sur le terrain)
+  assert.match(missing({ num: 'ZZ19-099', abilities: [ability({ timing: 'counter', oncePerTurn: true, steps: [{ action: { kind: 'draw', n: 1 } }] })] }), /Une fois par tour/);
   assert.match(missing(on([{ action: { kind: 'manual', reason: 'absente' } }])), /manual:absente/);
   assert.match(missing({ num: 'ZZ19-099', abilities: [ability({ timing: 'when', event: { on: 'koOwnChar' }, steps: [{ action: { kind: 'draw', n: 1 } }] })] }), /moment when \(koOwnChar\)/);
   assert.match(missing(on([{ action: { kind: 'toLife', target: oppChar({}), faceUp: true } }])), /toLife/);
   assert.match(missing(on([{ action: { kind: 'play', from: 'hand', count: 1, upTo: true, filter: { category: ['STAGE'] } } }])), /autre chose qu'un Personnage/);
   // tout ce qui manque est listé (pas seulement le premier)
-  const all = compileRecipe(on([{ action: { kind: 'trashChar', target: oppChar({}) } }, { action: { kind: 'powerSet', target: oppChar({}), value: 0, until: 'turn' } }]));
+  const all = compileRecipe(on([{ action: { kind: 'trashChar', target: oppChar({}) } }, { action: { kind: 'cantAttack', target: oppChar({}), until: 'turn', what: 'leader' } }]));
   assert.ok(!all.ok && all.missing.length === 2);
   // une recette comprise
   assert.ok(compileRecipe(on([{ action: { kind: 'draw', n: 1 } }, { link: 'then', action: { kind: 'discard', n: 1 } }])).ok);
