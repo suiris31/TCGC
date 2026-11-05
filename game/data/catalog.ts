@@ -134,7 +134,7 @@ const RELEASES = [
   'ST-01 ST-02 ST-03 ST-04 OP-01', 'ST-05', 'OP-02 ST-06', 'OP-03 ST-07', 'ST-08 ST-09', 'OP-04', 'ST-10', 'OP-05',
   'ST-11', 'OP-06 ST-12', 'ST-13', 'EB-01', 'OP-07', 'ST-14', 'OP-08', 'ST-15 ST-16 ST-17 ST-18 ST-19 ST-20', 'PRB-01',
   'OP-09', 'ST-21 OP-10', 'EB-02', 'OP-11 ST-23 ST-24 ST-25 ST-26 ST-27 ST-28', 'OP-12', 'ST-22', 'PRB-02', 'OP-13',
-  'OP14-EB04 ST-29', 'EB-03', 'OP15-EB04', 'OP-16 ST-30', 'ST-31 ST-32 ST-33 ST-34 ST-35 ST-36', 'OP-17',
+  'OP14-EB04 ST-29', 'EB-03', 'OP15-EB04', 'OP-16 ST-30', 'ST-31 ST-32 ST-33 ST-34 ST-35 ST-36', 'OP-17', 'EB-05',
 ];
 const RANK = new Map(RELEASES.flatMap((group, i) => group.split(' ').map((s) => [s, i] as const)));
 
