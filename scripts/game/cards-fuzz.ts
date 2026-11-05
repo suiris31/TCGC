@@ -10,7 +10,7 @@
 //       recette compilée joués dans les mêmes situations ; --sensibilite : recette faussée (chaque nombre décalé)
 import '../../game/data/load-local.ts';
 import { writeFileSync } from 'node:fs';
-import { CARDS, cardStatus, HIDDEN } from '../../game/engine/cards/index.ts';
+import { CARDS, cardStatus, HIDDEN, recipeCompiled } from '../../game/engine/cards/index.ts';
 import { currentBehavior } from '../../game/engine/recipes/bench.ts';
 import { compileRecipe } from '../../game/engine/recipes/compile.ts';
 import { compareBehaviors, mutateRecipe } from '../../game/engine/recipes/crosscheck.ts';
@@ -38,7 +38,7 @@ if (flag('--tests')) {
   const sets = plain[0] ? plain[0].split(',') : [];
   let ok = 0, failed = 0, notCompiled = 0;
   for (const r of recipesOf(sets)) {
-    const c = compileRecipe(r);
+    const c = recipeCompiled(r.num) ?? compileRecipe(r);  // avec le code à la main enregistré (MANUAL)
     if (!c.ok) { notCompiled++; continue; }
     const rep = runGeneratedTests(r, c.behavior);
     if (rep.ok) ok++; else { failed++; console.log(formatReport(rep)); }

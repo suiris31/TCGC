@@ -17,7 +17,8 @@ import {
   buildSituation, coherenceErrors, drive, DRIVEN_TIMINGS, emptySide, inertPool, locate, maxChooser, withBehavior, withoutTiming,
   type SideSpec, type SituationSpec,
 } from './bench.ts';
-import type { Ability, Action, Cond, CostPart, Duration, Filter, Recipe, Step, Target, Timing } from './types.ts';
+import { compileRecipe } from './compile.ts';
+import type { Ability, Action, Cond, CostPart, Duration, Filter, ManualCode, Recipe, Step, Target, Timing } from './types.ts';
 
 // ---------- Filtres (lecture indépendante du compilateur) ----------
 
@@ -955,6 +956,16 @@ function cardsOf(s: GameState, side: PlayerId, num: string, zone: string): numbe
   const list = zone === 'chars' ? P.chars : zone === 'hand' ? P.hand : zone === 'trash' ? P.trash : P.deck;
   // leurres : pas les cartes qui conviennent (même numéro qu'une cible : impossible, une cible convient et pas un leurre)
   return list.filter((c) => c.num === num).map((c) => c.uid);
+}
+
+// Tests générés d'une recette compilée par le vrai compilateur (C1.1), avec son code à la main s'il y en a : c'est
+// l'appel de `cards:new` (C1.5). Une recette qui ne se compile pas échoue avec ce qui manque.
+export function testRecipe(r: Recipe, manual?: ManualCode): { ok: boolean; failures: string[]; report?: TestgenReport } {
+  const c = compileRecipe(r, manual, CARDS[r.num]?.name ?? r.num);
+  if (!c.ok) return { ok: false, failures: c.missing.map((m) => `non compilée : ${m}`) };
+  const report = runGeneratedTests(r, c.behavior);
+  const failures = report.cases.filter((x) => x.status === 'fail').map((x) => `capacité ${x.ability + 1} (${x.timing}) ${x.label} : ${x.detail ?? ''}`);
+  return { ok: report.ok, failures, report };
 }
 
 // Résumé d'un rapport, une ligne par cas qui n'est pas « ok »

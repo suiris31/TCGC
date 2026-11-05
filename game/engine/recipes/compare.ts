@@ -15,6 +15,7 @@
 import { CARDS } from '../cards/index.ts';
 import { typeLabel } from '../cards/bricks.ts';
 import { describe, type DescribeOptions } from './describe.ts';
+import { normalize } from './parse/normalize.ts';
 import { RECIPE_SETS } from './sets/index.ts';
 import type { Category, Recipe } from './types.ts';
 
@@ -40,19 +41,9 @@ export interface CompareInput {
 
 // ---------- Normalisation (celle du traducteur, étude C0 § 3) ----------
 
-// Rappels de règle retirés, K.O. → KO, tirets, guillemets et ➀ unifiés, espaces resserrés
+// Celle du traducteur (parse/normalize.ts, C1.4) : la phrase de describe se compare au texte lu par le traducteur
 export function normalizeEn(t: string): string {
-  return t
-    .replace(/\((?:[^()]|\([^()]*\))*\)/g, '')
-    .replace(/[−－–]/g, '-').replace(/[’‘]/g, "'").replace(/[＜]/g, '<').replace(/[＞]/g, '>')
-    .replace(/[“”]/g, '"')
-    .replace(/K\.O\./g, 'KO')
-    .replace(/[➀①]/g, '①').replace(/[➁②]/g, '②').replace(/[➂③]/g, '③').replace(/[➃④]/g, '④')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/ +\n/g, '\n').replace(/\n +/g, '\n')
-    .replace(/\s+([.,:;])/g, '$1')
-    .replace(/^\s*-\s*$/, '')
-    .trim();
+  return normalize(t);
 }
 
 export function normalizeFr(t: string): string {

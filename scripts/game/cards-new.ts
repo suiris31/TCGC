@@ -191,12 +191,12 @@ async function checkCompare(mod: Record<string, unknown> | null, num: string): P
   }
 }
 
-// testRecipe(recipe) → { ok, failures } ou liste des échecs (attendu de C1.3 ; à accorder à la fusion si besoin)
-async function checkTests(mod: Record<string, unknown> | null, recipe: Recipe): Promise<Check> {
+// testRecipe(recipe, manual?) → { ok, failures } (recipes/testgen.ts, C1.3)
+async function checkTests(mod: Record<string, unknown> | null, recipe: Recipe, manual?: ManualCode): Promise<Check> {
   const fn = mod?.testRecipe;
   if (typeof fn !== 'function') return { state: 'absent', why: mod ? 'testgen.ts sans testRecipe(recipe)' : 'tests générés pas encore livrés (C1.3)' };
   try {
-    const r = await fn(recipe);
+    const r = await fn(recipe, manual);
     const failures: unknown[] = Array.isArray(r) ? r : r && typeof r === 'object'
       ? ((r as { failures?: unknown[] }).failures ?? ((r as { ok?: boolean }).ok === false ? ['échec'] : []))
       : r === false ? ['échec'] : [];
@@ -244,7 +244,7 @@ async function verify(): Promise<number> {
           compile: checkCompile(e.recipe, manual[num]),
           describe: d.check,
           compare: await checkCompare(compareMod, num),
-          tests: await checkTests(testMod, e.recipe),
+          tests: await checkTests(testMod, e.recipe, manual[num]),
         };
         c.en = d.en;
         c.fr = d.fr;
