@@ -723,6 +723,29 @@ Cartes de Baggy, Krieg et Arlong hors OP03 et ST-01 (`cards/aventure-b.ts`).
 472. **Baggy (ST25-004)** : l'effet peut être activé sans Leader [Baggy] (le coût est payé, rien n'est joué) ; l'IA et
      les aides ne le proposent pas. **Baggy (OP02-058)** : « autre que [Baggy] » exclut toutes les cartes nommées [Baggy].
 
+## Recettes compilées (étape C, tâche C1.1), conventions du compilateur
+
+1000. **Coût facultatif dont l'effet ne ferait rien** (« Vous pouvez [coût] : [effet] ») : le coût n'est **proposé que si
+      l'effet peut servir** au moment de le résoudre (comme OP03-093 codé à la main). Même règle pour un effet « vous
+      pouvez ... » sans coût. Ainsi l'IA ne paie jamais un coût pour rien (étude C0, § 4).
+1001. **Cible sans « jusqu'à »** (choix obligatoire) : pas compilée tant qu'une brique ne sait pas forcer le choix (les
+      briques laissent toujours « Aucune ») ; la carte reste non jouable. « Votre Leader » et « cette carte » ne sont pas
+      des choix : ils sont compilés.
+1002. **Ce qui n'a pas de brique exacte n'est jamais approché** : « tous les ... », « Si vous le faites », durée « jusqu'à
+      la fin de votre prochain tour », « la puissance de base devient N », Vie « au-dessus » seulement, effets « Quand
+      ... », [Une fois par tour] sans coût... La recette ne se compile pas, la liste de ce qui manque va au rapport.
+1003. **« N cartes épuisées ou plus »** (condition `fieldCards`) : Leader, Personnages, Lieu et DON!! épuisées de la zone de
+      Coût ; les DON!! données à une carte ne comptent pas.
+1004. **[Contre] « jusqu'à 1 de vos Leader ou Personnages gagne +X pendant ce combat »** : la carte attaquée, sans
+      question (comme le choix 20) ; l'IA connaît la valeur (`counterPower`).
+1005. **[DON!! xN] [En cas de KO]** : les DON!! sont lues au moment du KO, carte encore sur le terrain
+      (`onKOCondition`) ; les autres conditions, à la résolution.
+1006. **Effets permanents sur d'autres cartes** (« Tous vos Personnages {X} gagnent ... ») : la cible est lue sur ce qui
+      est imprimé (types, noms, couleurs, attributs...) et son état (épuisée, DON!! données) ; un filtre de puissance, de
+      coût ou de mot-clé n'est pas compilé (l'effet les calcule).
+1007. **[Déclenchement] « jouez cette carte » ou « activez l'effet [Principale] »** écrit dans une recette : compilé
+      explicitement (même jeu que le traitement générique du moteur).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

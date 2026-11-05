@@ -127,7 +127,8 @@ export type Action =
   | { kind: 'setActive'; target: Target }
   | { kind: 'bounce'; target: Target }                      // renvoyer en main
   | { kind: 'bottom'; target: Target }                      // sous le deck du propriétaire
-  | { kind: 'toLife'; target: Target; faceUp: boolean }     // dans la Vie du propriétaire
+  // dans la Vie du propriétaire ; where (C1.1) : « au-dessus » seulement, ou « au-dessus ou au-dessous » au choix
+  | { kind: 'toLife'; target: Target; faceUp: boolean; where?: 'top' | 'topOrBottom' }
   | { kind: 'trashChar'; target: Target }                   // placer dans la Défausse (pas un KO)
   | { kind: 'power'; target: Target; amount: number; until: Duration }
   | { kind: 'cost'; target: Target; amount: number; until: Duration }

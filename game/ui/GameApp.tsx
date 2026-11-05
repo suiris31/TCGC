@@ -1,7 +1,7 @@
 // Point d'entrée du jeu dans l'appli TCGC (onglet Jouer), chargé seulement quand on ouvre l'onglet : informations des
 // cartes demandées au serveur, parties enregistrées sur le compte connecté, style isolé du reste de l'appli.
 import { Component, lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
-import { loadCardData } from '../engine/cards/index.ts';
+import { loadCardData, setWaitingCards } from '../engine/cards/index.ts';
 import type { CardData } from '../engine/types.ts';
 import { App } from './App.tsx';
 import { Home } from './home/Home.tsx';
@@ -62,8 +62,9 @@ let cardsLoaded: Promise<void> | null = null;
 async function fetchCards(): Promise<void> {
   for (let attempt = 0; ; attempt++) {
     try {
-      const { engine, cards } = await call<{ engine: string; cards: Record<string, CardData> }>('GET', 'catalog', undefined, { cache: 'no-cache' });
+      const { engine, cards, waiting } = await call<{ engine: string; cards: Record<string, CardData>; waiting?: { cards: string[]; leaders: string[] } }>('GET', 'catalog', undefined, { cache: 'no-cache' });
       if (engine !== ENGINE && engine !== 'inconnue' && ENGINE !== 'inconnue') throw new Outdated(engine);
+      if (waiting) setWaitingCards(waiting);
       return loadCardData(cards);
     } catch (e) {
       if (!(e instanceof ApiError)) throw e;

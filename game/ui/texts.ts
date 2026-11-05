@@ -62,3 +62,6 @@ export function quoteCardNames(text: string): string {
   const pattern = new RegExp(names.map(escape).join('|'), 'g');
   return text.replace(pattern, (name, at: number) => (/«\s*$/.test(text.slice(Math.max(0, at - 2), at)) ? name : `« ${name} »`));
 }
+
+// Carte du catalogue que le jeu ne sait pas encore jouer (étape C : niveau de confiance pas encore élevé)
+export const NOT_PLAYABLE = 'carte pas encore jouable';

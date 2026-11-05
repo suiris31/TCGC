@@ -8,7 +8,7 @@
 // DON!! (builder/LooksPicker.tsx) ; le choix s'enregistre avec le deck, comme les cartes.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DeckLooks } from '../data/looks.ts';
-import { CARDS, cardStatus, HIDDEN } from '../engine/cards/index.ts';
+import { CARDS, cardStatus, HIDDEN, notYetPlayable, waitingLeader } from '../engine/cards/index.ts';
 import { anyNumber, DECK_SIZE, formatIssues, MAX_COPIES, playableErrors, type Regulations } from '../engine/deckRules.ts';
 import { deckSize, type DeckList } from '../engine/decks.ts';
 import { def } from '../engine/rules.ts';
@@ -23,6 +23,7 @@ import type { Preview } from './CardView.tsx';
 import { CardThumb, CostCurve, DeckStats } from './DeckGuide.tsx';
 import { cardImage } from './images.ts';
 import { isTouch } from './device.ts';
+import { NOT_PLAYABLE } from './texts.ts';
 import { Button, Dialog } from './kit/index.ts';
 import { openLayers } from './kit/logic.ts';
 import {
@@ -187,10 +188,14 @@ export function DeckBuilderScreen({ onClose, onHover, onPlay }: { onClose: () =>
       )}
       {importing && (
         <ImportBox onClose={() => setImporting(false)}
-          onImport={(d, unknown) => {
+          onImport={(d, unknown, waiting) => {
             setImporting(false);
             open(d, true);
-            if (unknown.length) setNotice(`Lignes ignorées : ${unknown.join(', ')}`);
+            const notes = [
+              waiting.length ? `${waiting.length > 1 ? 'Cartes pas encore jouables, laissées de côté' : `${NOT_PLAYABLE[0].toUpperCase()}${NOT_PLAYABLE.slice(1)}, laissée de côté`} : ${waiting.join(', ')}.` : '',
+              unknown.length ? `Lignes ignorées : ${unknown.join(', ')}.` : '',
+            ].filter(Boolean);
+            if (notes.length) setNotice(notes.join(' '));
           }} />
       )}
     </Dialog>
@@ -222,15 +227,19 @@ export function LeaderPicker({ onPick, onClose, onHover, only }: { onPick: (num:
   );
 }
 
-function ImportBox({ onImport, onClose }: { onImport: (d: Draft, unknown: string[]) => void; onClose: () => void }) {
+// Une carte du catalogue pas encore jouable est nommée comme telle (« carte pas encore jouable »), pas comme une ligne
+// inconnue ; un Leader pas encore jouable empêche l'import (l'éditeur ne peut pas ouvrir un deck sans Leader jouable)
+function ImportBox({ onImport, onClose }: { onImport: (d: Draft, unknown: string[], waiting: string[]) => void; onClose: () => void }) {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const go = () => {
-    const parsed = parseDeckText(text, (n) => CARDS[n]?.category === 'LEADER');
+    const parsed = parseDeckText(text, (n) => CARDS[n]?.category === 'LEADER' || waitingLeader(n));
     if (!parsed.leader) return setError('Aucun Leader reconnu : la liste doit contenir son Leader (par exemple « 1xOP13-004 »).');
-    const unknown = [...parsed.unknown, ...Object.keys(parsed.cards).filter((n) => !CARDS[n])];
-    const cards = Object.fromEntries(Object.entries(parsed.cards).filter(([n]) => CARDS[n]));
-    onImport({ id: newDeckId(), name: `Import ${CARDS[parsed.leader]?.name ?? parsed.leader}`.slice(0, 40), leader: parsed.leader, cards }, unknown);
+    if (waitingLeader(parsed.leader)) return setError(`Leader ${parsed.leader} : ${NOT_PLAYABLE}. Le jeu ne sait pas encore jouer son effet.`);
+    const waiting = Object.keys(parsed.cards).filter((n) => notYetPlayable(n));
+    const unknown = [...parsed.unknown, ...Object.keys(parsed.cards).filter((n) => !CARDS[n] && !waiting.includes(n))];
+    const cards = Object.fromEntries(Object.entries(parsed.cards).filter(([n]) => CARDS[n] && !waiting.includes(n)));
+    onImport({ id: newDeckId(), name: `Import ${CARDS[parsed.leader]?.name ?? parsed.leader}`.slice(0, 40), leader: parsed.leader, cards }, unknown, waiting);
   };
   // une liste collée ne se perd pas d'un clic à côté de la fenêtre
   return (
