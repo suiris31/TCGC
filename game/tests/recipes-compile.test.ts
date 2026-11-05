@@ -316,16 +316,17 @@ test('compilateur : ce qui n\'est pas exact est signalé, jamais approché', () 
     return c.missing.join(' | ');
   };
   const on = (steps: Ability['steps'], extra: Partial<Ability> = {}): Recipe => ({ num: 'ZZ19-099', abilities: [ability({ timing: 'onPlay', steps, ...extra })] });
-  assert.match(missing(on([{ action: { kind: 'ko', target: { ...oppChar({}), upTo: false } } }])), /cible obligatoire/);
+  // (KO, renvoi, Défausse... : cibles obligatoires et « tous » compilés depuis C2.1, recipes-removal.test.ts)
+  assert.match(missing(on([{ action: { kind: 'power', target: { ...oppChar({}), upTo: false }, amount: -1000, until: 'turn' } }])), /cible obligatoire/);
   assert.match(missing(on([{ action: { kind: 'ko', target: oppChar({}, 0) } }, { link: 'ifYouDo', action: { kind: 'draw', n: 1 } }])), /lien ifYouDo/);
-  assert.match(missing(on([{ action: { kind: 'ko', target: { ...oppChar({}), count: 'all' } } }])), /action ko : tous/);
+  assert.match(missing(on([{ action: { kind: 'power', target: { ...oppChar({}), count: 'all' }, amount: -1000, until: 'turn' } }])), /action power : tous/);
   assert.match(missing(on([{ action: { kind: 'draw', n: 1 } }], { oncePerTurn: true })), /Une fois par tour/);
   assert.match(missing(on([{ action: { kind: 'manual', reason: 'absente' } }])), /manual:absente/);
   assert.match(missing({ num: 'ZZ19-099', abilities: [ability({ timing: 'when', event: { on: 'koOwnChar' }, steps: [{ action: { kind: 'draw', n: 1 } }] })] }), /moment when \(koOwnChar\)/);
   assert.match(missing(on([{ action: { kind: 'toLife', target: oppChar({}), faceUp: true } }])), /toLife/);
   assert.match(missing(on([{ action: { kind: 'play', from: 'hand', count: 1, upTo: true, filter: { category: ['STAGE'] } } }])), /autre chose qu'un Personnage/);
   // tout ce qui manque est listé (pas seulement le premier)
-  const all = compileRecipe(on([{ action: { kind: 'trashChar', target: oppChar({}) } }, { action: { kind: 'powerSet', target: oppChar({}), value: 0, until: 'turn' } }]));
+  const all = compileRecipe(on([{ action: { kind: 'activate', which: 'onKO' } }, { action: { kind: 'powerSet', target: oppChar({}), value: 0, until: 'turn' } }]));
   assert.ok(!all.ok && all.missing.length === 2);
   // une recette comprise
   assert.ok(compileRecipe(on([{ action: { kind: 'draw', n: 1 } }, { link: 'then', action: { kind: 'discard', n: 1 } }])).ok);

@@ -772,6 +772,43 @@ Lectures fixées par le traducteur (`game/engine/recipes/parse/`) pour toutes le
       puissance ou le nom imprimés, eux, restent ceux de chaque carte. Une carte au même texte qu'une carte codée à la
       main est seulement signalée (le code se reprend à la main).
 
+## Famille « retraits » du traducteur (tâche C2.1), choix faits sans validation
+
+Lectures fixées par `recipes/parse/removal.ts` et les briques `cards/bricks-removal.ts`, pour toutes les cartes à venir.
+
+1500. **Cible sans « jusqu'à »** (« KO 1 of your opponent's Characters ... », « Rest 1 ... ») pour mettre KO, épuiser,
+      redresser, renvoyer en main, placer sous le deck, dans la Vie ou dans la Défausse : le joueur **doit** choisir
+      parmi les cartes possibles (pas de « Aucune ») ; s'il y en a autant ou moins que demandé, elles sont prises sans
+      question. Remplace la n° 1001 pour ces actions (la puissance, le coût et les mots-clés restent non compilés).
+1501. **« all of ... »** (KO, renvoyer, sous le deck, Défausse, Vie, redresser) : toutes les cartes qui correspondent au
+      moment de l'effet, retirées une à une (chaque KO suit les règles du KO : effets de remplacement, [En cas de KO]
+      mis en attente).
+1502. **« Trash ... »** visant une carte du terrain : elle va dans la Défausse **sans être mise KO** (pas de [En cas de
+      KO], « ne peut pas être mis KO » n'empêche rien) ; « ne peut pas quitter le terrain à cause d'un effet adverse » et
+      les remplacements de sortie du terrain (sauf ceux du seul KO) s'appliquent, comme pour un renvoi en main.
+1503. **« Return / Place / KO this Character »** comme effet : comme « rest this Character » et « trash this Character »
+      (briques existantes), l'effet ne compte pas comme « utile » en soi ; une [Activation : Principale] qui ne fait que
+      ça reste proposée au joueur, mais l'IA ne s'en sert pas pour rien (ST12-012).
+1504. **« KO up to 1 of A and up to 1 of B »** (OP01-096, OP04-044, OP05-093) : deux choix, l'un après l'autre (A d'abord) ;
+      une carte choisie pour A n'est plus là pour B.
+1505. **Vie du propriétaire** : « to the top of ... Life cards » place la carte au-dessus, sans question ; « top or
+      bottom » laisse le choix au joueur qui résout l'effet (comme Charlotte Katakuri OP03-123). Une phrase qui
+      enverrait une carte dans la Vie d'un autre joueur que son propriétaire n'est pas traduite.
+1506. **« with a total power / cost of N or less »** (OP09-018) : une somme sur toutes les cartes choisies, pas une borne
+      pour chacune ; le traducteur refuse ce filtre (garde-fou « total combiné », `target.ts`) au lieu de le lire « N
+      ou moins » pour chaque carte, ce qu'il faisait avant.
+1507. **Coût « KO 1 of your Characters »** (EB05-049, OP06-083, OP14-080...) : un vrai KO (effets [En cas de KO],
+      « ne peut pas être mis KO » empêche de choisir cette carte), distinct de « trash 1 of your Characters ». Sorte de
+      coût `koOwnChar` ajoutée au format.
+1508. **Coûts « rest 1 of your {X} type Leader or Stage cards », « rest your Leader »** : seulement les cartes de ces
+      catégories (jamais une DON!!) ; « rest 1 of your cards » sans filtre comprend les DON!! (comme avant). Coût
+      « place 1 Stage with a cost of 1 / 1 of your Characters at the bottom of the owner's deck » (OP06-102, OP06-111,
+      OP06-114, EB03-026...) : une carte de son propre terrain (un coût se paie avec ses cartes), sorte `bottomOwn`.
+1509. **À la relecture des tâches « set »** (aller-retour) : P-008 dit « Rest 1 » en anglais (obligatoire) et « jusqu'à 1 »
+      en français ; l'aller-retour le signale, c'est une question pour la tâche du set. Les textes qui disent « Place
+      ... at the top or bottom of their Life cards » au lieu de « Add ... to ... » (EB01-053, OP05-096), ou « the
+      owner's » au lieu de « your opponent's » (OP11-116), gardent un écart de mots sans conséquence sur le jeu.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

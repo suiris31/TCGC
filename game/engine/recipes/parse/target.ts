@@ -55,6 +55,9 @@ const lessMore = (f: Filter, w: string, max: keyof Filter, min: keyof Filter, n:
 export function parseFilter(phrase: string): Filter {
   const f: Filter = {};
   if (/ or with /.test(` ${phrase} `)) fail(phrase, 'filtre : OU entre deux valeurs');
+  // « with a total power of 4000 or less » (OP09-018) : une somme sur toutes les cartes choisies, pas une borne pour
+  // chacune ; sans ce garde-fou, « total » passait pour un mot de liaison (correction de la tâche C2.1)
+  if (/\btotal (?:power|cost)\b/i.test(phrase)) fail(phrase, 'filtre : total combiné');
   let s = ` ${phrase.trim()} `;
   const eat = (re: RegExp, fn: (...m: string[]) => void) => {
     s = s.replace(re, (...m) => { fn(...(m.slice(0, -2) as string[])); return ' '; });

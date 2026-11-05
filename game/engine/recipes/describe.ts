@@ -247,11 +247,13 @@ function enCost(p: CostPart, ctx: Ctx): string {
     case 'lifeToHand': return `add 1 card from the ${p.from === 'top' ? 'top' : 'top or bottom'} of your Life cards to your hand`;
     case 'flipLife': return `turn 1 card from the top of your Life cards face-${p.faceUp ? 'up' : 'down'}`;
     case 'trashOwnChar': return `trash ${p.n} of your ${enNoun(p.filter, ['CHARACTER'], true)}`;
+    case 'koOwnChar': return `KO ${p.n} of your ${enNoun(p.filter, ['CHARACTER'], true)}`;
+    case 'bottomOwn': return `place ${p.n} of your ${enNoun(p.filter, [], true)} at the bottom of the owner's deck`;
     case 'returnOwnChar': return `return ${p.n} of your ${enNoun(p.filter, ['CHARACTER'], true)} to the owner's hand`;
     case 'restOwn':
       if (p.what === 'leader') return p.filter && Object.keys(p.filter).length ? `rest your ${enNoun(p.filter, ['LEADER'], false)}` : 'rest your Leader';
       if (p.what === 'stage') return 'rest your Stage';
-      if (p.what === 'cards') return `rest ${p.n} of your cards`;
+      if (p.what === 'cards') return p.filter ? `rest ${p.n} of your ${enNoun(p.filter, [], true, true)}` : `rest ${p.n} of your cards`;
       return `rest ${p.n} of your ${enNoun(p.filter ?? {}, ['CHARACTER'], true)}`;
     case 'giveDon': return `give ${p.n} active DON!! ${p.n === 1 ? 'card' : 'cards'} to ${enTarget(p.target, ctx)}`;
     case 'trashToBottom': return `place ${p.n} ${p.filter ? enCards(p.n, p.filter) : p.n === 1 ? 'card' : 'cards'} from your trash at the bottom of your deck in any order`;
@@ -276,7 +278,8 @@ function enAction(a: Action, ctx: Ctx): string {
     case 'setActive': return `Set ${T(a.target)} as active`;
     case 'bounce': return `Return ${T(a.target)} to the owner's hand`;
     case 'bottom': return `Place ${T(a.target)} at the bottom of the owner's deck`;
-    case 'toLife': return `Place ${T(a.target)} at the top of the owner's Life cards face-${a.faceUp ? 'up' : 'down'}`;
+    // la tournure la plus fréquente du texte officiel (C2.1) : « Add ... to the top of your opponent's Life cards »
+    case 'toLife': return `Add ${T(a.target)} to the ${a.where === 'topOrBottom' ? 'top or bottom' : 'top'} of ${a.target.side === 'opp' ? "your opponent's" : "the owner's"} Life cards face-${a.faceUp ? 'up' : 'down'}`;
     case 'trashChar': return `Trash ${T(a.target)}`;
     case 'power': return enSubject(a.target)
       ? `${upper(T(a.target))} gains ${sign(a.amount)} power${EN_DURATION[a.until]}`
@@ -357,9 +360,29 @@ function kwPair(steps: Step[], i: number): KwPair | null {
   if (kw.until !== mod.until || JSON.stringify(kw.target) !== JSON.stringify(mod.target)) return null;
   return { kw, mod };
 }
-function joinSteps(steps: Step[], render: (st: Step, pair: KwPair | null) => string): { st: Step; body: string }[] {
+// « KO up to 1 A and up to 1 B » : le traducteur en fait deux étapes de la même action liées par « and » (C2.1) ; on les
+// redit en une phrase, une seule fois le verbe
+const TWIN_KINDS: Action['kind'][] = ['ko', 'rest', 'setActive', 'bounce', 'bottom', 'trashChar'];
+type Twin = [Extract<Action, { target: Target }>, Extract<Action, { target: Target }>];
+function twinPair(steps: Step[], i: number): Twin | null {
+  const a = steps[i]; const b = steps[i + 1];
+  if (!a || !b || !('action' in a) || !('action' in b) || b.link !== 'and' || a.cond || b.cond) return null;
+  const x = a.action; const y = b.action;
+  if (x.kind !== y.kind || !TWIN_KINDS.includes(x.kind) || !('target' in x) || !('target' in y) || x.target.self || y.target.self) return null;
+  return [x, y] as Twin;
+}
+const twinText = (pair: Twin, action: (a: Action) => string, target: (t: Target) => string, and: string) =>
+  action(pair[0]).replace(target(pair[0].target), `${target(pair[0].target)} ${and} ${target(pair[1].target)}`);
+
+function joinSteps(steps: Step[], render: (st: Step, pair: KwPair | null) => string, twin?: (pair: Twin) => string): { st: Step; body: string }[] {
   const out: { st: Step; body: string }[] = [];
   for (let i = 0; i < steps.length; i++) {
+    const two = twin && twinPair(steps, i);
+    if (two) {
+      out.push({ st: steps[i], body: twin(two) });
+      i++;
+      continue;
+    }
     const pair = kwPair(steps, i);
     out.push({ st: steps[i], body: render(steps[i], pair) });
     if (pair) i++;
@@ -369,7 +392,8 @@ function joinSteps(steps: Step[], render: (st: Step, pair: KwPair | null) => str
 
 function enSteps(steps: Step[], ctx: Ctx): string {
   let out = '';
-  joinSteps(steps, (st, pair) => (pair ? enKwPair(pair, ctx) : enStep(st, ctx))).forEach(({ st, body: b }, i) => {
+  joinSteps(steps, (st, pair) => (pair ? enKwPair(pair, ctx) : enStep(st, ctx)),
+    (two) => twinText(two, (a) => enAction(a, ctx), (t) => enTarget(t, ctx), 'and')).forEach(({ st, body: b }, i) => {
     let body = b;
     if (st.cond) body = `If ${enCond(st.cond, ctx)}, ${lower(body)}`;
     if (i === 0 && !st.link) { out = upper(body); return; }
@@ -602,11 +626,13 @@ function frCost(p: CostPart, ctx: Ctx): string {
     case 'lifeToHand': return `ajouter à votre main 1 carte du ${p.from === 'top' ? 'dessus' : 'dessus ou du dessous'} de votre Vie`;
     case 'flipLife': return `retourner face ${p.faceUp ? 'visible' : 'cachée'} 1 carte du dessus de votre Vie`;
     case 'trashOwnChar': return `placer ${p.n} de vos ${frNoun(p.filter, ['CHARACTER'], true, ctx)} dans votre Défausse`;
+    case 'koOwnChar': return `mettre KO ${p.n} de vos ${frNoun(p.filter, ['CHARACTER'], true, ctx)}`;
+    case 'bottomOwn': return `placer ${p.n} de vos ${frNoun(p.filter, [], true, ctx)} au-dessous de votre deck`;
     case 'returnOwnChar': return `renvoyer ${p.n} de vos ${frNoun(p.filter, ['CHARACTER'], true, ctx)} dans la main de son propriétaire`;
     case 'restOwn':
       if (p.what === 'leader') return 'épuiser votre Leader';
       if (p.what === 'stage') return 'épuiser votre Lieu';
-      if (p.what === 'cards') return `épuiser ${p.n} de vos cartes`;
+      if (p.what === 'cards') return p.filter ? `épuiser ${p.n} de vos ${frNoun(p.filter, [], true, ctx, true)}` : `épuiser ${p.n} de vos cartes`;
       return `épuiser ${p.n} de vos ${frNoun(p.filter ?? {}, ['CHARACTER'], true, ctx)}`;
     case 'giveDon': return `donner ${p.n} carte${p.n > 1 ? 's' : ''} DON!! redressée${p.n > 1 ? 's' : ''} à ${frTarget(p.target, ctx)}`;
     case 'trashToBottom': return `placer ${p.n} ${p.filter ? frCards(p.n, p.filter, ctx) : p.n === 1 ? 'carte' : 'cartes'} de votre Défausse au-dessous de votre deck dans l'ordre de votre choix`;
@@ -627,7 +653,7 @@ function frAction(a: Action, ctx: Ctx): string {
     case 'setActive': return `Redressez ${T(a.target)}`;
     case 'bounce': return `Renvoyez ${T(a.target)} dans la main de son propriétaire`;
     case 'bottom': return `Placez ${T(a.target)} au-dessous du deck de son propriétaire`;
-    case 'toLife': return `Placez ${T(a.target)} au-dessus de la Vie de son propriétaire, face ${a.faceUp ? 'visible' : 'cachée'}`;
+    case 'toLife': return `Ajoutez ${T(a.target)} ${a.where === 'topOrBottom' ? 'au-dessus ou au-dessous' : 'au-dessus'} de la Vie de son propriétaire, face ${a.faceUp ? 'visible' : 'cachée'}`;
     case 'trashChar': return `Placez ${T(a.target)} dans la Défausse de son propriétaire`;
     case 'power': return `${upper(T(a.target))} gagne ${sign(a.amount)} de puissance${FR_DURATION[a.until]}`;
     case 'cost': return `${upper(T(a.target))} gagne ${sign(a.amount)} de coût${FR_DURATION[a.until]}`;
@@ -697,7 +723,8 @@ function frAction(a: Action, ctx: Ctx): string {
 
 function frSteps(steps: Step[], ctx: Ctx): string {
   let out = '';
-  joinSteps(steps, (st, pair) => (pair ? frKwPair(pair, ctx) : frStep(st, ctx))).forEach(({ st, body: b }, i) => {
+  joinSteps(steps, (st, pair) => (pair ? frKwPair(pair, ctx) : frStep(st, ctx)),
+    (two) => twinText(two, (a) => frAction(a, ctx), (t) => frTarget(t, ctx), 'et')).forEach(({ st, body: b }, i) => {
     let body = b;
     if (st.cond) body = `Si ${frCond(st.cond, ctx)}, ${lower(body)}`;
     if (i === 0 && !st.link) { out = upper(body); return; }

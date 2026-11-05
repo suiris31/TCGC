@@ -109,6 +109,9 @@ export type CostPart =
   | { kind: 'lifeToHand'; from: 'top' | 'topOrBottom' }     // Vie → main
   | { kind: 'flipLife'; faceUp: boolean }
   | { kind: 'trashOwnChar'; n: number; filter: Filter }     // « trash 1 of your Characters ... »
+  | { kind: 'koOwnChar'; n: number; filter: Filter }        // « KO 1 of your Characters ... » (C2.1 : un KO, pas la Défausse)
+  // « place 1 of your Characters / 1 Stage ... at the bottom of the owner's deck » (C2.1) ; filter.category : CHARACTER ou STAGE
+  | { kind: 'bottomOwn'; n: number; filter: Filter }
   | { kind: 'returnOwnChar'; n: number; filter: Filter }    // « return 1 of your Characters to the owner's hand »
   | { kind: 'restOwn'; n: number; what: 'cards' | 'characters' | 'leader' | 'stage'; filter?: Filter }
   | { kind: 'giveDon'; n: number; target: Target }          // « give 1 active DON!! card to 1 of your Leader »
