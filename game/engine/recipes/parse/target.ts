@@ -74,7 +74,8 @@ export function parseFilter(phrase: string): Filter {
   eat(/ (?:with |and )?(?:the )?<([^>]+)> attribute/g, (_, a) => { f.attribute = a; });
   eat(/ (?:with |and )?(?:a )?\[Trigger\]/g, () => { f.trigger = true; });
   eat(/ (?:with )?no base effect/g, () => { f.vanilla = true; });
-  eat(/ with (\d+) or more DON!! cards? given/g, (_, n) => { f.donMin = +n; });
+  eat(/ (?:with|that has|that have) (\d+) or more DON!! cards? given/g, (_, n) => { f.donMin = +n; });
+  eat(/ with (?:a|any) DON!! cards? given/g, () => { f.donMin = 1; });   // C2.4 : « with a DON!! card given » (OP15)
   eat(new RegExp(` (?:with|that has|that have|having) (?:a )?\\[${KW_INNER}\\]`, 'g'), (_, k) => { f.keyword = k as Keyword; });
   eat(new RegExp(` without (?:a )?\\[${KW_INNER}\\]`, 'g'), (_, k) => { f.noKeyword = k as Keyword; });
   // types : « {A} or {B} type », « both the {A} type and the {B} type », « {A} type »

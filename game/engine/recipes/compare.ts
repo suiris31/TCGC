@@ -117,6 +117,14 @@ export function factsEn(text: string): Fact[] {
   let s = ` ${text.replace(/«[^»]*»/g, ' ')} `;   // morceaux « code à la main » : rien à comparer
   // « You may rest 1 of your DON!! cards: » et « ①: » : le même coût (le traducteur lit les deux en restDon)
   s = s.replace(/\b[Yy]ou may rest ([1-4]) of your DON!! cards?:/g, (_, n: string) => `${'①②③④'[+n - 1]}:`);
+  // C2.4 : « You may rest 1 of your DON!! cards and (rest) this Character / trash ...: » : ① puis le reste du coût
+  // (vieilles cartes : « Rest 1 of your DON!! cards and you may rest this Character: »)
+  s = s.replace(/\b(?:[Yy]ou may )?[Rr]est ([1-4]) of your DON!! cards? and (?:you may )?(?=[^:.]*:)(this (?:Character|Leader|card)\b)?/g,
+    (_, n: string, self?: string) => `${'①②③④'[+n - 1]}: You may ${self ? `rest ${self}` : ''}`);
+  // C2.4 : « add up to 1 DON!! card as rested from your DON!! deck » (EB05, OP17) et « ... from your DON!! deck and rest
+  // it » : le même effet (le traducteur lit les deux en addDon)
+  s = s.replace(/\b([Aa]dd (?:up to )?(\d+) DON!! cards?) as (active|rested) from your DON!! deck\b/g,
+    (_, head: string, n: string, st: string) => `${head} from your DON!! deck and ${st === 'active' ? 'set' : 'rest'} ${n === '1' ? 'it' : 'them'}${st === 'active' ? ' as active' : ''}`);
   s = s.replace(/\[([^\]]+)\]/g, (_, tag: string) => {
     let m: RegExpMatchArray | null;
     if (EN_TAGS[tag]) add('moment', EN_TAGS[tag]);

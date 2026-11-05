@@ -13,7 +13,8 @@
 // Point d'entrée sûr : cards/index.ts d'abord (les fichiers de cartes et le moteur s'importent l'un l'autre).
 import '../cards/index.ts';
 import * as B from '../cards/bricks.ts';
-import { addMod, allField, def, donOnField, findField, log, other, untilOpponentsNextEnd } from '../rules.ts';
+import * as D from '../cards/bricks-don.ts';
+import { addMod, allField, attachedDon, def, donOnField, findField, log, other, untilOpponentsNextEnd } from '../rules.ts';
 import type { CardBehavior, Category, EffectCtx, FieldCard, GameState, PlayerId } from '../types.ts';
 import type {
   Ability, Action, Cmp, Cmp2, Cond, CostPart, Duration, Filter, ManualCode, Recipe, Step, Target,
@@ -146,6 +147,12 @@ class Compiler {
       case 'hand': return (s, p) => cmp(s.players[c.side === 'own' ? p : other(p)].hand.length, c.cmp, c.n);
       case 'donField': return (s, p) => cmp(donOnField(s, c.side === 'own' ? p : other(p)), c.cmp, c.n);
       case 'donVsOpp': return (s, p) => cmp2(donOnField(s, p), c.cmp, donOnField(s, other(p)));
+      // C2.4 : DON!! redressées ou épuisées de la zone de Coût, ou données (Leader et Personnages)
+      case 'donCards': return (s, p) => {
+        const q = c.side === 'own' ? p : other(p);
+        const P = s.players[q];
+        return cmp(c.what === 'active' ? P.donActive : c.what === 'rested' ? P.donRested : attachedDon(s, q), c.cmp, c.n);
+      };
       case 'trash': {
         const spec = c.filter ? this.spec(c.filter, 'card') : undefined;
         return (s, p) => cmp(spec ? s.players[p].trash.filter((x) => B.cardMatches(x.num, spec)).length : s.players[p].trash.length, c.cmp, c.n);
@@ -205,6 +212,7 @@ class Compiler {
         if (c.what === 'characters') return B.restCost(c.n, 'characters', c.filter ? this.spec(c.filter, 'field') : undefined);
         return this.no(`coût restOwn ${c.what}${c.filter ? ' filtré' : ''}`, none);
       case 'giveDon':
+        if (c.from === 'opp') return D.giveOppRestedDonCost(this.targets(c.target, 'coût giveDon'), c.n);
         if (c.n !== 1) return this.no('coût giveDon plusieurs', none);
         return B.giveActiveDon(this.targets(c.target, 'coût giveDon'));
       case 'trashToBottom': return B.trashToBottomCost(c.n, c.filter ? this.spec(c.filter, 'card') : {});
@@ -334,10 +342,17 @@ class Compiler {
       case 'readyDon': return B.readyDon(a.n);
       case 'giveDon':
         if (!a.rested) return this.no(`${k} : DON!! redressées`, NOTHING);
+        if (!a.upTo) return this.no(`${k} : sans « jusqu'à »`, NOTHING);
         if (a.target.count !== 1) return this.no(`${k} : plusieurs cartes`, NOTHING);
+        if (a.target.self) return a.from ? this.no(`${k} : soi-même, DON!! adverses`, NOTHING) : D.giveDonToSelf(a.n);
+        // DON!! adverses (à une carte adverse) ou du propriétaire de la carte choisie : brique d'OP15 (Krieg, Buggy)
+        if (a.from) return B.giveRestedDonToOwner(this.targets(a.target, k), a.n, src);
         return B.giveDon(this.targets(a.target, k), a.n, src);
-      case 'returnDon': return this.no(`${k} ${a.side}`, NOTHING);
-      case 'restDon': return this.no(`${k} ${a.side}`, NOTHING);
+      case 'returnDon': return a.side === 'own' ? D.returnOwnDon(a.n, src) : D.returnOppDon(a.n, src);
+      case 'restDon':
+        if (a.side === 'own') return a.orCharacters ? this.no(`${k} : les siennes ou des Personnages`, NOTHING) : D.restOwnDon(a.n, src);
+        if (!a.orCharacters) return D.restOppDon(a.n, src);
+        return B.restOppCards(a.n, src, { don: true, spec: this.spec(a.orCharacters, 'field') });
       case 'lifeFromDeck':
         if (a.n !== 1 || a.faceUp) return this.no(`${k} : ${a.faceUp ? 'face visible' : 'plusieurs'}`, NOTHING);
         return B.lifeFromDeck();
