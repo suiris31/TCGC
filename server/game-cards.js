@@ -8,7 +8,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import sharp from 'sharp';
 import { fetchCatalog } from '../game/data/catalog.ts';
-import { CARDS, loadCardData, missingCards, neededCards, playableCards } from '../game/engine/cards/index.ts';
+import { CARDS, loadCardData, missingCards, neededCards, playableCards, waitingCards } from '../game/engine/cards/index.ts';
 import { config } from './config.js';
 import { ENGINE } from './version.js';
 
@@ -43,7 +43,8 @@ function use(catalog) {
     [...new Set([card, ...(card.versions ?? [])].filter((v) => v.lang === 'en').map((v) => v.imageId))]]));
   const needed = neededCards();
   ready = {
-    ...packed({ engine: ENGINE, cards: Object.fromEntries(playableCards().map((n) => [n, catalog.cards[n]])) }),
+    // waiting : numéros des cartes pas encore jouables (l'import d'une liste les nomme, sans leurs informations)
+    ...packed({ engine: ENGINE, cards: Object.fromEntries(playableCards().map((n) => [n, catalog.cards[n]])), waiting: waitingCards() }),
     legacy: packed(Object.fromEntries(needed.map((n) => [n, legacyCard(CARDS[n])]))),
     fetchedAt: Date.parse(catalog.fetchedAt) || 0,
   };

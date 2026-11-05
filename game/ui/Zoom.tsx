@@ -8,6 +8,7 @@ import type { Preview } from './CardView.tsx';
 import { ArtImg, useCardArt } from './table/CardArt.tsx';
 import { cardOwner } from './table/cardArt.ts';
 import { COLOR_LABEL, KEYWORD_LABEL, attributeLabel } from './labels.ts';
+import { NOT_PLAYABLE } from './texts.ts';
 
 export function EffectText({ text }: { text: string }) {
   const parts = text.split(/(\[[^\]]+\]|<[^>]+>|\{[^}]+\})/g);
@@ -71,7 +72,7 @@ export function CardDetails({ s, num, uid }: { s?: GameState | null; num: string
         <p className="zoom-effect">{d.effect && d.effect !== '-' ? <EffectText text={d.effect} /> : <span className="op-muted">Pas d’effet.</span>}</p>
         {d.trigger && <p className="zoom-effect"><span className="kw">[Déclenchement]</span> <EffectText text={d.trigger} /></p>}
         {d.lang === 'en' && <p className="op-small op-muted">Texte anglais : cette carte n’existe pas en VF.</p>}
-        {d.number !== HIDDEN && cardStatus(d.number) === 'todo' && <p className="op-small op-muted">Effet pas encore géré par le simulateur.</p>}
+        {d.number !== HIDDEN && cardStatus(d.number) === 'todo' && <p className="op-small op-muted" data-ui="zoom.not-playable">{NOT_PLAYABLE[0].toUpperCase() + NOT_PLAYABLE.slice(1)} : son effet n’est pas encore géré par le simulateur.</p>}
         {f && s && (
           <div className="zoom-state">
             <div className="zoom-state-title">En ce moment</div>

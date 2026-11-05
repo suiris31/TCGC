@@ -159,6 +159,12 @@ export interface CharSpec {
   // pas comme absent (8-2-2) : seul le texte imprimé est lu
   vanilla?: boolean;
   donMin?: number;         // « ayant N cartes DON!! données ou plus » (sur le terrain ; hors du terrain : aucune)
+  // Champs ajoutés pour les recettes (étape C, tâche C1.1) ; facultatifs : absents, ils ne changent rien
+  baseCostMin?: number;    // coût de base (imprimé) minimum
+  categories?: CardData['category'][];  // « carte Personnage ou Événement » (l'une des catégories)
+  noKeyword?: Keyword;     // « sans [Bloqueur] »
+  anyOf?: CharSpec[];      // « [A] ou {B} » : au moins une des descriptions
+  allOf?: CharSpec[];      // toutes les descriptions (plusieurs groupes « ou » dans un même filtre)
 }
 
 // Carte sans effet de base (Helmeppo OP03-091)
@@ -181,7 +187,9 @@ function fits(d: CardData, cost: number, pw: number, base: number, rested: boole
     && (spec.attribute === undefined || d.attributes.includes(spec.attribute))
     && (spec.rested === undefined || rested === spec.rested)
     && (spec.trigger === undefined || Boolean(d.triggerEn) === spec.trigger)
-    && (spec.vanilla === undefined || noBaseEffect(d) === spec.vanilla);
+    && (spec.vanilla === undefined || noBaseEffect(d) === spec.vanilla)
+    && (spec.baseCostMin === undefined || (d.cost ?? 0) >= spec.baseCostMin)
+    && (spec.categories === undefined || spec.categories.includes(d.category));
 }
 
 export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
@@ -190,7 +198,10 @@ export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
   const cost = f && !f.leader ? fieldCost(s, c.uid) : d.cost ?? 0;
   return fits(d, cost, f ? power(s, c.uid) : d.power ?? 0, f ? basePower(s, c.uid) : d.power ?? 0, c.rested, spec)
     && (spec.keyword === undefined || (f ? hasKeyword(s, f.player, c, spec.keyword) : d.keywords.includes(spec.keyword)))
-    && (spec.donMin === undefined || (f ? c.don : 0) >= spec.donMin);
+    && (spec.noKeyword === undefined || !(f ? hasKeyword(s, f.player, c, spec.noKeyword) : d.keywords.includes(spec.noKeyword)))
+    && (spec.donMin === undefined || (f ? c.don : 0) >= spec.donMin)
+    && (spec.anyOf === undefined || spec.anyOf.some((x) => matches(s, c, x)))
+    && (spec.allOf === undefined || spec.allOf.every((x) => matches(s, c, x)));
 }
 
 // Même chose pour une carte hors du terrain (main, deck, Défausse)
@@ -198,7 +209,10 @@ export function cardMatches(num: string, spec: CharSpec & { category?: CardData[
   const d = def(num);
   return (spec.category === undefined || d.category === spec.category) && fits(d, d.cost ?? 0, d.power ?? 0, d.power ?? 0, undefined, { ...spec, rested: undefined })
     && (spec.keyword === undefined || d.keywords.includes(spec.keyword))
-    && (spec.donMin === undefined || spec.donMin <= 0);
+    && (spec.noKeyword === undefined || !d.keywords.includes(spec.noKeyword))
+    && (spec.donMin === undefined || spec.donMin <= 0)
+    && (spec.anyOf === undefined || spec.anyOf.some((x) => cardMatches(num, x)))
+    && (spec.allOf === undefined || spec.allOf.every((x) => cardMatches(num, x)));
 }
 
 // Libellé VF d'un type de la VO, d'après les cartes chargées (« Navy » -> « Marine »)
@@ -233,6 +247,7 @@ const KEYWORD_FR: Record<Keyword, string> = {
 };
 const ATTRIBUTE_FR: Record<string, string> = { Slash: 'Tranche', Strike: 'Frappe', Ranged: 'Distance', Special: 'Spécial', Wisdom: 'Sagesse' };
 const COLOR_FR: Record<Color, string> = { Red: 'rouge', Green: 'vert', Blue: 'bleu', Purple: 'violet', Black: 'noir', Yellow: 'jaune' };
+const CATEGORY_FR: Record<CardData['category'], string> = { LEADER: 'Leader', CHARACTER: 'Personnage', EVENT: 'Événement', STAGE: 'Lieu' };
 
 // « Personnage adverse de type {Marine} de coût 4 ou moins »
 export function describeSpec(what: string, spec: CharSpec): string {
@@ -262,6 +277,12 @@ export function describeSpec(what: string, spec: CharSpec): string {
   if (spec.keyword) parts.push(`ayant [${KEYWORD_FR[spec.keyword]}]`);
   if (spec.vanilla) parts.push('sans effet de base');
   if (spec.donMin !== undefined) parts.push(spec.donMin === 1 ? 'ayant au moins 1 DON!! donnée' : `ayant ${spec.donMin} DON!! données ou plus`);
+  // champs des recettes (C1.1) : absents des cartes codées à la main, leur libellé ne change pas
+  if (spec.baseCostMin !== undefined) parts.push(`de coût de base ${spec.baseCostMin} ou plus`);
+  if (spec.categories) parts.push(`(${spec.categories.map((c) => CATEGORY_FR[c]).join(' ou ')})`);
+  if (spec.noKeyword) parts.push(`sans [${KEYWORD_FR[spec.noKeyword]}]`);
+  if (spec.anyOf) parts.push(`(${spec.anyOf.map((x) => describeSpec('', x).trim()).join(' ou ')})`);
+  if (spec.allOf) parts.push(...spec.allOf.map((x) => describeSpec('', x).trim()));
   return parts.join(' ');
 }
 
