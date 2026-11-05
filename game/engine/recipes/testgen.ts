@@ -841,7 +841,8 @@ export function generateCases(r: Recipe): { cases: GenCase[]; uncovered: string[
     for (const ref of condsOf(ab)) add(`condition ${ref.id + 1} (${ref.cond.kind}) fausse`, { falseCond: ref.id });
     if (hasTargets(ab)) add('cible absente (leurres seulement)', { absent: true });
     if (hasUpTo(ab)) add('« jusqu’à » : aucune cible choisie', { none: true });
-    if (ab.cost?.length) add('coût refusé', { refuse: true });
+    // [Activation : Principale] : activer, c'est payer (le moteur ne pose pas de question) ; ne pas payer = ne pas activer
+    if (ab.cost?.length) { if (timing !== 'activateMain') add('coût refusé', { refuse: true }); }
     else if (hasMay(ab.steps)) add('effet facultatif refusé', { refuse: true });
   }
   return { cases, uncovered };

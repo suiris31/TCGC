@@ -4,7 +4,7 @@
 // Rien ici ne s'exécute pendant une partie : ce sont des outils de développement. Les rapports peuvent montrer le texte
 // officiel à l'écran (pour la relecture), mais rien de ce qui est ÉCRIT dans le dépôt n'en contient : les recettes sont
 // des structures, les tournures inconnues sont normalisées par le traducteur (01-contrats.md § 15.4 et § 15.8).
-import { CARDS, cardStatus, HIDDEN } from '../../game/engine/cards/index.ts';
+import { CARDS, genericOnly, handCoded, HIDDEN } from '../../game/engine/cards/index.ts';
 import { parseCard } from '../../game/engine/recipes/parse/index.ts';
 import { RECIPE_SETS } from '../../game/engine/recipes/sets/index.ts';
 import { SET_ORDER, SET_TASKS, setOf, taskOfSet } from '../../game/engine/recipes/sets/ORDER.ts';
@@ -47,14 +47,14 @@ export function recipeIndex(): Map<string, IndexedEntry> {
 }
 
 // Niveau tel que l'écrivent les fichiers (une entrée l'emporte : un doute « handCoded » rend la carte non jouable),
-// sinon l'ancien statut. Le jeu, lui, lit confidence() (C1.1) : les deux doivent finir par coïncider.
+// puis le code à la main (handCoded : cardStatus compte aussi une recette vérifiée comme 'coded'), puis la recette, sinon
+// 'auto' ou 'todo'. Le jeu, lui, lit confidence() (C1.1) : il en diffère pour une recette qui ne se compile pas.
 export function fileLevel(num: string, index: Map<string, IndexedEntry>): 'coded' | 'auto' | 'todo' | RecipeEntry['level'] {
   const e = index.get(num)?.entry;
   if (e?.level === 'doubt') return 'doubt';
-  const status = cardStatus(num);
-  if (status === 'coded') return 'coded';
+  if (handCoded(num)) return 'coded';
   if (e) return e.level;
-  return status;
+  return genericOnly(num) ? 'auto' : 'todo';
 }
 
 // ---------- Réimpressions ----------
@@ -100,7 +100,7 @@ export function findReprint(others: string[], index: Map<string, IndexedEntry>):
   const withRecipe = others.map((n) => ({ n, e: index.get(n)?.entry })).filter((x) => x.e?.recipe)
     .sort((a, b) => rank[a.e!.level] - rank[b.e!.level] || a.n.localeCompare(b.n));
   if (withRecipe.length) return { kind: 'recipe', from: withRecipe[0]!.n, entry: withRecipe[0]!.e! };
-  const coded = others.find((n) => cardStatus(n) === 'coded');
+  const coded = others.find((n) => handCoded(n));
   return coded ? { kind: 'coded', from: coded } : null;
 }
 
