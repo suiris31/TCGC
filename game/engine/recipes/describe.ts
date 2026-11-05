@@ -200,7 +200,9 @@ function enCond(c: Cond, ctx: Ctx): string {
     case 'life':
       if (c.side === 'total') return `you and your opponent have a total of ${enCmp(c.n, c.cmp)} Life cards`;
       return `${c.side === 'own' ? 'you have' : 'your opponent has'} ${enCmp(c.n, c.cmp)} Life cards`;
-    case 'lifeVsOpp': return `you have ${c.cmp === 'lt' ? 'less' : c.cmp === 'gt' ? 'more' : c.cmp === 'le' ? 'equal to or less' : 'equal to or more'} Life cards than your opponent`;
+    case 'lifeVsOpp':
+      if (c.cmp === 'le' || c.cmp === 'ge') return `the number of your Life cards is equal to or ${c.cmp === 'le' ? 'less' : 'more'} than the number of your opponent's Life cards`;
+      return `you have ${c.cmp === 'lt' ? 'less' : 'more'} Life cards than your opponent`;
     case 'hand': return c.side === 'own' ? `you have ${enCmp(c.n, c.cmp)} cards in your hand` : `your opponent has ${enCmp(c.n, c.cmp)} cards in their hand`;
     case 'donField': return c.side === 'own' ? `you have ${enCmp(c.n, c.cmp)} DON!! cards on your field` : `your opponent has ${enCmp(c.n, c.cmp)} DON!! cards on their field`;
     case 'donVsOpp':
@@ -324,17 +326,24 @@ function enAction(a: Action, ctx: Ctx): string {
       : `Return ${a.n} DON!! ${a.n === 1 ? 'card' : 'cards'} from your field to your DON!! deck`;
     case 'restDon': return a.side === 'opp' ? `Rest up to ${a.n} of your opponent's DON!! cards` : `Rest ${a.n} of your DON!! cards`;
     case 'lifeFromDeck': return `Add ${a.upTo ? 'up to ' : ''}${enCount(a.n, 'card', 'cards')} from the top of your deck to the top of your Life cards${a.faceUp ? ' face-up' : ''}`;
-    case 'lifeToHand': return a.side === 'own'
-      ? `Add ${enCount(a.n, 'card', 'cards')} from the ${a.from === 'top' ? 'top' : 'top or bottom'} of your Life cards to your hand`
-      : `Add ${enCount(a.n, 'card', 'cards')} from the ${a.from === 'top' ? 'top' : 'top or bottom'} of your opponent's Life cards to the owner's hand`;
-    case 'trashLife': return `Trash ${enCount(a.n, 'card', 'cards')} from the ${a.from === 'top' ? 'top' : 'top or bottom'} of ${a.side === 'own' ? 'your' : "your opponent's"} Life cards`;
+    case 'lifeToHand': {
+      const end = a.from === 'top' ? 'top' : 'top or bottom';
+      if (a.side === 'own') return `Add ${a.upTo ? 'up to ' : ''}${enCount(a.n, 'card', 'cards')} from the ${end} of your Life cards to your hand`;
+      // sans « up to » : « Your opponent adds ... » (C2.5)
+      return a.upTo ? `Add up to ${enCount(a.n, 'card', 'cards')} from the ${end} of your opponent's Life cards to the owner's hand`
+        : `Your opponent adds ${enCount(a.n, 'card', 'cards')} from the ${end} of their Life cards to their hand`;
+    }
+    case 'trashLife': return `Trash ${a.upTo ? 'up to ' : ''}${enCount(a.n, 'card', 'cards')} from the ${a.from === 'top' ? 'top' : 'top or bottom'} of ${a.side === 'own' ? 'your' : "your opponent's"} Life cards`;
     case 'lookLife': {
       const whose = a.side === 'own' ? 'your' : a.side === 'opp' ? "your opponent's" : "your or your opponent's";
       return `Look at up to 1 card from the top of ${whose} Life cards${a.arrange ? ', and place it at the top or bottom of the Life cards' : ''}`;
     }
     case 'handToBottom': return `Place ${enCount(a.n, 'card', 'cards')} from your hand at the bottom of your deck in any order`;
     case 'oppHandToBottom': return `Your opponent places ${enCount(a.n, 'card', 'cards')} from their hand at the bottom of their deck in any order`;
-    case 'handToLife': return `Add ${a.upTo ? 'up to ' : ''}${a.n} ${enCards(a.n, a.filter)} from your hand to the top of your Life cards`;
+    case 'handToLife': return `Add ${a.upTo ? 'up to ' : ''}${a.n} ${enCards(a.n, a.filter)} from your hand to the top of your Life cards${a.faceUp ? ' face-up' : ''}`;
+    case 'noLifeToHand': return 'You cannot add Life cards to your hand using your own effects during this turn';
+    case 'reorderLife': return a.side === 'own' ? 'Look at all of your Life cards and place them back in your Life area in any order'
+      : "Look at all of your opponent's Life cards and place them back in their Life area in any order";
     case 'noCharsThisTurn': return `You cannot play Character cards${a.what === 'playByEffect' ? ' by effects' : ''} during this turn`;
     case 'trashSelfEnd': return `Trash ${EN_SELF[ctx.self]} at the end of this turn`;
     case 'oppChooses': {
@@ -556,7 +565,9 @@ function frCond(c: Cond, ctx: Ctx): string {
     case 'life':
       if (c.side === 'total') return `vous et votre adversaire avez ${frCmp(c.n, c.cmp)} cartes de Vie au total`;
       return `${c.side === 'own' ? 'vous avez' : 'votre adversaire a'} ${frCmp(c.n, c.cmp)} cartes de Vie`;
-    case 'lifeVsOpp': return `vous avez ${c.cmp === 'lt' ? 'moins' : c.cmp === 'gt' ? 'plus' : c.cmp === 'le' ? 'autant ou moins' : 'autant ou plus'} de cartes de Vie que votre adversaire`;
+    case 'lifeVsOpp':
+      if (c.cmp === 'le' || c.cmp === 'ge') return `le nombre de vos cartes de Vie est ${c.cmp === 'le' ? 'inférieur' : 'supérieur'} ou égal au nombre de cartes de Vie de votre adversaire`;
+      return `vous avez ${c.cmp === 'lt' ? 'moins' : 'plus'} de cartes de Vie que votre adversaire`;
     case 'hand': return c.side === 'own' ? `vous avez ${frCmp(c.n, c.cmp)} cartes en main` : `votre adversaire a ${frCmp(c.n, c.cmp)} cartes en main`;
     case 'donField': return c.side === 'own' ? `vous avez ${frCmp(c.n, c.cmp)} cartes DON!! sur votre terrain` : `votre adversaire a ${frCmp(c.n, c.cmp)} cartes DON!! sur son terrain`;
     case 'donVsOpp':
@@ -672,17 +683,24 @@ function frAction(a: Action, ctx: Ctx): string {
       : `Renvoyez ${a.n} carte${a.n > 1 ? 's' : ''} DON!! de votre terrain dans votre deck DON!!`;
     case 'restDon': return a.side === 'opp' ? `Épuisez jusqu'à ${a.n} cartes DON!! adverses` : `Épuisez ${a.n} de vos cartes DON!!`;
     case 'lifeFromDeck': return `Ajoutez au-dessus de votre Vie ${a.upTo ? "jusqu'à " : ''}${cartes(a.n)} du dessus de votre deck${a.faceUp ? ', face visible' : ''}`;
-    case 'lifeToHand': return a.side === 'own'
-      ? `Ajoutez à votre main ${cartes(a.n)} du ${a.from === 'top' ? 'dessus' : 'dessus ou du dessous'} de votre Vie`
-      : `Ajoutez à la main de son propriétaire ${cartes(a.n)} du ${a.from === 'top' ? 'dessus' : 'dessus ou du dessous'} de la Vie adverse`;
-    case 'trashLife': return `Placez dans la Défausse ${cartes(a.n)} du ${a.from === 'top' ? 'dessus' : 'dessus ou du dessous'} ${a.side === 'own' ? 'de votre Vie' : 'de la Vie adverse'}`;
+    case 'lifeToHand': {
+      const end = a.from === 'top' ? 'dessus' : 'dessus ou du dessous';
+      const upTo = a.upTo ? "jusqu'à " : '';
+      if (a.side === 'own') return `Ajoutez à votre main ${upTo}${cartes(a.n)} du ${end} de votre Vie`;
+      return a.upTo ? `Ajoutez à la main de son propriétaire ${upTo}${cartes(a.n)} du ${end} de la Vie adverse`
+        : `Votre adversaire ajoute à sa main ${cartes(a.n)} du ${end} de sa Vie`;
+    }
+    case 'trashLife': return `Placez dans la Défausse ${a.upTo ? "jusqu'à " : ''}${cartes(a.n)} du ${a.from === 'top' ? 'dessus' : 'dessus ou du dessous'} ${a.side === 'own' ? 'de votre Vie' : 'de la Vie adverse'}`;
     case 'lookLife': {
       const whose = a.side === 'own' ? 'de votre Vie' : a.side === 'opp' ? 'de la Vie adverse' : 'de votre Vie ou de la Vie adverse';
       return `Regardez jusqu'à 1 carte du dessus ${whose}${a.arrange ? ' et placez-la au-dessus ou au-dessous de la Vie' : ''}`;
     }
     case 'handToBottom': return `Placez ${cartes(a.n)} de votre main au-dessous de votre deck dans l'ordre de votre choix`;
     case 'oppHandToBottom': return `Votre adversaire place ${cartes(a.n)} de sa main au-dessous de son deck dans l'ordre de son choix`;
-    case 'handToLife': return `Ajoutez au-dessus de votre Vie ${a.upTo ? "jusqu'à " : ''}${a.n} ${frCards(a.n, a.filter, ctx)} de votre main`;
+    case 'handToLife': return `Ajoutez au-dessus de votre Vie ${a.upTo ? "jusqu'à " : ''}${a.n} ${frCards(a.n, a.filter, ctx)} de votre main${a.faceUp ? ', face visible' : ''}`;
+    case 'noLifeToHand': return 'Vous ne pouvez pas ajouter de cartes de Vie à votre main avec vos propres effets pour tout le tour';
+    case 'reorderLife': return a.side === 'own' ? "Regardez toutes vos cartes de Vie et replacez-les dans votre zone de Vie dans l'ordre de votre choix"
+      : "Regardez toutes les cartes de Vie de votre adversaire et replacez-les dans sa zone de Vie dans l'ordre de votre choix";
     case 'noCharsThisTurn': return `Vous ne pouvez pas jouer de cartes Personnage${a.what === 'playByEffect' ? ' par des effets' : ''} pour tout le tour`;
     case 'trashSelfEnd': return `À la fin de ce tour, placez ${FR_SELF[ctx.self]} dans votre Défausse`;
     case 'oppChooses': {

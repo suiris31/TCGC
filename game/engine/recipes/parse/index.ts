@@ -11,11 +11,13 @@
 import type { Recipe } from '../types.ts';
 import { normalize, reportLine } from './normalize.ts';
 import { analyzeCard, isStructural, type Family } from './structure.ts';
+import { LIFE } from './life.ts';
 
 export type { Family, Helpers, Rule, Continuation } from './structure.ts';
 
 // Familles de règles, dans l'ordre où elles sont essayées (vide tant que la vague C2 n'est pas fusionnée)
 export const FAMILIES: Family[] = [
+  LIFE,
 ];
 
 // ok : recette sans reste ; sinon, la recette partielle (ce qui est compris) et les morceaux non compris, normalisés

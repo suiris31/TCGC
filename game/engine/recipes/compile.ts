@@ -13,6 +13,7 @@
 // Point d'entrée sûr : cards/index.ts d'abord (les fichiers de cartes et le moteur s'importent l'un l'autre).
 import '../cards/index.ts';
 import * as B from '../cards/bricks.ts';
+import * as L from '../cards/bricks-life.ts';
 import { addMod, allField, def, donOnField, findField, log, other, untilOpponentsNextEnd } from '../rules.ts';
 import type { CardBehavior, Category, EffectCtx, FieldCard, GameState, PlayerId } from '../types.ts';
 import type {
@@ -338,19 +339,24 @@ class Compiler {
         return B.giveDon(this.targets(a.target, k), a.n, src);
       case 'returnDon': return this.no(`${k} ${a.side}`, NOTHING);
       case 'restDon': return this.no(`${k} ${a.side}`, NOTHING);
+      // Vie (C2.5) : les briques de bricks.ts quand elles disent exactement la même chose (mêmes questions que les
+      // cartes codées à la main), sinon celles de bricks-life.ts. « Jusqu'à N » cartes du deck vers la Vie, ou de la Vie
+      // adverse : sans question (interprétation 381 et n° 1820)
       case 'lifeFromDeck':
-        if (a.n !== 1 || a.faceUp) return this.no(`${k} : ${a.faceUp ? 'face visible' : 'plusieurs'}`, NOTHING);
-        return B.lifeFromDeck();
+        return a.n === 1 && !a.faceUp ? B.lifeFromDeck() : L.lifeFromDeckN(a.n, Boolean(a.faceUp), src);
       case 'lifeToHand':
-        if (a.n !== 1 || a.from !== 'top') return this.no(`${k} : ${a.n !== 1 ? 'plusieurs' : 'dessus ou dessous'}`, NOTHING);
-        return a.side === 'own' ? B.lifeIntoHand('top') : B.oppLifeToHand();
+        if (a.side === 'opp' && a.n === 1 && a.from === 'top') return B.oppLifeToHand();
+        if (a.side === 'own' && a.n === 1 && a.from === 'top' && !a.upTo) return B.lifeIntoHand('top');
+        return L.lifeToHandN(a.side, a.n, a.from, Boolean(a.upTo), src);
       case 'trashLife':
-        if (a.side !== 'opp' || a.from !== 'top') return this.no(`${k} : ${a.side === 'opp' ? 'dessus ou dessous' : 'sa propre Vie'}`, NOTHING);
-        return B.trashOppLife(a.n);
+        if (a.side === 'opp' && a.from === 'top') return B.trashOppLife(a.n);
+        return L.trashLifeN(a.side, a.n, a.from, Boolean(a.upTo), src);
       case 'lookLife': return a.side === 'any' && a.arrange ? B.lookLifeArrange(src) : this.no(`${k} ${a.side}${a.arrange ? '' : ' sans ranger'}`, NOTHING);
+      case 'noLifeToHand': return L.noLifeToHandThisTurn(src);
+      case 'reorderLife': return L.reorderLife(a.side, src);
       case 'handToBottom': return B.handToBottom(a.n, src);
       case 'oppHandToBottom': return B.oppHandToBottom(a.n, src);
-      case 'handToLife': return this.no(k, NOTHING);
+      case 'handToLife': return L.handToLifeN(a.n, this.spec(a.filter, 'card'), Boolean(a.faceUp), a.upTo, src);
       case 'noCharsThisTurn': return a.what === 'play' ? B.noCharactersThisTurn(src) : this.no(`${k} ${a.what}`, NOTHING);
       case 'trashSelfEnd': return B.trashAtEndOfTurn(src);
       case 'oppChooses': return this.no(`${k} ${a.action}`, NOTHING);
@@ -610,7 +616,11 @@ function actionLabel(a: Action, label: (t: Target) => string): string | null {
     case 'trashToHand': return 'Reprendre une carte de la Défausse';
     case 'addDon': return `Ajouter ${plural(a.n, 'DON!!')}`;
     case 'giveDon': return `Donner ${plural(a.n, 'DON!!')}`;
-    case 'lifeFromDeck': return 'Ajouter une carte à la Vie';
+    case 'lifeFromDeck': return a.n > 1 ? `Ajouter ${plural(a.n, 'carte')} à la Vie` : 'Ajouter une carte à la Vie';
+    case 'lifeToHand': return a.side === 'own' ? 'Prendre une carte de sa Vie en main' : 'Ajouter à sa main une carte de la Vie adverse';
+    case 'trashLife': return a.side === 'own' ? 'Placer une carte de sa Vie dans la Défausse' : 'Placer une carte de la Vie adverse dans sa Défausse';
+    case 'handToLife': return 'Placer une carte de sa main dans sa Vie';
+    case 'reorderLife': return a.side === 'own' ? 'Remettre sa Vie dans l’ordre' : 'Remettre la Vie adverse dans l’ordre';
     default: return null;
   }
 }

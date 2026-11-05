@@ -158,12 +158,17 @@ export type Action =
   | { kind: 'returnDon'; n: number; side: 'own' | 'opp' }   // renvoyer N DON!! au deck DON!!
   | { kind: 'restDon'; n: number; side: 'own' | 'opp' }
   | { kind: 'lifeFromDeck'; n: number; upTo: boolean; faceUp?: boolean }
-  | { kind: 'lifeToHand'; n: number; side: 'own' | 'opp'; from: 'top' | 'topOrBottom' }
-  | { kind: 'trashLife'; n: number; side: 'own' | 'opp'; from: 'top' | 'topOrBottom' }
+  // upTo (C2.5) : « jusqu'à N » ; side 'opp' sans upTo : « votre adversaire ajoute à sa main ... »
+  | { kind: 'lifeToHand'; n: number; side: 'own' | 'opp'; from: 'top' | 'topOrBottom'; upTo?: boolean }
+  | { kind: 'trashLife'; n: number; side: 'own' | 'opp'; from: 'top' | 'topOrBottom'; upTo?: boolean }
   | { kind: 'lookLife'; side: Side; arrange: boolean }
   | { kind: 'handToBottom'; n: number }
   | { kind: 'oppHandToBottom'; n: number }
-  | { kind: 'handToLife'; n: number; upTo: boolean; filter: Filter }
+  | { kind: 'handToLife'; n: number; upTo: boolean; filter: Filter; faceUp?: boolean }   // faceUp : C2.5
+  // C2.5 : « vous ne pouvez pas ajouter de carte de Vie à votre main par vos propres effets pour tout le tour »
+  | { kind: 'noLifeToHand' }
+  // C2.5 : « regardez toutes vos cartes de Vie (de votre adversaire) et replacez-les dans l'ordre de votre choix »
+  | { kind: 'reorderLife'; side: 'own' | 'opp' }
   | { kind: 'noCharsThisTurn'; what: 'play' | 'playByEffect' }
   | { kind: 'trashSelfEnd' }                                // « trash this Character at the end of this turn »
   | { kind: 'oppChooses'; n: number; action: 'ko' | 'trash' | 'bounce' | 'rest'; filter: Filter }

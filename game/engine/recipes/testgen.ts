@@ -265,10 +265,11 @@ function knob(d: Draft, c: CaseCtx, cond: Cond, want: boolean): boolean {
   const value = (cmp: 'le' | 'ge' | 'eq', n: number) => (want ? n : cmp === 'ge' ? n - 1 : n + 1);
   switch (cond.kind) {
     case 'life': {
-      if (cond.side === 'total') return false;
       const v = value(cond.cmp, cond.n);
       if (v < 0) return false;
-      d.lifeFill[own(cond.side)] = v;
+      // total des deux Vies (C2.5) : partagé entre les deux joueurs
+      if (cond.side === 'total') d.lifeFill = [Math.ceil(v / 2), Math.floor(v / 2)];
+      else d.lifeFill[own(cond.side)] = v;
       return true;
     }
     case 'lifeVsOpp': {
@@ -423,6 +424,7 @@ interface Model {
   free: Set<string>;        // mesures que le modèle ne sait pas prédire exactement
   unchecked: string[];      // morceaux de la recette que le modèle ne connaît pas
   touched: Set<number>;     // cartes visées par l'effet (un leurre visé ailleurs n'est plus un leurre)
+  noLifeToHand?: boolean;   // « vous ne pouvez pas ajouter de carte de Vie à votre main ... » (C2.5)
   truth: Map<number, boolean | null>;
   variant: Variant;
 }
@@ -463,7 +465,7 @@ function evalCond(m: Model, cond: Cond): boolean | null {
   switch (cond.kind) {
     case 'leaderIs': case 'leaderType': case 'leaderTypeIncludes': case 'leaderColor': case 'leaderAttribute':
       return evalLeader(cond, m.sides[0].leader.num);
-    case 'life': return cond.side === 'total' ? null : cmp(S(cond.side).life.length, cond.cmp, cond.n);
+    case 'life': return cmp(cond.side === 'total' ? m.sides[0].life.length + m.sides[1].life.length : S(cond.side).life.length, cond.cmp, cond.n);
     case 'lifeVsOpp': {
       const a = m.sides[0].life.length;
       const b = m.sides[1].life.length;
@@ -636,7 +638,9 @@ function apply(m: Model, a: Action): boolean {
     case 'lifeFromDeck': { const k = n0(a.n, me.deck.length); me.life.unshift(...me.deck.splice(0, k)); return k > 0; }
     case 'lifeToHand': case 'trashLife': {
       const P = S(a.side);
-      const k = n0(a.n, P.life.length);
+      // « jusqu'à N » de sa propre Vie : le joueur peut s'arrêter (C2.5) ; la Vie adverse : sans question (n° 381)
+      const blocked = a.kind === 'lifeToHand' && a.side === 'own' && m.noLifeToHand;
+      const k = blocked || (m.variant.none && a.upTo && a.side === 'own') ? 0 : n0(a.n, P.life.length);
       const cards = P.life.splice(0, k);
       (a.kind === 'lifeToHand' ? P.hand : P.trash).push(...cards);
       return k > 0;
@@ -649,6 +653,9 @@ function apply(m: Model, a: Action): boolean {
       for (const c of list.slice(0, k)) { me.hand.splice(me.hand.indexOf(c), 1); me.life.unshift(c); m.touched.add(c.uid); }
       return k > 0;
     }
+    // rien qui se compte (C2.5) : une interdiction pour le tour, l'ordre de la Vie
+    case 'noLifeToHand': m.noLifeToHand = true; return true;
+    case 'reorderLife': return S(a.side).life.length > 0;
     default:
       m.unchecked.push(`action ${a.kind}`);
       return true;
@@ -665,7 +672,10 @@ function payCost(m: Model, parts: CostPart[]): boolean | null {
       case 'donMinus': if (me.donActive + me.donRested + [me.leader, ...me.chars].reduce((s, x) => s + x.don, 0) < c.n) return false; break;
       case 'discard': if (me.hand.filter((x) => !c.filter || fitsFilter(x.num, c.filter)).length < c.n) return false; break;
       case 'trashTop': if (me.deck.length < c.n) return false; break;
-      case 'lifeToHand': if (!me.life.length) return false; break;
+      case 'lifeToHand': if (!me.life.length || m.noLifeToHand) return false; break;
+      case 'trashLife': if (!me.life.length) return false; break;
+      // le banc pose la Vie face cachée : seul « retourner face visible » se paie
+      case 'flipLife': if (!c.faceUp || !me.life.length) return false; break;
       case 'restSelf': if (!selfOnField || selfOnField.rested) return false; break;
       case 'trashSelf': if (!selfOnField || selfOnField === me.leader) return false; break;
       default: m.unchecked.push(`coût ${c.kind}`); return null;
@@ -683,6 +693,7 @@ function payCost(m: Model, parts: CostPart[]): boolean | null {
       }
       case 'trashTop': me.trash.push(...me.deck.splice(0, c.n)); break;
       case 'lifeToHand': me.hand.push(...me.life.splice(0, 1)); break;
+      case 'trashLife': me.trash.push(...me.life.splice(0, 1)); break;
       case 'restSelf': selfOnField!.rested = true; break;
       case 'trashSelf': removeFromField(m, 0, selfOnField!, 'trash'); break;
       default:
