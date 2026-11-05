@@ -723,6 +723,14 @@ Cartes de Baggy, Krieg et Arlong hors OP03 et ST-01 (`cards/aventure-b.ts`).
 472. **Baggy (ST25-004)** : l'effet peut être activé sans Leader [Baggy] (le coût est payé, rien n'est joué) ; l'IA et
      les aides ne le proposent pas. **Baggy (OP02-058)** : « autre que [Baggy] » exclut toutes les cartes nommées [Baggy].
 
+## Chaîne « nouveau set » (tâche C1.5), choix faits sans validation
+
+1400. **Réimpressions** : deux cartes dont le texte anglais officiel est le même (effet et [Déclenchement], rappels de
+      règle, casse et espaces mis à part) jouent de la même façon. `npm run cards:new` donne à la seconde la recette de
+      la première, au même niveau (une recette vérifiée reste vérifiée, un doute reste un doute) ; le coût, la
+      puissance ou le nom imprimés, eux, restent ceux de chaque carte. Une carte au même texte qu'une carte codée à la
+      main est seulement signalée (le code se reprend à la main).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
