@@ -486,6 +486,7 @@ function evalCond(m: Model, cond: Cond): boolean | null {
       if (!selfCard) return null;
       return (cond.rested === undefined || selfCard.rested === cond.rested) && (cond.donMin === undefined || selfCard.don >= cond.donMin);
     case 'turn': return (m.active === 0) === cond.mine;
+    case 'onlyChars': return m.sides[0].chars.every((c) => fitsFilter(c.num, cond.filter, c));
     case 'and': { const v = cond.all.map((x) => evalCond(m, x)); return v.includes(null) ? null : v.every(Boolean); }
     case 'or': { const v = cond.any.map((x) => evalCond(m, x)); return v.includes(null) ? null : v.some(Boolean); }
     case 'not': { const v = evalCond(m, cond.cond); return v === null ? null : !v; }
@@ -546,6 +547,8 @@ function apply(m: Model, a: Action): boolean {
   const S = (side: 'own' | 'opp') => m.sides[side === 'own' ? 0 : 1];
   const t = fieldTarget(a);
   if (t && t.stage) { m.unchecked.push(`${a.kind} sur un Lieu`); return true; }
+  // valeurs calculées (C2.6) : le modèle ne les prédit pas
+  if (/"(?:costMaxOf|per)":/.test(JSON.stringify(a))) { m.unchecked.push(`${a.kind} (valeur calculée)`); return true; }
   switch (a.kind) {
     case 'ko': case 'bounce': case 'bottom': case 'trashChar': case 'toLife': {
       const chosen = chooseField(m, a, a.target);
@@ -592,11 +595,13 @@ function apply(m: Model, a: Action): boolean {
       return take.length > 0;
     }
     case 'play': {
-      if (a.from !== 'hand' && a.from !== 'trash') { m.unchecked.push(`play depuis ${a.from}`); return true; }
-      const zone = me[a.from];
-      const list = zone.filter((c) => fitsFilter(c.num, { category: ['CHARACTER'], ...a.filter, rested: undefined }));
+      if (a.from !== 'hand' && a.from !== 'trash' && a.from !== 'handOrTrash') { m.unchecked.push(`play depuis ${a.from}`); return true; }
+      // « main ou Défausse » (C2.6) : le modèle prend d'abord dans la main, puis dans la Défausse
+      const zones = a.from === 'handOrTrash' ? [me.hand, me.trash] : [me[a.from]];
+      const list = zones.flatMap((zone) => zone.filter((c) => fitsFilter(c.num, { category: ['CHARACTER'], ...a.filter, rested: undefined })).map((c) => ({ c, zone })));
       const k = m.variant.none && a.upTo ? 0 : n0(Math.min(a.count, 5 - me.chars.length), list.length);
-      for (const c of list.slice(0, k)) { zone.splice(zone.indexOf(c), 1); me.chars.push({ ...c, rested: Boolean(a.rested) }); m.touched.add(c.uid); }
+      if (a.from === 'handOrTrash' && k > 0 && list.length > 1) m.unchecked.push('play depuis la main ou la Défausse (choix)');
+      for (const { c, zone } of list.slice(0, k)) { zone.splice(zone.indexOf(c), 1); me.chars.push({ ...c, rested: Boolean(a.rested) }); m.touched.add(c.uid); }
       return k > 0;
     }
     case 'trashToHand': case 'trashToBottom': {
@@ -727,6 +732,14 @@ function simulate(m: Model, ab: Ability): void {
   if (ab.yourTurn && m.active !== 0) return;
   if (ab.oppTurn && m.active === 0) return;
   if (ab.cost?.length) {
+    // convention n° 1000 (C1.1) : le coût n'est proposé que si l'effet peut servir. Le modèle essaie l'effet sur une
+    // copie : s'il ne change rien, rien n'est payé (C2.6 : un coût suivi d'un « jouez jusqu'à 1 » sans carte à jouer)
+    // (« jusqu'à » : la copie choisit des cibles ; ne rien choisir se décide après avoir payé)
+    const trial: Model = structuredClone(m);
+    trial.variant = { ...trial.variant, none: false };
+    const before = JSON.stringify(trial.sides);
+    runSteps(trial, ab.steps);
+    if (JSON.stringify(trial.sides) === before && trial.unchecked.length === m.unchecked.length) return;
     const paid = payCost(m, ab.cost);
     if (paid === null) return;
     if (!paid) return;

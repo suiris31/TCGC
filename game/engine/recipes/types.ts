@@ -42,6 +42,8 @@ export interface Filter {
   noKeyword?: Keyword;            // « without [Blocker] »
   vanilla?: boolean;              // « with no base effect »
   donMin?: number;                // « with N or more DON!! cards given »
+  // « with a cost equal to or less than the number of ... » (C2.6) : borne lue au moment où l'effet se résout
+  costMaxOf?: Count;
   // « [Megalo] or {Neptunian} type cards » : l'un OU l'autre ; les autres champs s'appliquent aux deux
   anyOf?: Filter[];
 }
@@ -59,6 +61,20 @@ export interface Target {
   filter: Filter;
   otherThanSelf?: boolean;        // « other than this Character »
 }
+
+// ---------- Valeurs calculées (C2.6) ----------
+
+// Ce que compte une valeur calculée (« the number of your opponent's Life cards », « for every 2 cards in your
+// trash »), lu au moment où l'effet se résout (ou en permanence, pour un effet permanent)
+export type Count =
+  | { kind: 'life'; side: 'own' | 'opp' | 'total' }
+  | { kind: 'hand'; side: 'own' | 'opp' }
+  | { kind: 'trash'; filter?: Filter }
+  | { kind: 'donField'; side: 'own' | 'opp' }
+  | { kind: 'chars'; side: Side; filter: Filter };
+
+// « for every N ... » : la valeur de l'action est multipliée par ⌊compte / every⌋
+export interface Per { every: number; count: Count }
 
 // ---------- Durées ----------
 
@@ -91,6 +107,10 @@ export type Cond =
   | { kind: 'turn'; mine: boolean }
   | { kind: 'playedThisTurn' }
   | { kind: 'firstTurns'; fromTurn: number }
+  // C2.6 : puissance de la carte ou du Leader (« this Character has 7000 power or more ») ; « the only Characters on
+  // your field are ... » (aucun Personnage hors du filtre ; vrai aussi sans Personnage, voir interprétations)
+  | { kind: 'power'; who: 'self' | 'leader'; cmp: Cmp; n: number }
+  | { kind: 'onlyChars'; filter: Filter }
   | { kind: 'and'; all: Cond[] }
   | { kind: 'or'; any: Cond[] }
   | { kind: 'not'; cond: Cond }
@@ -130,8 +150,9 @@ export type Action =
   // dans la Vie du propriétaire ; where (C1.1) : « au-dessus » seulement, ou « au-dessus ou au-dessous » au choix
   | { kind: 'toLife'; target: Target; faceUp: boolean; where?: 'top' | 'topOrBottom' }
   | { kind: 'trashChar'; target: Target }                   // placer dans la Défausse (pas un KO)
-  | { kind: 'power'; target: Target; amount: number; until: Duration }
-  | { kind: 'cost'; target: Target; amount: number; until: Duration }
+  // per (C2.6) : « for every N ... »
+  | { kind: 'power'; target: Target; amount: number; until: Duration; per?: Per }
+  | { kind: 'cost'; target: Target; amount: number; until: Duration; per?: Per }
   | { kind: 'powerSet'; target: Target; value: number; until: Duration }   // « base power becomes N »
   | { kind: 'keyword'; target: Target; keyword: Keyword; until: Duration }
   | { kind: 'cantAttack'; target: Target; until: Duration; what?: 'leader' | 'any' }
@@ -167,6 +188,8 @@ export type Action =
   | { kind: 'noCharsThisTurn'; what: 'play' | 'playByEffect' }
   | { kind: 'trashSelfEnd' }                                // « trash this Character at the end of this turn »
   | { kind: 'oppChooses'; n: number; action: 'ko' | 'trash' | 'bounce' | 'rest'; filter: Filter }
+  // « Your opponent chooses one: • A • B » (C2.6) : l'adversaire choisit l'effet, le joueur de la carte le fait
+  | { kind: 'oppChooseOne'; options: Step[][] }
   | { kind: 'manual'; reason: string };                     // morceau codé à la main (MANUAL_STEPS, voir ManualCode)
 
 export type ActionKind = Action['kind'];
@@ -191,9 +214,13 @@ export type Timing =
 // Évènement d'une capacité « When ... » (proche de GameEvent['type'] du moteur)
 export interface RecipeEvent {
   on: 'koOwnChar' | 'koOppChar' | 'leaveOwnChar' | 'damage' | 'lifeRemoved' | 'drawOutsideDraw' | 'trashFromHand'
-    | 'playChar' | 'oppPlayChar' | 'donReturned' | 'attacked' | 'rested' | 'other';
+    | 'playChar' | 'oppPlayChar' | 'donReturned' | 'attacked' | 'rested' | 'other'
+    // C2.6 : un Personnage de l'un ou l'autre camp mis KO ; un Événement activé (par vous, ou byOpponent) ; un
+    // [Déclenchement] activé (par vous)
+    | 'koChar' | 'activateEvent' | 'trigger';
   filter?: Filter;
   byOpponent?: boolean;
+  self?: boolean;                 // C2.6 : la carte elle-même (« When this Character is KO'd by your opponent's effect »)
 }
 
 export interface Ability {

@@ -10,7 +10,8 @@
 // Contrat : 01-contrats.md § 15.4. Le `switch` sur chaque `kind` est exhaustif : une sorte ajoutée au format sans sa
 // description casse `npm run typecheck` (voulu, § 15.2).
 import type {
-  Ability, Action, Category, Color, CostPart, Cond, Duration, Filter, Keyword, Recipe, RecipeEvent, Step, Target, Timing,
+  Ability, Action, Category, Color, CostPart, Cond, Count, Duration, Filter, Keyword, Per, Recipe, RecipeEvent, Step, Target,
+  Timing,
 } from './types.ts';
 
 export type DescribeResult =
@@ -122,6 +123,7 @@ function enWith(f: Filter): string[] {
   };
   if (f.costEq !== undefined) out.push(`a cost of ${f.costEq}`);
   range(f.costMin, f.costMax, (v) => `a cost of ${v}`);
+  if (f.costMaxOf) out.push(`a cost equal to or less than ${enCountOf(f.costMaxOf)}`);
   range(f.baseCostMin, f.baseCostMax, (v) => `a base cost of ${v}`);
   range(f.powerMin, f.powerMax, (v) => (/ to /.test(v) ? `a power of ${v}` : `${v.replace(/ or /, ' power or ')}`));
   range(f.basePowerMin, f.basePowerMax, (v) => (/ to /.test(v) ? `a base power of ${v}` : `${v.replace(/ or /, ' base power or ')}`));
@@ -132,6 +134,31 @@ function enWith(f: Filter): string[] {
   if (f.vanilla) out.push('no base effect');
   if (f.donMin !== undefined) out.push(`${f.donMin} or more DON!! cards given`);
   return out;
+}
+
+// Valeurs calculées (C2.6) : « the number of your opponent's Life cards » ; « for every 2 cards in your trash »
+function enCountOf(c: Count): string {
+  switch (c.kind) {
+    case 'life': return c.side === 'total' ? "the total of your and your opponent's Life cards" : `the number of ${c.side === 'own' ? 'your' : "your opponent's"} Life cards`;
+    case 'hand': return `the number of cards in ${c.side === 'own' ? 'your' : "your opponent's"} hand`;
+    case 'trash': return `the number of ${c.filter ? enCards(2, c.filter) : 'cards'} in your trash`;
+    case 'donField': return `the number of DON!! cards on ${c.side === 'own' ? 'your' : "your opponent's"} field`;
+    case 'chars': return `the number of ${c.side === 'opp' ? "your opponent's " : 'your '}${enNoun(c.filter, ['CHARACTER'], true)}`;
+  }
+}
+function enPer(per: Per | undefined): string {
+  if (!per) return '';
+  const c = per.count;
+  const n = per.every;
+  const many = n > 1;
+  const lot = n === 1 ? '' : `${n} `;
+  switch (c.kind) {
+    case 'life': return ` for every ${lot}${c.side === 'own' ? 'your' : c.side === 'opp' ? "your opponent's" : "your and your opponent's"} Life ${many ? 'cards' : 'card'}`;
+    case 'hand': return ` for every ${lot}${many ? 'cards' : 'card'} in ${c.side === 'own' ? 'your' : "your opponent's"} hand`;
+    case 'trash': return ` for every ${lot}${c.filter ? enCards(n, c.filter) : many ? 'cards' : 'card'} in your trash`;
+    case 'donField': return ` for every ${lot}DON!! ${many ? 'cards' : 'card'} on ${c.side === 'own' ? 'your' : "your opponent's"} field`;
+    case 'chars': return ` for every ${lot}of ${c.side === 'opp' ? "your opponent's " : 'your '}${enNoun(c.filter, ['CHARACTER'], true)}`;
+  }
 }
 
 // Groupe nominal d'un filtre : « rested black {Navy} type Characters with a cost of 3 or less other than [Izo] »
@@ -226,6 +253,8 @@ function enCond(c: Cond, ctx: Ctx): string {
     case 'turn': return c.mine ? 'it is your turn' : "it is your opponent's turn";
     case 'playedThisTurn': return `${EN_SELF[ctx.self]} was played during this turn`;
     case 'firstTurns': return `it is turn ${c.fromTurn} or later`;
+    case 'power': return `${c.who === 'leader' ? 'your Leader' : EN_SELF[ctx.self]} has ${c.n} power${c.cmp === 'eq' ? '' : ` ${EN_CMP[c.cmp]}`}`;
+    case 'onlyChars': return `the only Characters on your field are ${enNoun(c.filter, ['CHARACTER'], true)}`;
     case 'and': return andList(c.all.map((x) => enCond(x, ctx)), 'and');
     case 'or': return orList(c.any.map((x) => enCond(x, ctx)), 'or');
     case 'not': return `not: ${enCond(c.cond, ctx)}`;
@@ -279,11 +308,11 @@ function enAction(a: Action, ctx: Ctx): string {
     case 'toLife': return `Place ${T(a.target)} at the top of the owner's Life cards face-${a.faceUp ? 'up' : 'down'}`;
     case 'trashChar': return `Trash ${T(a.target)}`;
     case 'power': return enSubject(a.target)
-      ? `${upper(T(a.target))} gains ${sign(a.amount)} power${EN_DURATION[a.until]}`
-      : `Give ${T(a.target)} ${sign(a.amount)} power${EN_DURATION[a.until]}`;
+      ? `${upper(T(a.target))} gains ${sign(a.amount)} power${EN_DURATION[a.until]}${enPer(a.per)}`
+      : `Give ${T(a.target)} ${sign(a.amount)} power${EN_DURATION[a.until]}${enPer(a.per)}`;
     case 'cost': return enSubject(a.target)
-      ? `${upper(T(a.target))} gains ${sign(a.amount)} cost${EN_DURATION[a.until]}`
-      : `Give ${T(a.target)} ${sign(a.amount)} cost${EN_DURATION[a.until]}`;
+      ? `${upper(T(a.target))} gains ${sign(a.amount)} cost${EN_DURATION[a.until]}${enPer(a.per)}`
+      : `Give ${T(a.target)} ${sign(a.amount)} cost${EN_DURATION[a.until]}${enPer(a.per)}`;
     case 'powerSet': return `${upper(T(a.target))}'s base power becomes ${a.value}${EN_DURATION[a.until]}`;
     case 'keyword': return `${upper(T(a.target))} gains [${a.keyword}]${EN_DURATION[a.until]}`;
     case 'cantAttack': return `${upper(T(a.target))} cannot attack${a.what === 'leader' ? ' a Leader' : ''}${EN_DURATION[a.until]}`;
@@ -341,6 +370,7 @@ function enAction(a: Action, ctx: Ctx): string {
       const verb = { ko: 'KO', trash: 'trash', bounce: 'return to the owner\'s hand', rest: 'rest' }[a.action];
       return `Your opponent chooses ${a.n} of their ${enNoun(a.filter, ['CHARACTER'], true)} and must ${verb} ${a.n === 1 ? 'it' : 'them'}`;
     }
+    case 'oppChooseOne': return `Your opponent chooses one:\n${a.options.map((o) => `• ${enSteps(o, ctx)}.`).join('\n')}`.replace(/\.$/, '');
     case 'manual': return manual('step', a.reason, ctx);
     default: return unknown('action', a, ctx);
   }
@@ -401,15 +431,18 @@ function enEvent(e: RecipeEvent, ctx: Ctx): string {
   const f = e.filter ?? {};
   const has = Object.keys(f).length > 0;
   switch (e.on) {
-    case 'koOwnChar': return has ? `one of your ${enNoun(f, ['CHARACTER'], true)} is KO'd${by}` : `${EN_SELF[ctx.self]} is KO'd${by}`;
+    case 'koOwnChar': return e.self ? `${EN_SELF[ctx.self]} is KO'd${by}` : has ? `one of your ${enNoun(f, ['CHARACTER'], true)} is KO'd${by}` : `one of your Characters is KO'd${by}`;
+    case 'koChar': return "a Character is KO'd";
+    case 'activateEvent': return e.byOpponent ? 'your opponent activates an Event' : 'you activate an Event';
+    case 'trigger': return 'a [Trigger] activates';
     case 'koOppChar': return `one of your opponent's ${enNoun(f, ['CHARACTER'], true)} is KO'd`;
     case 'leaveOwnChar': return `one of your ${enNoun(f, ['CHARACTER'], true)} is removed from the field${by}`;
     case 'damage': return 'your Leader takes damage';
     case 'lifeRemoved': return 'a card is removed from your Life cards';
     case 'drawOutsideDraw': return 'you draw a card outside of your Draw Phase';
-    case 'trashFromHand': return `a card is trashed from your hand${by}`;
+    case 'trashFromHand': return `a card is trashed from your hand by ${e.byOpponent ? "your opponent's effect" : 'an effect'}`;
     case 'playChar': { const n = enNoun(f, ['CHARACTER'], false); return `you play ${/^[aeiou]/i.test(n) ? 'an' : 'a'} ${n}`; }
-    case 'oppPlayChar': return 'your opponent plays a Character';
+    case 'oppPlayChar': { const n = enNoun(f, ['CHARACTER'], false); return `your opponent plays ${/^[aeiou]/i.test(n) ? 'an' : 'a'} ${n}`; }
     case 'donReturned': return 'a DON!! card on your field is returned to your DON!! deck';
     case 'attacked': return `${EN_SELF[ctx.self]} is attacked`;
     case 'rested': return `${EN_SELF[ctx.self]} becomes rested`;
@@ -484,6 +517,7 @@ function frWith(f: Filter, ctx: Ctx): string[] {
   };
   void ctx;
   if (f.costEq !== undefined) out.push(`un coût de ${f.costEq}`);
+  if (f.costMaxOf) out.push(`un coût inférieur ou égal ${frCountOf(f.costMaxOf, ctx)}`);
   range(f.costMin, f.costMax, (v) => (v.startsWith('compris') ? `un coût ${v}` : `un coût de ${v}`));
   range(f.baseCostMin, f.baseCostMax, (v) => (v.startsWith('compris') ? `un coût de base ${v}` : `un coût de base de ${v}`));
   range(f.powerMin, f.powerMax, (v) => (v.startsWith('compris') ? `une puissance ${v}` : `${v.replace(/ ou /, ' de puissance ou ')}`));
@@ -493,6 +527,22 @@ function frWith(f: Filter, ctx: Ctx): string[] {
   if (f.keyword) out.push(`[${FR_KEYWORD[f.keyword]}]`);
   if (f.donMin !== undefined) out.push(`${f.donMin} cartes DON!! ou plus attachées`);
   return out;
+}
+
+// Valeurs calculées (C2.6) : « au nombre de cartes de Vie adverses » ; « pour chaque lot de 2 cartes de votre Défausse »
+function frCountOf(c: Count, ctx: Ctx): string {
+  switch (c.kind) {
+    case 'life': return c.side === 'total' ? 'au total de vos cartes de Vie et de celles de votre adversaire' : `au nombre de cartes de Vie ${c.side === 'own' ? 'que vous avez' : 'de votre adversaire'}`;
+    case 'hand': return `au nombre de cartes ${c.side === 'own' ? 'de votre main' : 'de la main adverse'}`;
+    case 'trash': return `au nombre de ${c.filter ? frCards(2, c.filter, ctx) : 'cartes'} de votre Défausse`;
+    case 'donField': return `au nombre de cartes DON!! ${c.side === 'own' ? 'de votre terrain' : 'du terrain adverse'}`;
+    case 'chars': return `au nombre de ${c.side === 'opp' ? 'Personnages adverses ' : 'vos '}${frNoun(c.filter, c.side === 'opp' ? [] : ['CHARACTER'], true, ctx)}`.replace(/\s+/g, ' ');
+  }
+}
+function frPer(per: Per | undefined, ctx: Ctx): string {
+  if (!per) return '';
+  const what = frCountOf(per.count, ctx).replace(/^au (?:nombre|total) (?:de |des )?/, '');
+  return per.every === 1 ? ` pour chaque carte (${what})` : ` pour chaque lot de ${per.every} cartes (${what})`;
 }
 
 // « Personnages {Marine} noirs épuisés ayant un coût de 3 ou moins, autres que [Izo] »
@@ -580,6 +630,8 @@ function frCond(c: Cond, ctx: Ctx): string {
     case 'turn': return c.mine ? "c'est votre tour" : "c'est le tour adverse";
     case 'playedThisTurn': return `${FR_SELF[ctx.self]} a été joué pendant ce tour`;
     case 'firstTurns': return `c'est au moins le tour ${c.fromTurn}`;
+    case 'power': return `${c.who === 'leader' ? 'votre Leader' : FR_SELF[ctx.self]} a ${frCmp(c.n, c.cmp)} de puissance`;
+    case 'onlyChars': return `vous n'avez que des ${frNoun(c.filter, ['CHARACTER'], true, ctx)} sur votre terrain`;
     case 'and': return andList(c.all.map((x) => frCond(x, ctx)), 'et');
     case 'or': return orList(c.any.map((x) => frCond(x, ctx)), 'ou');
     case 'not': return `non : ${frCond(c.cond, ctx)}`;
@@ -629,8 +681,8 @@ function frAction(a: Action, ctx: Ctx): string {
     case 'bottom': return `Placez ${T(a.target)} au-dessous du deck de son propriétaire`;
     case 'toLife': return `Placez ${T(a.target)} au-dessus de la Vie de son propriétaire, face ${a.faceUp ? 'visible' : 'cachée'}`;
     case 'trashChar': return `Placez ${T(a.target)} dans la Défausse de son propriétaire`;
-    case 'power': return `${upper(T(a.target))} gagne ${sign(a.amount)} de puissance${FR_DURATION[a.until]}`;
-    case 'cost': return `${upper(T(a.target))} gagne ${sign(a.amount)} de coût${FR_DURATION[a.until]}`;
+    case 'power': return `${upper(T(a.target))} gagne ${sign(a.amount)} de puissance${FR_DURATION[a.until]}${frPer(a.per, ctx)}`;
+    case 'cost': return `${upper(T(a.target))} gagne ${sign(a.amount)} de coût${FR_DURATION[a.until]}${frPer(a.per, ctx)}`;
     case 'powerSet': return `La puissance de base de ${T(a.target)} devient ${a.value}${FR_DURATION[a.until]}`;
     case 'keyword': return `${upper(T(a.target))} gagne [${FR_KEYWORD[a.keyword]}]${FR_DURATION[a.until]}`;
     case 'cantAttack': return `${upper(T(a.target))} ne peut pas attaquer${a.what === 'leader' ? ' de Leader' : ''}${FR_DURATION[a.until]}`;
@@ -690,6 +742,7 @@ function frAction(a: Action, ctx: Ctx): string {
       const verb = { ko: `${them} mettre KO`, trash: `${them} placer dans sa Défausse`, bounce: `${them} renvoyer dans sa main`, rest: `${them} épuiser` }[a.action];
       return `Votre adversaire choisit ${a.n} de ses ${frNoun(a.filter, ['CHARACTER'], true, ctx)} et doit ${verb}`;
     }
+    case 'oppChooseOne': return `Votre adversaire choisit un effet :\n${a.options.map((o) => `• ${frSteps(o, ctx)}.`).join('\n')}`.replace(/\.$/, '');
     case 'manual': return manual('step', a.reason, ctx);
     default: return unknown('action', a, ctx);
   }
@@ -728,7 +781,10 @@ function frEvent(e: RecipeEvent, ctx: Ctx): string {
   const f = e.filter ?? {};
   const has = Object.keys(f).length > 0;
   switch (e.on) {
-    case 'koOwnChar': return has ? `un de vos ${frNoun(f, ['CHARACTER'], true, ctx)} est mis KO${by}` : `${FR_SELF[ctx.self]} est mis KO${by}`;
+    case 'koOwnChar': return e.self ? `${FR_SELF[ctx.self]} est mis KO${by}` : has ? `un de vos ${frNoun(f, ['CHARACTER'], true, ctx)} est mis KO${by}` : `un de vos Personnages est mis KO${by}`;
+    case 'koChar': return 'un Personnage est mis KO';
+    case 'activateEvent': return e.byOpponent ? 'votre adversaire active un Évènement' : 'vous activez un Évènement';
+    case 'trigger': return 'un [Déclenchement] est activé';
     case 'koOppChar': return `un ${frNoun(f, ['CHARACTER'], false, ctx)} adverse est mis KO`;
     case 'leaveOwnChar': return `un de vos ${frNoun(f, ['CHARACTER'], true, ctx)} quitte le terrain${by}`;
     case 'damage': return 'votre Leader subit des dégâts';
@@ -736,7 +792,7 @@ function frEvent(e: RecipeEvent, ctx: Ctx): string {
     case 'drawOutsideDraw': return 'vous piochez une carte en dehors de votre phase de Pioche';
     case 'trashFromHand': return `une carte de votre main est placée dans la Défausse${by}`;
     case 'playChar': return `vous jouez un ${frNoun(f, ['CHARACTER'], false, ctx)}`;
-    case 'oppPlayChar': return 'votre adversaire joue un Personnage';
+    case 'oppPlayChar': return `votre adversaire joue un ${frNoun(f, ['CHARACTER'], false, ctx)}`;
     case 'donReturned': return 'une carte DON!! de votre terrain est renvoyée dans votre deck DON!!';
     case 'attacked': return `${FR_SELF[ctx.self]} est attaqué`;
     case 'rested': return `${FR_SELF[ctx.self]} est épuisé`;

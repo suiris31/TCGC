@@ -317,11 +317,12 @@ test('compilateur : ce qui n\'est pas exact est signalé, jamais approché', () 
   };
   const on = (steps: Ability['steps'], extra: Partial<Ability> = {}): Recipe => ({ num: 'ZZ19-099', abilities: [ability({ timing: 'onPlay', steps, ...extra })] });
   assert.match(missing(on([{ action: { kind: 'ko', target: { ...oppChar({}), upTo: false } } }])), /cible obligatoire/);
-  assert.match(missing(on([{ action: { kind: 'ko', target: oppChar({}, 0) } }, { link: 'ifYouDo', action: { kind: 'draw', n: 1 } }])), /lien ifYouDo/);
+  // « If you do » se compile depuis C2.6 ; sans étape avant, il n'a rien à suivre
+  assert.match(missing(on([{ link: 'ifYouDo', action: { kind: 'draw', n: 1 } }])), /lien ifYouDo sans étape avant/);
   assert.match(missing(on([{ action: { kind: 'ko', target: { ...oppChar({}), count: 'all' } } }])), /action ko : tous/);
   assert.match(missing(on([{ action: { kind: 'draw', n: 1 } }], { oncePerTurn: true })), /Une fois par tour/);
   assert.match(missing(on([{ action: { kind: 'manual', reason: 'absente' } }])), /manual:absente/);
-  assert.match(missing({ num: 'ZZ19-099', abilities: [ability({ timing: 'when', event: { on: 'koOwnChar' }, steps: [{ action: { kind: 'draw', n: 1 } }] })] }), /moment when \(koOwnChar\)/);
+  assert.match(missing({ num: 'ZZ19-099', abilities: [ability({ timing: 'when', event: { on: 'lifeRemoved' }, steps: [{ action: { kind: 'draw', n: 1 } }] })] }), /évènement lifeRemoved/);
   assert.match(missing(on([{ action: { kind: 'toLife', target: oppChar({}), faceUp: true } }])), /toLife/);
   assert.match(missing(on([{ action: { kind: 'play', from: 'hand', count: 1, upTo: true, filter: { category: ['STAGE'] } } }])), /autre chose qu'un Personnage/);
   // tout ce qui manque est listé (pas seulement le premier)

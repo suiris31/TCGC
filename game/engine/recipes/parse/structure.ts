@@ -215,6 +215,19 @@ export class Parser {
     const options = splitAll(body.slice(bi), /•/).map((x) => x.trim()).filter(Boolean);
     const optionSteps = () => options.map((o) => this.steps(o, errors, isStatic));
     const m = protect(header).match(/^(.*?)\bchoose one:$/is);
+    // « [phrases.] Your opponent chooses one: • A • B » (C2.6) : l'adversaire choisit, le joueur de la carte fait l'effet
+    const opp = protect(header).match(/^(.*?)\bYour opponent chooses one:$/s);
+    if (opp) {
+      const pre = header.slice(0, opp[1].length).trim();
+      if (pre && !/[.]$/.test(pre)) {
+        errors.push(new Unknown(header, 'structure : avant « Your opponent chooses one »'));
+        optionSteps();
+        return [];
+      }
+      const out = pre ? this.steps(pre, errors, isStatic) : [];
+      out.push({ action: { kind: 'oppChooseOne', options: optionSteps() }, ...(out.length ? { link: 'then' as const } : {}) });
+      return out;
+    }
     if (!m) {
       const intro = header.replace(/:$/, '');
       if (!header.endsWith(':')) errors.push(new Unknown(body, 'structure : puces sans introduction'));
