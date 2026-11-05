@@ -746,6 +746,32 @@ Cartes de Baggy, Krieg et Arlong hors OP03 et ST-01 (`cards/aventure-b.ts`).
 1007. **[Déclenchement] « jouez cette carte » ou « activez l'effet [Principale] »** écrit dans une recette : compilé
       explicitement (même jeu que le traitement générique du moteur).
 
+## Traducteur des cartes, squelette (tâche C1.4), choix faits sans validation
+
+Lectures fixées par le traducteur (`game/engine/recipes/parse/`) pour toutes les cartes à venir.
+
+1300. **« until the start of your next turn »** se lit comme la fin du prochain tour adverse (`oppNextEnd`), comme la
+      n° 389 : rien ne se passe entre les deux. Le prototype de l'étude C0 la lisait « jusqu'à la fin de votre prochain
+      tour », ce qui faisait durer l'effet un tour de trop. « during your opponent's next turn » (aucune carte
+      aujourd'hui) n'est pas traduit : l'effet ne commence qu'au tour adverse.
+1301. **Coût sans « You may »** (« X: Y », OP09-101 ; « X and you may Z: Y », OP08-082, OP10-065 ; « You can X: Y »,
+      OP01-031) : X est lu comme le coût de la capacité, comme « You may X: Y ».
+1302. **« If C, choose one: »** (OP06-065, OP12-060...) : la condition porte sur le choix tout entier ; « X, then choose
+      one: » (OP17-112) : le choix suit X avec « then ».
+1303. **« Then, place the rest ... and play ... »** (EB02-013, OP10-006...) : la phrase complète la recherche, puis la
+      suite de la phrase est une étape à part qui garde le lien « then ». Le prototype de l'étude perdait cette suite.
+1304. **[Trigger] laissé dans le texte de l'effet** (OP01-009) : lu comme le [Déclenchement] de la carte.
+1305. **« Your opponent chooses one: »** et **« Apply each of the following effects ...: »** ne sont pas traduits par le
+      squelette (rapportés « non compris ») : le format des recettes n'a pas de choix fait par l'adversaire.
+
+## Chaîne « nouveau set » (tâche C1.5), choix faits sans validation
+
+1400. **Réimpressions** : deux cartes dont le texte anglais officiel est le même (effet et [Déclenchement], rappels de
+      règle, casse et espaces mis à part) jouent de la même façon. `npm run cards:new` donne à la seconde la recette de
+      la première, au même niveau (une recette vérifiée reste vérifiée, un doute reste un doute) ; le coût, la
+      puissance ou le nom imprimés, eux, restent ceux de chaque carte. Une carte au même texte qu'une carte codée à la
+      main est seulement signalée (le code se reprend à la main).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
