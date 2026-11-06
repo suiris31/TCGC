@@ -184,7 +184,9 @@ async function checkCompare(mod: Record<string, unknown> | null, num: string): P
   if (typeof fn !== 'function') return { state: 'absent', why: 'aller-retour pas encore livré (C1.2)' };
   try {
     const gaps = await fn(num);
-    const list = Array.isArray(gaps) ? gaps : gaps ? [gaps] : [];
+    const all = Array.isArray(gaps) ? gaps : gaps ? [gaps] : [];
+    // seuls les écarts bloquants (preuve 2) font échouer ; les écarts « info » de rédaction ne comptent pas (vague S-1)
+    const list = typeof mod?.blocking === 'function' ? await (mod.blocking as (g: unknown[]) => unknown[])(all) : all;
     return list.length ? { state: 'ko', details: list.map(show) } : { state: 'ok' };
   } catch (e) {
     return { state: 'ko', details: [`erreur : ${(e as Error).message}`] };

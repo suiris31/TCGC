@@ -7,6 +7,7 @@ import test from 'node:test';
 import { cardStatus } from '../engine/cards/index.ts';
 import { DECKS } from '../engine/decks.ts';
 import { act } from '../engine/engine.ts';
+import { confidence } from '../engine/recipes/confidence.ts';
 import { def, hasKeyword, power } from '../engine/rules.ts';
 import type { GameState, PlayerId } from '../engine/types.ts';
 import {
@@ -62,8 +63,10 @@ const garpTurn = (leaderDeck: string, setup: (g: GameState) => void) => scenario
 
 test('OP15 : les cartes codées à la main sont jouables, les trois cartes que le moteur ne sait pas dire ne le sont pas', () => {
   for (const n of ['OP15-002', 'OP15-003', 'OP15-022', 'OP15-023', 'OP15-031', 'OP15-035', 'OP15-042', 'OP15-046', 'OP15-050',
-    'OP15-052', 'OP15-054', 'OP15-080', 'OP15-086', 'OP15-090', 'OP15-094', 'OP15-098', 'OP15-106']) assert.equal(cardStatus(n), 'coded', n);
+    'OP15-052', 'OP15-054', 'OP15-080', 'OP15-086', 'OP15-090', 'OP15-094', 'OP15-106']) assert.equal(cardStatus(n), 'coded', n);
   for (const n of ['OP15-025', 'OP15-092', 'OP15-093']) assert.equal(cardStatus(n), 'todo', n);
+  // Leader Luffy : codé, mais en doute (même tournure que EB05-061, vague S-1) : pas jouable
+  assert.equal(confidence('OP15-098'), 'doubt');
 });
 
 // ---------- Remplacements « à la place » ----------

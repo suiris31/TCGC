@@ -61,6 +61,7 @@ export const RECIPES_OP15: RecipeSet = {
       { timing: 'onPlay', steps: [{ action: { kind: 'trashTop', n: 3, side: 'own' } }] },
       { timing: 'onKO', steps: [{ action: { kind: 'trashToHand', count: 1, upTo: true, filter: { costMax: 8, category: ['CHARACTER'] } } }] },
     ] } },
+    'OP15-098': { level: 'doubt', handCoded: true, doubt: { question: 'Le remplacement couvre-t-il aussi la mise KO en combat par une attaque adverse, ou seulement les effets adverses ? (même tournure que Nami EB05-061)', readings: ['effets adverses et combat : codé ainsi (cards/op15.ts, n° 2205)', 'effets adverses seulement : rien en combat'], sources: 'règles complètes et Q&A officielles cherchées le 6 novembre 2026 (tâches S1 et S3, chef de projet), sans réponse pour cette tournure' }, note: 'mise en doute par le chef de projet de la vague S-1 : même lecture que EB05-061' },
     // cards:new : nouvelles entrées au-dessus de cette ligne
   },
 };

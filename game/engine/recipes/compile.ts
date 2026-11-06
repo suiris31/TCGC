@@ -11,7 +11,7 @@
 // - une cible sans « jusqu'à » (choix obligatoire) n'est pas compilée : les briques laissent toujours le choix « Aucune ».
 //
 // Point d'entrée sûr : cards/index.ts d'abord (les fichiers de cartes et le moteur s'importent l'un l'autre).
-import '../cards/index.ts';
+import { CARDS } from '../cards/index.ts';
 import * as B from '../cards/bricks.ts';
 import * as R from '../cards/bricks-removal.ts';
 import * as P from '../cards/bricks-power.ts';
@@ -35,6 +35,11 @@ type Spec = B.CharSpec & { category?: Category };
 
 const NOTHING: B.Effect = { run: () => {}, useful: () => false };
 const ALWAYS: B.Condition = () => true;
+// Un nom porté par un Personnage du catalogue (ou inconnu du catalogue : rien n'est refusé tant qu'il n'est pas chargé)
+const isCharacterName = (n: string) => {
+  const named = Object.values(CARDS).filter((d) => d.names?.includes(n));
+  return named.length === 0 || named.some((d) => d.category === 'CHARACTER');
+};
 
 const cmp = (v: number, c: Cmp, n: number) => (c === 'le' ? v <= n : c === 'ge' ? v >= n : v === n);
 const cmp2 = (a: number, c: Cmp2, b: number) => (c === 'lt' ? a < b : c === 'le' ? a <= b : c === 'gt' ? a > b : a >= b);
@@ -451,6 +456,9 @@ class Compiler {
         if (a.from !== 'hand' && a.from !== 'trash' && a.from !== 'handOrTrash') return this.no(`${k} : depuis ${a.from}`, NOTHING);
         if (!a.upTo) return this.no(`${k} : sans « jusqu'à »`, NOTHING);
         if (!this.charactersOnly(a.filter)) return this.no(`${k} : autre chose qu'un Personnage`, NOTHING);
+        // Garde-fou (vague S-1) : « jouez jusqu'à 1 [Nom] » sans catégorie, quand aucun Personnage ne porte ce nom (un
+        // Lieu : [Ruche] OP16-102, [Zou] EB03-013...) : la brique ne jouerait jamais rien ; la carte se code à la main
+        if (!a.filter.category && a.filter.name?.length && !a.filter.name.some(isCharacterName)) return this.no(`${k} : nom d'un Lieu ou d'un Événement`, NOTHING);
         const spec = this.spec({ ...a.filter, category: undefined }, 'card');
         // « de votre main ou de votre Défausse » : une carte de l'une ou de l'autre (C2.6) ; « jusqu'à N » : N fois
         // « jusqu'à 1 » (une carte jouée n'est plus proposée ; interprétation n° 1903)

@@ -1160,7 +1160,9 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 2204. **Léo (OP15-052)** : le Personnage placé au-dessous du deck est un autre que celui qui allait quitter le terrain
       (Léo compris) ; le placer lui-même reviendrait à le laisser partir.
 2205. **Monkey D. Luffy (Leader OP15-098)** : « à cause de votre adversaire » couvre toute sortie du terrain due à un
-      effet adverse et le KO en combat contre une attaque adverse ; pas de limite par tour.
+      effet adverse et le KO en combat contre une attaque adverse ; pas de limite par tour. **En doute** (chef de projet
+      de la vague S-1) : même tournure que Nami EB05-061, mise en doute par S1 ; la carte n'est pas jouable tant que
+      l'utilisateur n'a pas répondu (le code reste prêt pour la lecture 1).
 2206. **Arlong (OP15-023)**, [En cas de KO] : les « cartes adverses épuisées » sont le Leader, les Personnages, le Lieu et
       les DON!! épuisées de la zone de Coût, choisis un à un ; elles restent épuisées lors de la prochaine phase de
       Recharge de l'adversaire.

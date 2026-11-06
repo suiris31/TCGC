@@ -200,7 +200,7 @@ export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
   // Personnages filtré par le coût (« si vous n'avez pas de Personnage de coût 8 ou plus, ce Personnage −4000 »,
   // OP16-017) relirait sinon sa propre puissance sans fin (tâche S2 ; même résultat pour tous les autres filtres)
   const needPower = spec.powerMax !== undefined || spec.powerMin !== undefined;
-  return fits(d, cost, f && needPower ? power(s, c.uid) : d.power ?? 0,f ? basePower(s, c.uid) : d.power ?? 0, c.rested, spec)
+  return fits(d, cost, f && needPower ? power(s, c.uid) : d.power ?? 0, f ? basePower(s, c.uid) : d.power ?? 0, c.rested, spec)
     && (spec.keyword === undefined || (f ? hasKeyword(s, f.player, c, spec.keyword) : d.keywords.includes(spec.keyword)))
     && (spec.noKeyword === undefined || !(f ? hasKeyword(s, f.player, c, spec.noKeyword) : d.keywords.includes(spec.noKeyword)))
     && (spec.donMin === undefined || (f ? c.don : 0) >= spec.donMin)

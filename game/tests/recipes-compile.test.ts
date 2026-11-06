@@ -453,3 +453,16 @@ test('interface : numéros des cartes pas encore jouables (import d\'une liste)'
   assert.ok(!notYetPlayable(KO2));
   setWaitingCards({ cards: [], leaders: [] });
 });
+
+test('recettes : « jouez jusqu\'à 1 [Nom] » refusé quand le nom n\'est porté par aucun Personnage (garde-fou de la vague S-1)', () => {
+  const playNamed = (name: string): Recipe => ({
+    num: 'EB03-013',
+    abilities: [ability({ timing: 'onPlay', steps: [{ action: { kind: 'play', from: 'hand', count: 1, upTo: true, filter: { name: [name] } } }] })],
+  });
+  // [Zou] n'est qu'un Lieu (OP08-039) : la brique « jouer un Personnage » ne le proposerait jamais
+  const stage = compileRecipe(playNamed('Zou'));
+  assert.equal(stage.ok, false);
+  assert.ok(!stage.ok && stage.missing.some((m) => m.includes('Lieu')));
+  // un nom de Personnage se compile toujours
+  assert.equal(compileRecipe(playNamed('Nefertari Vivi')).ok, true);
+});
