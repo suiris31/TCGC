@@ -70,8 +70,8 @@ const LUCY_EVENT = 'lucy:event3';
 
 // ---------- Effets propres à quelques cartes ----------
 
-// « Give up to 1 DON!! card from its owner's cost area to its owner's Leader or 1 of their Characters » (Arlong
-// OP15-023) : une DON!! redressée ou épuisée de la zone de Coût du propriétaire de la carte choisie. Sans question
+// Arlong (OP15-023), donner jusqu'à 1 DON!! de la zone de Coût du propriétaire à un Leader ou un Personnage (l'un ou
+// l'autre camp) : une DON!! redressée ou épuisée de la zone de Coût du propriétaire de la carte choisie. Sans question
 // sur l'état de la DON!! : le joueur prend celle qui l'arrange (épuisée pour une de ses cartes, redressée pour une carte
 // adverse, comme les frères Nyaban OP15-028), interprétation n° 2201
 const giveFromOwnersCostArea = (source: string): Effect => {
@@ -92,7 +92,7 @@ const giveFromOwnersCostArea = (source: string): Effect => {
   }, (s, p, self) => list(s, p, self).length > 0);
 };
 
-// « Up to 2 of your opponent's rested cards will not become active in your opponent's next Refresh Phase » (Arlong) :
+// Arlong : jusqu'à 2 cartes adverses épuisées ne se redressent pas à la prochaine phase de Recharge adverse :
 // Leader, Personnages, Lieu ou DON!! épuisés, choisis un à un (comme Jewelry Bonney OP07-026, fam-sn-green.ts)
 const lockOppRestedCards = (n: number, source: string): Effect => {
   const cards = (s: GameState, p: PlayerId) => {
