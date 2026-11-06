@@ -8,7 +8,7 @@
 // Les conditions sont lues dans la partie au moment de l'effet, jamais supposées : une carte marche ou non selon son
 // deck, comme à une vraie table.
 import {
-  addDelayed, addDonFromDeck, addMod, addTopDeckToLife, allField, basePower, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters,
+  addDelayed, addDonFromDeck, addMod, addTopDeckToLife, allField, basePower, canBeKO, canBeRested, canLeaveByEffect, canPlayCharacters, canPlayFromHand,
   chooseUpTo1, bottomOrder, chooseUpToN, def, describe, discardFromHand, donOnField, draw, emit, fieldCost, findField, giveRestedDon,
   hasBlocker, hasKeyword, knownFirst, lifeToHand, log, lookTopPick, may, other, playCharacter, power, privateLog, removeByEffect,
   removeFromField, restByEffect, canTakeLife, playableByEffect, returnDon, reveal, setActive, trashTopDeck, uniqueByNum,
@@ -685,7 +685,7 @@ const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, op
     run: (ctx) => {
       const P = ctx.s.players[ctx.me];
       const list = zone === 'hand' ? P.hand : P.trash;
-      if (!canPlayCharacters(ctx.s, ctx.me)) return;
+      if (!canPlayCharacters(ctx.s, ctx.me) || (zone === 'hand' && !canPlayFromHand(ctx.s, ctx.me))) return;
       const options = uniqueByNum(knownFirst(ctx.s, ctx.me, list.filter((c) => eligible(c) && canPlayCharacters(ctx.s, ctx.me, c.num))));
       if (!options.length) return;
       const where = zone === 'hand' ? 'de ta main' : 'de ta Défausse';

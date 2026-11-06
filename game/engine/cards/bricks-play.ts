@@ -1,6 +1,6 @@
 // Briques de la famille « jouer » (tâche C2.6) : « Si vous le faites » / « Sinon », choix laissé à l'adversaire, et
 // effets dont une valeur est calculée au moment où ils se résolvent. bricks.ts n'est pas modifié.
-import { canPlayCharacters, def, knownFirst, playableByEffect, playCharacter, uniqueByNum } from '../rules.ts';
+import { canPlayCharacters, canPlayFromHand, def, knownFirst, playableByEffect, playCharacter, uniqueByNum } from '../rules.ts';
 import type { Card, GameState, PlayerId } from '../types.ts';
 import { cardMatches, describeSpec, type CharSpec, type Effect } from './bricks.ts';
 
@@ -56,7 +56,7 @@ export const playFromHandOrTrash = (spec: CharSpec, source: string, opts: { rest
     run: (ctx) => {
       if (!canPlayCharacters(ctx.s, ctx.me)) return;
       const P = ctx.s.players[ctx.me];
-      const ok = list(ctx.s, ctx.me).filter((x) => canPlayCharacters(ctx.s, ctx.me, x.c.num));
+      const ok = list(ctx.s, ctx.me).filter((x) => canPlayCharacters(ctx.s, ctx.me, x.c.num) && (x.zone !== 'hand' || canPlayFromHand(ctx.s, ctx.me)));
       const hand = uniqueByNum(knownFirst(ctx.s, ctx.me, ok.filter((x) => x.zone === 'hand').map((x) => x.c)));
       const trash = uniqueByNum(ok.filter((x) => x.zone === 'trash').map((x) => x.c));
       if (!hand.length && !trash.length) return;

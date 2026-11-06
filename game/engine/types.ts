@@ -92,6 +92,8 @@ export interface PlayerState {
   noKoTurn?: number;
   // tour pendant lequel ses DON!! ne peuvent pas être redressées par l'effet d'un Personnage (L'Oiseau EB04-016)
   noCharDonReadyTurn?: number;
+  // tour pendant lequel il ne peut plus jouer de carte de sa main, ni en payant son coût ni par un effet (Shanks OP13-028)
+  noHandPlayTurn?: number;
 }
 
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro
@@ -131,7 +133,7 @@ export interface DelayedEffect {
   // terrain que l'adversaire (Black Maria) ; trashChar / bottomChar : placer le Personnage `uid` dans la Défausse de son
   // propriétaire / au-dessous de son deck (« Puis, placez ce Personnage dans votre Défausse à la fin de ce tour », Thatch
   // OP03-005). Le retrait est oublié si la carte quitte le terrain avant (removeFromField).
-  action: 'untapDon' | 'matchDon' | 'trashChar' | 'bottomChar';
+  action: 'untapDon' | 'matchDon' | 'trashChar' | 'bottomChar' | 'addDonActive';  // addDonActive : `amount` DON!! du deck DON!!, redressées (Silvers Rayleigh OP13-066)
   amount: number;
   uid?: number;
   source?: string;  // carte dont l'effet est la cause (journal)
@@ -190,7 +192,8 @@ export type EffectKind = 'onPlay' | 'whenAttacking' | 'onOpponentAttack' | 'acti
 export interface GameEvent {
   type: 'gameStart' | 'turnStart' | 'mainStart' | 'turnEnd' | 'play' | 'ko' | 'rest' | 'attack' | 'block' | 'donReturned' | 'event'
     | 'discard' | 'leave'  // 'leave' : Personnage sorti du terrain par un effet autrement que par KO (main, deck, Vie)
-    | 'damage';
+    | 'damage'
+    | 'trigger';  // un [Déclenchement] est activé (player : propriétaire de la carte de Vie ; Conney OP13-106)
   player: PlayerId;          // joueur concerné : propriétaire de la carte, ou joueur qui agit
   uid?: number;              // carte concernée
   num?: string;
@@ -403,6 +406,12 @@ export interface CardBehavior {
   counterPower?: (s: GameState, owner: PlayerId, target: number) => number;
   onTrigger?: (ctx: EffectCtx) => void; // [Déclenchement] (le texte officiel est dans CardData.trigger)
   // Effet de remplacement quand un Personnage du même joueur va quitter le terrain à cause d'un effet adverse
+  // « 1 carte DON!! placée pendant votre phase DON!! est donnée à votre Leader » (Leader Gol D. Roger OP13-003) : lu au
+  // début de la phase DON!!, avant que les DON!! soient placées
+  donPhaseToLeader?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
+  // puissance de base fixée par cette carte (sur le terrain) pour une carte du même joueur, elle comprise ; null : pas
+  // visée (« passez à 7000 la puissance de base de tous vos Personnages {Five Elders} », Ju Peter OP13-084)
+  basePowerAura?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => number | null;
   replaceRemoval?: {
     oncePerTurn: boolean;
     onlyKo: boolean;  // false : aussi quand le Personnage quitte le terrain autrement (renvoyé en main, sous le deck...)

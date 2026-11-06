@@ -1,0 +1,20 @@
+// Recettes de PRB02 (étape C) : la structure des effets, jamais leur texte (01-contrats.md § 15.8).
+// Écrit par `npm run cards:new -- PRB02` (niveau 'generated'), puis relu par la tâche « set » : une recette relue
+// et prouvée passe 'verified' à la main ; une lecture douteuse passe 'doubt', avec sa question.
+// cards:new ajoute les nouvelles entrées au-dessus du repère de fin et, avec --regenerer, ne remplace que les lignes
+// 'generated' restées sur une ligne ; tout le reste (relectures, notes, mises en forme) est gardé tel quel.
+import type { RecipeSet } from '../types.ts';
+
+export const RECIPES_PRB02: RecipeSet = {
+  set: 'PRB02',
+  entries: {
+    'PRB02-001': { level: 'verified', recipe: { num: 'PRB02-001', abilities: [{ timing: 'static', oppTurn: true, steps: [{ action: { kind: 'power', target: { side: 'own', zone: 'field', self: true, count: 1, upTo: false, filter: {}, characters: true }, amount: 1000, until: 'permanent' }, cond: { kind: 'leaderType', types: ['Navy'] } }] }, { timing: 'whenAttacking', steps: [{ action: { kind: 'ko', target: { side: 'opp', zone: 'field', count: 1, upTo: true, filter: { basePowerMax: 3000 }, characters: true } } }, { action: { kind: 'draw', n: 1 }, cond: { kind: 'hand', side: 'own', cmp: 'le', n: 6 }, link: 'then' }] }] } },
+    'PRB02-003': { level: 'verified', recipe: { num: 'PRB02-003', abilities: [{ timing: 'onPlay', steps: [{ action: { kind: 'draw', n: 2 } }], cost: [{ kind: 'discard', n: 1, filter: { powerMin: 6000, category: ['CHARACTER'] } }] }], keywords: ['Blocker'] } },
+    'PRB02-007': { level: 'verified', recipe: { num: 'PRB02-007', abilities: [{ timing: 'onPlay', steps: [{ action: { kind: 'search', look: 5, take: 1, upTo: true, filter: { notName: 'Jinbe', types: ['The Seven Warlords of the Sea'] }, dest: 'hand', rest: 'bottom' } }] }, { timing: 'whenAttacking', steps: [{ action: { kind: 'bottom', target: { side: 'any', zone: 'field', count: 1, upTo: true, filter: { costMax: 1 }, characters: true } } }] }] } },
+    'PRB02-011': { level: 'verified', recipe: { num: 'PRB02-011', abilities: [{ timing: 'onPlay', steps: [{ action: { kind: 'addDon', n: 1, upTo: true, state: 'rested' }, cond: { kind: 'leaderColor', colors: [], multicolor: true } }] }], keywords: ['Blocker'] } },
+    'PRB02-013': { level: 'verified', recipe: { num: 'PRB02-013', abilities: [{ timing: 'onPlay', steps: [{ action: { kind: 'play', from: 'trash', count: 1, upTo: true, filter: { costMax: 4, category: ['CHARACTER'] }, rested: true }, cond: { kind: 'leaderType', types: ['Thriller Bark Pirates'] } }, { action: { kind: 'giveDon', n: 1, upTo: true, rested: true, target: { side: 'own', zone: 'field', leader: true, characters: true, count: 1, upTo: false, filter: {} } }, link: 'then' }] }] } },
+    'PRB02-015': { level: 'verified', recipe: { num: 'PRB02-015', abilities: [{ timing: 'static', steps: [{ cond: { kind: 'leaderType', types: ['Blackbeard Pirates'] }, group: [{ action: { kind: 'keyword', target: { side: 'own', zone: 'field', self: true, count: 1, upTo: false, filter: {}, characters: true }, keyword: 'Blocker', until: 'permanent' } }, { action: { kind: 'cost', target: { side: 'own', zone: 'field', self: true, count: 1, upTo: false, filter: {}, characters: true }, amount: 4, until: 'permanent' } }] }] }, { timing: 'onKO', steps: [{ action: { kind: 'ko', target: { side: 'opp', zone: 'field', count: 1, upTo: true, filter: { baseCostMax: 4 }, characters: true } }, cond: { kind: 'leaderType', types: ['Blackbeard Pirates'] } }] }] } },
+    'PRB02-016': { level: 'verified', recipe: { num: 'PRB02-016', abilities: [{ timing: 'activateMain', steps: [{ action: { kind: 'power', target: { side: 'own', zone: 'field', count: 1, upTo: true, filter: {}, leader: true, characters: true }, amount: 3000, until: 'turn' } }], cost: [{ kind: 'restSelf' }, { kind: 'lifeToHand', from: 'topOrBottom' }] }], trigger: { timing: 'trigger', steps: [{ action: { kind: 'rest', target: { side: 'opp', zone: 'field', count: 1, upTo: true, filter: { costMax: 4 }, characters: true } } }] } } },
+    // cards:new : nouvelles entrées au-dessus de cette ligne
+  },
+};

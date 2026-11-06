@@ -1181,6 +1181,40 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 2211. **Bobby Funk (OP15-050)** : « si vous avez [Kelly Funk] » = un Personnage [Kelly Funk] (aucun Leader ne porte ce
       nom : la question ouverte « If you have [Nom] » ne change rien ici).
 
+## OP13 et PRB02 (tâche S6), choix faits sans validation
+
+2500. **Monkey D. Luffy (Leader OP13-001)** : une seule carte choisie (ce Leader ou 1 Personnage {Straw Hat Crew}) gagne
+      +2000 par DON!! épuisée. Lire « une carte par DON!! » permettrait de répartir le bonus, ce qui ne sert jamais : seule
+      la carte attaquée compte pendant le combat. « 5 DON!! redressées ou moins » est lu avant d'épuiser.
+2501. **Portgas D. Ace (Leader OP13-002)** : « subir des dégâts » compte les dégâts d'une attaque comme ceux d'un effet ;
+      la puissance de base du Personnage mis KO est celle imprimée (il est déjà dans la Défausse) ; les deux évènements
+      partagent le même [Une fois par tour].
+2502. **Gol D. Roger (Leader OP13-003)** : « si vous avez des DON!! sur votre terrain » est lu au début de la phase DON!!,
+      avant de placer les nouvelles (lu après, la condition serait toujours vraie) : rien au premier tour du premier
+      joueur. La DON!! donnée au Leader est une de celles placées, redressée.
+2503. **Imu (Leader OP13-079)** : le Lieu {Mary Geoise} est joué de son deck avant les mains de départ, puis le deck est
+      mélangé (même sans Lieu joué) ; l'interdiction des Événements de coût 2 ou plus vaut à la construction du deck
+      (`rules.deckRestriction`).
+2504. **Silvers Rayleigh (OP13-066)** : la DON!! est ajoutée, redressée, à la fin du tour (lecture de la VF ; la VO
+      pourrait se lire « ajoutée maintenant, redressée à la fin du tour » : même résultat en fin de tour). **Gordon
+      (OP13-024)** : les 2 DON!! sont redressées à la fin du tour (effet différé `untapDon`).
+2505. **Shanks (OP13-028)** : « vous ne pouvez pas jouer de cartes de votre main » bloque aussi les cartes jouées de la
+      main par un effet (Personnages, Lieux) ; les Événements activés depuis la main par un autre effet ne sont pas
+      couverts (aucune carte de son deck ne le fait).
+2506. **Saint Ju Peter (OP13-084)** : « passez à 7000 la puissance de base » est un effet permanent (`basePowerAura`),
+      pris comme les autres puissances de base fixées par un effet (la plus haute l'emporte, comme dans tout le moteur).
+2507. **Cinq Doyens (OP13-082)** : il se place lui-même dans la Défausse avec les autres ; « 5000 de puissance » est la
+      puissance imprimée des cartes de la Défausse ; un nom joué n'est plus proposé.
+2508. **Le trône vide (OP13-099)** : le nombre de DON!! du terrain est compté à la résolution (épuiser 3 DON!! ne le
+      change pas) ; son bonus [Votre tour] va au Leader seulement.
+2509. **Toki (OP13-060)** : le remplacement vaut aussi quand c'est elle qui devait être mise KO (elle va dans la Défausse,
+      sans [En cas de KO]). **Trafalgar Law (PRB02-002)** : toute sortie du terrain par un effet adverse (pas le combat).
+2510. **Conney (OP13-106)** : n'importe quel [Déclenchement] activé pendant le tour adverse (dans le jeu, ce sont ceux de
+      la Vie de son propriétaire) ; nouvel évènement du moteur `trigger`. **Jewelry Bonney (Leader OP13-100)** : un
+      Personnage ayant [Déclenchement] joué de n'importe quelle façon (main ou effet).
+2511. **« Votre Leader est multicolore »** (OP13-104, PRB02-011 ; déjà EB03-004, OP14-108) : le compilateur et le banc
+      lisaient la condition toujours fausse (aucune couleur demandée) ; corrigé dans `compile.ts` et `testgen.ts`.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

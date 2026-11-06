@@ -5,7 +5,8 @@
 import { resolveDeck, type DeckSource } from './decks.ts';
 import { random, shuffle } from './rng.ts';
 import {
-  addMod, allField, attackTargets, attackTax, blockerAllowed, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def,
+  addDonFromDeck, addMod, allField, attackTargets, attackTax, blockerAllowed, canBeKO, canBeRested, canPlayCharacters, canPlayFromHand, carryKnown,
+  counterValue, def,
   describe, discardFromHand, donOnField, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated,
   knownFirst, koCharacter, koSelfReplacement, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, removeFromField,
   restForAttack, returnDon, reveal, shuffleDeck, triggerEffect, untapDon,
@@ -458,6 +459,8 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
         });
         if (answer === 'trigger') {
           log(s, ctx.me, `perd 1 Vie, révèle ${d.name} et active son [Déclenchement]`);
+          // « quand un [Déclenchement] est activé » (Conney OP13-106) : résolu après le [Déclenchement]
+          emit(s, { type: 'trigger', player: ctx.me, uid: card.uid, num: card.num });
           // la carte n'est dans aucune zone pendant son [Déclenchement], puis va dans la Défausse (10-1-5-3), sauf si
           // l'effet l'a jouée ou ajoutée à la main
           const trigger = { card, moved: false };
@@ -555,8 +558,16 @@ function stepFlow(s: GameState) {
       const p = s.active;
       const P = s.players[p];
       const n = Math.min(P.donDeck, p === s.first && P.turns === 1 ? 1 : 2);
+      // « si vous avez des DON!! sur votre terrain, 1 DON!! placée pendant votre phase DON!! est donnée à votre Leader »
+      // (Gol D. Roger OP13-003) : condition lue avant de placer les DON!!
+      const toLeader = n > 0 && Boolean(def(P.leader.num).donPhaseToLeader?.(s, p, P.leader)) && !isNegated(s, P.leader.uid);
       P.donDeck -= n;
       P.donActive += n;
+      if (toLeader) {
+        P.donActive--;
+        P.leader.don++;
+        log(s, p, `1 DON!! placée est donnée à son Leader (${def(P.leader.num).name})`);
+      }
       // « épuise 1 de ses DON!! redressées au début de sa prochaine phase principale » (Monkey D. Luffy PRB02-005)
       if (P.restDonAtMain !== undefined && P.restDonAtMain <= s.turn) {
         if (P.restDonAtMain === s.turn && P.donActive > 0) {
@@ -586,6 +597,7 @@ function stepFlow(s: GameState) {
         emit(s, { type: 'turnEnd', player: s.active }, effects);
         for (const d of s.delayed.filter((x) => x.turn === s.turn)) {
           if (d.action === 'untapDon') untapDon(s, d.player, d.amount);
+          if (d.action === 'addDonActive' && addDonFromDeck(s, d.player, d.amount, true)) log(s, d.player, `ajoute ${d.amount} DON!! redressée${d.source ? ` (${d.source})` : ''}`);
           if (d.action === 'matchDon') {
             const extra = donOnField(s, d.player) - donOnField(s, other(d.player));
             if (extra > 0) returnDon(s, d.player, extra);
@@ -635,7 +647,7 @@ function mainDecision(s: GameState): Decision {
   for (const c of firstOfEachNum(knownFirst(s, p, P.hand))) {
     const d = def(c.num);
     const cost = handCost(s, p, c);
-    if (cost > P.donActive) continue;
+    if (cost > P.donActive || !canPlayFromHand(s, p)) continue;
     if ((d.category === 'CHARACTER' && canPlayCharacters(s, p, c.num)) || d.category === 'STAGE') {
       options.push({ id: `play:${c.uid}`, label: `Jouer ${d.name} (coût ${cost})`, uid: c.uid, group: 'play' });
     }
