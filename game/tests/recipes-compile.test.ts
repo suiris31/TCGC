@@ -24,7 +24,7 @@ const KO2 = 'EB01-049';        // Personnage coût 5 : [Jouée] KO adverse coût
 const BOUNCE = 'OP08-042';     // Personnage coût 4 : [DON!! x1] [En attaquant] renvoie en main un Personnage coût 3 ou moins
 const VIVI_COUNTER = 'OP11-115'; // Événement coût 1 : [Contre] sous condition de Leader ; [Déclenchement] KO adverse (EB03-011 jusqu'à S4)
 const MINUS_COST = 'EB01-048'; // Personnage coût 4 : [Activation : Principale] épuiser cette carte : coût adverse
-const MINUS_POWER = 'OP13-020'; // Événement coût 3 : [Principale] puissance adverse ; [Déclenchement] son effet [Principale]
+const MINUS_POWER = 'OP04-018'; // Événement coût 3 (recette d'essai : [Principale] puissance adverse ; [Déclenchement] son effet [Principale]) ; OP13-020, jouable depuis S6, remplacé
 const RESTED_POWER = 'OP01-039'; // Personnage (recette d'essai : [Tour adverse] épuisé, +2000) ; OP14-026, jouable depuis S5, remplacé
 const VIVI_L = 'OP11-022';     // un Leader [Shirahoshi] (le nom VIVI est resté de l'exemple EB03-011, jouable depuis S4)
 // adversaire ST-21
@@ -444,7 +444,7 @@ test('interface : numéros des cartes pas encore jouables (import d\'une liste)'
   const w = waitingCards();
   assert.ok(w.cards.includes('OP15-051') && !w.cards.includes(KO2));
   assert.ok(w.leaders.every((n) => CARDS[n].category === 'LEADER' && w.cards.includes(n)));
-  assert.ok(w.leaders.includes('OP13-100'));   // un Leader pas encore jouable (EB03-001 jusqu'à S4)
+  assert.ok(w.leaders.includes('OP04-001'));   // un Leader pas encore jouable (EB03-001 jusqu'à S4, OP13-100 jusqu'à S6)
   // côté navigateur : ces cartes ne sont pas chargées, seulement leurs numéros
   setWaitingCards({ cards: ['ZZ29-001', 'ZZ29-002'], leaders: ['ZZ29-002'] });
   assert.ok(notYetPlayable('ZZ29-001') && !waitingLeader('ZZ29-001'));

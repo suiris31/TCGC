@@ -207,8 +207,21 @@ export function handCost(s: GameState, p: PlayerId, card: Card): number {
 // Puissance de base : celle imprimée, ou celle fixée par un effet (4-9-2-1)
 export function basePower(s: GameState, uid: number): number {
   const f = findField(s, uid);
-  const bases = s.mods.filter((m) => m.uid === uid && m.stat === 'basePower').map((m) => m.amount);
+  const bases = baseCandidates(s, uid, f);
   return bases.length ? Math.max(...bases) : (f ? def(f.card.num).power ?? 0 : 0);
+}
+
+// Puissances de base fixées par un effet : modifications temporaires, puis effets permanents des cartes du même joueur
+// (basePowerAura, Ju Peter OP13-084 ; sans une telle carte, rien ne change)
+function baseCandidates(s: GameState, uid: number, f: ReturnType<typeof findField>): number[] {
+  const bases = s.mods.filter((m) => m.uid === uid && m.stat === 'basePower').map((m) => m.amount);
+  if (!f || f.stage) return bases;
+  for (const src of allField(s, f.player)) {
+    const set = def(src.num).basePowerAura;
+    const v = set && !isNegated(s, src.uid) ? set(s, f.player, src, f.card) : null;
+    if (v !== null) bases.push(v);
+  }
+  return bases;
 }
 
 // Puissance actuelle : base (éventuellement fixée par un effet, 4-9-2-1), DON!! données (+1000 chacune pendant le tour
@@ -217,7 +230,7 @@ export function power(s: GameState, uid: number): number {
   const f = findField(s, uid);
   if (!f || f.stage) return 0;
   const d = def(f.card.num);
-  const bases = s.mods.filter((m) => m.uid === uid && m.stat === 'basePower').map((m) => m.amount);
+  const bases = baseCandidates(s, uid, f);
   let p = bases.length ? Math.max(...bases) : d.power ?? 0;
   if (s.active === f.player) p += f.card.don * 1000;
   if (d.selfPower && !isNegated(s, uid)) p += d.selfPower(s, f.player, f.card);
@@ -269,6 +282,9 @@ export const playableByEffect = (num: string) => !def(num).noPlayByEffect;
 // « Vous ne pouvez pas jouer de carte Personnage pour tout le tour » (Leader Mihawk) : ni de sa main en payant son
 // coût, ni par un effet
 // num : la carte à jouer (« plus de Personnage de coût de base X ou plus ce tour-ci », Mihawk OP12-030)
+// « Vous ne pouvez pas jouer de cartes de votre main pour tout le tour » (Shanks OP13-028)
+export const canPlayFromHand = (s: GameState, p: PlayerId) => s.players[p].noHandPlayTurn !== s.turn;
+
 export const canPlayCharacters = (s: GameState, p: PlayerId, num?: string) => {
   const P = s.players[p];
   if (P.noCharsTurn === s.turn) return false;
@@ -844,6 +860,7 @@ export function playStage(ctx: EffectCtx, p: PlayerId, card: Card) {
 // « Jouez jusqu'à 1 carte ... de votre main » (sans payer son coût)
 export function playFromHandFree(ctx: EffectCtx, filter: (c: Card) => boolean, prompt: string, opts: { rested?: boolean } = {}): Card | null {
   const P = ctx.s.players[ctx.me];
+  if (!canPlayFromHand(ctx.s, ctx.me)) return null;
   const allowed = (c: Card) => filter(c) && playableByEffect(c.num) && (def(c.num).category !== 'CHARACTER' || canPlayCharacters(ctx.s, ctx.me, c.num));
   const candidates = uniqueByNum(knownFirst(ctx.s, ctx.me, P.hand.filter(allowed)));
   if (!candidates.length) return null;

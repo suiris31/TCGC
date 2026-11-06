@@ -371,7 +371,8 @@ function evalLeader(cond: Cond, leader: string): boolean | null {
     case 'leaderIs': return cond.names.some((n) => L.names.includes(n));
     case 'leaderType': return cond.mode === 'all' ? cond.types.every((t) => L.types.includes(t)) : cond.types.some((t) => L.types.includes(t));
     case 'leaderTypeIncludes': return L.types.some((t) => t.includes(cond.part));
-    case 'leaderColor': return cond.colors.some((x) => L.colors.includes(x)) && (!cond.multicolor || L.colors.length > 1);
+    // « your Leader is multicolored » seul (aucune couleur demandée) : seulement le nombre de couleurs (S6)
+    case 'leaderColor': return (!cond.colors.length || cond.colors.some((x) => L.colors.includes(x))) && (!cond.multicolor || L.colors.length > 1);
     case 'leaderAttribute': return L.attributes.includes(cond.attribute);
     default: return null;
   }

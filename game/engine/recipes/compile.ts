@@ -195,7 +195,8 @@ class Compiler {
       case 'leaderType': return c.mode === 'all' ? B.all(...c.types.map(B.leaderType)) : B.any(...c.types.map(B.leaderType));
       case 'leaderTypeIncludes': return B.leaderTypeIncludes(c.part);
       case 'leaderColor': {
-        const color = B.any(...c.colors.map(B.leaderColor));
+        // « your Leader is multicolored » seul : aucune couleur demandée (B.any() sans condition serait toujours faux)
+        const color = c.colors.length ? B.any(...c.colors.map(B.leaderColor)) : () => true;
         return c.multicolor ? B.all(color, (s, p) => def(s.players[p].leader.num).colors.length > 1) : color;
       }
       case 'leaderAttribute': return B.leaderAttribute(c.attribute);
@@ -778,6 +779,16 @@ class Compiler {
   static(ab: Ability, extra: CardBehavior) {
     if (ab.cost || ab.oncePerTurn) { this.no('effet permanent avec coût ou [Une fois par tour]', 0); return; }
     for (const st of ab.steps) {
+      // « Si C, ce Personnage ... et gagne [Bloqueur] » (S6 : OP13-080, PRB02-015) : chaque action du groupe sous la même
+      // condition (un effet permanent n'a ni ordre ni « puis »)
+      if ('group' in st && st.group.every((g) => 'action' in g && !g.cond)) {
+        for (const g of st.group) {
+          if (!('action' in g)) continue;
+          const gate = B.all(...[this.gates(ab), this.cond(st.cond), g.cond ? this.cond(g.cond) : undefined].filter((x): x is B.Condition => Boolean(x)));
+          this.staticAction(g.action, gate, extra);
+        }
+        continue;
+      }
       if (!('action' in st)) { this.no('effet permanent : étape composée', 0); continue; }
       const gate = B.all(...[this.gates(ab), st.cond ? this.cond(st.cond) : undefined].filter((g): g is B.Condition => Boolean(g)));
       this.staticAction(st.action, gate, extra);
