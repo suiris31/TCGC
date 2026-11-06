@@ -97,7 +97,13 @@ export function parseFilter(phrase: string): Filter {
   if (f.types && f.types.length > 1) f.typesMode = typesAnd || /\bboth\b/.test(phrase) ? 'all' : 'any';
   // noms : « [A] or [B] », « [A] »
   eat(/ ((?:\[[^\]]+\](?:,? or |, )?)+)(?= )/g, (_, list: string) => {
-    const names = [...list.matchAll(/\[([^\]]+)\]/g)].map((x) => x[1]).filter((n) => !KEYWORDS.includes(n as Keyword));
+    const all = [...list.matchAll(/\[([^\]]+)\]/g)].map((x) => x[1]);
+    // « your opponent's [Blocker] Characters » (ST30-012) : un mot-clé placé avant le nom est un filtre de mot-clé, pas
+    // un nom (il était jeté sans rien dire ; intégration C2)
+    const kws = all.filter((n) => KEYWORDS.includes(n as Keyword));
+    if (kws.length > 1 || (kws.length && f.keyword)) fail(phrase, 'filtre : plusieurs mots-clés');
+    if (kws.length) f.keyword = kws[0] as Keyword;
+    const names = all.filter((n) => !KEYWORDS.includes(n as Keyword));
     if (names.length) f.name = [...(f.name ?? []), ...names];
   });
   eat(/ (rested|active)(?= )/g, (_, w) => { f.rested = w === 'rested'; });

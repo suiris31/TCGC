@@ -254,6 +254,15 @@ function enCond(c: Cond, ctx: Ctx): string {
 
 const article = (noun: string) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
+// « You may rest this Character and 1 of your Characters » : deux coûts de même verbe à la suite, le second ne le redit
+// pas (comme le texte officiel ; intégration C2)
+function sharedVerb(parts: string[]): string[] {
+  return parts.map((p, i) => {
+    const verb = parts[i - 1]?.split(' ')[0];
+    return i > 0 && verb && p.startsWith(`${verb} `) ? p.slice(verb.length + 1) : p;
+  });
+}
+
 function enCost(p: CostPart, ctx: Ctx): string {
   const me = EN_SELF[ctx.self];
   switch (p.kind) {
@@ -536,7 +545,7 @@ const EN: Lang = {
     let body = '';
     if (a.timing === 'when' && a.event) body += `When ${enEvent(a.event, ctx)}, `;
     if (a.condition) body += `If ${enCond(a.condition, ctx)}, `;
-    if (others.length) body += `${body ? 'you' : 'You'} may ${andList(others.map((p) => enCost(p, ctx)), 'and')}: `;
+    if (others.length) body += `${body ? 'you' : 'You'} may ${andList(sharedVerb(others.map((p) => enCost(p, ctx))), 'and')}: `;
     const steps = enSteps(a.steps, ctx);
     body += body && !/: $/.test(body) ? lower(steps) : steps;
     return `${head}${head ? ' ' : ''}${body}${/[.:]$/.test(body) || !body ? '' : '.'}`.trim();
@@ -910,7 +919,7 @@ const FR: Lang = {
     let body = '';
     if (a.timing === 'when' && a.event) body += `Quand ${frEvent(a.event, ctx)}, `;
     if (a.condition) body += `Si ${frCond(a.condition, ctx)}, `;
-    if (others.length) body += `${body ? 'vous' : 'Vous'} pouvez ${andList(others.map((p) => frCost(p, ctx)), 'et')} : `;
+    if (others.length) body += `${body ? 'vous' : 'Vous'} pouvez ${andList(sharedVerb(others.map((p) => frCost(p, ctx))), 'et')} : `;
     const steps = frSteps(a.steps, ctx);
     body += body && !/: $/.test(body) ? lower(steps) : steps;
     return `${head}${head ? ' ' : ''}${body}${/[.:]$/.test(body) || !body ? '' : '.'}`.trim();

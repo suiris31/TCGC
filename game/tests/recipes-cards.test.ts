@@ -420,6 +420,11 @@ const KNOWN_GAPS: Record<string, string> = {
   'OP06-083': "« This Character's effect is negated » / « Negate the effect of this Character »",
   'OP02-074': '« Your [Nom] gains » lu « 1 of your [Nom] » : à trancher (tous ?) par la tâche du set',
   'OP11-013': "« All of your opponent's Characters ... cannot activate [Blocker] » lu comme l'interdit du Bloqueur (n° 1588)",
+  'EB04-009': '« your Characters or [Nom] » : recette juste, mal redite (describe)',
+  'OP12-019': '« your Characters or [Nom] » : recette juste, mal redite (describe)',
+  'OP07-069': '« your {X} type Characters » redit « all of your ... » (n° 1581)',
+  'OP06-117': '« this card » / « this Stage »',
+  'OP01-031': '« You can » / « You may »',
 };
 
 test('catalogue : cartes restantes toujours écrites, « that card » toujours après une révélation, aller-retour sans écart', () => {

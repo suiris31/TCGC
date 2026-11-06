@@ -64,7 +64,9 @@ function koBy(how: string | undefined): { by: 'battle' | 'effect' | 'oppEffect' 
   if (/^in battle$/i.test(how)) return { by: 'battle' };
   if (/^by effects$/i.test(how)) return { by: 'effect' };
   if (/^by your opponent's effects$/i.test(how)) return { by: 'oppEffect' };
-  if ((m = how.match(/^in battle by <([^>]+)> attribute (?:cards|Characters)$/i))) return { by: 'battle', byAttribute: m[1] };
+  // « ... attribute cards » seulement : « ... attribute Characters » (OP01-024) exclut un Leader qui attaque, ce que
+  // byAttribute ne sait pas dire (intégration C2)
+  if ((m = how.match(/^in battle by <([^>]+)> attribute cards$/i))) return { by: 'battle', byAttribute: m[1] };
   return fail(how, 'protection contre le KO');
 }
 
