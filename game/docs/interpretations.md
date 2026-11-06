@@ -955,6 +955,33 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
       « donnez à votre Leader et à 1 Personnage N DON!! chacun », « depuis la zone de Coût » (redressées ou épuisées :
       laquelle ?), « à la fin de ce tour, redressez ... », « toutes vos DON!! sont épuisées » (les DON!! données
       comptent-elles ?), « vous ne pouvez pas redresser de DON!! par des effets de Personnage ».
+## Traducteur, famille « jouer » (tâche C2.6), choix faits sans validation
+
+1900. **« Si vous le faites » / « Sinon »** : la phrase dépend de l'étape qui la précède immédiatement. Celle-ci est
+      « faite » quand elle a changé la partie (une carte jouée, défaussée, mise KO...). Un « jusqu'à 1 » où l'on ne
+      choisit rien, un « vous pouvez » refusé ou une action sans cible ne sont pas faits : « Si vous le faites » ne
+      s'applique pas, « Sinon » s'applique.
+1901. **« Votre adversaire choisit un effet »** : l'adversaire choisit parmi tous les effets proposés, même un effet
+      qui ne ferait rien dans la situation (c'est son intérêt) ; le joueur de la carte fait ensuite l'effet choisi.
+1902. **« Les seuls Personnages de votre terrain sont ... »** (et « vous n'avez que des Personnages ... ») : vrai quand
+      aucun de vos Personnages ne sort du filtre, **y compris sans aucun Personnage**. Lecture à confirmer par les Q&A
+      officielles lors des tâches « set » (cartes concernées : OP05-084, OP05-092, OP13-097, EB02-010, OP16-022,
+      EB03-038, OP11-046).
+1903. **« Jouez jusqu'à N cartes ... »** : N fois « jusqu'à 1 », une carte jouée n'étant plus proposée ; le joueur peut
+      s'arrêter à tout moment. « De votre main ou de votre Défausse » : les cartes des deux zones sont proposées
+      ensemble (une carte de la main qui ne peut pas être jouée par un effet est écartée, comme pour la main seule).
+1904. **« Quand vous jouez un Personnage ... »** : un autre Personnage que celui qui porte l'effet (il n'est pas encore
+      « là » pour se voir jouer). « Quand un Personnage adverse est mis KO » : par un effet ou en combat. « Quand une
+      carte de votre main est placée dans la Défausse par un effet » : par n'importe quel effet, le vôtre compris.
+1905. **Valeurs calculées** : « un coût inférieur ou égal au nombre de ... » et « +N pour chaque lot de M ... » sont
+      comptés au moment où l'effet se résout (effet ponctuel), ou en permanence (effet permanent, comme une aura). « Pour
+      chaque carte défaussée / renvoyée / mise KO » (ce que le coût ou l'effet vient de faire) n'est pas traduit : code à
+      la main.
+1906. **« Quand ce Personnage est mis KO par un effet adverse »** : un effet [En cas de KO] qui ne se déclenche que si
+      le KO vient d'un effet de l'adversaire (pas d'un combat, pas d'un de vos effets) ; ses conditions sont lues au
+      moment du KO, la carte encore sur le terrain.
+1907. **[Une fois par tour] d'un effet « Quand ... »** : l'effet compte comme utilisé dès qu'il se déclenche (comme
+      les effets « quand ... » codés à la main), même si son coût facultatif est ensuite refusé.
 
 ## Comment c'est vérifié
 

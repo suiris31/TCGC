@@ -246,10 +246,12 @@ test('traducteur : « Choose one: », « If C, choose one: », « ..., then choo
     [{ chooseOne: [[{ action: { kind: 'draw', n: 1 } }], [{ action: { kind: 'draw', n: 2 } }]], cond: { kind: 'hand', side: 'opp', cmp: 'ge', n: 5 } }]);
   assert.deepEqual(one('[Main] Draw 1 card, then choose one:\n• Draw 1 card.\n• Trash 1 card from your hand.').steps,
     [{ action: { kind: 'draw', n: 1 } }, { chooseOne: [[{ action: { kind: 'draw', n: 1 } }], [{ action: { kind: 'discard', n: 1 } }]], link: 'then' }]);
-  // l'adversaire choisit : rapporté (pas d'erreur de structure), les puces sont lues quand même
+  // l'adversaire choisit (C2.6) : une action oppChooseOne ; les puces sont lues (une puce inconnue est rapportée)
   const r = parseCardReport({ num: 'OP99-001', effectEn: '[On Play] Your opponent chooses one:\n• Draw 1 card.\n• Fly away.', triggerEn: null }, [ESSAI]);
   assert.deepEqual(r.structure, []);
-  assert.ok(!r.result.ok && r.result.unknown.some((u) => u.startsWith("choix de l'adversaire")) && r.result.unknown.some((u) => u.startsWith('action')));
+  assert.ok(!r.result.ok && r.result.unknown.some((u) => u.startsWith('action')));
+  assert.deepEqual(one('[On Play] Draw 1 card. Your opponent chooses one:\n• Draw 1 card.\n• Draw 2 cards.').steps,
+    [{ action: { kind: 'draw', n: 1 } }, { action: { kind: 'oppChooseOne', options: [[{ action: { kind: 'draw', n: 1 } }], [{ action: { kind: 'draw', n: 2 } }]] }, link: 'then' }]);
 });
 
 test('traducteur : « you may X » (facultatif), suites d\'une recherche (« Then, place the rest », « ..., then trash the rest »)', () => {

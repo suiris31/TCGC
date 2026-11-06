@@ -18,10 +18,11 @@ import * as P from '../cards/bricks-power.ts';
 import * as L from '../cards/bricks-life.ts';
 import * as BC from '../cards/bricks-cards.ts';
 import * as D from '../cards/bricks-don.ts';
-import { addMod, allField, attachedDon, def, donOnField, findField, log, other, untilOpponentsNextEnd } from '../rules.ts';
-import type { CardBehavior, Category, EffectCtx, FieldCard, GameState, PlayerId } from '../types.ts';
+import * as BP from '../cards/bricks-play.ts';
+import { addMod, allField, attachedDon, def, donOnField, findField, log, other, power as currentPower, untilOpponentsNextEnd } from '../rules.ts';
+import type { CardBehavior, Category, EffectCtx, FieldCard, GameEvent, GameState, PlayerId, WhenEffect } from '../types.ts';
 import type {
-  Ability, Action, Cmp, Cmp2, Cond, CostPart, Duration, Filter, ManualCode, Recipe, Step, Target,
+  Ability, Action, Cmp, Cmp2, Cond, CostPart, Count, Duration, Filter, ManualCode, Recipe, RecipeEvent, Step, Target,
 } from './types.ts';
 
 // ok : le comportement de la carte ; sinon, les morceaux que le compilateur ne sait pas encore traduire en briques
@@ -93,6 +94,8 @@ class Compiler {
     if (f.noKeyword !== undefined) s.noKeyword = f.noKeyword;
     if (f.vanilla !== undefined) s.vanilla = f.vanilla;
     if (f.donMin !== undefined) s.donMin = f.donMin;
+    // borne calculée (C2.6) : remplacée par sa valeur avant d'arriver ici (computed) ; sinon elle n'est pas comprise
+    if (f.costMaxOf) this.no(`filtre : coût calculé (${where === 'field' ? 'terrain' : 'carte'})`, 0);
     if (f.category?.length === 1 && where === 'card') s.category = f.category[0];
     else if (f.category?.length) s.categories = [...f.category];
     if (f.anyOf?.length) groups.push({ anyOf: f.anyOf.map((x) => this.spec(x, where)) });
@@ -227,6 +230,15 @@ class Compiler {
       case 'turn': return c.mine ? B.myTurn : B.oppTurn;
       case 'playedThisTurn': return (s, _p, self) => findField(s, self)?.card.playedTurn === s.turn;
       case 'firstTurns': return (s, p) => s.players[p].turns >= c.fromTurn;
+      // C2.6 : puissance actuelle de la carte (sur le terrain) ou du Leader
+      case 'power': return c.who === 'leader'
+        ? (s, p) => cmp(currentPower(s, s.players[p].leader.uid), c.cmp, c.n)
+        : (s, _p, self) => Boolean(findField(s, self)) && cmp(currentPower(s, self), c.cmp, c.n);
+      // « the only Characters on your field are ... » : aucun Personnage hors du filtre (interprétation n° 1902)
+      case 'onlyChars': {
+        const spec = this.spec(c.filter, 'field');
+        return (s, p) => s.players[p].chars.every((x) => B.matches(s, x, spec));
+      }
       case 'and': return B.all(...c.all.map((x) => this.cond(x)));
       case 'or': return B.any(...c.any.map((x) => this.cond(x)));
       case 'not': return B.not(this.cond(c.cond));
@@ -300,6 +312,7 @@ class Compiler {
   action(a: Action, ab: Ability): B.Effect {
     const src = this.src;
     const k = `action ${a.kind}`;
+    if (hasComputed(a)) return this.computed(a, ab);
     switch (a.kind) {
       case 'ko':
         if (a.target.self) return a.target.leader || a.target.stage ? this.no(`${k} : ce Leader ou ce Lieu`, NOTHING) : R.removeSelf('ko');
@@ -435,15 +448,19 @@ class Compiler {
       }
       case 'arrangeTop': return a.where === 'topOrBottom' ? B.lookTopArrange(a.look, src) : BC.lookTopReorder(a.look, a.where, src);
       case 'play': {
-        if (a.from !== 'hand' && a.from !== 'trash') return this.no(`${k} : depuis ${a.from}`, NOTHING);
-        if (a.count !== 1 || !a.upTo) return this.no(`${k} : ${a.count !== 1 ? 'plusieurs' : 'sans « jusqu\'à »'}`, NOTHING);
+        if (a.from !== 'hand' && a.from !== 'trash' && a.from !== 'handOrTrash') return this.no(`${k} : depuis ${a.from}`, NOTHING);
+        if (!a.upTo) return this.no(`${k} : sans « jusqu'à »`, NOTHING);
         if (!this.charactersOnly(a.filter)) return this.no(`${k} : autre chose qu'un Personnage`, NOTHING);
         const spec = this.spec({ ...a.filter, category: undefined }, 'card');
-        return (a.from === 'hand' ? B.playFromHand : B.playFromTrash)(spec, src, { rested: a.rested });
+        // « de votre main ou de votre Défausse » : une carte de l'une ou de l'autre (C2.6) ; « jusqu'à N » : N fois
+        // « jusqu'à 1 » (une carte jouée n'est plus proposée ; interprétation n° 1903)
+        const one = a.from === 'handOrTrash' ? BP.playFromHandOrTrash(spec, src, { rested: a.rested })
+          : (a.from === 'hand' ? B.playFromHand : B.playFromTrash)(spec, src, { rested: a.rested });
+        return a.count === 1 ? one : B.seq(...Array.from({ length: a.count }, () => one));
       }
       case 'playSelf':
         if (ab.timing === 'trigger') return B.playThis({ rested: a.rested });
-        if (ab.timing === 'onKO') return B.playSelfFromTrash(src, { rested: a.rested });
+        if (ab.timing === 'onKO' || (ab.timing === 'when' && ab.event?.on === 'koOwnChar' && ab.event.self)) return B.playSelfFromTrash(src, { rested: a.rested });
         return this.no(`${k} : moment ${ab.timing}`, NOTHING);
       case 'activate': return this.no(`${k} ${a.which}`, NOTHING);   // [Déclenchement] « activez l'effet [Principale] » : voir trigger()
       case 'trashToHand':
@@ -489,6 +506,8 @@ class Compiler {
       case 'revealTop': return BC.revealTopCard(src);
       case 'playRevealed': return BC.playRevealed(src, { rested: a.rested });
       case 'revealedToBottom': return BC.revealedToBottom(src);
+      case 'oppChooseOne':
+        return BP.oppChooseOne(src, a.options.map((option, i) => ({ label: this.optionLabel(option, i), effect: this.steps(option, ab) })));
       case 'manual': {
         const fn = this.manual?.steps?.[a.reason];
         if (!fn) return this.no(`action manual:${a.reason} absente`, NOTHING);
@@ -515,15 +534,22 @@ class Compiler {
   steps(list: Step[], ab: Ability): B.Effect {
     const parts: B.Effect[] = [];
     for (const st of list) {
-      if (st.link === 'ifYouDo' || st.link === 'ifNotYouDo') this.no(`lien ${st.link}`, 0);
       let e: B.Effect;
       if ('action' in st) e = this.action(st.action, ab);
       else if ('chooseOne' in st) {
         e = B.chooseOne(this.src, st.chooseOne.map((option, i) => ({ label: this.optionLabel(option, i), effect: this.steps(option, ab) })));
       } else if ('may' in st) e = this.may(this.steps(st.may, ab));
       else e = this.steps(st.group, ab);
-      if (st.cond?.kind === 'revealed') parts.push(BC.whenRevealed(this.spec(st.cond.filter, 'card'), e));
-      else parts.push(st.cond ? B.when(this.cond(st.cond), e) : e);
+      if (st.cond?.kind === 'revealed') e = BC.whenRevealed(this.spec(st.cond.filter, 'card'), e);
+      else if (st.cond) e = B.when(this.cond(st.cond), e);
+      // « Si vous le faites, ... » / « Sinon, ... » (C2.6) : dépend de ce que l'étape précédente a fait
+      if (st.link === 'ifYouDo' || st.link === 'ifNotYouDo') {
+        const prev = parts.pop();
+        if (!prev) { this.no(`lien ${st.link} sans étape avant`, 0); parts.push(e); continue; }
+        parts.push(BP.ifDone(prev, e, st.link === 'ifYouDo'));
+        continue;
+      }
+      parts.push(e);
     }
     return parts.length === 1 ? parts[0] : B.seq(...parts);
   }
@@ -574,7 +600,99 @@ class Compiler {
     if (only?.kind === 'activate' && only.which === 'main' && !ab.cost && !this.gates(ab)) {
       return main ?? this.no('[Déclenchement] « activez l\'effet [Principale] » sans effet [Principale]', NOTHING);
     }
+    // C2.6 : « activez l'effet [Jouée] / [En cas de KO] / [Contre] / [En attaquant] de cette carte »
+    if (only?.kind === 'activate' && !ab.cost && !this.gates(ab)) {
+      const own = this.activated[only.which];
+      return own ?? this.no(`[Déclenchement] « activez l'effet ${only.which} » sans cet effet`, NOTHING);
+    }
     return this.ability(ab, 'trigger');
+  }
+
+  // Effets de la carte que son [Déclenchement] peut activer (remplis par compile)
+  activated: Partial<Record<'main' | 'onPlay' | 'counter' | 'onKO' | 'whenAttacking', B.Effect>> = {};
+
+  // ---------- [En bloquant], [Fin du tour adverse], « When ... » (C2.6) ----------
+
+  // Un effet automatique du moteur (CardBehavior.when) : l'évènement, la carte (sur le terrain) et les verrous sont
+  // vérifiés au moment de l'évènement ; l'effet (coût compris) se résout ensuite. [Une fois par tour] : la clé de
+  // l'effet est prise quand il se déclenche (WhenEffect.once).
+  whenEffect(ab: Ability, key: string): WhenEffect | undefined {
+    const match = this.eventMatch(ab);
+    if (!match) return undefined;
+    const gate = this.gates(ab);
+    const e = this.ability({ ...ab, oncePerTurn: undefined, condition: undefined, yourTurn: undefined, oppTurn: undefined, don: undefined }, key);
+    return {
+      on: match.on,
+      ...(ab.oncePerTurn ? { once: `${this.num}:${key}` } : {}),
+      if: (s, owner, self, ev) => match.test(s, owner, self, ev) && (!gate || gate(s, owner, self.uid)),
+      run: (ctx) => e.run(ctx),
+    };
+  }
+
+  eventMatch(ab: Ability): { on: GameEvent['type']; test: (s: GameState, owner: PlayerId, self: FieldCard, e: GameEvent) => boolean } | undefined {
+    if (ab.timing === 'onBlock') return { on: 'block', test: (_s, _o, self, e) => e.uid === self.uid };
+    if (ab.timing === 'endOfOppTurn') return { on: 'turnEnd', test: (_s, owner, _self, e) => e.player === other(owner) };
+    const ev: RecipeEvent | undefined = ab.event;
+    if (!ev) return this.no('« When » sans évènement', undefined);
+    const k = `évènement ${ev.on}`;
+    const spec = ev.filter ? this.spec(ev.filter, 'card') : undefined;
+    const fits = (e: GameEvent) => !spec || (e.num !== undefined && B.cardMatches(e.num, spec));
+    const byOpp = (owner: PlayerId, e: GameEvent) => !ev.byOpponent || (e.by === other(owner) && e.cause === 'effect');
+    if (ev.self && ev.on !== 'rested' && ev.on !== 'attacked') return this.no(`${k} : la carte elle-même`, undefined);
+    switch (ev.on) {
+      case 'koOwnChar': return { on: 'ko', test: (_s, owner, _self, e) => e.player === owner && e.zone === 'character' && fits(e) && byOpp(owner, e) };
+      case 'koOppChar': return { on: 'ko', test: (_s, owner, _self, e) => e.player === other(owner) && e.zone === 'character' && fits(e) };
+      case 'koChar': return { on: 'ko', test: (_s, _owner, _self, e) => e.zone === 'character' && fits(e) };
+      case 'damage': return { on: 'damage', test: (_s, owner, _self, e) => e.player === owner };
+      // « When you play a Character » : un autre que celui qui porte l'effet (interprétation n° 1904)
+      case 'playChar': return { on: 'play', test: (_s, owner, self, e) => e.player === owner && e.zone === 'character' && e.uid !== self.uid && fits(e) };
+      case 'oppPlayChar': return { on: 'play', test: (_s, owner, _self, e) => e.player === other(owner) && e.zone === 'character' && fits(e) };
+      case 'donReturned': return { on: 'donReturned', test: (_s, owner, _self, e) => e.player === owner };
+      case 'rested': return { on: 'rest', test: (_s, _owner, self, e) => e.uid === self.uid };
+      case 'attacked': return { on: 'attack', test: (_s, _owner, self, e) => e.target === self.uid };
+      // une carte de la main placée dans la Défausse par un effet (le sien ou celui de l'adversaire)
+      case 'trashFromHand': return { on: 'discard', test: (_s, owner, _self, e) => e.player === owner && (!ev.byOpponent || e.by === other(owner)) };
+      case 'activateEvent': return { on: 'event', test: (_s, owner, _self, e) => e.player === (ev.byOpponent ? other(owner) : owner) };
+      case 'leaveOwnChar': return { on: 'leave', test: (_s, owner, _self, e) => e.player === owner && fits(e) && byOpp(owner, e) };
+      case 'lifeRemoved': case 'drawOutsideDraw': case 'trigger': case 'other':
+        return this.no(k, undefined);
+      default: return unreachable(ev.on);
+    }
+  }
+
+  // ---------- Valeurs calculées (C2.6) ----------
+
+  // Ce que compte la valeur, au moment où l'effet se résout (ou en permanence)
+  count(c: Count): (s: GameState, p: PlayerId, self: number) => number {
+    switch (c.kind) {
+      case 'life': return (s, p) => (c.side === 'own' ? s.players[p].life.length : c.side === 'opp' ? s.players[other(p)].life.length
+        : s.players[p].life.length + s.players[other(p)].life.length);
+      case 'hand': return (s, p) => s.players[c.side === 'own' ? p : other(p)].hand.length;
+      case 'trash': {
+        const spec = c.filter ? this.spec(c.filter, 'card') : undefined;
+        return (s, p) => (spec ? s.players[p].trash.filter((x) => B.cardMatches(x.num, spec)).length : s.players[p].trash.length);
+      }
+      case 'donField': return (s, p) => donOnField(s, c.side === 'own' ? p : other(p));
+      case 'chars': {
+        const spec = this.spec(c.filter, 'field');
+        const sides = (p: PlayerId): PlayerId[] => (c.side === 'own' ? [p] : c.side === 'opp' ? [other(p)] : [p, other(p)]);
+        return (s, p) => sides(p).reduce((k: number, q) => k + s.players[q].chars.filter((x) => B.matches(s, x, spec)).length, 0);
+      }
+      default: return unreachable(c);
+    }
+  }
+
+  // Une action dont une valeur est calculée : compilée une fois avec une valeur d'essai (pour le rapport des manques),
+  // puis reconstruite au moment où elle sert, avec la vraie valeur (BP.computedEffect)
+  computed(a: Action, ab: Ability): B.Effect {
+    const counts = new Map<string, (s: GameState, p: PlayerId, self: number) => number>();
+    walkComputed(a, (c) => { const key = JSON.stringify(c); if (!counts.has(key)) counts.set(key, this.count(c)); });
+    this.action(fixComputed(a, () => 1), ab);
+    return BP.computedEffect((s, p, self) => {
+      const sub = new Compiler(this.num, this.src, this.manual);
+      sub.activated = this.activated;
+      return sub.action(fixComputed(a, (c) => counts.get(JSON.stringify(c))!(s, p, self)), ab);
+    });
   }
 
   compile(r: Recipe): CardBehavior {
@@ -621,12 +739,25 @@ class Compiler {
           trigger = ab;
           break;
         case 'static': statics.push(ab); break;
-        case 'onBlock': case 'endOfOppTurn': case 'when':
-          this.no(`moment ${ab.timing}${ab.event ? ` (${ab.event.on})` : ''}`, 0);
+        case 'onBlock': case 'endOfOppTurn': case 'when': {
+          // « When this Character is KO'd by your opponent's effect » : un [En cas de KO] limité aux effets adverses
+          if (ab.timing === 'when' && ab.event?.on === 'koOwnChar' && ab.event.self) {
+            if (spec.onKO || extra.onKOCondition || r.abilities.some((x) => x !== ab && x.timing === 'onKO')) { this.no('deux effets en cas de KO', 0); break; }
+            const gate = this.gates(ab, { don: false });
+            const n = ab.don;
+            extra.onKOCondition = (s, owner, card, cause, by) => cause === 'effect' && by === other(owner)
+              && (n === undefined || card.don >= n) && (!gate || gate(s, owner, card.uid));
+            add('onKO', this.ability({ ...ab, condition: undefined, yourTurn: undefined, oppTurn: undefined }, key, { don: false }));
+            break;
+          }
+          const w = this.whenEffect(ab, key);
+          if (w) (extra.when ??= []).push(w);
           break;
+        }
         default: unreachable(ab.timing);
       }
     });
+    this.activated = { main: spec.onMain, onPlay: spec.onPlay, counter: spec.onCounter, onKO: spec.onKO, whenAttacking: spec.whenAttacking };
     if (trigger) spec.onTrigger = this.trigger(trigger, spec.onMain);
     for (const ab of statics) this.static(ab, extra);
     return B.card(spec, extra);
@@ -673,6 +804,19 @@ class Compiler {
         && (rested === undefined || target.rested === rested) && (donMin === undefined || target.don >= donMin);
     };
     const on = (s: GameState, owner: PlayerId, source: FieldCard) => gate(s, owner, source.uid);
+    // « This Character gains +1000 power for every 2 cards in your trash » (C2.6) : la carte elle-même seulement ; un
+    // compte de Personnages filtré ne se lit pas ici (une aura qui lirait la puissance tournerait en rond)
+    if ((a.kind === 'power' || a.kind === 'cost') && a.per) {
+      const per = a.per;
+      if (!t.self || per.count.kind === 'chars') { this.no(`${k} : « for every » ${t.self ? 'sur des Personnages' : 'hors de la carte elle-même'}`, 0); return; }
+      const count = this.count(per.count);
+      const n = a.amount;
+      const value: Fn3 = (s, p, c) => (on(s, p, c) ? n * Math.floor(count(s, p, c.uid) / per.every) : 0);
+      if (a.kind === 'power') extra.selfPower = sum(extra.selfPower, value);
+      else extra.selfCost = sum(extra.selfCost, value);
+      return;
+    }
+    if (hasComputed(a)) { this.no(`${k} : valeur calculée`, 0); return; }
     switch (a.kind) {
       case 'power': {
         const n = a.amount;
@@ -773,6 +917,37 @@ function actionLabel(a: Action, label: (t: Target) => string): string | null {
     case 'reorderLife': return a.side === 'own' ? 'Remettre sa Vie dans l’ordre' : 'Remettre la Vie adverse dans l’ordre';
     default: return null;
   }
+}
+
+// ---------- Valeurs calculées (C2.6) ----------
+
+// Les comptes d'une action : bornes calculées des filtres (costMaxOf) et « for every » (per)
+function walkComputed(x: unknown, visit: (c: Count) => void) {
+  if (!x || typeof x !== 'object') return;
+  const o = x as Record<string, unknown>;
+  if (o.costMaxOf) visit(o.costMaxOf as Count);
+  if (o.per && typeof o.per === 'object' && 'count' in (o.per as object)) visit((o.per as { count: Count }).count);
+  for (const [k, v] of Object.entries(o)) if (k !== 'costMaxOf' && k !== 'per') walkComputed(v, visit);
+}
+function hasComputed(a: Action): boolean {
+  let found = false;
+  walkComputed(a, () => { found = true; });
+  return found;
+}
+// La même action avec les valeurs calculées remplacées : « coût de N ou moins » (le plus petit des deux si le filtre
+// avait déjà une borne), puissance ou coût multiplié par ⌊compte / every⌋
+function fixComputed(a: Action, value: (c: Count) => number): Action {
+  const fix = (x: unknown): unknown => {
+    if (Array.isArray(x)) return x.map(fix);
+    if (!x || typeof x !== 'object') return x;
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(x)) if (k !== 'costMaxOf' && k !== 'per') o[k] = fix(v);
+    const src = x as { costMaxOf?: Count; per?: { every: number; count: Count }; amount?: number };
+    if (src.costMaxOf) o.costMax = Math.min(value(src.costMaxOf), (o.costMax as number | undefined) ?? Infinity);
+    if (src.per && typeof src.amount === 'number') o.amount = src.amount * Math.floor(value(src.per.count) / src.per.every);
+    return o;
+  };
+  return fix(a) as Action;
 }
 
 type Fn3 = (s: GameState, p: PlayerId, c: FieldCard) => number;
