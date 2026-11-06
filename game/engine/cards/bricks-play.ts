@@ -73,7 +73,7 @@ export const playFromHandOrTrash = (spec: CharSpec, source: string, opts: { rest
       const uid = Number(answer.split(':')[1]);
       const zone = P.hand.some((c) => c.uid === uid) ? P.hand : P.trash;
       const [card] = zone.splice(zone.findIndex((c) => c.uid === uid), 1);
-      playCharacter(ctx, ctx.me, card, opts);
+      playCharacter(ctx, ctx.me, card, { ...opts, from: zone === P.trash ? 'trash' : 'hand' });
     },
     useful: (s, p) => canPlayCharacters(s, p) && list(s, p).length > 0,
   };

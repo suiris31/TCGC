@@ -996,6 +996,48 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 1907. **[Une fois par tour] d'un effet « Quand ... »** : l'effet compte comme utilisé dès qu'il se déclenche (comme
       les effets « quand ... » codés à la main), même si son coût facultatif est ensuite refusé.
 
+## OP16 (tâche S2), choix faits sans validation
+
+2100. **Little Oz Junior (OP16-017)** : « si vous n'avez aucun Personnage ... de coût 8 ou plus » lit le coût actuel
+      (modifié) des Personnages, lui compris. Sa puissance permanente ne relit plus sa propre puissance (correction de
+      `matches`, `bricks.ts` : la puissance n'est calculée que si le filtre en parle ; aucun autre jeu ne change).
+2101. **Rockstar (OP16-018)** : remplace un KO en combat ou par un effet (n'importe lequel) d'un Personnage {Équipage du
+      Roux}, Rockstar compris ; [Une fois par tour] est compté quand le remplacement est accepté.
+2102. **Morley (OP16-033)** : « épuisez 2 de vos cartes » se paie avec le Leader, les Personnages (Morley compris), le
+      Lieu ou les DON!! redressées, comme le coût « épuisez N de vos cartes » des recettes.
+2103. **Marshall D. Teach (Leader OP16-080)** : la nouvelle cible est ce Leader ou un Personnage {Équipage de Barbe
+      Noire} autre que la cible actuelle ; [Une fois par tour] est compté dès que le joueur accepte de payer.
+      « [Tour adverse] Tous vos Personnages +1 de coût » : les Personnages seulement, pas le Leader.
+2104. **Yamato (Leader OP16-079)** : « un Personnage {Pays de Wano} joué depuis votre Défausse » est reconnu quand la
+      carte est jouée par une brique commune (recettes, `playFromTrash`, `playSelfFromTrash`, « main ou Défausse ») :
+      l'annonce « jouée » porte alors sa zone d'origine (`GameEvent.from`). Le code à la main plus ancien qui joue depuis
+      la Défausse ne la donne pas ; aucune de ces cartes ne peut aujourd'hui jouer un Personnage noir {Pays de Wano}.
+2105. **Entaille de Glace Sacrée (OP16-100)** : « un Personnage adverse a été mis KO durant ce tour » : en combat ou par
+      un effet, de n'importe quelle source (le moteur retient le dernier tour où un Personnage de chaque joueur a été
+      mis KO, `charKoTurn`).
+2106. **Mr 2 Bonclay (OP16-055), Catarina Devon (OP16-104)** : la puissance de base devient la puissance **lue au
+      moment de l'effet** (Leader adverse ; Personnage choisi), pour le tour : une valeur fixe, qui ne suit pas les
+      changements ultérieurs. Catarina Devon sans Personnage choisi (« jusqu'à 1 ») : rien.
+2107. **Sengoku (Leader OP16-060)** : les Personnages {Amiral} sont joués un par un ; « noms différents » compare tous
+      les noms de chaque carte (une carte qui porte aussi un autre nom compte pour les deux). Le coût exige 8 DON!!
+      **redressées**.
+2108. **Avalo Pizarro (OP16-102)** : [Ruche] est un Lieu : il est joué (l'ancien Lieu est défaussé). Le traducteur le
+      lisait comme un Personnage, qui n'existe pas : la recette générée ne jouait rien (garde-fou à prévoir, voir PR).
+2109. **Gecko Moria (OP16-105)** : jusqu'à 1 de chacun des trois noms, « coût 4 ou moins » valant pour les trois (VO et
+      VF), joués l'un après l'autre.
+2110. **Portgas D. Ace (Leader OP16-001)** : « ayant 8000 de puissance ou plus » vaut pour les deux descriptions
+      ([Monkey D. Luffy] et « Whitebeard Pirates » dans le type) : la virgule de la VO et la VF le disent.
+2111. **Momonosuké Kozuki (OP16-084)** : le coût n'est payable que si le coût actuel de ce Personnage est de 20 ou plus
+      (avec Shinobu OP16-087 : 5 + 20).
+2112. **Shiliew (OP16-108)** : la carte de la Défausse est placée au-dessus de la Vie, face visible, connue des deux
+      joueurs.
+2113. **Prisonniers d'Impel Down (OP16-042)** : seule la règle de construction (autant d'exemplaires que voulu, déjà lue
+      par `deckRules.anyNumber`) ; aucun effet en partie.
+2114. **Squard (OP16-008)** : « ayant 10000 de puissance de base » : exactement 10000 (puissance de base, pas actuelle).
+2115. **Tourbillon Noir, Black Hole (OP16-115, OP16-117)** : « annulez les effets » suit la n° 27.
+2116. **Monkey D. Luffy (Leader OP16-022) : en doute** (non jouable) : la n° 1902 n'a pas trouvé de réponse officielle ;
+      question posée à l'utilisateur (sans Personnage, l'effet s'active-t-il ?).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
