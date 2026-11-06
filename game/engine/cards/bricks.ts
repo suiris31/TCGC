@@ -895,7 +895,9 @@ export const addDon = (n: number, state: 'active' | 'rested'): Effect =>
   effect((ctx) => { addDonFromDeck(ctx.s, ctx.me, n, state === 'active'); }, (s, p) => s.players[p].donDeck > 0);
 
 // « Redressez jusqu'à N de vos cartes DON!! »
-export const readyDon = (n: number): Effect => effect((ctx) => { untapDon(ctx.s, ctx.me, n); }, (s, p) => s.players[p].donRested > 0);
+// (pas d'effet si les effets de Personnage ne peuvent plus redresser de DON!! ce tour-ci : L'Oiseau EB04-016)
+export const readyDon = (n: number): Effect => effect((ctx) => { untapDon(ctx.s, ctx.me, n, ctx.num); }, (s, p, self) => s.players[p].donRested > 0
+  && !(s.players[p].noCharDonReadyTurn === s.turn && findField(s, self)?.card.num !== undefined && def(findField(s, self)!.card.num).category === 'CHARACTER'));
 
 // ---------- La carte qui porte l'effet (OP03, ST-01 : tâche 1.1) ----------
 

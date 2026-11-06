@@ -22,11 +22,11 @@ import { attack, choose, coherent, expectTag, logHas, play, scenario, setChars, 
 // Cartes réelles « à faire » (avant ce test)
 const KO2 = 'EB01-049';        // Personnage coût 5 : [Jouée] KO adverse coût 2 ou moins
 const BOUNCE = 'OP08-042';     // Personnage coût 4 : [DON!! x1] [En attaquant] renvoie en main un Personnage coût 3 ou moins
-const VIVI_COUNTER = 'EB03-011'; // Événement coût 1 : [Contre] sous condition de Leader ; [Déclenchement] puissance adverse
+const VIVI_COUNTER = 'OP11-115'; // Événement coût 1 : [Contre] sous condition de Leader ; [Déclenchement] KO adverse (EB03-011 jusqu'à S4)
 const MINUS_COST = 'EB01-048'; // Personnage coût 4 : [Activation : Principale] épuiser cette carte : coût adverse
 const MINUS_POWER = 'OP13-020'; // Événement coût 3 : [Principale] puissance adverse ; [Déclenchement] son effet [Principale]
 const RESTED_POWER = 'OP14-026'; // Personnage : [Tour adverse] épuisé, +2000 de puissance
-const VIVI_L = 'OP04-001';     // un Leader [Nefeltari Vivi]
+const VIVI_L = 'OP11-022';     // un Leader [Shirahoshi] (le nom VIVI est resté de l'exemple EB03-011, jouable depuis S4)
 // adversaire ST-21
 const O_BONNEY = 'ST21-004';   // coût 1, 3000
 const O_STUSSY = 'ST21-006';   // coût 3, 5000
@@ -83,10 +83,10 @@ const OTHERS: RecipeSet = {
       recipe: {
         num: VIVI_COUNTER,
         abilities: [ability({
-          timing: 'counter', condition: { kind: 'leaderIs', names: ['Nefeltari Vivi'] },
+          timing: 'counter', condition: { kind: 'leaderIs', names: ['Shirahoshi'] },
           steps: [{ action: { kind: 'power', target: { side: 'own', zone: 'field', leader: true, characters: true, count: 1, upTo: true, filter: {} }, amount: 4000, until: 'battle' } }],
         })],
-        trigger: ability({ timing: 'trigger', steps: [{ action: { kind: 'power', target: oppChar({}), amount: -2000, until: 'turn' } }] }),
+        trigger: ability({ timing: 'trigger', steps: [{ action: { kind: 'ko', target: oppChar({ costMax: 2 }) } }] }),
       },
     },
     [MINUS_POWER]: {
@@ -197,7 +197,7 @@ test('recettes : [DON!! x1] [En attaquant] renvoyer en main un Personnage (les s
 });
 
 test('recettes : [Contre] sous condition de Leader, puissance connue de l\'IA ; [Déclenchement] compilé', () => {
-  // Leader [Nefeltari Vivi] : +4000 à la carte attaquée
+  // Leader [Shirahoshi] : +4000 à la carte attaquée
   let s = scenario([VIVI, 'ST-21'], (g) => { setHand(g, 0, [VIVI_COUNTER]); setChars(g, 0, []); setDon(g, 0, 2); }, 1);
   s = attack(s, leader(s, 1), leader(s, 0));
   assert.equal(def(VIVI_COUNTER).counterPower!(s, 0, leader(s, 0)), 4000);
@@ -444,7 +444,7 @@ test('interface : numéros des cartes pas encore jouables (import d\'une liste)'
   const w = waitingCards();
   assert.ok(w.cards.includes('OP15-051') && !w.cards.includes(KO2));
   assert.ok(w.leaders.every((n) => CARDS[n].category === 'LEADER' && w.cards.includes(n)));
-  assert.ok(w.leaders.includes('EB03-001'));
+  assert.ok(w.leaders.includes('OP13-100'));   // un Leader pas encore jouable (EB03-001 jusqu'à S4)
   // côté navigateur : ces cartes ne sont pas chargées, seulement leurs numéros
   setWaitingCards({ cards: ['ZZ29-001', 'ZZ29-002'], leaders: ['ZZ29-002'] });
   assert.ok(notYetPlayable('ZZ29-001') && !waitingLeader('ZZ29-001'));

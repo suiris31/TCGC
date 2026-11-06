@@ -128,6 +128,10 @@ export function factsEn(text: string): Fact[] {
   // it » : le même effet (le traducteur lit les deux en addDon)
   s = s.replace(/\b([Aa]dd (?:up to )?(\d+) DON!! cards?) as (active|rested) from your DON!! deck\b/g,
     (_, head: string, n: string, st: string) => `${head} from your DON!! deck and ${st === 'active' ? 'set' : 'rest'} ${n === '1' ? 'it' : 'them'}${st === 'active' ? ' as active' : ''}`);
+  // S4 : « your 1 active Leader » / « your active Leader » (coût leaderPowerMinus) ; « you only have X Characters » / « the
+  // only Characters on your field are X Characters » (condition onlyChars) : les mêmes faits
+  s = s.replace(/\byour 1 active Leader\b/g, 'your active Leader');
+  s = s.replace(/\byou only have (?=[^,.:]*\bCharacters\b)/g, 'the only Characters on your field are ');
   s = s.replace(/\[([^\]]+)\]/g, (_, tag: string) => {
     let m: RegExpMatchArray | null;
     if (EN_TAGS[tag]) add('moment', EN_TAGS[tag]);

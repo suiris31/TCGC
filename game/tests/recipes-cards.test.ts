@@ -410,7 +410,7 @@ const actionsOf = (steps: Step[]): Action[] => steps.flatMap((st) => ('action' i
 // « your X type Characters » / « all of your ... » (n° 1581), deux gains d'une même phrase redits en deux, « place » /
 // « add » dans la Vie et « the owner's » (n° 1509), P-008 (obligatoire en VO, « jusqu'à » en VF)... Une carte en écart
 // n'atteint jamais `verified` : la tâche de son set relit la recette. Le plafond ne doit que baisser.
-const MAX_GAPS = 74;
+const MAX_GAPS = 64;   // 74 après C2 ; 64 depuis S4 (« your 1 active Leader », « you only have », « played on this turn », « or [X] »)
 
 test('catalogue : cartes restantes toujours écrites, « that card » toujours après une révélation, aller-retour sans écart', () => {
   let searches = 0;

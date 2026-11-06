@@ -166,7 +166,9 @@ function enNoun(f: Filter, cats: Category[], many: boolean, card = false): strin
   if (f.anyOf?.length) {
     const rest: Filter = { ...f, anyOf: undefined };
     const pieces = f.anyOf.map((p) => enNoun({ ...p }, p.category ?? [], many, card).replace(/ cards?$/, ''));
-    const tail = enNoun(rest, cats.length ? cats : [], many, true).replace(/^cards?\s*/, '');
+    // S4 : rien d'autre que les choix (« Up to 1 of your Characters or [X] ») : pas de « Leader or Character cards » en plus
+    const bare = Object.values(rest).every((v) => v === undefined) && cats.includes('LEADER') && cats.includes('CHARACTER');
+    const tail = bare ? '' : enNoun(rest, cats.length ? cats : [], many, true).replace(/^cards?\s*/, '');
     return `${orList(pieces, 'or')} ${many ? 'cards' : 'card'}${tail ? ` ${tail}` : ''}`.replace(/\s+/g, ' ').trim();
   }
   const pre: string[] = [];
@@ -265,7 +267,7 @@ function enCond(c: Cond, ctx: Ctx): string {
       return `${me} is ${c.rested ? 'rested' : 'active'}`;
     }
     case 'turn': return c.mine ? 'it is your turn' : "it is your opponent's turn";
-    case 'playedThisTurn': return `${EN_SELF[ctx.self]} was played during this turn`;
+    case 'playedThisTurn': return `${EN_SELF[ctx.self]} was played on this turn`;
     case 'firstTurns': return `it is turn ${c.fromTurn} or later`;
     case 'power': return `${c.who === 'leader' ? 'your Leader' : EN_SELF[ctx.self]} has ${c.n} power${c.cmp === 'eq' ? '' : ` ${EN_CMP[c.cmp]}`}`;
     case 'onlyChars': return `the only Characters on your field are ${enNoun(c.filter, ['CHARACTER'], true)}`;
@@ -745,7 +747,7 @@ function frCond(c: Cond, ctx: Ctx): string {
       return `${me} est ${c.rested ? 'épuisé' : 'redressé'}`;
     }
     case 'turn': return c.mine ? "c'est votre tour" : "c'est le tour adverse";
-    case 'playedThisTurn': return `${FR_SELF[ctx.self]} a été joué pendant ce tour`;
+    case 'playedThisTurn': return `${FR_SELF[ctx.self]} a été joué ce tour`;
     case 'firstTurns': return `c'est au moins le tour ${c.fromTurn}`;
     case 'power': return `${c.who === 'leader' ? 'votre Leader' : FR_SELF[ctx.self]} a ${frCmp(c.n, c.cmp)} de puissance`;
     case 'onlyChars': return `vous n'avez que des ${frNoun(c.filter, ['CHARACTER'], true, ctx)} sur votre terrain`;
