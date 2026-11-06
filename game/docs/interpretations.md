@@ -1144,6 +1144,41 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
       effets adverses **et** la mise KO en combat par une attaque adverse ; la carte reste non jouable tant que la
       question n'est pas tranchée.
 
+## OP15 (tâche S3), choix faits sans validation
+
+2200. **Lucy (Leader OP15-002)** : les cartes Événement ou Lieu sont défaussées une à une, avec une question « encore
+      une ? » à chaque fois ; le Leader gagne +1000 par carte, pour le combat. « Un de vos Événements de coût de base 3
+      ou plus a été activé durant ce tour » : un de vos Événements, activé de n'importe quelle façon ([Principale],
+      [Contre], ou sans payer par un autre effet), noté sur le Leader au moment où il s'active.
+2201. **« Donnez 1 carte DON!! de la zone de Coût de son propriétaire »** (Arlong OP15-023) : sans question sur l'état
+      de la DON!! ; le joueur prend celle qui l'arrange : une épuisée pour une de ses cartes (il garde ses DON!!
+      redressées pour payer), une redressée pour une carte adverse (comme les frères Nyaban OP15-028, n° 440).
+2202. **Pudding (OP15-031)** : seuls les Personnages adverses épuisés dont le coût égale le nombre de DON!! données sont
+      proposés. En choisir un autre ne ferait rien : le jeu est le même.
+2203. **Oz (OP15-080)** : le [Gecko Moria] peut être son Leader ou un de ses Personnages (puissance du moment, DON!!
+      comprises) ; « pas d'autre [Oars] » : aucune autre carte [Oars] sur son terrain.
+2204. **Léo (OP15-052)** : le Personnage placé au-dessous du deck est un autre que celui qui allait quitter le terrain
+      (Léo compris) ; le placer lui-même reviendrait à le laisser partir.
+2205. **Monkey D. Luffy (Leader OP15-098)** : « à cause de votre adversaire » couvre toute sortie du terrain due à un
+      effet adverse et le KO en combat contre une attaque adverse ; pas de limite par tour.
+2206. **Arlong (OP15-023)**, [En cas de KO] : les « cartes adverses épuisées » sont le Leader, les Personnages, le Lieu et
+      les DON!! épuisées de la zone de Coût, choisis un à un ; elles restent épuisées lors de la prochaine phase de
+      Recharge de l'adversaire.
+2207. **Brook (Leader OP15-022)** : un deck vide ne fait pas perdre pendant le tour, seulement à la fin de ce tour (le
+      sien ou celui de l'adversaire). Son effet place les 4 cartes du dessus dans la Défausse (moins s'il en reste
+      moins), puis redresse un Personnage si le deck est alors vide.
+2208. **Alvida (OP15-003)** : son remplacement vaut pour tout KO (combat ou effet, de l'un ou l'autre joueur) ; la carte
+      défaussée est une carte Personnage de la main de 6000 de puissance imprimée ou moins.
+2209. **Laboon (OP15-035)** : les 2 cartes épuisées sont au choix parmi le Leader, les Personnages (celui qui allait
+      partir compris), le Lieu et les DON!! redressées.
+2210. **Roronoa Zoro (OP15-094)** : il se place lui-même dans la Défausse (ce n'est pas un KO : pas d'[En cas de KO]).
+      **Kyros (OP15-042)** : le coût n'est proposé qu'avec le Leader [Rebecca] (n° 1000). **Nami (OP15-086)** : le
+      Personnage joué gagne [Initiative] s'il est encore sur le terrain. **C'est le seul « souvenir »... (OP15-054)** :
+      le Lieu renvoyé est celui de l'un ou l'autre joueur. **Pieuvre ballon (OP15-106)** : carte Personnage ou Lieu
+      jaune de coût 2 ou moins, jouée sans payer son coût.
+2211. **Bobby Funk (OP15-050)** : « si vous avez [Kelly Funk] » = un Personnage [Kelly Funk] (aucun Leader ne porte ce
+      nom : la question ouverte « If you have [Nom] » ne change rien ici).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
