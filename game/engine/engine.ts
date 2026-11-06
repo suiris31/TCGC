@@ -7,7 +7,7 @@ import { random, shuffle } from './rng.ts';
 import {
   addMod, allField, attackTargets, attackTax, blockerAllowed, canBeKO, canBeRested, canPlayCharacters, carryKnown, counterValue, def,
   describe, discardFromHand, donOnField, donTotal, draw, emit, fieldCards, findField, handCost, hasBlocker, hasKeyword, isNegated,
-  knownFirst, koCharacter, koSelfReplacement, log, may, name, onField, other, payDon, playCharacter, power, pruneKnown, removeFromField,
+  knownFirst, koCharacter, koSelfReplacement, log, may, name, nextPlayDiscounted, onField, other, payDon, playCharacter, power, pruneKnown, removeFromField,
   restForAttack, returnDon, reveal, shuffleDeck, triggerEffect, untapDon,
 } from './rules.ts';
 import type {
@@ -312,6 +312,7 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
     const index = P.hand.findIndex((c) => c.uid === p.source);
     if (index < 0) return;
     const cost = handCost(ctx.s, ctx.me, P.hand[index]);
+    if (nextPlayDiscounted(ctx.s, ctx.me, P.hand[index])) delete P.nextPlayDiscount;  // réduction utilisée (OP12-061)
     const [card] = P.hand.splice(index, 1);
     payDon(ctx.s, ctx.me, cost);
     playCharacter(ctx, ctx.me, card);

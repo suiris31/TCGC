@@ -1181,6 +1181,45 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 2211. **Bobby Funk (OP15-050)** : « si vous avez [Kelly Funk] » = un Personnage [Kelly Funk] (aucun Leader ne porte ce
       nom : la question ouverte « If you have [Nom] » ne change rien ici).
 
+## OP12 et ST23 à ST28 (tâche S7), choix faits sans validation
+
+2600. **Silvers Rayleigh (Leader OP12-001)** : la règle de construction interdit toute carte du deck (Personnage,
+      Événement, Lieu) dont le coût **imprimé** est de 5 ou plus ; elle est vérifiée par `deckErrors`, comme les autres
+      restrictions de Leader.
+2601. **« Jusqu'à 1 de vos Personnages ou [Silvers Rayleigh] »** (OP12-016, OP12-018, OP12-019) : n'importe lequel de vos
+      Personnages, ou votre Leader s'il s'appelle Silvers Rayleigh.
+2602. **« Si la carte ... attaque ce tour-ci, votre adversaire ne peut pas activer [Bloqueur] »** (OP12-016, OP12-077) :
+      la carte devient imblocable pour tout le tour (toutes ses attaques du tour), comme le n° 1588. OP12-077 : la carte
+      choisie gagne +2000 et devient imblocable ; sans [Trafalgar Law] choisi, rien.
+2603. **Fluide royal (OP12-018)** : « épuisez 1 de vos DON!! » = une DON!! redressée de la zone de Coût ; le −1000 vise
+      le Leader et les Personnages adverses présents à la résolution. Ipponmatsu (OP12-021) : « 6 DON!! épuisées ou plus »
+      compte les DON!! épuisées de la zone de Coût (pas les DON!! données).
+2604. **Don Quijote Rosinante (Leader OP12-061)** : le remplacement vaut pour tout KO d'un de vos Personnages [Trafalgar
+      Law] (combat ou effet, de l'un ou l'autre joueur), une fois par tour, et demande une carte de Vie. La réduction
+      vaut pour le **prochain** [Trafalgar Law] de coût 4 ou plus (coût en main) joué de la main **en payant son coût**
+      ce tour-ci ; un Law joué par un effet ne l'use pas ; elle se perd à la fin du tour (`PlayerState.nextPlayDiscount`).
+2605. **Miss Allsunday (OP12-075)** : c'est l'adversaire qui choisit d'ajouter ou non la DON!! (redressée) ; rien s'il
+      n'a plus de DON!! dans son deck DON!!.
+2606. **Koala (Leader OP12-081)** : « quand ce Leader attaque le Leader adverse » se résout à la déclaration de
+      l'attaque, comme [En attaquant] (Personnages de coût 8 ou plus comptés à ce moment). Le second effet se déclenche
+      une fois par tour, à la première carte Personnage jouée par l'adversaire de coût **imprimé** 8 ou plus, ou jouée par
+      l'effet d'une carte Personnage (de l'un ou l'autre camp) ; il est obligatoire.
+2607. **Shirahoshi (OP12-102)** : le remplacement vaut pour toute sortie du terrain par un effet adverse (KO compris) d'un
+      de vos Personnages de coût **imprimé** 6 ou moins (elle comprise), pas seulement une fois par tour, et demande que
+      la carte du dessus de la Vie soit face cachée (une carte déjà face visible ne se « retourne » pas face visible).
+      « Pas d'autre [Shirahoshi] de coût de base 2 » se lit parmi vos Personnages.
+2608. **Crocodile et Mihawk (ST25-003)** : remplacement une fois par tour, n'importe quelle carte de la main.
+      **Momonosuké Kozuki (ST28-004)** : les 2 DON!! renvoyées peuvent venir de n'importe lesquelles de vos cartes (Leader
+      et Personnages, lui compris), au choix une par une ; elles reviennent épuisées dans la zone de Coût.
+2609. **Recherches « [X] ou un Événement rouge », « un Événement rouge ou un Personnage de coût 3 ou plus »** (OP12-006,
+      OP12-014, OP12-017) et « un total de jusqu'à 2 cartes Personnage {Shandian Warrior} ou [Mont Blanc Noland] »
+      (OP12-116) : une carte de l'une **ou** l'autre sorte (le traducteur lisait OP12-014 « et »). Trafalgar Law
+      (OP12-073) : « tous vos [Donquixote Rosinante] et Personnages {Heart Pirates} » = les uns **et** les autres (le
+      traducteur lisait « les Rosinante qui sont aussi {Heart Pirates} »).
+2610. **Pacifista (OP12-109)** : [Déclenchement] la carte va dans la main même sans Personnage adverse à mettre KO.
+2611. **Calgara (OP12-099)** reste non jouable : le moteur n'annonce pas « une carte quitte la Vie » (les cartes de Vie
+      sont retirées par une vingtaine de fonctions, dans des fichiers de cartes figés) ; à faire avec cet évènement.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
