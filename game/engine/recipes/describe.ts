@@ -233,10 +233,13 @@ function enCond(c: Cond, ctx: Ctx): string {
     case 'and': return andList(c.all.map((x) => enCond(x, ctx)), 'and');
     case 'or': return orList(c.any.map((x) => enCond(x, ctx)), 'or');
     case 'not': return `not: ${enCond(c.cond, ctx)}`;
+    case 'revealed': return `the revealed card is ${article(enNoun(c.filter, [], false))}`;
     case 'manual': return manual('cond', c.reason, ctx);
     default: return unknown('condition', c, ctx);
   }
 }
+
+const article = (noun: string) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
 function enCost(p: CostPart, ctx: Ctx): string {
   const me = EN_SELF[ctx.self];
@@ -260,7 +263,7 @@ function enCost(p: CostPart, ctx: Ctx): string {
       if (p.what === 'cards') return p.filter ? `rest ${p.n} of your ${enNoun(p.filter, [], true, true)}` : `rest ${p.n} of your cards`;
       return `rest ${p.n} of your ${enNoun(p.filter ?? {}, ['CHARACTER'], true)}`;
     case 'giveDon': return `give ${p.n} active DON!! ${p.n === 1 ? 'card' : 'cards'} to ${enTarget(p.target, ctx)}`;
-    case 'trashToBottom': return `place ${p.n} ${p.filter ? enCards(p.n, p.filter) : p.n === 1 ? 'card' : 'cards'} from your trash at the bottom of your deck in any order`;
+    case 'trashToBottom': return `${p.wording === 'return' ? 'return' : 'place'} ${p.n} ${p.filter ? enCards(p.n, p.filter) : p.n === 1 ? 'card' : 'cards'} from your trash ${p.wording === 'return' ? 'to' : 'at'} the bottom of your deck in any order`;
     case 'trashLife': return `trash 1 card from the ${p.from === 'top' ? 'top' : 'top or bottom'} of your Life cards`;
     case 'leaderPowerMinus': return `give your 1 active Leader -${p.n} power during this turn`;
     case 'bounceSelf': return `return ${me} to the owner's hand`;
@@ -316,18 +319,19 @@ function enAction(a: Action, ctx: Ctx): string {
     case 'cantRefresh': return `${upper(T(a.target))} will not become active in your opponent's next Refresh Phase`;
     case 'negate': return `Negate the effect of ${T(a.target)}${EN_DURATION[a.until]}`;
     case 'draw': return `Draw ${enCount(a.n, 'card', 'cards')}`;
-    case 'discard': return `Trash ${a.n} ${a.filter ? enCards(a.n, a.filter) : a.n === 1 ? 'card' : 'cards'} from your hand`;
+    case 'discard': return `Trash ${a.upTo ? 'up to ' : ''}${a.n} ${a.filter ? enCards(a.n, a.filter) : a.n === 1 ? 'card' : 'cards'} from your hand`;
     case 'oppDiscard': return `Your opponent trashes ${enCount(a.n, 'card', 'cards')} from their hand`;
     case 'trashTop': return `Trash ${enCount(a.n, 'card', 'cards')} from the top of ${a.side === 'own' ? 'your' : "your opponent's"} deck`;
     case 'search': {
       const what = `${a.upTo ? 'up to ' : ''}${a.take} ${enCards(a.take, a.filter)}`;
       const it = a.take === 1 ? 'it' : 'them';
-      const look = `Look at ${enCount(a.look, 'card', 'cards')} from the top of your deck`;
-      const head = a.dest === 'hand' ? `${look}; reveal ${what} and add ${it} to your hand`
+      const look = a.shown ? `Reveal ${enCount(a.look, 'card', 'cards')} from the top of your deck` : `Look at ${enCount(a.look, 'card', 'cards')} from the top of your deck`;
+      const head = a.dest === 'hand' ? (a.hidden || a.shown ? `${look} and add ${what} to your hand` : `${look}; reveal ${what}${a.joined ? ',' : ' and'} add ${it} to your hand`)
         : a.dest === 'play' ? `${look} and play ${what}${a.rested ? ' rested' : ''}`
           : `${look}; reveal ${what} and add ${it} to the top of your Life cards`;
-      const rest = a.rest === 'trash' ? 'trash the rest' : `place the rest at the ${a.rest === 'top' ? 'top' : 'bottom'} of your deck in any order`;
-      return `${head}. Then, ${rest}`;
+      const rest = a.rest === 'trash' ? 'trash the rest'
+        : `place the rest at the ${a.rest === 'top' ? 'top' : a.rest === 'topOrBottom' ? 'top or bottom' : 'bottom'} of your deck in any order`;
+      return a.joined ? `${head} and ${rest}` : `${head}. Then, ${rest}`;
     }
     case 'arrangeTop': return `Look at ${enCount(a.look, 'card', 'cards')} from the top of your deck and place them at the ${a.where === 'topOrBottom' ? 'top or bottom' : a.where} of the deck in any order`;
     case 'play': {
@@ -338,8 +342,8 @@ function enAction(a: Action, ctx: Ctx): string {
     case 'activate': return `Activate this card's [${({ main: 'Main', onPlay: 'On Play', counter: 'Counter', onKO: 'On KO', whenAttacking: 'When Attacking' } as const)[a.which]}] effect`;
     case 'trashToHand': return `Add ${a.upTo ? 'up to ' : ''}${a.count} ${enCards(a.count, a.filter)} from your trash to your hand`;
     case 'trashToBottom': return a.side === 'own'
-      ? `Place ${a.count} ${enCards(a.count, a.filter)} from your trash at the bottom of your deck in any order`
-      : `Place ${a.count} ${enCards(a.count, a.filter)} from your opponent's trash at the bottom of their deck in any order`;
+      ? `${a.wording === 'return' ? 'Return' : 'Place'} ${a.upTo ? 'up to ' : ''}${a.count} ${enCards(a.count, a.filter)} from your trash ${a.wording === 'return' ? 'to' : 'at'} the bottom of your deck in any order`
+      : `Place ${a.upTo ? 'up to ' : ''}${a.count} ${enCards(a.count, a.filter)} from your opponent's trash at the bottom of their deck in any order`;
     case 'addDon': return `Add ${a.upTo ? 'up to ' : ''}${a.n} DON!! ${a.n === 1 ? 'card' : 'cards'} from your DON!! deck and ${a.state === 'active' ? `set ${a.n === 1 ? 'it' : 'them'} as active` : `rest ${a.n === 1 ? 'it' : 'them'}`}`;
     case 'readyDon': return `Set ${a.upTo ? 'up to ' : ''}${a.n} of your DON!! cards as active`;
     case 'giveDon': return `Give ${a.upTo ? 'up to ' : ''}${a.n} ${a.rested ? 'rested' : 'active'} DON!! ${a.n === 1 ? 'card' : 'cards'} to ${T(a.target)}`;
@@ -360,7 +364,7 @@ function enAction(a: Action, ctx: Ctx): string {
       const whose = a.side === 'own' ? 'your' : a.side === 'opp' ? "your opponent's" : "your or your opponent's";
       return `Look at up to 1 card from the top of ${whose} Life cards${a.arrange ? ', and place it at the top or bottom of the Life cards' : ''}`;
     }
-    case 'handToBottom': return `Place ${enCount(a.n, 'card', 'cards')} from your hand at the bottom of your deck in any order`;
+    case 'handToBottom': return `Place ${enCount(a.n, 'card', 'cards')} from your hand at the ${a.where === 'top' ? 'top' : a.where === 'topOrBottom' ? 'top or bottom' : 'bottom'} of your deck in any order`;
     case 'oppHandToBottom': return `Your opponent places ${enCount(a.n, 'card', 'cards')} from their hand at the bottom of their deck in any order`;
     case 'handToLife': return `Add ${a.upTo ? 'up to ' : ''}${a.n} ${enCards(a.n, a.filter)} from your hand to the top of your Life cards${a.faceUp ? ' face-up' : ''}`;
     case 'noLifeToHand': return 'You cannot add Life cards to your hand using your own effects during this turn';
@@ -372,6 +376,9 @@ function enAction(a: Action, ctx: Ctx): string {
       const verb = { ko: 'KO', trash: 'trash', bounce: 'return to the owner\'s hand', rest: 'rest' }[a.action];
       return `Your opponent chooses ${a.n} of their ${enNoun(a.filter, ['CHARACTER'], true)} and must ${verb} ${a.n === 1 ? 'it' : 'them'}`;
     }
+    case 'revealTop': return 'Reveal 1 card from the top of your deck';
+    case 'playRevealed': return `Play that card${a.rested ? ' rested' : ''}`;
+    case 'revealedToBottom': return a.asRest ? 'Place the rest at the bottom of your deck' : 'Place the revealed card at the bottom of your deck';
     case 'manual': return manual('step', a.reason, ctx);
     default: return unknown('action', a, ctx);
   }
@@ -651,6 +658,7 @@ function frCond(c: Cond, ctx: Ctx): string {
     case 'and': return andList(c.all.map((x) => frCond(x, ctx)), 'et');
     case 'or': return orList(c.any.map((x) => frCond(x, ctx)), 'ou');
     case 'not': return `non : ${frCond(c.cond, ctx)}`;
+    case 'revealed': return `la carte révélée est ${frNoun(c.filter, [], false, ctx, true).replace(/^carte\b/, 'une carte')}`;
     case 'manual': return manual('cond', c.reason, ctx);
     default: return unknown('condition', c, ctx);
   }
@@ -718,19 +726,19 @@ function frAction(a: Action, ctx: Ctx): string {
     case 'cantRefresh': return `${upper(T(a.target))} ne se redresse pas lors de la prochaine phase de Redressement adverse`;
     case 'negate': return `Annulez les effets de ${T(a.target)}${FR_DURATION[a.until]}`;
     case 'draw': return `Piochez ${cartes(a.n)}`;
-    case 'discard': return `Défaussez ${a.n} ${a.filter ? frCards(a.n, a.filter, ctx) : a.n === 1 ? 'carte' : 'cartes'} de votre main`;
+    case 'discard': return `Défaussez ${a.upTo ? "jusqu'à " : ''}${a.n} ${a.filter ? frCards(a.n, a.filter, ctx) : a.n === 1 ? 'carte' : 'cartes'} de votre main`;
     case 'oppDiscard': return `Votre adversaire défausse ${cartes(a.n)} de sa main`;
     case 'trashTop': return `Placez les ${cartes(a.n)} du dessus ${a.side === 'own' ? 'de votre deck dans votre Défausse' : 'du deck adverse dans la Défausse adverse'}`;
     case 'search': {
       const what = `${a.upTo ? "jusqu'à " : ''}${a.take} ${frCards(a.take, a.filter, ctx)}`;
       const it = a.take === 1 ? 'la' : 'les';
-      const look = `Regardez les ${cartes(a.look)} du dessus de votre deck`;
-      const head = a.dest === 'hand' ? `${look}, révélez ${what} et ajoutez-${it} à votre main`
+      const look = a.shown ? `Révélez ${a.look === 1 ? 'la carte' : `les ${cartes(a.look)}`} du dessus de votre deck` : `Regardez les ${cartes(a.look)} du dessus de votre deck`;
+      const head = a.dest === 'hand' ? (a.hidden || a.shown ? `${look} et ajoutez à votre main ${what}` : `${look}, révélez ${what} et ajoutez-${it} à votre main`)
         : a.dest === 'play' ? `${look} et jouez ${what}${a.rested ? (a.take > 1 ? ' épuisées' : ' épuisée') : ''}`
           : `${look}, révélez ${what} et ajoutez-${it} au-dessus de votre Vie`;
       const rest = a.rest === 'trash' ? 'placez les cartes restantes dans votre Défausse'
-        : `placez les cartes restantes au-${a.rest === 'top' ? 'dessus' : 'dessous'} de votre deck dans l'ordre de votre choix`;
-      return `${head}. Puis, ${rest}`;
+        : `placez les cartes restantes au-${a.rest === 'top' ? 'dessus' : a.rest === 'topOrBottom' ? 'dessus ou au-dessous' : 'dessous'} de votre deck dans l'ordre de votre choix`;
+      return a.joined ? `${head} et ${rest}` : `${head}. Puis, ${rest}`;
     }
     case 'arrangeTop': return `Regardez les ${cartes(a.look)} du dessus de votre deck et placez-les au-${a.where === 'topOrBottom' ? 'dessus ou au-dessous' : a.where === 'top' ? 'dessus' : 'dessous'} du deck dans l'ordre de votre choix`;
     case 'play': {
@@ -741,8 +749,8 @@ function frAction(a: Action, ctx: Ctx): string {
     case 'activate': return `Activez l'effet [${({ main: 'Principale', onPlay: 'Jouée', counter: 'Contre', onKO: 'En cas de KO', whenAttacking: 'En attaquant' } as const)[a.which]}] de cette carte`;
     case 'trashToHand': return `Ajoutez à votre main ${a.upTo ? "jusqu'à " : ''}${a.count} ${frCards(a.count, a.filter, ctx)} de votre Défausse`;
     case 'trashToBottom': return a.side === 'own'
-      ? `Placez ${a.count} ${frCards(a.count, a.filter, ctx)} de votre Défausse au-dessous de votre deck dans l'ordre de votre choix`
-      : `Placez ${a.count} ${frCards(a.count, a.filter, ctx)} de la Défausse adverse au-dessous du deck adverse dans l'ordre de votre choix`;
+      ? `Placez ${a.upTo ? "jusqu'à " : ''}${a.count} ${frCards(a.count, a.filter, ctx)} de votre Défausse au-dessous de votre deck dans l'ordre de votre choix`
+      : `Placez ${a.upTo ? "jusqu'à " : ''}${a.count} ${frCards(a.count, a.filter, ctx)} de la Défausse adverse au-dessous du deck adverse dans l'ordre de votre choix`;
     case 'addDon': return `Ajoutez ${a.upTo ? "jusqu'à " : ''}${a.n} carte${a.n > 1 ? 's' : ''} DON!! de votre deck DON!!, ${a.state === 'active' ? 'redressée' : 'épuisée'}${a.n > 1 ? 's' : ''}`;
     case 'readyDon': return `Redressez ${a.upTo ? "jusqu'à " : ''}${a.n} de vos cartes DON!!`;
     case 'giveDon': return `Donnez ${a.upTo ? "jusqu'à " : ''}${a.n} carte${a.n > 1 ? 's' : ''} DON!! ${a.rested ? 'épuisée' : 'redressée'}${a.n > 1 ? 's' : ''} à ${T(a.target)}`;
@@ -763,7 +771,7 @@ function frAction(a: Action, ctx: Ctx): string {
       const whose = a.side === 'own' ? 'de votre Vie' : a.side === 'opp' ? 'de la Vie adverse' : 'de votre Vie ou de la Vie adverse';
       return `Regardez jusqu'à 1 carte du dessus ${whose}${a.arrange ? ' et placez-la au-dessus ou au-dessous de la Vie' : ''}`;
     }
-    case 'handToBottom': return `Placez ${cartes(a.n)} de votre main au-dessous de votre deck dans l'ordre de votre choix`;
+    case 'handToBottom': return `Placez ${cartes(a.n)} de votre main au-${a.where === 'top' ? 'dessus' : a.where === 'topOrBottom' ? 'dessus ou au-dessous' : 'dessous'} de votre deck dans l'ordre de votre choix`;
     case 'oppHandToBottom': return `Votre adversaire place ${cartes(a.n)} de sa main au-dessous de son deck dans l'ordre de son choix`;
     case 'handToLife': return `Ajoutez au-dessus de votre Vie ${a.upTo ? "jusqu'à " : ''}${a.n} ${frCards(a.n, a.filter, ctx)} de votre main${a.faceUp ? ', face visible' : ''}`;
     case 'noLifeToHand': return 'Vous ne pouvez pas ajouter de cartes de Vie à votre main avec vos propres effets pour tout le tour';
@@ -776,6 +784,9 @@ function frAction(a: Action, ctx: Ctx): string {
       const verb = { ko: `${them} mettre KO`, trash: `${them} placer dans sa Défausse`, bounce: `${them} renvoyer dans sa main`, rest: `${them} épuiser` }[a.action];
       return `Votre adversaire choisit ${a.n} de ses ${frNoun(a.filter, ['CHARACTER'], true, ctx)} et doit ${verb}`;
     }
+    case 'revealTop': return 'Révélez la carte du dessus de votre deck';
+    case 'playRevealed': return `Jouez cette carte${a.rested ? ', épuisée' : ''}`;
+    case 'revealedToBottom': return a.asRest ? 'Placez les cartes restantes au-dessous de votre deck' : 'Placez la carte révélée au-dessous de votre deck';
     case 'manual': return manual('step', a.reason, ctx);
     default: return unknown('action', a, ctx);
   }

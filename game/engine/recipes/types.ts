@@ -95,6 +95,8 @@ export type Cond =
   | { kind: 'and'; all: Cond[] }
   | { kind: 'or'; any: Cond[] }
   | { kind: 'not'; cond: Cond }
+  // la carte révélée par revealTop (C2.3) : « If the revealed card has a cost of 4 or more », « If that card is a ... »
+  | { kind: 'revealed'; filter: Filter }
   | { kind: 'manual'; reason: string };   // condition codée à la main (MANUAL_CONDS, voir ManualCode)
 
 // ---------- Coûts (« You may [coût]: [effet] », DON!! −N, ➀) ----------
@@ -116,7 +118,8 @@ export type CostPart =
   | { kind: 'returnOwnChar'; n: number; filter: Filter }    // « return 1 of your Characters to the owner's hand »
   | { kind: 'restOwn'; n: number; what: 'cards' | 'characters' | 'leader' | 'stage'; filter?: Filter }
   | { kind: 'giveDon'; n: number; target: Target }          // « give 1 active DON!! card to 1 of your Leader »
-  | { kind: 'trashToBottom'; n: number; filter?: Filter }   // Défausse → sous le deck
+  // wording (C2.3) : « return N cards from your trash to the bottom of your deck » (même jeu que « place ... at »)
+  | { kind: 'trashToBottom'; n: number; filter?: Filter; wording?: 'return' }   // Défausse → sous le deck
   | { kind: 'trashLife'; from: 'top' | 'topOrBottom' }
   | { kind: 'leaderPowerMinus'; n: number }                 // « give your Leader −N power during this turn »
   | { kind: 'bounceSelf' }
@@ -148,18 +151,23 @@ export type Action =
   | { kind: 'cantRefresh'; target: Target }                 // « will not become active in ... next Refresh Phase »
   | { kind: 'negate'; target: Target; until: Duration }
   | { kind: 'draw'; n: number }
-  | { kind: 'discard'; n: number; filter?: Filter }
+  // upTo (C2.3) : « trash up to N cards from your hand » (0 accepté)
+  | { kind: 'discard'; n: number; filter?: Filter; upTo?: boolean }
   | { kind: 'oppDiscard'; n: number }
   | { kind: 'trashTop'; n: number; side: 'own' | 'opp' }
+  // C2.3 : rest 'topOrBottom' (« place the rest at the top or bottom of the deck », chaque carte au choix, comme
+  // arrangeTop) ; hidden : la carte prise n'est pas révélée (« add up to 1 card to your hand », sans filtre) ; shown :
+  // « Reveal 1 card from the top of your deck and ... » (la carte regardée est montrée aux deux joueurs)
   | { kind: 'search'; look: number; take: number; upTo: boolean; filter: Filter; dest: 'hand' | 'play' | 'life';
-      rest: 'bottom' | 'trash' | 'top'; rested?: boolean }
+      rest: 'bottom' | 'trash' | 'top' | 'topOrBottom'; rested?: boolean; hidden?: boolean; shown?: boolean;
+      joined?: boolean }   // joined (C2.3) : « ..., add it to your hand and place the rest ... » (une seule phrase)
   | { kind: 'arrangeTop'; look: number; where: 'topOrBottom' | 'top' | 'bottom' }
   | { kind: 'play'; from: 'hand' | 'trash' | 'handOrTrash' | 'deck' | 'life'; count: number; upTo: boolean;
       filter: Filter; rested?: boolean }
   | { kind: 'playSelf'; rested?: boolean }                  // « Play this card » (souvent [Déclenchement])
   | { kind: 'activate'; which: 'main' | 'onPlay' | 'counter' | 'onKO' | 'whenAttacking' }
   | { kind: 'trashToHand'; count: number; upTo: boolean; filter: Filter }
-  | { kind: 'trashToBottom'; count: number; side: 'own' | 'opp'; filter: Filter }
+  | { kind: 'trashToBottom'; count: number; side: 'own' | 'opp'; filter: Filter; upTo?: boolean; wording?: 'return' }   // upTo, wording : C2.3
   | { kind: 'addDon'; n: number; upTo: boolean; state: 'active' | 'rested' }
   | { kind: 'readyDon'; n: number; upTo: boolean }
   | { kind: 'giveDon'; n: number; upTo: boolean; rested: boolean; target: Target }
@@ -170,7 +178,8 @@ export type Action =
   | { kind: 'lifeToHand'; n: number; side: 'own' | 'opp'; from: 'top' | 'topOrBottom'; upTo?: boolean }
   | { kind: 'trashLife'; n: number; side: 'own' | 'opp'; from: 'top' | 'topOrBottom'; upTo?: boolean }
   | { kind: 'lookLife'; side: Side; arrange: boolean }
-  | { kind: 'handToBottom'; n: number }
+  // where (C2.3) : « at the top of your deck », « at the top or bottom of your deck » (absent : au-dessous)
+  | { kind: 'handToBottom'; n: number; where?: 'top' | 'topOrBottom' }
   | { kind: 'oppHandToBottom'; n: number }
   | { kind: 'handToLife'; n: number; upTo: boolean; filter: Filter; faceUp?: boolean }   // faceUp : C2.5
   // C2.5 : « vous ne pouvez pas ajouter de carte de Vie à votre main par vos propres effets pour tout le tour »
@@ -180,6 +189,12 @@ export type Action =
   | { kind: 'noCharsThisTurn'; what: 'play' | 'playByEffect' }
   | { kind: 'trashSelfEnd' }                                // « trash this Character at the end of this turn »
   | { kind: 'oppChooses'; n: number; action: 'ko' | 'trash' | 'bounce' | 'rest'; filter: Filter }
+  // « Reveal 1 card from the top of your deck. If that card is ..., ... » (C2.3) : la carte reste au-dessus, connue des
+  // deux joueurs ; la condition 'revealed' la lit, playRevealed la joue, revealedToBottom la place au-dessous du deck
+  | { kind: 'revealTop' }
+  | { kind: 'playRevealed'; rested?: boolean }              // « (you may) play that card (rested) »
+  // « place the revealed card at the bottom of your deck » ; asRest : écrit « place the rest at the bottom ... »
+  | { kind: 'revealedToBottom'; asRest?: boolean }
   | { kind: 'manual'; reason: string };                     // morceau codé à la main (MANUAL_STEPS, voir ManualCode)
 
 export type ActionKind = Action['kind'];

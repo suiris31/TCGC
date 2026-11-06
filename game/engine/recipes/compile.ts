@@ -16,6 +16,7 @@ import * as B from '../cards/bricks.ts';
 import * as R from '../cards/bricks-removal.ts';
 import * as P from '../cards/bricks-power.ts';
 import * as L from '../cards/bricks-life.ts';
+import * as BC from '../cards/bricks-cards.ts';
 import { addMod, allField, def, donOnField, findField, log, other, untilOpponentsNextEnd } from '../rules.ts';
 import type { CardBehavior, Category, EffectCtx, FieldCard, GameState, PlayerId } from '../types.ts';
 import type {
@@ -222,6 +223,8 @@ class Compiler {
       case 'and': return B.all(...c.all.map((x) => this.cond(x)));
       case 'or': return B.any(...c.any.map((x) => this.cond(x)));
       case 'not': return B.not(this.cond(c.cond));
+      // seulement directement sur une étape (steps : BC.whenRevealed, qui voit l'effet en cours)
+      case 'revealed': return this.no('condition revealed composée', ALWAYS);
       case 'manual': {
         const fn = this.manual?.conds?.[c.reason];
         if (!fn) return this.no(`condition manual:${c.reason} absente`, ALWAYS);
@@ -398,21 +401,31 @@ class Compiler {
         return B.keepRested(this.targets(a.target, k), src, a.target.count === 'all' ? undefined : this.upToN(a.target, k));
       case 'negate': return this.grantOn(a.target, k, { stat: 'negated' }, a.until, 'perd ses effets');
       case 'draw': return B.drawCards(a.n);
-      case 'discard': return a.filter ? this.no(`${k} : filtrée`, NOTHING) : B.discard(a.n);
+      case 'discard':
+        if (!a.filter && !a.upTo) return B.discard(a.n);
+        return BC.discardSome(a.n, a.filter ? this.spec(a.filter, 'card') : undefined, Boolean(a.upTo), src);
       case 'oppDiscard': return B.oppDiscards(a.n);
-      case 'trashTop': return a.side === 'own' ? B.trashTop(a.n) : this.no(`${k} : deck adverse`, NOTHING);
+      case 'trashTop': return a.side === 'own' ? B.trashTop(a.n) : BC.trashOppTop(a.n, src);
       case 'search': {
         if (!a.upTo) return this.no(`${k} : sans « jusqu'à »`, NOTHING);
-        if (a.dest === 'hand' && (a.rest === 'bottom' || a.rest === 'trash')) {
+        // les briques de bricks.ts pour ce qu'elles savent faire ; bricks-cards.ts (C2.3) pour les restes « au-dessus » et
+        // « au-dessus ou au-dessous », plusieurs cartes à jouer, la carte prise sans être révélée, les cartes montrées
+        const plain = !a.hidden && !a.shown && (a.rest === 'bottom' || a.rest === 'trash');
+        if (a.dest === 'hand') {
           const spec = this.spec(a.filter, 'card');
-          return B.searchTop(a.look, a.take, spec, B.describeSpec(a.take > 1 ? 'cartes' : 'carte', spec), a.rest);
+          if (plain) return B.searchTop(a.look, a.take, spec, B.describeSpec(a.take > 1 ? 'cartes' : 'carte', spec), a.rest as 'bottom' | 'trash');
+          return BC.lookTopTake(a.look, a.take, spec, a.rest, src, { hidden: a.hidden, shown: a.shown });
         }
-        if (a.dest === 'play' && a.take === 1 && (a.rest === 'bottom' || a.rest === 'trash') && this.charactersOnly(a.filter)) {
-          return B.lookTopPlay(a.look, this.spec({ ...a.filter, category: undefined }, 'card'), src, { rested: a.rested, rest: a.rest });
+        // jouer depuis le deck : seulement si le texte dit « Character card » (« play up to 1 [Upper Yard] » peut être un
+        // Lieu : le nom seul ne suffit pas, interprétation n° 1663)
+        if (a.dest === 'play' && a.filter.category?.length === 1 && a.filter.category[0] === 'CHARACTER' && !a.hidden) {
+          const spec = this.spec({ ...a.filter, category: undefined }, 'card');
+          if (plain && a.take === 1) return B.lookTopPlay(a.look, spec, src, { rested: a.rested, rest: a.rest as 'bottom' | 'trash' });
+          return BC.lookTopPlayMany(a.look, a.take, spec, a.rest, src, { rested: a.rested, shown: a.shown });
         }
-        return this.no(`${k} : vers ${a.dest}, reste ${a.rest}${a.take > 1 ? ', plusieurs' : ''}`, NOTHING);
+        return this.no(`${k} : vers ${a.dest}${a.dest === 'play' ? ' (pas « Character card »)' : ''}`, NOTHING);
       }
-      case 'arrangeTop': return a.where === 'topOrBottom' ? B.lookTopArrange(a.look, src) : this.no(`${k} : ${a.where}`, NOTHING);
+      case 'arrangeTop': return a.where === 'topOrBottom' ? B.lookTopArrange(a.look, src) : BC.lookTopReorder(a.look, a.where, src);
       case 'play': {
         if (a.from !== 'hand' && a.from !== 'trash') return this.no(`${k} : depuis ${a.from}`, NOTHING);
         if (a.count !== 1 || !a.upTo) return this.no(`${k} : ${a.count !== 1 ? 'plusieurs' : 'sans « jusqu\'à »'}`, NOTHING);
@@ -426,9 +439,9 @@ class Compiler {
         return this.no(`${k} : moment ${ab.timing}`, NOTHING);
       case 'activate': return this.no(`${k} ${a.which}`, NOTHING);   // [Déclenchement] « activez l'effet [Principale] » : voir trigger()
       case 'trashToHand':
-        if (a.count !== 1 || !a.upTo) return this.no(`${k} : ${a.count !== 1 ? 'plusieurs' : 'sans « jusqu\'à »'}`, NOTHING);
-        return B.trashToHand(this.spec(a.filter, 'card'), src);
-      case 'trashToBottom': return this.no(k, NOTHING);
+        if (a.count === 1 && a.upTo) return B.trashToHand(this.spec(a.filter, 'card'), src);
+        return BC.trashToHandMany(a.count, a.upTo, this.spec(a.filter, 'card'), src);
+      case 'trashToBottom': return BC.trashToDeckBottom(a.count, a.side, Boolean(a.upTo), this.spec(a.filter, 'card'), src);
       case 'addDon': return B.addDon(a.n, a.state);
       case 'readyDon': return B.readyDon(a.n);
       case 'giveDon':
@@ -452,12 +465,15 @@ class Compiler {
       case 'lookLife': return a.side === 'any' && a.arrange ? B.lookLifeArrange(src) : this.no(`${k} ${a.side}${a.arrange ? '' : ' sans ranger'}`, NOTHING);
       case 'noLifeToHand': return L.noLifeToHandThisTurn(src);
       case 'reorderLife': return L.reorderLife(a.side, src);
-      case 'handToBottom': return B.handToBottom(a.n, src);
+      case 'handToBottom': return a.where ? BC.handToDeck(a.n, a.where, src) : B.handToBottom(a.n, src);
       case 'oppHandToBottom': return B.oppHandToBottom(a.n, src);
       case 'handToLife': return L.handToLifeN(a.n, this.spec(a.filter, 'card'), Boolean(a.faceUp), a.upTo, src);
       case 'noCharsThisTurn': return a.what === 'play' ? B.noCharactersThisTurn(src) : this.no(`${k} ${a.what}`, NOTHING);
       case 'trashSelfEnd': return B.trashAtEndOfTurn(src);
       case 'oppChooses': return this.no(`${k} ${a.action}`, NOTHING);
+      case 'revealTop': return BC.revealTopCard(src);
+      case 'playRevealed': return BC.playRevealed(src, { rested: a.rested });
+      case 'revealedToBottom': return BC.revealedToBottom(src);
       case 'manual': {
         const fn = this.manual?.steps?.[a.reason];
         if (!fn) return this.no(`action manual:${a.reason} absente`, NOTHING);
@@ -491,7 +507,8 @@ class Compiler {
         e = B.chooseOne(this.src, st.chooseOne.map((option, i) => ({ label: this.optionLabel(option, i), effect: this.steps(option, ab) })));
       } else if ('may' in st) e = this.may(this.steps(st.may, ab));
       else e = this.steps(st.group, ab);
-      parts.push(st.cond ? B.when(this.cond(st.cond), e) : e);
+      if (st.cond?.kind === 'revealed') parts.push(BC.whenRevealed(this.spec(st.cond.filter, 'card'), e));
+      else parts.push(st.cond ? B.when(this.cond(st.cond), e) : e);
     }
     return parts.length === 1 ? parts[0] : B.seq(...parts);
   }

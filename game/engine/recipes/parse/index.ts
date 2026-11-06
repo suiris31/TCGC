@@ -14,6 +14,7 @@ import { analyzeCard, isStructural, type Family } from './structure.ts';
 import { REMOVAL } from './removal.ts';
 import { POWER } from './power.ts';
 import { LIFE } from './life.ts';
+import { CARDS_FAMILY } from './cards.ts';
 
 export type { Family, Helpers, Rule, Continuation } from './structure.ts';
 
@@ -22,6 +23,7 @@ export const FAMILIES: Family[] = [
   REMOVAL,
   POWER,
   LIFE,
+  CARDS_FAMILY,
 ];
 
 // ok : recette sans reste ; sinon, la recette partielle (ce qui est compris) et les morceaux non compris, normalisés

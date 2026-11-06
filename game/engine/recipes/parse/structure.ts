@@ -273,9 +273,11 @@ export class Parser {
     link ??= inherited;
     // une phrase qui complète l'étape précédente (« Then, place the rest at the bottom of your deck »)
     if (this.continuation(sen, out)) return;
-    // la continuation en tête de phrase, puis le reste (« place the rest ... and play up to 1 ... »)
+    // la continuation en tête de phrase, puis le reste (« place the rest ... and play up to 1 ... ») : le « Then, » de la
+    // phrase porte sur la continuation, le reste suit avec « and » (C2.3 : l'aller-retour redit « Then, » une seule fois ;
+    // même jeu, « then » et « and » s'enchaînent de la même façon). « If you do, » garde son lien.
     for (const [a, b] of cuts(sen, / and /i)) {
-      if (this.continuation(a, out)) { this.sentence(cap(b.trim()), out, errors, isStatic, link ?? 'and'); return; }
+      if (this.continuation(a, out)) { this.sentence(cap(b.trim()), out, errors, isStatic, link === 'then' || !link ? 'and' : link); return; }
     }
     // la continuation en fin de phrase (« ... and add it to your hand, then place the rest ... »)
     for (const [a, b] of cuts(sen, /,? (?:and )?then,? /i)) {
