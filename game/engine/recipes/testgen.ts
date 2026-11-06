@@ -242,7 +242,12 @@ function requireAction(d: Draft, c: CaseCtx, a: Action) {
     case 'trashToHand': placeZone(d, c, 'trash', 0, a.filter, a.count + 1); break;
     case 'trashToBottom': placeZone(d, c, 'trash', sideOf(a.side), a.filter, a.count + 1); break;
     case 'readyDon': d.donRested[0] = Math.max(d.donRested[0], a.n); break;
-    case 'giveDon': if (a.rested) d.donRested[0] = Math.max(d.donRested[0], a.n); else d.donActive[0] += a.n; break;
+    case 'giveDon': {
+      // C2.4 : DON!! adverses (from 'opp') ou du propriétaire (« its owner's ») : les deux camps en ont
+      const sides: PlayerId[] = a.from === 'opp' ? [1] : a.from === 'owner' ? [0, 1] : [0];
+      for (const q of sides) if (a.rested) d.donRested[q] = Math.max(d.donRested[q], a.n); else d.donActive[q] += a.n;
+      break;
+    }
     case 'restDon': if (a.side === 'opp') d.donActive[1] = Math.max(d.donActive[1], a.n + 1); else d.donActive[0] += a.n; break;
     case 'returnDon': if (a.side === 'opp') d.donActive[1] = Math.max(d.donActive[1], a.n + 1); else d.donRested[0] = Math.max(d.donRested[0], a.n); break;
     default:
@@ -292,6 +297,14 @@ function knob(d: Draft, c: CaseCtx, cond: Cond, want: boolean): boolean {
       const rested = value(cond.cmp, cond.n) - d.donActive[p] - attached;
       if (rested < 0) return false;
       d.donRested[p] = rested;
+      return true;
+    }
+    // C2.4 : DON!! redressées ou épuisées de la zone de Coût (les DON!! données ne se règlent pas ici)
+    case 'donCards': {
+      if (cond.what === 'given') return false;
+      const v = value(cond.cmp, cond.n);
+      if (v < 0) return false;
+      (cond.what === 'active' ? d.donActive : d.donRested)[own(cond.side)] = v;
       return true;
     }
     case 'trash': {
@@ -488,6 +501,10 @@ function evalCond(m: Model, cond: Cond): boolean | null {
       const b = donField(m.sides[1]);
       return cond.cmp === 'lt' ? a < b : cond.cmp === 'le' ? a <= b : cond.cmp === 'gt' ? a > b : a >= b;
     }
+    case 'donCards': {
+      const x = S(cond.side);
+      return cmp(cond.what === 'active' ? x.donActive : cond.what === 'rested' ? x.donRested : [x.leader, ...x.chars].reduce((sum, c) => sum + c.don, 0), cond.cmp, cond.n);
+    }
     case 'trash': return cmp(m.sides[0].trash.filter((c) => !cond.filter || fitsFilter(c.num, cond.filter)).length, cond.cmp, cond.n);
     case 'deck': return cmp(m.sides[0].deck.length, cond.cmp, cond.n);
     case 'chars': {
@@ -643,10 +660,17 @@ function apply(m: Model, a: Action): boolean {
     }
     case 'readyDon': { const k = n0(a.n, me.donRested); me.donRested -= k; me.donActive += k; return k > 0; }
     case 'giveDon': {
-      const chosen = chooseField(m, a, { ...a.target, count: 1 });
-      const pool = a.rested ? me.donRested : me.donActive;
+      // C2.4 : les DON!! viennent du camp de la carte choisie (from 'opp' / 'owner'), sinon du vôtre ; la carte qui porte
+      // l'effet n'est pas choisie ; « jusqu'à » refusé (mode none) : rien, sauf la brique des vôtres qui prend d'office la
+      // seule carte possible (B.giveDon)
+      let chosen = chooseField(m, a, { ...a.target, count: 1, upTo: false });
+      if (a.from) chosen = chosen.filter((x) => (x.side === 0 ? me : opp)[a.rested ? 'donRested' : 'donActive'] > 0);
+      const all = a.target.self ? chosen : chooseField(m, a, { ...a.target, count: 'all' });
+      if (m.variant.none && a.upTo && !a.target.self && (a.from || all.length > 1)) chosen = [];
+      const P = chosen[0]?.side === 1 ? opp : me;
+      const pool = a.rested ? P.donRested : P.donActive;
       const k = chosen.length ? n0(a.n, pool) : 0;
-      if (a.rested) me.donRested -= k; else me.donActive -= k;
+      if (a.rested) P.donRested -= k; else P.donActive -= k;
       if (chosen[0]) { chosen[0].card.don += k; m.touched.add(chosen[0].card.uid); }
       return k > 0;
     }
@@ -660,7 +684,16 @@ function apply(m: Model, a: Action): boolean {
       for (const key of ['donActive', 'donRested', 'donGiven']) m.free.add(`${side}.${key}`);
       return k > 0;
     }
-    case 'restDon': { const P = S(a.side); const k = n0(a.n, P.donActive); P.donActive -= k; P.donRested += k; return k > 0; }
+    case 'restDon': {
+      // C2.4 : « DON!! ou Personnages » adverses : le choix entre les deux n'est pas prédit (seul l'état des DON!! et des
+      // Personnages adverses change) ; DON!! adverses « jusqu'à » : rien en mode none
+      if (a.orCharacters) { for (const key of ['donActive', 'donRested', 'rested']) m.free.add(`1.${key}`); return true; }
+      const P = S(a.side);
+      const k = a.side === 'opp' && m.variant.none ? 0 : n0(a.n, P.donActive);
+      P.donActive -= k;
+      P.donRested += k;
+      return k > 0;
+    }
     case 'lifeFromDeck': { const k = n0(a.n, me.deck.length); me.life.unshift(...me.deck.splice(0, k)); return k > 0; }
     case 'lifeToHand': case 'trashLife': {
       const P = S(a.side);
@@ -823,6 +856,18 @@ function usefulAction(m: Model, a: Action): boolean | null {
   }
 }
 
+// L'effet d'une capacité change-t-il quelque chose ? (sur une copie du modèle ; ce qui n'est pas prédit compte comme utile)
+function usefulEffect(m: Model, ab: Ability): boolean {
+  const copy: Model = { ...structuredClone(m), variant: { ...m.variant, none: false, refuse: false } };
+  copy.unchecked = [];
+  runSteps(copy, ab.steps);
+  if (copy.unchecked.length || copy.free.size > m.free.size) return true;
+  const before = measureSides(m.sides);
+  const after = measureSides(copy.sides);
+  return copy.mods.length !== m.mods.length || Object.keys(before).some((k) => before[k] !== after[k])
+    || JSON.stringify(copy.sides) !== JSON.stringify(m.sides);
+}
+
 function simulate(m: Model, ab: Ability): void {
   if (ab.condition) {
     const v = evalCond(m, ab.condition);
@@ -835,10 +880,12 @@ function simulate(m: Model, ab: Ability): void {
   }
   if (ab.yourTurn && m.active !== 0) return;
   if (ab.oppTurn && m.active === 0) return;
-  // convention n° 1000 : un coût facultatif n'est proposé que si l'effet peut servir (compile.ts : when(useful)) ; le
-  // modèle le sait pour les sortes de la famille « cartes » (C2.3), sinon il paie comme avant
-  if (ab.cost?.length && ab.timing !== 'activateMain' && usefulSteps(m, ab.steps) === false) return;
   if (ab.cost?.length) {
+    // convention n° 1000 : un coût facultatif n'est proposé que si l'effet peut servir ([Activation : Principale] :
+    // activer, c'est payer, sans question). Le modèle lit d'abord ce que dit `useful` de la brique compilée, quand il le
+    // sait (C2.3) ; sinon l'effet est joué à blanc sur une copie, sans refus ni « jusqu'à » refusé, et s'il ne change
+    // rien, rien n'est payé (C2.4, C2.6 : ① et DON!! −N devant une cible absente, « jouez jusqu'à 1 » sans carte)
+    if (ab.timing !== 'activateMain' && !(usefulSteps(m, ab.steps) ?? usefulEffect(m, ab))) return;
     const paid = payCost(m, ab.cost);
     if (paid === null) return;
     if (!paid) return;

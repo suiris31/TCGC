@@ -135,9 +135,17 @@ export class Parser {
   }
 
   // ----- Coûts : « A and B » (chaque morceau commence par un verbe de coût) -----
+  // « rest 1 of your DON!! cards and this Character », « rest this card and 1 of your DON!! cards » (C2.4) : un seul verbe
+  // pour deux morceaux, le second le reprend
   cost(phrase: string): CostPart[] {
-    return splitAll(trimEnd(phrase), /,? and (?=(?:rest|trash|reveal|return|place|add|give|turn|KO)\b)/i)
-      .map((x) => this.rules<CostPart>('costs', x.trim(), 'coût'));
+    const VERB = /^(rest|trash|reveal|return|place|add|give|turn|KO)\b/i;
+    const parts = splitAll(trimEnd(phrase), /,? and (?=(?:rest|trash|reveal|return|place|add|give|turn|KO|this (?:Character|Leader|card)|\d+ of your)\b)/i)
+      .map((x) => x.trim());
+    for (let i = 1; i < parts.length; i++) {
+      const verb = parts[i - 1].match(VERB);
+      if (!VERB.test(parts[i]) && verb) parts[i] = `${verb[1]} ${parts[i]}`;
+    }
+    return parts.map((x) => this.rules<CostPart>('costs', x, 'coût'));
   }
 
   event(phrase: string): RecipeEvent {

@@ -82,6 +82,9 @@ export type Cond =
   | { kind: 'hand'; side: 'own' | 'opp'; cmp: Cmp; n: number }
   | { kind: 'donField'; side: 'own' | 'opp'; cmp: Cmp; n: number }
   | { kind: 'donVsOpp'; cmp: Cmp2 }
+  // C2.4 : DON!! d'un état précis. 'active' / 'rested' : DON!! redressées / épuisées de la zone de Coût ; 'given' : total
+  // des DON!! données au Leader et aux Personnages (« you have any DON!! cards given » : ge 1)
+  | { kind: 'donCards'; side: 'own' | 'opp'; what: 'active' | 'rested' | 'given'; cmp: Cmp; n: number }
   | { kind: 'trash'; cmp: Cmp; n: number; filter?: Filter }
   | { kind: 'deck'; cmp: Cmp; n: number }
   // « you have no ... » : cmp 'eq', n 0
@@ -117,7 +120,9 @@ export type CostPart =
   | { kind: 'bottomOwn'; n: number; filter: Filter }
   | { kind: 'returnOwnChar'; n: number; filter: Filter }    // « return 1 of your Characters to the owner's hand »
   | { kind: 'restOwn'; n: number; what: 'cards' | 'characters' | 'leader' | 'stage'; filter?: Filter }
-  | { kind: 'giveDon'; n: number; target: Target }          // « give 1 active DON!! card to 1 of your Leader »
+  // « give 1 active DON!! card to 1 of your Leader » ; from (C2.4) 'opp' : « give 1 of your opponent's rested DON!! cards
+  // to 1 of your opponent's Characters » (DON!! épuisées adverses, à une carte adverse)
+  | { kind: 'giveDon'; n: number; target: Target; from?: 'opp' }
   // wording (C2.3) : « return N cards from your trash to the bottom of your deck » (même jeu que « place ... at »)
   | { kind: 'trashToBottom'; n: number; filter?: Filter; wording?: 'return' }   // Défausse → sous le deck
   | { kind: 'trashLife'; from: 'top' | 'topOrBottom' }
@@ -170,9 +175,13 @@ export type Action =
   | { kind: 'trashToBottom'; count: number; side: 'own' | 'opp'; filter: Filter; upTo?: boolean; wording?: 'return' }   // upTo, wording : C2.3
   | { kind: 'addDon'; n: number; upTo: boolean; state: 'active' | 'rested' }
   | { kind: 'readyDon'; n: number; upTo: boolean }
-  | { kind: 'giveDon'; n: number; upTo: boolean; rested: boolean; target: Target }
+  // from (C2.4) : d'où viennent les DON!! (absent : les vôtres) ; 'opp' : celles de l'adversaire, à une de ses cartes ;
+  // 'owner' : celles du propriétaire de la carte choisie (« to its owner's Leader or 1 of their Characters »)
+  | { kind: 'giveDon'; n: number; upTo: boolean; rested: boolean; target: Target; from?: 'opp' | 'owner' }
   | { kind: 'returnDon'; n: number; side: 'own' | 'opp' }   // renvoyer N DON!! au deck DON!!
-  | { kind: 'restDon'; n: number; side: 'own' | 'opp' }
+  // side 'opp' : « jusqu'à N » DON!! adverses ; 'own' : N des vôtres (obligatoire). orCharacters (C2.4, adverse
+  // seulement) : « up to N of your opponent's DON!! cards or Characters with ... » (une à une : DON!! ou Personnage)
+  | { kind: 'restDon'; n: number; side: 'own' | 'opp'; orCharacters?: Filter }
   | { kind: 'lifeFromDeck'; n: number; upTo: boolean; faceUp?: boolean }
   // upTo (C2.5) : « jusqu'à N » ; side 'opp' sans upTo : « votre adversaire ajoute à sa main ... »
   | { kind: 'lifeToHand'; n: number; side: 'own' | 'opp'; from: 'top' | 'topOrBottom'; upTo?: boolean }

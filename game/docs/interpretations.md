@@ -917,6 +917,44 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
       ou au-dessous » : chaque carte au choix (comme 1660).
 1667. **Enchaînement** : « Then, place the rest ... and [action] » : le « Then » porte sur les cartes restantes, l'action
       suit avec « and » (même jeu : les deux s'enchaînent dans l'ordre du texte).
+## Famille « DON!! » du traducteur (tâche C2.4), choix faits sans validation
+
+1740. **« Ajoutez / redressez / donnez jusqu'à N DON!! »** : autant que possible jusqu'à N, sans proposer d'en prendre
+      moins (comme les cartes codées à la main : briques `addDon`, `readyDon`, `giveDon`) ; pour donner, le choix de la
+      carte qui reçoit garde « Aucune ». Sans « jusqu'à » (« Ajoutez 1 DON!! »), le même jeu. Donner des DON!! **sans**
+      « jusqu'à », ou des DON!! **redressées** en effet (pas en coût), n'est pas compilé (aucune brique exacte, n° 1002).
+1741. **Renvoyer des DON!! au deck DON!!** (« votre adversaire renvoie N DON!! de son terrain », « renvoyez N DON!! de
+      votre terrain ») : dans l'ordre que le moteur suit déjà pour DON!! −N (`rules.ts`, `returnDon`) : les épuisées de
+      la zone de Coût, puis les redressées, puis celles données. Le texte laisse ce choix au joueur qui renvoie ; c'est le
+      choix le plus favorable dans presque tous les cas (une DON!! épuisée ne sert plus pendant le tour), **à valider**.
+      L'évènement « DON!! renvoyée » est annoncé avec le joueur dont l'effet est la cause.
+1742. **« Renvoyez N DON!! de votre terrain »** (un effet, pas le coût DON!! −N) et **« épuisez N de vos DON!! »** (un
+      effet, souvent « vous pouvez ... Si vous le faites, ... ») : s'il y en a moins que N, autant que possible ; l'effet
+      n'est « utile » (donc un « vous pouvez » n'est proposé, n° 1000) que s'il y en a au moins N. Épuiser ses DON!!
+      ne prend que des DON!! redressées de la zone de Coût.
+1743. **« Épuisez jusqu'à N DON!! adverses »** : une à une, refus possible à chaque fois, seulement des DON!! redressées
+      de sa zone de Coût. **« ... DON!! ou Personnages ayant ... »** (et « ... Personnages ou DON!! », « un total de N ») :
+      une à une, chaque fois une DON!! redressée ou un Personnage qui correspond (brique `restOppCards`, comme
+      OP09-036 codée à la main).
+1744. **« Donnez ... à votre Leader ou à 1 de vos Personnages »** : une seule carte reçoit les N DON!!. **« ... au Leader
+      ou à 1 des Personnages de son propriétaire »** : les DON!! épuisées viennent de la zone de Coût du propriétaire de
+      la carte choisie (brique `giveRestedDonToOwner`, comme OP15-012 codée à la main) ; **« N DON!! épuisées adverses à
+      1 Personnage adverse »** : de la zone de Coût adverse. **« Donnez à ce Personnage jusqu'à N DON!! épuisées »** :
+      sans choix de carte.
+1745. **Coût « donnez 1 DON!! épuisée adverse à 1 Personnage adverse »** (OP15) : proposé seulement si l'adversaire a
+      une DON!! épuisée dans sa zone de Coût et un Personnage ; une seule cible : donnée d'office.
+1746. **Conditions** : « DON!! sur votre terrain » compte la zone de Coût et les DON!! données (comme le moteur,
+      `donOnField`) ; « N DON!! redressées / épuisées » : la zone de Coût seulement ; « des DON!! données » : au moins une
+      DON!! donnée à son Leader ou à ses Personnages ; « un total de N DON!! données » : toutes ses cartes ; « vous ou
+      votre adversaire avez N DON!! » : l'un des deux. Filtre « ayant une DON!! donnée » : au moins 1.
+1747. **Coût en deux morceaux pour un seul verbe** (« épuisez 1 de vos DON!! et ce Personnage », « épuisez cette carte et
+      1 de vos DON!! ») : les deux morceaux sont des coûts, le second reprend le verbe du premier (`structure.ts`).
+1748. **Pas traduit** (rapporté « non compris », pour les tâches « set » ou une brique à venir) : « quand N DON!! ou plus
+      sont renvoyées », « ... renvoyée par votre effet » (le format des évènements n'a ni nombre ni auteur), le coût
+      « renvoyez N de vos DON!! redressées » (DON!! −N prend n'importe lesquelles), « redressez toutes vos DON!! »,
+      « donnez à votre Leader et à 1 Personnage N DON!! chacun », « depuis la zone de Coût » (redressées ou épuisées :
+      laquelle ?), « à la fin de ce tour, redressez ... », « toutes vos DON!! sont épuisées » (les DON!! données
+      comptent-elles ?), « vous ne pouvez pas redresser de DON!! par des effets de Personnage ».
 
 ## Comment c'est vérifié
 

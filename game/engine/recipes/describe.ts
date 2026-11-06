@@ -130,7 +130,7 @@ function enWith(f: Filter): string[] {
   if (f.trigger) out.push('a [Trigger]');
   if (f.keyword) out.push(`[${f.keyword}]`);
   if (f.vanilla) out.push('no base effect');
-  if (f.donMin !== undefined) out.push(`${f.donMin} or more DON!! cards given`);
+  if (f.donMin !== undefined) out.push(f.donMin === 1 ? 'a DON!! card given' : `${f.donMin} or more DON!! cards given`);
   return out;
 }
 
@@ -192,6 +192,11 @@ function enTarget(t: Target, ctx: Ctx): string {
 // Filtre d'une carte hors du terrain (main, deck, Défausse) : « up to 1 {Navy} type Character card with a cost of 3 »
 const enCards = (n: number, f: Filter) => enNoun(f, [], plural(n), true);
 
+// « Si vous ou votre adversaire avez N DON!! » : deux conditions donField identiques, une par camp
+const eitherDon = (c: Cond): c is { kind: 'or'; any: [Extract<Cond, { kind: 'donField' }>, Extract<Cond, { kind: 'donField' }>] } => c.kind === 'or'
+  && c.any.length === 2 && c.any[0].kind === 'donField' && c.any[1].kind === 'donField' && c.any[0].side === 'own' && c.any[1].side === 'opp'
+  && c.any[0].n === c.any[1].n && c.any[0].cmp === c.any[1].cmp;
+
 function enCond(c: Cond, ctx: Ctx): string {
   switch (c.kind) {
     case 'leaderIs': return `your Leader is ${orList(c.names.map((n) => `[${n}]`), 'or')}`;
@@ -210,6 +215,11 @@ function enCond(c: Cond, ctx: Ctx): string {
     case 'donVsOpp':
       if (c.cmp === 'le' || c.cmp === 'ge') return `the number of DON!! cards on your field is equal to or ${c.cmp === 'le' ? 'less' : 'more'} than the number on your opponent's field`;
       return `your opponent has ${c.cmp === 'lt' ? 'more' : 'less'} DON!! cards on their field than you`;
+    case 'donCards': {
+      const subj = c.side === 'own' ? 'you have' : 'your opponent has';
+      if (c.what === 'given') return c.cmp === 'ge' && c.n === 1 ? `${subj} any DON!! cards given` : `${subj} a total of ${enCmp(c.n, c.cmp)} given DON!! cards`;
+      return `${subj} ${enCmp(c.n, c.cmp)} ${c.what} DON!! cards`;
+    }
     case 'trash': return `you have ${enCmp(c.n, c.cmp)} ${c.filter ? enCards(2, c.filter) : 'cards'} in your trash`;
     case 'deck': return `you have ${enCmp(c.n, c.cmp)} cards in your deck`;
     case 'chars': {
@@ -231,7 +241,10 @@ function enCond(c: Cond, ctx: Ctx): string {
     case 'playedThisTurn': return `${EN_SELF[ctx.self]} was played during this turn`;
     case 'firstTurns': return `it is turn ${c.fromTurn} or later`;
     case 'and': return andList(c.all.map((x) => enCond(x, ctx)), 'and');
-    case 'or': return orList(c.any.map((x) => enCond(x, ctx)), 'or');
+    case 'or':
+      // « either you or your opponent has 10 DON!! cards on the field » (C2.4, P-107)
+      if (eitherDon(c)) return `either you or your opponent has ${enCmp(c.any[0].n, c.any[0].cmp)} DON!! cards on the field`;
+      return orList(c.any.map((x) => enCond(x, ctx)), 'or');
     case 'not': return `not: ${enCond(c.cond, ctx)}`;
     case 'revealed': return `the revealed card is ${article(enNoun(c.filter, [], false))}`;
     case 'manual': return manual('cond', c.reason, ctx);
@@ -262,7 +275,9 @@ function enCost(p: CostPart, ctx: Ctx): string {
       if (p.what === 'stage') return 'rest your Stage';
       if (p.what === 'cards') return p.filter ? `rest ${p.n} of your ${enNoun(p.filter, [], true, true)}` : `rest ${p.n} of your cards`;
       return `rest ${p.n} of your ${enNoun(p.filter ?? {}, ['CHARACTER'], true)}`;
-    case 'giveDon': return `give ${p.n} active DON!! ${p.n === 1 ? 'card' : 'cards'} to ${enTarget(p.target, ctx)}`;
+    case 'giveDon': return p.from === 'opp'
+      ? `give ${p.n} of your opponent's rested DON!! ${p.n === 1 ? 'card' : 'cards'} to ${enTarget(p.target, ctx)}`
+      : `give ${p.n} active DON!! ${p.n === 1 ? 'card' : 'cards'} to ${enTarget(p.target, ctx)}`;
     case 'trashToBottom': return `${p.wording === 'return' ? 'return' : 'place'} ${p.n} ${p.filter ? enCards(p.n, p.filter) : p.n === 1 ? 'card' : 'cards'} from your trash ${p.wording === 'return' ? 'to' : 'at'} the bottom of your deck in any order`;
     case 'trashLife': return `trash 1 card from the ${p.from === 'top' ? 'top' : 'top or bottom'} of your Life cards`;
     case 'leaderPowerMinus': return `give your 1 active Leader -${p.n} power during this turn`;
@@ -346,11 +361,24 @@ function enAction(a: Action, ctx: Ctx): string {
       : `Place ${a.upTo ? 'up to ' : ''}${a.count} ${enCards(a.count, a.filter)} from your opponent's trash at the bottom of their deck in any order`;
     case 'addDon': return `Add ${a.upTo ? 'up to ' : ''}${a.n} DON!! ${a.n === 1 ? 'card' : 'cards'} from your DON!! deck and ${a.state === 'active' ? `set ${a.n === 1 ? 'it' : 'them'} as active` : `rest ${a.n === 1 ? 'it' : 'them'}`}`;
     case 'readyDon': return `Set ${a.upTo ? 'up to ' : ''}${a.n} of your DON!! cards as active`;
-    case 'giveDon': return `Give ${a.upTo ? 'up to ' : ''}${a.n} ${a.rested ? 'rested' : 'active'} DON!! ${a.n === 1 ? 'card' : 'cards'} to ${T(a.target)}`;
+    case 'giveDon': {
+      const dons = `${a.upTo ? 'up to ' : ''}${a.n} ${a.from === 'opp' ? "of your opponent's " : ''}${a.rested ? 'rested' : 'active'} DON!! ${a.n === 1 ? 'card' : 'cards'}`;
+      if (a.target.self) return `Give ${T(a.target)} ${dons}`;
+      // « your Leader or 1 of your Characters » : la tournure du texte officiel (C2.4)
+      const t = a.target;
+      const pair = t.leader && t.characters && !t.stage && t.count === 1 && !Object.keys(t.filter).length && !t.otherThanSelf;
+      const to = pair && a.from === 'owner' ? "its owner's Leader or 1 of their Characters"
+        : pair && !t.upTo ? `${t.side === 'opp' ? "your opponent's" : 'your'} Leader or 1 of ${t.side === 'opp' ? "your opponent's" : 'your'} Characters` : T(t);
+      return `Give ${dons} to ${to}`;
+    }
     case 'returnDon': return a.side === 'opp'
       ? `Your opponent returns ${a.n} DON!! ${a.n === 1 ? 'card' : 'cards'} from their field to their DON!! deck`
       : `Return ${a.n} DON!! ${a.n === 1 ? 'card' : 'cards'} from your field to your DON!! deck`;
-    case 'restDon': return a.side === 'opp' ? `Rest up to ${a.n} of your opponent's DON!! cards` : `Rest ${a.n} of your DON!! cards`;
+    case 'restDon':
+      if (a.side === 'own') return `Rest ${a.n} of your DON!! cards`;
+      return a.orCharacters
+        ? `Rest up to ${a.n} of your opponent's DON!! cards or ${enNoun(a.orCharacters, ['CHARACTER'], true)}`
+        : `Rest up to ${a.n} of your opponent's DON!! cards`;
     case 'lifeFromDeck': return `Add ${a.upTo ? 'up to ' : ''}${enCount(a.n, 'card', 'cards')} from the top of your deck to the top of your Life cards${a.faceUp ? ' face-up' : ''}`;
     case 'lifeToHand': {
       const end = a.from === 'top' ? 'top' : 'top or bottom';
@@ -562,7 +590,7 @@ function frWith(f: Filter, ctx: Ctx): string[] {
   if (f.attribute) out.push(`l'attribut <${FR_ATTRIBUTE[f.attribute] ?? f.attribute}>`);
   if (f.trigger) out.push('un [Déclenchement]');
   if (f.keyword) out.push(`[${FR_KEYWORD[f.keyword]}]`);
-  if (f.donMin !== undefined) out.push(`${f.donMin} cartes DON!! ou plus attachées`);
+  if (f.donMin !== undefined) out.push(f.donMin === 1 ? 'au moins 1 carte DON!! attachée' : `${f.donMin} cartes DON!! ou plus attachées`);
   return out;
 }
 
@@ -637,6 +665,11 @@ function frCond(c: Cond, ctx: Ctx): string {
     case 'donVsOpp':
       if (c.cmp === 'le' || c.cmp === 'ge') return `vous avez autant ou ${c.cmp === 'le' ? 'moins' : 'plus'} de cartes DON!! sur votre terrain que votre adversaire`;
       return `votre adversaire a ${c.cmp === 'lt' ? 'plus' : 'moins'} de cartes DON!! sur son terrain que vous`;
+    case 'donCards': {
+      const subj = c.side === 'own' ? 'vous avez' : 'votre adversaire a';
+      if (c.what === 'given') return c.cmp === 'ge' && c.n === 1 ? `${subj} au moins 1 carte DON!! donnée` : `${subj} ${frCmp(c.n, c.cmp)} cartes DON!! données au total`;
+      return `${subj} ${frCmp(c.n, c.cmp)} cartes DON!! ${c.what === 'active' ? 'redressées' : 'épuisées'}`;
+    }
     case 'trash': return `vous avez ${frCmp(c.n, c.cmp)} ${c.filter ? frCards(2, c.filter, ctx) : 'cartes'} dans votre Défausse`;
     case 'deck': return `vous avez ${frCmp(c.n, c.cmp)} cartes dans votre deck`;
     case 'chars': {
@@ -656,7 +689,9 @@ function frCond(c: Cond, ctx: Ctx): string {
     case 'playedThisTurn': return `${FR_SELF[ctx.self]} a été joué pendant ce tour`;
     case 'firstTurns': return `c'est au moins le tour ${c.fromTurn}`;
     case 'and': return andList(c.all.map((x) => frCond(x, ctx)), 'et');
-    case 'or': return orList(c.any.map((x) => frCond(x, ctx)), 'ou');
+    case 'or':
+      if (eitherDon(c)) return `vous ou votre adversaire avez ${frCmp(c.any[0].n, c.any[0].cmp)} cartes DON!! sur le terrain`;
+      return orList(c.any.map((x) => frCond(x, ctx)), 'ou');
     case 'not': return `non : ${frCond(c.cond, ctx)}`;
     case 'revealed': return `la carte révélée est ${frNoun(c.filter, [], false, ctx, true).replace(/^carte\b/, 'une carte')}`;
     case 'manual': return manual('cond', c.reason, ctx);
@@ -686,7 +721,9 @@ function frCost(p: CostPart, ctx: Ctx): string {
       if (p.what === 'stage') return 'épuiser votre Lieu';
       if (p.what === 'cards') return p.filter ? `épuiser ${p.n} de vos ${frNoun(p.filter, [], true, ctx, true)}` : `épuiser ${p.n} de vos cartes`;
       return `épuiser ${p.n} de vos ${frNoun(p.filter ?? {}, ['CHARACTER'], true, ctx)}`;
-    case 'giveDon': return `donner ${p.n} carte${p.n > 1 ? 's' : ''} DON!! redressée${p.n > 1 ? 's' : ''} à ${frTarget(p.target, ctx)}`;
+    case 'giveDon': return p.from === 'opp'
+      ? `donner ${p.n} carte${p.n > 1 ? 's' : ''} DON!! épuisée${p.n > 1 ? 's' : ''} adverse${p.n > 1 ? 's' : ''} à ${frTarget(p.target, ctx)}`
+      : `donner ${p.n} carte${p.n > 1 ? 's' : ''} DON!! redressée${p.n > 1 ? 's' : ''} à ${frTarget(p.target, ctx)}`;
     case 'trashToBottom': return `placer ${p.n} ${p.filter ? frCards(p.n, p.filter, ctx) : p.n === 1 ? 'carte' : 'cartes'} de votre Défausse au-dessous de votre deck dans l'ordre de votre choix`;
     case 'trashLife': return `placer dans votre Défausse 1 carte du ${p.from === 'top' ? 'dessus' : 'dessus ou du dessous'} de votre Vie`;
     case 'leaderPowerMinus': return `donner -${p.n} de puissance à votre Leader redressé pour tout le tour`;
@@ -753,11 +790,19 @@ function frAction(a: Action, ctx: Ctx): string {
       : `Placez ${a.upTo ? "jusqu'à " : ''}${a.count} ${frCards(a.count, a.filter, ctx)} de la Défausse adverse au-dessous du deck adverse dans l'ordre de votre choix`;
     case 'addDon': return `Ajoutez ${a.upTo ? "jusqu'à " : ''}${a.n} carte${a.n > 1 ? 's' : ''} DON!! de votre deck DON!!, ${a.state === 'active' ? 'redressée' : 'épuisée'}${a.n > 1 ? 's' : ''}`;
     case 'readyDon': return `Redressez ${a.upTo ? "jusqu'à " : ''}${a.n} de vos cartes DON!!`;
-    case 'giveDon': return `Donnez ${a.upTo ? "jusqu'à " : ''}${a.n} carte${a.n > 1 ? 's' : ''} DON!! ${a.rested ? 'épuisée' : 'redressée'}${a.n > 1 ? 's' : ''} à ${T(a.target)}`;
+    case 'giveDon': {
+      const pl = a.n > 1 ? 's' : '';
+      const whose = a.from === 'opp' ? ` adverse${pl}` : a.from === 'owner' ? ' de son propriétaire' : '';
+      return `Donnez ${a.upTo ? "jusqu'à " : ''}${a.n} carte${pl} DON!! ${a.rested ? 'épuisée' : 'redressée'}${pl}${whose} à ${T(a.target)}`;
+    }
     case 'returnDon': return a.side === 'opp'
       ? `Votre adversaire renvoie ${a.n} carte${a.n > 1 ? 's' : ''} DON!! de son terrain dans son deck DON!!`
       : `Renvoyez ${a.n} carte${a.n > 1 ? 's' : ''} DON!! de votre terrain dans votre deck DON!!`;
-    case 'restDon': return a.side === 'opp' ? `Épuisez jusqu'à ${a.n} cartes DON!! adverses` : `Épuisez ${a.n} de vos cartes DON!!`;
+    case 'restDon':
+      if (a.side === 'own') return `Épuisez ${a.n} de vos cartes DON!!`;
+      return a.orCharacters
+        ? `Épuisez jusqu'à ${a.n} cartes DON!! ou ${frNoun(a.orCharacters, ['CHARACTER'], true, ctx, false, 'adverses')}`
+        : `Épuisez jusqu'à ${a.n} cartes DON!! adverses`;
     case 'lifeFromDeck': return `Ajoutez au-dessus de votre Vie ${a.upTo ? "jusqu'à " : ''}${cartes(a.n)} du dessus de votre deck${a.faceUp ? ', face visible' : ''}`;
     case 'lifeToHand': {
       const end = a.from === 'top' ? 'dessus' : 'dessus ou du dessous';
