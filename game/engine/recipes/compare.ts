@@ -93,14 +93,17 @@ const EN_DURATIONS: [RegExp, string][] = [
   [/\b(?:during|for|until the end of) this turn\b/gi, 'turn'],
   [/\buntil the end of your opponent's next (?:End Phase|turn)\b/gi, 'oppNextEnd'],
   [/\bduring your opponent's next turn\b/gi, 'oppNextEnd'],
-  [/\buntil the (?:end|start) of your next turn\b/gi, 'nextTurn'],
+  // « until the start of your next turn » dure jusqu'à la fin du tour adverse (n° 389 et 1300), comme le lit le traducteur
+  [/\buntil the start of your next turn\b/gi, 'oppNextEnd'],
+  [/\buntil the end of your next turn\b/gi, 'nextTurn'],
 ];
 const FR_DURATIONS: [RegExp, string][] = [
   [/\b(?:pour tout le|pendant ce|durant ce|lors de ce) combat\b/gi, 'battle'],
   [/\b(?:pour tout le|pendant ce|durant ce|jusqu'à la fin du|jusqu'à la fin de ce) tour(?:-ci)?(?! adverse| de votre adversaire| o[ùu])\b/gi, 'turn'],
   [/\bjusqu'à la fin (?:de la prochaine phase de Fin (?:de votre adversaire|adverse)|du prochain tour (?:adverse|de votre adversaire))/gi, 'oppNextEnd'],
   [/\b(?:pendant|durant) le prochain tour (?:adverse|de votre adversaire)\b/gi, 'oppNextEnd'],
-  [/\bjusqu'(?:à la fin|au début) de votre prochain tour\b/gi, 'nextTurn'],
+  [/\bjusqu'au début de votre prochain tour\b/gi, 'oppNextEnd'],
+  [/\bjusqu'à la fin de votre prochain tour\b/gi, 'nextTurn'],
 ];
 
 const EN_VERBS: Record<string, string> = {

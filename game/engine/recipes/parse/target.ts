@@ -58,6 +58,11 @@ export function parseFilter(phrase: string): Filter {
   // « with a total power of 4000 or less » (OP09-018) : une somme sur toutes les cartes choisies, pas une borne pour
   // chacune ; sans ce garde-fou, « total » passait pour un mot de liaison (correction de la tâche C2.1)
   if (/\btotal (?:power|cost)\b/i.test(phrase)) fail(phrase, 'filtre : total combiné');
+  // « {A} type Characters or Characters with a [Trigger] » (OP05-002) : deux descriptions complètes reliées par « or »
+  // (l'une OU l'autre) ; sans ce garde-fou, elles étaient fusionnées en une seule (l'une ET l'autre). Intégration C2.
+  if (/\b(Leader|Character|Event|Stage)s?(?: cards?)? or (?:up to \d+ )?(?:of )?(?:your )?\1s?\b/.test(phrase)) {
+    fail(phrase, 'filtre : OU entre deux descriptions');
+  }
   let s = ` ${phrase.trim()} `;
   const eat = (re: RegExp, fn: (...m: string[]) => void) => {
     s = s.replace(re, (...m) => { fn(...(m.slice(0, -2) as string[])); return ' '; });

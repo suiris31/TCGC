@@ -403,8 +403,28 @@ const nums = Object.keys(CARDS).filter((n) => n !== HIDDEN && !n.startsWith('ZZ'
 const actionsOf = (steps: Step[]): Action[] => steps.flatMap((st) => ('action' in st ? [st.action]
   : 'group' in st ? actionsOf(st.group) : 'may' in st ? actionsOf(st.may) : st.chooseOne.flatMap(actionsOf)));
 
+// Écarts bloquants connus de l'aller-retour, une fois toutes les familles de la vague C2 réunies (intégration C2) :
+// rédactions différentes pour le même jeu, ou lectures à trancher par la tâche du set (elles restent non vérifiées).
+const KNOWN_GAPS: Record<string, string> = {
+  'EB01-053': 'place / add dans la Vie (n° 1509)',
+  'OP11-116': "« the owner's » au lieu de « your opponent's » (n° 1509)",
+  'ST09-015': "« the owner's » au lieu de « your opponent's » (n° 1509)",
+  'P-008': 'obligatoire en VO, « jusqu\'à » en VF (n° 1509)',
+  'ST29-016': '« jusqu\'à » en VF seulement',
+  'OP01-021': 'deux rédactions de « peut attaquer les Personnages redressés » (C2.2)',
+  'OP01-112': 'deux rédactions de « peut attaquer les Personnages redressés » (C2.2)',
+  'OP02-014': 'deux rédactions de « peut attaquer les Personnages redressés » (C2.2)',
+  'ST01-005': '« this card » / « this Character » (C2.2)',
+  'EB04-023': '« your active Leader » / « your 1 active Leader »',
+  'OP04-088': '« your 1 Leader » / « your Leader »',
+  'OP06-083': "« This Character's effect is negated » / « Negate the effect of this Character »",
+  'OP02-074': '« Your [Nom] gains » lu « 1 of your [Nom] » : à trancher (tous ?) par la tâche du set',
+  'OP11-013': "« All of your opponent's Characters ... cannot activate [Blocker] » lu comme l'interdit du Bloqueur (n° 1588)",
+};
+
 test('catalogue : cartes restantes toujours écrites, « that card » toujours après une révélation, aller-retour sans écart', () => {
   let searches = 0;
+  const gaps: string[] = [];
   for (const n of nums) {
     const d = CARDS[n]!;
     const r = parseCard({ num: n, effectEn: d.effectEn ?? '', triggerEn: d.triggerEn ?? null }, FAMILIES);
@@ -423,9 +443,11 @@ test('catalogue : cartes restantes toujours écrites, « that card » toujours a
         assert.ok(prev && 'action' in prev && prev.action.kind === 'revealTop', `${n} : « that card » sans révélation juste avant`);
       });
     }
-    if (all.length) assert.deepEqual(blocking(compare(n, r.recipe)).map((e) => e.message), [], n);
+    if (all.length && blocking(compare(n, r.recipe)).length) gaps.push(n);
   }
   assert.ok(searches >= 60, `recherches traduites : ${searches}`);
+  // toutes les familles réunies : seuls les écarts connus restent (une carte en écart n'atteint jamais `verified`)
+  assert.deepEqual(gaps.sort(), Object.keys(KNOWN_GAPS).sort());
 });
 
 test('catalogue : les tournures de la famille dans 3 cartes ou plus sont comprises (morceaux non compris de la famille)', () => {
