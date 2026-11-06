@@ -90,6 +90,8 @@ export interface PlayerState {
   // tour pendant lequel aucun de ses Personnages ne peut être mis KO, en combat ou par un effet, y compris ceux joués
   // ensuite (White Out ST06-016)
   noKoTurn?: number;
+  // tour pendant lequel ses DON!! ne peuvent pas être redressées par l'effet d'un Personnage (L'Oiseau EB04-016)
+  noCharDonReadyTurn?: number;
 }
 
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro
@@ -357,6 +359,9 @@ export interface CardBehavior {
   cantBeKO?: (s: GameState, owner: PlayerId, self: FieldCard, cause: 'battle' | 'effect', by: PlayerId) => boolean;
   // « ne peut pas quitter le terrain à cause d'un effet adverse »
   cantLeave?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
+  // même chose, donné par cette carte (sur le terrain) à une carte du même joueur, elle comprise (« tous vos Personnages
+  // {Scientist} jaunes ne peuvent pas quitter le terrain à cause d'un effet adverse », Végapunk EB04-057)
+  leaveShield?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => boolean;
   // Règles changées par un Leader (effets permanents valables « selon les règles du jeu », 5-1-2-4)
   rules?: LeaderRules;
   onPlay?: (ctx: EffectCtx) => void;

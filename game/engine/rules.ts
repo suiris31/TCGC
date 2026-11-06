@@ -578,8 +578,14 @@ export function addDonFromDeck(s: GameState, p: PlayerId, n: number, active: boo
   return k;
 }
 
-export function untapDon(s: GameState, p: PlayerId, n: number) {
+// byNum : la carte dont l'effet redresse les DON!! (« vous ne pouvez pas redresser de DON!! grâce à l'effet d'un
+// Personnage pour tout le tour », L'Oiseau EB04-016) ; sans byNum, rien n'est vérifié
+export function untapDon(s: GameState, p: PlayerId, n: number, byNum?: string) {
   const P = s.players[p];
+  if (byNum && P.noCharDonReadyTurn === s.turn && def(byNum).category === 'CHARACTER') {
+    log(s, p, 'ne peut pas redresser de DON!! grâce à l’effet d’un Personnage ce tour-ci');
+    return 0;
+  }
   const k = Math.min(n, P.donRested);
   P.donRested -= k;
   P.donActive += k;
@@ -681,7 +687,12 @@ export function canLeaveByEffect(s: GameState, uid: number, by: PlayerId): boole
   if (!f) return false;
   if (by === f.player) return true;
   const own = def(f.card.num).cantLeave;
-  return !(own && !isNegated(s, uid) && own(s, f.player, f.card)) && !hasMod(s, uid, 'cantLeave');
+  if (own && !isNegated(s, uid) && own(s, f.player, f.card)) return false;
+  for (const c of allField(s, f.player)) {
+    const shield = def(c.num).leaveShield;
+    if (shield && !isNegated(s, c.uid) && shield(s, f.player, c, f.card)) return false;
+  }
+  return !hasMod(s, uid, 'cantLeave');
 }
 
 // Mise KO (combat ou effet du joueur `by`) : la carte va dans la Défausse, son effet [En cas de KO] est mis en attente.

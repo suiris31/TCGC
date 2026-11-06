@@ -3,7 +3,11 @@
 // code à la main (le code à la main l'emporte).
 import type { RecipeSet } from '../types.ts';
 import { RECIPES_OP16 } from './op16.ts';
+import { RECIPES_EB03 } from './eb03.ts';
+import { RECIPES_EB04 } from './eb04.ts';
 
 export const RECIPE_SETS: RecipeSet[] = [
   RECIPES_OP16,
+  RECIPES_EB03,
+  RECIPES_EB04,
 ];

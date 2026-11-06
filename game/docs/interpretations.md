@@ -1038,6 +1038,46 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 2116. **Monkey D. Luffy (Leader OP16-022) : en doute** (non jouable) : la n° 1902 n'a pas trouvé de réponse officielle ;
       question posée à l'utilisateur (sans Personnage, l'effet s'active-t-il ?).
 
+## EB03 et EB04 (tâche S4), choix faits sans validation
+
+2300. **« Jouez jusqu'à 1 [nom] » quand ce nom est celui d'un Lieu** (Carrot EB03-013 : [Zou] ; Black Maria EB03-044 :
+      [Onigashima Island]) : le Lieu se joue de la main. Le compilateur lit « Personnage » quand le texte ne dit pas la
+      catégorie (le Lieu n'était jamais proposé) : ces deux cartes sont codées à la main, le point est signalé au chef de
+      projet (garde-fou à ajouter : un nom qui désigne aussi un Lieu ne doit pas se compiler en « Personnage »).
+2301. **Nefertari Vivi (Leader EB03-001)** : le remplacement couvre le KO en combat et par n'importe quel effet (le
+      texte ne dit pas « adverse ») ; [Une fois par tour] compté quand il est utilisé. « Sans effet [En attaquant] » se lit
+      sur le texte imprimé de la carte.
+2302. **Reiju Vinsmoke (EB03-031)** : l'Événement activé reste dans la Défausse ; son effet [Principale] se résout aussitôt,
+      coût facultatif compris (« vous pouvez ... : »), sans payer son coût de DON!!.
+2303. **Événement EB03-049** : les deux Personnages se jouent l'un après l'autre (d'abord celui de coût 6 ou moins), chacun
+      de la main ou de la Défausse.
+2304. **Charlotte Smoothie (EB03-051)** : les cartes de Vie retournées face cachée restent connues des deux joueurs (elles
+      étaient visibles), comme pour Kidd ST-36.
+2305. **Smoker et Tashigi (EB04-003)** : « la puissance de base devient 7000 » pendant le tour adverse est jouée comme
+      l'écart entre 7000 et la puissance de base du moment (même méthode que Vista OP14-053 et Charlotte Linlin
+      OP17-112) ; plusieurs exemplaires ne s'additionnent pas. Limite connue : un filtre « de puissance de base » lu sur ce
+      Leader voit sa puissance imprimée.
+2306. **L'Oiseau (EB04-016)** : « vous ne pouvez pas redresser de DON!! grâce à l'effet d'un Personnage » est vérifié par
+      `untapDon` quand l'effet le dit (`byNum` : brique `readyDon`, donc toutes les recettes et les cartes qui s'en
+      servent). Limites connues : Perona OP10-036 et les effets différés « redressez à la fin du tour » ne passent pas
+      `byNum` (fichiers existants non modifiés) ; une fois la restriction posée, l'effet de L'Oiseau n'est plus proposé
+      (il ne ferait rien, et l'IA au hasard l'activait sans fin).
+2307. **Kaku (EB04-043)** : remplacement seulement d'un KO par un effet adverse (pas en combat), ses propres Personnages
+      noirs de coût de base 5 ou moins, lui compris ; les 3 cartes de la Défausse sont choisies par son propriétaire.
+2308. **Kobby (EB04-044)** : « s'il devait quitter le terrain » = mis KO (combat ou effet) ou sorti par un effet adverse,
+      comme Ganzui OP17-043 ; [Une fois par tour] partagé entre ces cas.
+2309. **Végapunk (EB04-057)** : protection donnée par une carte à ses alliés, nouveau champ `CardBehavior.leaveShield`
+      (lu par `canLeaveByEffect`), lui compris ; un KO par effet adverse est une sortie du terrain, donc empêché.
+2310. **Rob Lucci (EB04-048)**, **L'Écaillé (EB04-011)** : « pour chaque tranche de 5 cartes » arrondi à l'unité
+      inférieure ; L'Écaillé défausse autant de cartes qu'il en a vraiment piochées.
+2311. **Doutes ouverts** (cartes non jouables, question à l'utilisateur) : **Alvida EB03-021** (le deuxième Personnage,
+      coût de base 3 ou moins, est-il forcément adverse ? la VF dit oui, la VO ne le dit pas) et **Pacifista EB04-056**
+      (« avoir [Jewelry Bonney] » compte-t-il le Leader ? Cabaji n° 462 ne compte que les Personnages, Gum Gum Marteau
+      Carabine OP16-040 compte le Leader).
+2312. **Aller-retour** (`compare.ts`, `describe.ts`) : « your 1 active Leader » et « your active Leader », « you only have
+      X Characters » et « the only Characters on your field are X Characters » sont les mêmes faits ; « was played on
+      this turn » n'est pas une durée ; « Up to 1 of your Characters or [X] » n'ajoute plus « Leader or Character cards ».
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
