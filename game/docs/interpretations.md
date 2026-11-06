@@ -506,6 +506,7 @@ questions-réponses Bandai, tournois).
 239. **Striker (OP03-020)** : ② et « épuiser ce Lieu » se paient ensemble ; avec un autre Leader que [Portgas.D.Ace], payer
      ne fait rien (l'IA ne le fait pas, l'interface le signale).
 240. **Baggy (OP03-008)** : « cartes <Tranche> » comprend un Leader <Tranche> qui attaque.
+
 ## OP03 verte (tâche 1.9), choix faits sans validation
 
 260. **Kuro (OP03-021, Leader)** : l'effet n'est pas limité à une fois par tour. Les 2 Personnages {East Blue} épuisés
@@ -531,6 +532,7 @@ questions-réponses Bandai, tournois).
      n'importe lequel de ses Personnages.
 269. **Nami (OP03-030)** : « carte verte » : une carte dont les couleurs comprennent le vert (une carte verte et jaune
      compte) ; les Événements et Lieux {East Blue} verts comptent.
+
 ## OP03 bleue (tâche 1.10), choix faits sans validation
 
 290. **Nami (OP03-040), victoire à deck vide** : le deck vide se constate comme la défaite habituelle (règle 9-2), une
@@ -557,6 +559,7 @@ questions-réponses Bandai, tournois).
 296. **« Si vous avez 20 cartes ou moins dans votre deck »** (Carne, Patty, Yosaku & Johnny) : compté au moment où
      l'effet se lit (la puissance de Carne et de Yosaku & Johnny suit le deck à chaque instant ; Patty : quand son effet
      [Jouée] se résout).
+
 ## OP03 violette (tâche 1.11), choix faits sans validation (à revoir si besoin)
 
 320. **Iceburg (Leader OP03-058), [Activation : Principale]** : le DON!! −1 et l'épuisement du Leader se paient ensemble ;
@@ -587,6 +590,7 @@ questions-réponses Bandai, tournois).
 327. **Top Knot (OP03-074)** : le Personnage va au-dessous du deck de son propriétaire ; les DON!! qui viennent de payer
      l'Événement comptent pour le DON!! −2. [Déclenchement] de Hull Dismantler Slash et de Top Knot (« activez l'effet
      [Principale] ») : le DON!! −X se paie de la même façon pendant le tour adverse.
+
 ## OP03 noire (tâche 1.12), choix faits sans validation
 
 350. **« Vous pouvez [coût] : [effet] »** (Kaku OP03-080, Rob Lucci OP03-092, Wanze OP03-093, Charlotte Linlin
@@ -613,6 +617,7 @@ questions-réponses Bandai, tournois).
 358. **Blueno (OP03-090)** : le Personnage joué épuisé depuis la Défausse déclenche son effet [Jouée] ; Blueno lui-même
      (coût 5) ne peut pas se rejouer.
 359. **Enies Lobby (OP03-098)** : le Lieu peut s'épuiser sans Leader « CP » (rien ne se passe alors) ; l'IA ne le fait pas.
+
 ## OP03 jaune (tâche 1.13), choix faits sans validation
 
 380. **Leader Charlotte Katakuri (OP03-099)** : « jusqu'à 1 » : le joueur peut ne regarder aucune Vie ; le +1000 pour le
@@ -647,6 +652,7 @@ questions-réponses Bandai, tournois).
 392. **Charlotte Katakuri (OP03-123)** : il peut viser ses propres Personnages, lui compris ; le joueur qui utilise l'effet
      choisit le dessus ou le dessous de la Vie du propriétaire ; la carte y est face visible (publique) ; ce n'est pas une
      mise KO ([En cas de KO] non déclenché).
+
 ## ST-01, deck de départ de l'Aventure (tâche 1.14), choix faits sans validation
 
 410. **Liste du deck ST-01** : Bandai annonce 51 cartes (Leader compris) sans le détail ; les sites se contredisent (un
@@ -665,6 +671,7 @@ questions-réponses Bandai, tournois).
 415. **Monkey.D.Luffy (Leader ST01-001), Nami (ST01-007)** : « jusqu'à 1 DON!! épuisée » ; s'il n'y a qu'une carte
      possible, la DON!! lui est donnée sans question (comme Nami ST21-009) ; sans DON!! épuisée, l'effet compte comme
      utilisé pour le tour et ne fait rien.
+
 ## Adversaires de l'aventure, liste A (tâche 1.15), choix faits sans validation
 
 430. **White Out (ST06-016)**, [Déclenchement] « aucun de vos Personnages ne peut être mis KO pour tout le tour » : une
@@ -687,6 +694,7 @@ questions-réponses Bandai, tournois).
      ne compte jamais pendant son tour.
 436. **Ripper (OP11-096)** : « un Personnage noir {Marine} autre que [Ripper] » : un Personnage qui ne s'appelle pas
      Ripper (un deuxième Ripper ne compte pas).
+
 ## Adversaires de l'aventure, liste B (tâche 1.16), choix faits sans validation
 
 Cartes de Baggy, Krieg et Arlong hors OP03 et ST-01 (`cards/aventure-b.ts`).
@@ -779,7 +787,7 @@ Lectures fixées par `recipes/parse/removal.ts` et les briques `cards/bricks-rem
 1500. **Cible sans « jusqu'à »** (« KO 1 of your opponent's Characters ... », « Rest 1 ... ») pour mettre KO, épuiser,
       redresser, renvoyer en main, placer sous le deck, dans la Vie ou dans la Défausse : le joueur **doit** choisir
       parmi les cartes possibles (pas de « Aucune ») ; s'il y en a autant ou moins que demandé, elles sont prises sans
-      question. Remplace la n° 1001 pour ces actions (la puissance, le coût et les mots-clés restent non compilés).
+      question. Remplace la n° 1001 pour ces actions (pour la puissance, le coût et les mots-clés : n° 1580, C2.2).
 1501. **« all of ... »** (KO, renvoyer, sous le deck, Défausse, Vie, redresser) : toutes les cartes qui correspondent au
       moment de l'effet, retirées une à une (chaque KO suit les règles du KO : effets de remplacement, [En cas de KO]
       mis en attente).
@@ -808,6 +816,7 @@ Lectures fixées par `recipes/parse/removal.ts` et les briques `cards/bricks-rem
       en français ; l'aller-retour le signale, c'est une question pour la tâche du set. Les textes qui disent « Place
       ... at the top or bottom of their Life cards » au lieu de « Add ... to ... » (EB01-053, OP05-096), ou « the
       owner's » au lieu de « your opponent's » (OP11-116), gardent un écart de mots sans conséquence sur le jeu.
+
 ## Famille « puissance » du traducteur (tâche C2.2), choix faits sans validation
 
 Puissance, coût, puissance de base, mots-clés accordés, interdits, protections et auras (`recipes/parse/power.ts`,
@@ -854,6 +863,7 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 1595. **« can attack Characters on the turn in which it is played »** : [Initiative : Personnage].
 1596. **« Negate the effect of ... »** sans durée : pas traduit (deux lectures : le tour, ou tant que la carte reste) ;
       « ... during this turn » : la carte perd ses effets pour le tour.
+
 ## Traducteur, famille « Vie » (tâche C2.5), choix faits sans validation
 
 1820. **« Jusqu'à N » cartes du dessus du deck vers sa Vie, et « jusqu'à N » cartes de la Vie adverse** (vers la main de
@@ -883,6 +893,7 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 1830. **Coûts de Vie** (prendre en main, placer dans la Défausse, retourner) : une seule carte, comme les briques de coût ;
       « turn 2 cards ... face-up » (OP08-058) n'est pas lu. « Retourner face cachée » ne se paie qu'avec une carte du
       dessus face visible (brique `flipTopLife`).
+
 ## Famille « cartes » du traducteur (tâche C2.3), choix faits sans validation
 
 1660. **« Placez les cartes restantes au-dessus ou au-dessous du deck dans l'ordre de votre choix »** (après une
@@ -917,6 +928,7 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
       ou au-dessous » : chaque carte au choix (comme 1660).
 1667. **Enchaînement** : « Then, place the rest ... and [action] » : le « Then » porte sur les cartes restantes, l'action
       suit avec « and » (même jeu : les deux s'enchaînent dans l'ordre du texte).
+
 ## Famille « DON!! » du traducteur (tâche C2.4), choix faits sans validation
 
 1740. **« Ajoutez / redressez / donnez jusqu'à N DON!! »** : autant que possible jusqu'à N, sans proposer d'en prendre
@@ -955,6 +967,7 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
       « donnez à votre Leader et à 1 Personnage N DON!! chacun », « depuis la zone de Coût » (redressées ou épuisées :
       laquelle ?), « à la fin de ce tour, redressez ... », « toutes vos DON!! sont épuisées » (les DON!! données
       comptent-elles ?), « vous ne pouvez pas redresser de DON!! par des effets de Personnage ».
+
 ## Traducteur, famille « jouer » (tâche C2.6), choix faits sans validation
 
 1900. **« Si vous le faites » / « Sinon »** : la phrase dépend de l'étape qui la précède immédiatement. Celle-ci est

@@ -11,15 +11,15 @@
 //
 // Questions : mêmes étiquettes que les briques de bricks.ts (oppPower, ownPower, oppCost, ownCost, oppLock, ownGrant :
 // l'IA les connaît déjà). Une cible obligatoire est choisie sans « Aucune », et sans question si le choix est imposé.
-import { addMod, chooseUpToN, def, describe, findField, log, untilOpponentsNextEnd } from '../rules.ts';
+import { addMod, def, findField, log, untilOpponentsNextEnd } from '../rules.ts';
 import type { EffectCtx, GameState, Modifier, PlayerId } from '../types.ts';
 import { candidates, effect, matches, untilMyNextEnd, type CharSpec, type Cost, type Effect, type Targets } from './bricks.ts';
+import { pick, type Amount } from './bricks-choice.ts';
+
+export { pick, type Amount };
 
 // Durées d'une modification : celles de bricks.ts, plus « jusqu'à la fin de votre prochain tour »
 export type Until = 'battle' | 'turn' | 'oppNextEnd' | 'nextTurn';
-
-// Combien de cartes : « jusqu'à N » (upTo), N obligatoires (forced) ou toutes
-export type Amount = { n: number; forced?: boolean } | { all: true };
 
 // Ce que la modification change (stat, mot-clé, portée, valeur)
 export type Mod = Pick<Modifier, 'stat' | 'amount' | 'keyword' | 'scope'>;
@@ -34,26 +34,6 @@ export function untilOf(s: GameState, me: PlayerId, u: Until): Modifier['until']
 const UNTIL_TEXT: Record<Until, string> = {
   battle: 'pour le combat', turn: 'pour le tour', oppNextEnd: 'jusqu’à la fin du prochain tour adverse', nextTurn: 'jusqu’à la fin de son prochain tour',
 };
-
-const isAll = (a: Amount): a is { all: true } => 'all' in a;
-
-// Choix des cartes : toutes, N obligatoires (sans « Aucune » ; sans question si le choix est imposé), ou « jusqu'à N »
-export function pick(ctx: EffectCtx, list: number[], amount: Amount, prompt: string, tag: string): number[] {
-  if (isAll(amount)) return list;
-  if (!amount.forced) return chooseUpToN(ctx, list, amount.n, prompt, tag);
-  if (list.length <= amount.n) return list;
-  const chosen: number[] = [];
-  for (let i = 0; i < amount.n; i++) {
-    const left = list.filter((uid) => !chosen.includes(uid));
-    const answer = ctx.ask({
-      prompt: amount.n > 1 ? `${prompt} (${i + 1}/${amount.n})` : prompt,
-      options: left.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })),
-      tag,
-    });
-    chosen.push(Number(answer.split(':')[1]));
-  }
-  return chosen;
-}
 
 // Étiquette d'une question, comme les briques de bricks.ts
 function tagOf(t: Targets, mod: Mod): string {

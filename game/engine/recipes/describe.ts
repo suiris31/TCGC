@@ -283,12 +283,12 @@ function enCond(c: Cond, ctx: Ctx): string {
 
 const article = (noun: string) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
-// « You may rest this Character and 1 of your Characters » : deux coûts de même verbe à la suite, le second ne le redit
-// pas (comme le texte officiel ; intégration C2)
+// « You may rest this Character and 1 of your Characters » : deux coûts « épuiser » à la suite, le second ne redit pas
+// le verbe, comme le texte officiel (« trash ... and trash this Character », lui, le redit ; intégration C2)
 function sharedVerb(parts: string[]): string[] {
   return parts.map((p, i) => {
     const verb = parts[i - 1]?.split(' ')[0];
-    return i > 0 && verb && p.startsWith(`${verb} `) ? p.slice(verb.length + 1) : p;
+    return i > 0 && (verb === 'rest' || verb === 'épuiser') && p.startsWith(`${verb} `) ? p.slice(verb.length + 1) : p;
   });
 }
 

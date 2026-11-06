@@ -13,36 +13,17 @@
 // propre camp prend l'étiquette 'trashOwn' (l'IA choisit la carte qui vaut le moins).
 import {
   canBeKO, canBeRested, canLeaveByEffect, def, describe, emit, fieldCards, findField, isNegated, koCharacter, log, removeByEffect,
-  removeFromField, restByEffect, setActive, chooseUpToN,
+  removeFromField, restByEffect, setActive,
 } from '../rules.ts';
 import type { EffectCtx, GameState, Option, PlayerId } from '../types.ts';
 import { candidates, describeSpec, effect, matches, type CharSpec, type Cost, type Effect, type Targets } from './bricks.ts';
+import { isAll, pick, type Amount } from './bricks-choice.ts';
 
-// Combien de cartes : « jusqu'à N » (upTo), N obligatoires (forced) ou toutes
-export type Amount = { n: number; forced?: boolean } | { all: true };
+export { pick, type Amount };
+
 
 // Où va la carte retirée du terrain
 export type RemovalTo = 'ko' | 'hand' | 'deckBottom' | 'trash' | { life: 'top' | 'topOrBottom'; faceUp: boolean };
-
-const isAll = (a: Amount): a is { all: true } => 'all' in a;
-
-// Choix des cartes : toutes, N obligatoires (sans « Aucune » ; sans question si le choix est imposé), ou « jusqu'à N »
-export function pick(ctx: EffectCtx, list: number[], amount: Amount, prompt: string, tag: string): number[] {
-  if (isAll(amount)) return list;
-  if (!amount.forced) return chooseUpToN(ctx, list, amount.n, prompt, tag);
-  if (list.length <= amount.n) return list;
-  const chosen: number[] = [];
-  for (let i = 0; i < amount.n; i++) {
-    const left = list.filter((uid) => !chosen.includes(uid));
-    const answer = ctx.ask({
-      prompt: amount.n > 1 ? `${prompt} (${i + 1}/${amount.n})` : prompt,
-      options: left.map((uid) => ({ id: `card:${uid}`, label: describe(ctx.s, uid), uid })),
-      tag,
-    });
-    chosen.push(Number(answer.split(':')[1]));
-  }
-  return chosen;
-}
 
 // Étiquette d'une question : celle de la brique « jusqu'à N » ; une cible obligatoire de son propre camp : la carte qui
 // vaut le moins (comme un coût)
