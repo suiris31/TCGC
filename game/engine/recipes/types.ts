@@ -58,6 +58,7 @@ export interface Target {
   upTo: boolean;                  // « up to » : 0 accepté
   filter: Filter;
   otherThanSelf?: boolean;        // « other than this Character »
+  that?: boolean;                 // « that card » : la carte choisie par l'étape précédente (C2.2)
 }
 
 // ---------- Durées ----------
@@ -139,7 +140,11 @@ export type Action =
   | { kind: 'keyword'; target: Target; keyword: Keyword; until: Duration }
   | { kind: 'cantAttack'; target: Target; until: Duration; what?: 'leader' | 'any' }
   | { kind: 'cantBlock'; target: Target; until: Duration }
-  | { kind: 'cantBeKO'; target: Target; until: Duration; by?: 'battle' | 'effect' | 'any' }
+  // by 'oppEffect' (C2.2) : « by your opponent's effects » ; byAttribute (C2.2) : « in battle by <Slash> attribute cards »
+  | { kind: 'cantBeKO'; target: Target; until: Duration; by?: 'battle' | 'effect' | 'oppEffect' | 'any'; byAttribute?: string }
+  | { kind: 'cantBeRested'; target: Target; until: Duration }  // « cannot be rested » (C2.2)
+  | { kind: 'cantLeave'; target: Target; until: Duration }     // « cannot be removed from the field by your opponent's effects » (C2.2)
+  | { kind: 'attackActive'; target: Target; until: Duration }  // « can also attack active Characters » (C2.2)
   | { kind: 'cantRefresh'; target: Target }                 // « will not become active in ... next Refresh Phase »
   | { kind: 'negate'; target: Target; until: Duration }
   | { kind: 'draw'; n: number }

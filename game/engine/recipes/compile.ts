@@ -14,6 +14,7 @@
 import '../cards/index.ts';
 import * as B from '../cards/bricks.ts';
 import * as R from '../cards/bricks-removal.ts';
+import * as P from '../cards/bricks-power.ts';
 import { addMod, allField, def, donOnField, findField, log, other, untilOpponentsNextEnd } from '../rules.ts';
 import type { CardBehavior, Category, EffectCtx, FieldCard, GameState, PlayerId } from '../types.ts';
 import type {
@@ -99,6 +100,7 @@ class Compiler {
 
   // Cible sur le terrain : Leader et/ou Personnages (un Lieu n'est visé que par les briques qui le savent)
   targets(t: Target, kind: string): B.Targets {
+    if (t.that) return this.no(`${kind} : « cette carte » (carte choisie avant)`, B.oppChar());
     if (t.zone !== 'field') return this.no(`${kind} : cible hors du terrain (${t.zone})`, B.oppChar());
     if (t.stage) this.no(`${kind} : cible Lieu`, 0);
     const spec = this.spec(t.filter, 'field');
@@ -135,8 +137,40 @@ class Compiler {
   }
 
   // Le Leader du joueur, sans choix (« votre Leader gagne ... »)
+  // (sans « jusqu'à » : « up to 1 of your Leader » laisse le choix « Aucune », C2.2)
   ownLeaderOnly = (t: Target) => t.zone === 'field' && !t.self && t.side === 'own' && t.leader && !t.characters && !t.stage
-    && !Object.keys(t.filter).length && t.count === 1;
+    && !Object.keys(t.filter).length && t.count === 1 && !t.upTo;
+
+  // Le Leader du joueur avec un filtre (« votre Leader {Marine} »), sans choix (C2.2)
+  ownLeaderFiltered = (t: Target) => t.zone === 'field' && !t.self && t.side === 'own' && t.leader && !t.characters && !t.stage
+    && t.count === 1 && !t.upTo && Object.keys(t.filter).length > 0;
+
+  // Combien de cartes pour les briques de la famille « puissance » (C2.2) : « jusqu'à N », N obligatoires, toutes
+  amountOf(t: Target): P.Amount {
+    return t.count === 'all' ? { all: true } : { n: t.count, forced: !t.upTo };
+  }
+
+  // Durée d'une modification, « jusqu'à la fin de votre prochain tour » comprise (C2.2)
+  until2(u: Duration, kind: string): P.Until {
+    return u === 'permanent' ? this.no(`${kind} : durée ${u}`, 'turn') : u;
+  }
+
+  // Une modification (puissance, coût, mot-clé, interdit...) sur la cible d'une recette (C2.2) : la carte elle-même, le
+  // Leader du joueur (avec ou sans filtre), sinon les cartes choisies. `upTo` : la brique de bricks.ts quand elle sait
+  // faire exactement (« jusqu'à N », durée de bricks.ts : mêmes questions que les cartes codées à la main).
+  modify(t: Target, k: string, mod: P.Mod, u: P.Until, text: string,
+    upTo?: (tg: B.Targets, until: 'battle' | 'turn' | 'oppNextEnd', n: number) => B.Effect): B.Effect {
+    if (t.zone !== 'field') return this.no(`${k} : cible hors du terrain (${t.zone})`, NOTHING);
+    if (t.self) {
+      if (t.stage) return this.no(`${k} : ce Lieu`, NOTHING);
+      return P.modSelf(mod, u, this.src, text);
+    }
+    if (this.ownLeaderOnly(t)) return P.modOwnLeader({}, mod, u, this.src, text);
+    if (this.ownLeaderFiltered(t)) return P.modOwnLeader(this.spec(t.filter, 'field'), mod, u, this.src, text);
+    const tg = this.targets(t, k);
+    if (upTo && t.upTo && t.count !== 'all' && u !== 'nextTurn') return upTo(tg, u, t.count);
+    return P.modTargets(tg, mod, u, this.src, text, this.amountOf(t));
+  }
 
   until(u: Duration, kind: string): 'battle' | 'turn' | 'oppNextEnd' {
     return u === 'battle' || u === 'turn' || u === 'oppNextEnd' ? u : this.no(`${kind} : durée ${u}`, 'turn');
@@ -231,10 +265,8 @@ class Compiler {
         return B.giveActiveDon(this.targets(c.target, 'coût giveDon'));
       case 'trashToBottom': return B.trashToBottomCost(c.n, c.filter ? this.spec(c.filter, 'card') : {});
       case 'trashLife': return B.trashLifeCost(c.from === 'top' ? 'top' : 'both');
-      case 'leaderPowerMinus': {
-        const minus = B.leaderPower(-c.n, 'turn', this.src);
-        return { label: `donner −${c.n} de puissance à ton Leader pour le tour`, can: () => true, pay: (ctx) => { minus.run(ctx); return true; } };
-      }
+      // « give your 1 active Leader −N power » : le Leader doit être redressé (C2.2, comme Nami EB03-006)
+      case 'leaderPowerMinus': return P.activeLeaderMinus(c.n, this.src);
       case 'selfToBottom': return B.selfToDeckBottom();
       case 'bounceSelf': return R.bounceSelfCost();
       case 'manual': {
@@ -297,36 +329,68 @@ class Compiler {
         return R.removeChars(this.targets(a.target, k), 'trash', src, this.amount(a.target));
       case 'power': {
         if (a.until === 'permanent') return this.no(`${k} : permanent hors effet permanent`, NOTHING);
-        const u = this.until(a.until, k);
-        if (a.target.self) return B.selfPowerMod(a.amount, u, src);
-        if (this.ownLeaderOnly(a.target)) return B.leaderPower(a.amount, u, src);
+        const u = this.until2(a.until, k);
+        const verb = `${a.amount >= 0 ? `gagne +${a.amount}` : `reçoit −${-a.amount}`} de puissance`;
+        if (u !== 'nextTurn') {
+          if (a.target.self && a.target.zone === 'field' && !a.target.stage) return B.selfPowerMod(a.amount, u, src);
+          if (this.ownLeaderOnly(a.target)) return B.leaderPower(a.amount, u, src);
+        }
         // [Contre] « jusqu'à 1 de vos Leader ou Personnages gagne +X pendant ce combat » : la carte attaquée (interprétation 20)
-        if (ab.timing === 'counter' && a.until === 'battle' && a.amount > 0 && a.target.side === 'own' && a.target.leader && a.target.characters
-          && a.target.count === 1 && a.target.upTo && !Object.keys(a.target.filter).length && !a.target.otherThanSelf) return B.defenderPower(a.amount, src);
-        return B.powerMod(this.targets(a.target, k), a.amount, u, src, this.upToN(a.target, k));
+        if (isDefenderPower(a, ab)) return B.defenderPower(a.amount, src);
+        // « Puis, si ..., cette carte gagne encore +X pendant ce combat » : la même carte attaquée (C2.2) ; ailleurs, la
+        // carte choisie avant n'est pas retenue par les briques
+        if (a.target.that) {
+          const prev = ab.steps.some((st) => 'action' in st && st.action !== a && isDefenderPower(st.action, ab));
+          if (ab.timing !== 'counter' || a.until !== 'battle' || a.amount <= 0 || !prev) return this.no(`${k} : « cette carte » hors [Contre]`, NOTHING);
+          return B.defenderPower(a.amount, src);
+        }
+        return this.modify(a.target, k, { stat: 'power', amount: a.amount }, u, verb, (tg, uu, n) => B.powerMod(tg, a.amount, uu, src, n));
       }
       case 'cost': {
-        if (a.target.self) return this.no(`${k} : soi-même`, NOTHING);
-        if (a.until !== 'turn' && a.until !== 'oppNextEnd') return this.no(`${k} : durée ${a.until}`, NOTHING);
-        return B.costMod(this.targets(a.target, k), a.amount, a.until, src, this.upToN(a.target, k));
+        if (a.until === 'permanent') return this.no(`${k} : permanent hors effet permanent`, NOTHING);
+        const u = this.until2(a.until, k);
+        if (a.target.leader && !a.target.characters) return this.no(`${k} : un Leader n'a pas de coût`, NOTHING);
+        const verb = `${a.amount >= 0 ? `gagne +${a.amount}` : `reçoit −${-a.amount}`} de coût`;
+        return this.modify(a.target, k, { stat: 'cost', amount: a.amount }, u, verb,
+          (tg, uu, n) => (uu === 'battle' ? P.modTargets(tg, { stat: 'cost', amount: a.amount }, uu, src, verb, { n }) : B.costMod(tg, a.amount, uu, src, n)));
       }
-      case 'powerSet': return this.no(k, NOTHING);
+      // « la puissance de base de ... devient N » : modification 'basePower' (4-9-2-1 : la plus haute l'emporte si plusieurs)
+      case 'powerSet': {
+        if (a.until === 'permanent') return this.no(`${k} : permanent hors effet permanent`, NOTHING);
+        return this.modify(a.target, k, { stat: 'basePower', amount: a.value }, this.until2(a.until, k), `a une puissance de base de ${a.value}`);
+      }
       case 'keyword': {
         if (a.until === 'permanent') return this.no(`${k} : permanent hors effet permanent`, NOTHING);
-        const u = this.until(a.until, k);
-        if (a.target.self) return u === 'oppNextEnd' ? this.no(`${k} : soi-même jusqu'au tour adverse`, NOTHING) : B.selfKeyword(a.keyword, src, u);
-        if (this.ownLeaderOnly(a.target)) return u === 'oppNextEnd' ? this.no(`${k} : Leader jusqu'au tour adverse`, NOTHING) : B.leaderKeyword(a.keyword, u, src);
-        return B.grant(this.targets(a.target, k), { stat: 'keyword', keyword: a.keyword }, u, src, `gagne [${KEYWORD_FR[a.keyword]}]`, this.upToN(a.target, k));
+        const u = this.until2(a.until, k);
+        if (a.target.self && a.target.zone === 'field' && !a.target.stage && (u === 'turn' || u === 'battle')) return B.selfKeyword(a.keyword, src, u);
+        if (this.ownLeaderOnly(a.target) && (u === 'turn' || u === 'battle')) return B.leaderKeyword(a.keyword, u, src);
+        const text = `gagne [${KEYWORD_FR[a.keyword]}]`;
+        return this.modify(a.target, k, { stat: 'keyword', keyword: a.keyword, amount: 0 }, u, text,
+          (tg, uu, n) => B.grant(tg, { stat: 'keyword', keyword: a.keyword }, uu, src, text, n));
       }
       case 'cantAttack':
         if (a.what === 'leader') return this.no(`${k} : Leader seulement`, NOTHING);
         return this.grantOn(a.target, k, { stat: 'cantAttack' }, a.until, 'ne peut pas attaquer');
-      case 'cantBlock': return this.grantOn(a.target, k, { stat: 'noBlocker' }, a.until, 'ne peut pas activer [Bloqueur]');
+      case 'cantBlock':
+        // « Votre adversaire ne peut pas activer [Bloqueur] pendant ce combat » ([En attaquant]) : la carte qui attaque est
+        // imblocable pour le combat (comme blockerBan sans limite, bricks.ts)
+        if (a.target.side === 'opp' && a.target.count === 'all' && !a.target.leader && !a.target.self) {
+          const { powerMax, costMax, ...rest } = a.target.filter;
+          if (ab.timing !== 'whenAttacking' || a.until !== 'battle' || Object.keys(rest).length) return this.no(`${k} : tous les Personnages adverses hors [En attaquant] pour le combat`, NOTHING);
+          // « ... le [Bloqueur] d'un Personnage de 2000 de puissance ou moins » : blockerBan avec limite (Adio OP03-002)
+          if (powerMax !== undefined || costMax !== undefined) return B.blockerBan({ ...(powerMax !== undefined ? { powerMax } : {}), ...(costMax !== undefined ? { costMax } : {}) }, src);
+          return B.selfKeyword('Unblockable', src, 'battle');
+        }
+        return this.grantOn(a.target, k, { stat: 'noBlocker' }, a.until, 'ne peut pas activer [Bloqueur]');
       case 'cantBeKO': {
-        const scope = a.by === 'battle' ? 'battle' : a.by === 'effect' ? 'effect' : undefined;
-        const how = a.by === 'battle' ? ' en combat' : a.by === 'effect' ? ' par un effet' : '';
+        if (a.byAttribute) return this.no(`${k} : par des cartes d'un attribut (hors effet permanent)`, NOTHING);
+        const scope = a.by === 'battle' ? 'battle' : a.by === 'effect' ? 'effect' : a.by === 'oppEffect' ? 'oppEffect' : undefined;
+        const how = a.by === 'battle' ? ' en combat' : a.by === 'effect' ? ' par un effet' : a.by === 'oppEffect' ? ' par un effet adverse' : '';
         return this.grantOn(a.target, k, { stat: 'cantBeKO', ...(scope ? { scope } : {}) }, a.until, `ne peut pas être mis KO${how}`);
       }
+      case 'cantBeRested': return this.grantOn(a.target, k, { stat: 'cantRest' }, a.until, 'ne peut pas être épuisé');
+      case 'cantLeave': return this.grantOn(a.target, k, { stat: 'cantLeave' }, a.until, 'ne peut pas quitter le terrain à cause des effets adverses');
+      case 'attackActive': return this.grantOn(a.target, k, { stat: 'attackActive' }, a.until, 'peut aussi attaquer les Personnages redressés');
       case 'cantRefresh':
         // seulement des Personnages adverses déjà épuisés, pour la prochaine phase de Recharge adverse (keepRested)
         if (a.target.self || a.target.side !== 'opp' || a.target.filter.rested !== true) return this.no(`${k} : ${a.target.side === 'opp' ? 'cible non épuisée' : 'ses propres cartes'}`, NOTHING);
@@ -405,17 +469,8 @@ class Compiler {
   // « ... ne peut pas attaquer / être mis KO ... » sur une cible choisie, la carte elle-même ou le Leader
   grantOn(t: Target, k: string, mod: Parameters<typeof B.grant>[1], until: Duration, text: string): B.Effect {
     if (until === 'permanent') return this.no(`${k} : permanent hors effet permanent`, NOTHING);
-    const u = this.until(until, k);
-    // la carte qui porte l'effet, sans choix (comme selfKeyword)
-    if (t.self) {
-      return B.effect((ctx) => {
-        const f = findField(ctx.s, ctx.source);
-        if (!f) return;
-        addMod(ctx.s, { uid: ctx.source, amount: 0, until: u === 'oppNextEnd' ? untilOpponentsNextEnd(ctx.s, ctx.me) : u, source: this.src, ...mod });
-        log(ctx.s, ctx.me, `${def(f.card.num).name} ${text} ${u === 'battle' ? 'pour le combat' : u === 'turn' ? 'pour le tour' : 'jusqu’à la fin du prochain tour adverse'} (${this.src})`);
-      }, (s, _p, self) => Boolean(findField(s, self)));
-    }
-    return B.grant(this.targets(t, k), mod, u, this.src, text, this.upToN(t, k));
+    const u = this.until2(until, k);
+    return this.modify(t, k, { amount: 0, ...mod }, u, text, (tg, uu, n) => B.grant(tg, mod, uu, this.src, text, n));
   }
 
   // ---------- Étapes et capacités ----------
@@ -466,7 +521,11 @@ class Compiler {
       e = ab.oncePerTurn ? B.onceWithCost(key, c, then, this.src) : B.withCost(c, then, this.src);
       // convention : le coût n'est proposé que si l'effet peut servir (en-tête)
       e = B.when((s, p, self) => then.useful(s, p, self), e);
-    } else if (ab.oncePerTurn) this.no(`[Une fois par tour] sans coût (${ab.timing})`, 0);
+    } else if (ab.oncePerTurn) {
+      // [Une fois par tour] sans coût (C2.2) : sur une carte du terrain seulement (la clé est rangée sur la carte)
+      if (ab.timing === 'onPlay' || ab.timing === 'whenAttacking' || ab.timing === 'endOfTurn' || ab.timing === 'onOppAttack') e = P.oncePerTurn(key, e);
+      else this.no(`[Une fois par tour] sans coût (${ab.timing})`, 0);
+    }
     const g = this.gates(ab, opts);
     return g ? B.when(g, e) : e;
   }
@@ -552,12 +611,19 @@ class Compiler {
     const k = `effet permanent ${a.kind}`;
     if (!('target' in a) || ('until' in a && a.until !== 'permanent')) { this.no(k, 0); return; }
     const t = a.target;
+    // « Si ..., donnez à cette carte de votre main −N de coût » (C2.2) : le coût à payer pour la jouer
+    if (t.zone === 'hand' && t.self && a.kind === 'cost') {
+      const n = a.amount;
+      const prev = extra.handCost;
+      extra.handCost = (s, p) => (gate(s, p, -1) ? n : 0) + (prev?.(s, p) ?? 0);
+      return;
+    }
     if (t.zone !== 'field' || t.stage) { this.no(`${k} : cible`, 0); return; }
     // les auras ne lisent ni puissance, ni coût, ni mot-clé (elles les calculent : le moteur tournerait en rond) : la
     // cible est lue sur ce qui est imprimé, plus son état (épuisée, DON!! données)
     const f = t.filter;
     if ([f.powerMax, f.powerMin, f.costMax, f.costMin, f.costEq, f.basePowerMax, f.basePowerMin].some((x) => x !== undefined)) { this.no(`${k} : filtre de puissance ou de coût`, 0); return; }
-    if (!t.self && t.count !== 'all' && !this.ownLeaderOnly(t)) { this.no(`${k} : cible choisie`, 0); return; }
+    if (!t.self && t.count !== 'all' && !this.ownLeaderOnly(t) && !this.ownLeaderFiltered(t)) { this.no(`${k} : cible choisie`, 0); return; }
     if (f.keyword || f.noKeyword || f.anyOf) { this.no(`${k} : filtre de mot-clé ou « ou »`, 0); return; }
     const { rested, donMin, ...onCard } = f;
     const printed = this.spec(onCard, 'card');
@@ -604,7 +670,18 @@ class Compiler {
         if (!t.self) { this.no(`${k} : autre que soi-même`, 0); return; }
         const by = a.by ?? 'any';
         const prev = extra.cantBeKO;
-        extra.cantBeKO = (s, p, c, cause, who) => (on(s, p, c) && (by === 'any' || by === cause)) || (prev?.(s, p, c, cause, who) ?? false);
+        // « ... en combat par des cartes <Tranche> » (C2.2) : la carte qui attaque a cet attribut (Buggy OP03-008 codé à la main)
+        const attr = a.byAttribute !== undefined ? B.koImmuneInBattle({ attribute: a.byAttribute }) : undefined;
+        if (attr && by !== 'battle') { this.no(`${k} : attribut hors combat`, 0); return; }
+        extra.cantBeKO = (s, p, c, cause, who) => (on(s, p, c) && (attr ? attr(s, p, c, cause, who)
+          : by === 'any' || by === cause || (by === 'oppEffect' && cause === 'effect' && who !== p))) || (prev?.(s, p, c, cause, who) ?? false);
+        return;
+      }
+      // « Ce Personnage ne peut pas quitter le terrain à cause des effets adverses » (C2.2) : CardBehavior.cantLeave
+      case 'cantLeave': {
+        if (!t.self) { this.no(`${k} : autre que soi-même`, 0); return; }
+        const prev = extra.cantLeave;
+        extra.cantLeave = (s, p, c) => on(s, p, c) || (prev?.(s, p, c) ?? false);
         return;
       }
       default: this.no(k, 0);
@@ -619,6 +696,13 @@ function readCtx(s: GameState, me: PlayerId, source: number, num: string): Effec
     s, me, opp: other(me), source, num, pending: { kind: 'system', action: 'read', source, num, controller: me, answers: [] },
     ask: () => { throw new Error(`${num} : question posée pendant une lecture`); },
   };
+}
+
+// [Contre] « jusqu'à 1 de vos Leader ou Personnages gagne +X pendant ce combat » : la carte attaquée (interprétation 20)
+function isDefenderPower(a: Action, ab: Ability): boolean {
+  return a.kind === 'power' && ab.timing === 'counter' && a.until === 'battle' && a.amount > 0 && !a.target.that && a.target.side === 'own'
+    && Boolean(a.target.leader) && Boolean(a.target.characters) && a.target.count === 1 && a.target.upTo && !Object.keys(a.target.filter).length
+    && !a.target.otherThanSelf;
 }
 
 const KEYWORD_FR: Record<string, string> = {

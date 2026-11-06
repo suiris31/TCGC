@@ -504,7 +504,12 @@ const relUntil = (m: Model, u: Duration): string | null => {
   }
 };
 
-const MOD_STAT: Partial<Record<Action['kind'], string>> = { power: 'power', cost: 'cost', keyword: 'keyword', cantRefresh: 'noRefresh' };
+const MOD_STAT: Partial<Record<Action['kind'], string>> = {
+  power: 'power', cost: 'cost', keyword: 'keyword', cantRefresh: 'noRefresh',
+  // famille « puissance » (C2.2) : une modification par carte visée, comme power
+  powerSet: 'basePower', cantAttack: 'cantAttack', cantBlock: 'noBlocker', cantBeKO: 'cantBeKO', cantBeRested: 'cantRest',
+  cantLeave: 'cantLeave', attackActive: 'attackActive', negate: 'negated',
+};
 
 // Cartes du terrain visées : les premières qui conviennent, dans l'ordre où le moteur les propose (côté adverse d'abord
 // pour « any », Leader avant les Personnages) ; c'est aussi l'ordre de la réponse « première carte » du banc
@@ -558,11 +563,18 @@ function apply(m: Model, a: Action): boolean {
       for (const x of chosen) { m.touched.add(x.card.uid); x.card.rested = a.kind === 'rest'; }
       return chosen.length > 0;
     }
+    // famille « puissance » (C2.2) : ce que le compilateur ne traduit pas en une modification par carte visée
+    case 'powerSet': case 'cantAttack': case 'cantBlock': case 'cantBeKO': case 'cantBeRested': case 'cantLeave': case 'attackActive': case 'negate':
+      if ((a.kind === 'cantBlock' && a.target.side === 'opp' && a.target.count === 'all') || (a.kind === 'cantBeKO' && a.byAttribute)) {
+        m.unchecked.push(`${a.kind} (tous les Personnages adverses ou attribut)`);
+        return true;
+      }
+    // eslint-disable-next-line no-fallthrough
     case 'power': case 'cost': case 'keyword': case 'cantRefresh': {
       const until = a.kind === 'cantRefresh' ? `+${m.active === 0 ? 1 : 2}` : relUntil(m, a.until);
       if (until === null) { m.unchecked.push(`${a.kind} (durée ${a.kind === 'cantRefresh' ? '' : a.until})`); return true; }
       const chosen = chooseField(m, a, a.target);
-      const amount = a.kind === 'power' || a.kind === 'cost' ? a.amount : 0;
+      const amount = a.kind === 'power' || a.kind === 'cost' ? a.amount : a.kind === 'powerSet' ? a.value : 0;
       const stat = a.kind === 'keyword' ? `keyword:${a.keyword}` : MOD_STAT[a.kind]!;
       for (const x of chosen) { m.touched.add(x.card.uid); m.mods.push(`${x.side}|${stat}|${amount}|${until}`); }
       return chosen.length > 0;
@@ -668,6 +680,7 @@ function payCost(m: Model, parts: CostPart[]): boolean | null {
       case 'lifeToHand': if (!me.life.length) return false; break;
       case 'restSelf': if (!selfOnField || selfOnField.rested) return false; break;
       case 'trashSelf': if (!selfOnField || selfOnField === me.leader) return false; break;
+      case 'leaderPowerMinus': if (me.leader.rested) return false; break;   // C2.2 : Leader redressé
       default: m.unchecked.push(`coût ${c.kind}`); return null;
     }
   }
@@ -685,6 +698,7 @@ function payCost(m: Model, parts: CostPart[]): boolean | null {
       case 'lifeToHand': me.hand.push(...me.life.splice(0, 1)); break;
       case 'restSelf': selfOnField!.rested = true; break;
       case 'trashSelf': removeFromField(m, 0, selfOnField!, 'trash'); break;
+      case 'leaderPowerMinus': m.mods.push(`0|power|${-c.n}|turn`); break;
       default:
     }
   }

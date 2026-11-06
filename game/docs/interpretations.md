@@ -808,6 +808,52 @@ Lectures fixées par `recipes/parse/removal.ts` et les briques `cards/bricks-rem
       en français ; l'aller-retour le signale, c'est une question pour la tâche du set. Les textes qui disent « Place
       ... at the top or bottom of their Life cards » au lieu de « Add ... to ... » (EB01-053, OP05-096), ou « the
       owner's » au lieu de « your opponent's » (OP11-116), gardent un écart de mots sans conséquence sur le jeu.
+## Famille « puissance » du traducteur (tâche C2.2), choix faits sans validation
+
+Puissance, coût, puissance de base, mots-clés accordés, interdits, protections et auras (`recipes/parse/power.ts`,
+`cards/bricks-power.ts`). Elles complètent les n° 1001 et 1002 pour ces sortes.
+
+1580. **Cible obligatoire** (« Give 1 of your opponent's Characters −2000 power », sans « up to ») : le joueur choisit sans
+      pouvoir refuser, et sans question s'il n'y a pas le choix (comme la n° 1500 des retraits). « All of ... » : toutes
+      les cartes qui correspondent, sans question.
+1581. **Pluriel sans nombre** (« Your {X} type Characters gain ... ») : toutes les cartes qui correspondent, comme « All of
+      your ... ».
+1582. **« Up to 1 of your Leader gains ... »** : le joueur peut refuser (choix avec « Aucune ») ; « Your Leader gains ... »
+      s'applique sans question.
+1583. **« Your {X} type Leader gains ... »**, « your [Nom] Leader » : le Leader du joueur, sans choix, **seulement s'il a ce
+      type ou ce nom** au moment de l'effet (ou, en effet permanent, tant qu'il l'a).
+1584. **« until the end of your next turn »** (`nextTurn`) : jusqu'à la fin du prochain tour du joueur qui a utilisé
+      l'effet (pendant un tour adverse : le tour suivant), comme les cartes codées à la main (Usopp,
+      KEEP OUT).
+1585. **« ... base power becomes N »** : la puissance de base est fixée (modification `basePower`) ; DON!! et autres
+      modifications s'ajoutent ensuite ; si deux effets la fixent, la plus haute l'emporte (règle du moteur, 4-9-2-1).
+      « becomes the same as ... » (valeur calculée) n'est pas traduit.
+1586. **[Une fois par tour] sans coût** sur un effet déclenché ([Jouée], [En attaquant], [Fin de votre tour], [Attaque
+      adverse]) : l'effet compte comme utilisé quand il se résout, même s'il ne fait rien (comme fam-luffy-ace.ts) ; les
+      moments d'une carte partagent la même limite. Sur [En cas de KO], [Déclenchement], [Principale] et [Contre] (carte
+      hors du terrain) : pas compilé.
+1587. **Coût « give your (1) active Leader −N power during this turn »** : payable seulement si le Leader est redressé
+      (comme Nami EB03-006 codée à la main ; le compilateur de C1.1 l'acceptait toujours).
+1588. **« Your opponent cannot activate [Blocker] during this battle »** ([En attaquant]) : la carte qui attaque est
+      imblocable pour le combat ; avec une limite (« ... a [Blocker] Character that has 2000 or less power », « ... with a
+      cost of 2 or less ») : la limite de blockerBan (Adio OP03-002). Pour tout un tour, ou hors [En attaquant] : pas
+      compilé (un Personnage joué plus tard dans le tour y échapperait).
+1589. **« ... cannot be rested »** : ni par un effet, ni pour attaquer (modification `cantRest`, déjà lue par le moteur).
+1590. **« ... cannot be removed from the field by your opponent's effects »** : seulement les effets adverses ; un KO en
+      combat et les effets de son propriétaire restent possibles.
+1591. **« That card gains an additional +N power during this battle »** (après « Up to 1 of your Leader or Character
+      cards gains +N power during this battle » d'un [Contre]) : la même carte attaquée (n° 1004). Ailleurs : pas
+      compilé (les briques ne retiennent pas la carte choisie).
+1592. **Un sujet, deux prédicats** (« This Character cannot be removed ... and gains [Rush] ») : les deux s'appliquent au
+      même sujet, avec la même condition ; une durée écrite à la fin ne vaut que pour le second (si le premier en
+      demande une, le garde-fou des durées refuse la phrase).
+1593. **« Give this card in your hand −N cost »** (effet permanent) : le coût à payer pour la jouer, tant que la condition
+      est vraie (`handCost`).
+1594. **« cannot be KO'd in battle by <A> attribute cards »** : la carte qui attaque a cet attribut (comme Buggy
+      OP03-008 codé à la main) ; seulement en effet permanent.
+1595. **« can attack Characters on the turn in which it is played »** : [Initiative : Personnage].
+1596. **« Negate the effect of ... »** sans durée : pas traduit (deux lectures : le tour, ou tant que la carte reste) ;
+      « ... during this turn » : la carte perd ses effets pour le tour.
 
 ## Comment c'est vérifié
 
