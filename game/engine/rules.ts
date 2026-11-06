@@ -201,7 +201,16 @@ export const baseCost = (num: string) => def(num).cost ?? 0;
 // Coût à payer pour jouer une carte de sa main
 export function handCost(s: GameState, p: PlayerId, card: Card): number {
   const d = def(card.num);
-  return Math.max(0, (d.cost ?? 0) + (d.handCost?.(s, p) ?? 0));
+  const cost = Math.max(0, (d.cost ?? 0) + (d.handCost?.(s, p) ?? 0));
+  return nextPlayDiscounted(s, p, card) ? Math.max(0, cost - s.players[p].nextPlayDiscount!.amount) : cost;
+}
+
+// La réduction « du prochain [X] joué de la main ce tour-ci » (PlayerState.nextPlayDiscount) vaut-elle pour cette carte ?
+export function nextPlayDiscounted(s: GameState, p: PlayerId, card: Card): boolean {
+  const nd = s.players[p].nextPlayDiscount;
+  if (!nd || nd.turn !== s.turn) return false;
+  const d = def(card.num);
+  return d.names.includes(nd.name) && Math.max(0, (d.cost ?? 0) + (d.handCost?.(s, p) ?? 0)) >= nd.costMin;
 }
 
 // Puissance de base : celle imprimée, ou celle fixée par un effet (4-9-2-1)

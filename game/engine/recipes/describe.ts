@@ -275,6 +275,8 @@ function enCond(c: Cond, ctx: Ctx): string {
     case 'or':
       // « either you or your opponent has 10 DON!! cards on the field » (C2.4, P-107)
       if (eitherDon(c)) return `either you or your opponent has ${enCmp(c.any[0].n, c.any[0].cmp)} DON!! cards on the field`;
+      // « your Leader has the {A} type or is [B] » (S7 : ST23-002) : le Leader n'est nommé qu'une fois
+      if (c.any.length === 2 && c.any[0].kind === 'leaderType' && c.any[1].kind === 'leaderIs') return `${enCond(c.any[0], ctx)} or ${enCond(c.any[1], ctx).replace(/^your Leader /, '')}`;
       return orList(c.any.map((x) => enCond(x, ctx)), 'or');
     case 'not': return `not: ${enCond(c.cond, ctx)}`;
     case 'revealed': return `the revealed card is ${article(enNoun(c.filter, [], false))}`;
@@ -455,12 +457,15 @@ function enAction(a: Action, ctx: Ctx): string {
 
 // « This Character gains [Blocker] and +1000 power during this battle » : le traducteur en fait deux actions (mot-clé,
 // puis puissance ou coût, même cible, même durée, sans lien) ; on les redit en une phrase
-type KwPair = { kw: Extract<Action, { kind: 'keyword' }>; mod: Extract<Action, { kind: 'power' | 'cost' }> };
+// S7 : aussi puissance puis coût (« gains +2000 power and +5 cost », OP12-063), et la valeur calculée du second
+// (« [Blocker] and +1 cost for every 4 cards in your trash », ST27-004)
+type KwPair = { kw: Extract<Action, { kind: 'keyword' | 'power' }>; mod: Extract<Action, { kind: 'power' | 'cost' }> };
 function kwPair(steps: Step[], i: number): KwPair | null {
   const a = steps[i]; const b = steps[i + 1];
   if (!a || !b || !('action' in a) || !('action' in b) || b.link || b.cond) return null;
   const kw = a.action; const mod = b.action;
-  if (kw.kind !== 'keyword' || (mod.kind !== 'power' && mod.kind !== 'cost')) return null;
+  if ((kw.kind !== 'keyword' && kw.kind !== 'power') || (mod.kind !== 'power' && mod.kind !== 'cost') || kw.kind === mod.kind) return null;
+  if (kw.kind === 'power' && (kw.per || kw.target.that)) return null;
   if (kw.until !== mod.until || JSON.stringify(kw.target) !== JSON.stringify(mod.target)) return null;
   return { kw, mod };
 }
@@ -525,7 +530,8 @@ function enSteps(steps: Step[], ctx: Ctx): string {
 }
 
 function enKwPair({ kw, mod }: KwPair, ctx: Ctx): string {
-  const what = `[${kw.keyword}] and ${sign(mod.amount)} ${mod.kind}${EN_DURATION[kw.until]}`;
+  const first = kw.kind === 'keyword' ? `[${kw.keyword}]` : `${sign(kw.amount)} power`;
+  const what = `${first} and ${sign(mod.amount)} ${mod.kind}${EN_DURATION[kw.until]}${enPer(mod.per)}`;
   return enSubject(kw.target) ? `${upper(enTarget(kw.target, ctx))} gains ${what}` : `Give ${enTarget(kw.target, ctx)} ${what}`;
 }
 
@@ -923,7 +929,8 @@ function frSteps(steps: Step[], ctx: Ctx): string {
 }
 
 function frKwPair({ kw, mod }: KwPair, ctx: Ctx): string {
-  return `${upper(frTarget(kw.target, ctx))} gagne [${FR_KEYWORD[kw.keyword]}] et ${sign(mod.amount)} de ${mod.kind === 'power' ? 'puissance' : 'coût'}${FR_DURATION[kw.until]}`;
+  const first = kw.kind === 'keyword' ? `[${FR_KEYWORD[kw.keyword]}]` : `${sign(kw.amount)} de puissance`;
+  return `${upper(frTarget(kw.target, ctx))} gagne ${first} et ${sign(mod.amount)} de ${mod.kind === 'power' ? 'puissance' : 'coût'}${FR_DURATION[kw.until]}${frPer(mod.per, ctx)}`;
 }
 
 function frStep(st: Step, ctx: Ctx): string {

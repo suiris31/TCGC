@@ -92,6 +92,9 @@ export interface PlayerState {
   noKoTurn?: number;
   // tour pendant lequel ses DON!! ne peuvent pas être redressées par l'effet d'un Personnage (L'Oiseau EB04-016)
   noCharDonReadyTurn?: number;
+  // « le coût du prochain [X] de coût N ou plus que vous jouez de votre main ce tour-ci est réduit de M » (Don Quijote
+  // Rosinante OP12-061) : lu par handCost, oublié quand une telle carte est jouée de la main en payant son coût
+  nextPlayDiscount?: { turn: number; name: string; costMin: number; amount: number };
 }
 
 // Modification temporaire. until : 'battle' (pour tout le combat), 'turn' (pour tout le tour en cours), ou le numéro

@@ -138,6 +138,9 @@ export function factsEn(text: string): Fact[] {
   // « give 1 active DON!! card to 1 of your Leader » : le Leader, sans choix (describe écrit « to your Leader ») ; pas
   // « up to 1 of your Leader » (un choix)
   s = s.replace(/(?<![Uu]p )\bto 1 of your Leader\b(?!s| or)/g, 'to your Leader');
+  // S7 : « reveal up to 1 [X] or 1 red Event » / « up to 1 red Event or up to 1 Character card » (OP12-006, OP12-017) :
+  // une seule carte, de l'une ou l'autre sorte (describe ne redit pas la quantité après « or »)
+  s = s.replace(/\b(reveal up to (\d+) (?:\[[^\]]*\]|[^;.:[])*?) or (?:up to )?\2 (?=[A-Za-z[])/g, '$1 or ');
   s = s.replace(/\[([^\]]+)\]/g, (_, tag: string) => {
     let m: RegExpMatchArray | null;
     if (EN_TAGS[tag]) add('moment', EN_TAGS[tag]);

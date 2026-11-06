@@ -195,7 +195,11 @@ function fits(d: CardData, cost: number, pw: number, base: number, rested: boole
 export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
   const d = def(c.num);
   const f = findField(s, c.uid);
-  const cost = f && !f.leader ? fieldCost(s, c.uid) : d.cost ?? 0;
+  // Le coût actuel n'est lu que si le filtre en parle (comme la puissance ci-dessous) : un coût permanent qui dépend d'un
+  // compte de Personnages filtré par le coût de base (« si vous avez 2 Personnages de coût de base 5 ou plus, ce Personnage
+  // +1 de coût », ST25-001) relirait sinon son propre coût sans fin (tâche S7 ; même résultat pour tous les autres filtres)
+  const needCost = spec.costMax !== undefined || spec.costMin !== undefined;
+  const cost = f && !f.leader && needCost ? fieldCost(s, c.uid) : d.cost ?? 0;
   // La puissance actuelle n'est lue que si le filtre en parle : une puissance permanente qui dépend d'un compte de
   // Personnages filtré par le coût (« si vous n'avez pas de Personnage de coût 8 ou plus, ce Personnage −4000 »,
   // OP16-017) relirait sinon sa propre puissance sans fin (tâche S2 ; même résultat pour tous les autres filtres)
