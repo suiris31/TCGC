@@ -42,6 +42,7 @@ import { OP03_JAUNE } from './op03-jaune.ts';
 import { ST01 } from './st01.ts';
 import { AVENTURE_A } from './aventure-a.ts';
 import { AVENTURE_B } from './aventure-b.ts';
+import { OP14 } from './op14.ts';
 // Recettes (étape C) : importées après les fichiers de cartes (le compilateur se sert de leurs briques)
 import { compileRecipe, type CompileResult } from '../recipes/compile.ts';
 import { confidence } from '../recipes/confidence.ts';
@@ -63,6 +64,7 @@ const BEHAVIORS: Record<string, CardBehavior> = {
   ...ST01,
   ...AVENTURE_A,
   ...AVENTURE_B,
+  ...OP14,
 };
 
 // Code à la main appelé par les recettes (sortie « manual », 01-contrats.md § 15.2) : point d'enregistrement, chaque

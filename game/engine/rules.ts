@@ -660,13 +660,13 @@ export function removeFromField(s: GameState, uid: number, to: Destination) {
 }
 
 // « Ne peut pas être mis KO » : par son propre effet (sous condition) ou accordé par un effet
-export function canBeKO(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId): boolean {
+export function canBeKO(s: GameState, uid: number, cause: 'battle' | 'effect', by: PlayerId, sourceNum?: string): boolean {
   const f = findField(s, uid);
   if (!f) return false;
   // « aucun de vos Personnages ne peut être mis KO pour tout le tour » (protection du joueur, pas des cartes du moment)
   if (s.players[f.player].noKoTurn === s.turn && !f.leader && !f.stage) return false;
   const own = def(f.card.num).cantBeKO;
-  if (own && !isNegated(s, uid) && own(s, f.player, f.card, cause, by)) return false;
+  if (own && !isNegated(s, uid) && own(s, f.player, f.card, cause, by, sourceNum)) return false;
   for (const c of allField(s, f.player)) {
     const shield = def(c.num).koShield;
     if (shield && !isNegated(s, c.uid) && shield(s, f.player, c, f.card, cause, by)) return false;
@@ -680,6 +680,11 @@ export function canLeaveByEffect(s: GameState, uid: number, by: PlayerId): boole
   const f = findField(s, uid);
   if (!f) return false;
   if (by === f.player) return true;
+  // « ... ne peuvent pas quitter le terrain à cause de vos effets » (une carte du joueur dont vient l'effet)
+  for (const c of allField(s, by)) {
+    const lock = def(c.num).oppCantLeave;
+    if (lock && !isNegated(s, c.uid) && lock(s, by, c, f.card)) return false;
+  }
   const own = def(f.card.num).cantLeave;
   return !(own && !isNegated(s, uid) && own(s, f.player, f.card)) && !hasMod(s, uid, 'cantLeave');
 }
@@ -690,7 +695,7 @@ export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect
   const f0 = findField(s, uid);
   if (!f0 || f0.leader || f0.stage) return false;
   const d = def(f0.card.num);
-  if (!canBeKO(s, uid, cause, by)) {
+  if (!canBeKO(s, uid, cause, by, sourceNum)) {
     log(s, f0.player, `${d.name} ne peut pas être mis KO`);
     return false;
   }
@@ -719,7 +724,7 @@ export function removeByEffect(ctx: EffectCtx, uid: number, to: 'ko' | Exclude<D
   const f = findField(s, uid);
   if (!f || f.leader || f.stage) return false;
   const owner = f.player;
-  if (to === 'ko' && !canBeKO(s, uid, 'effect', ctx.me)) {
+  if (to === 'ko' && !canBeKO(s, uid, 'effect', ctx.me, ctx.num)) {
     log(s, owner, `${def(f.card.num).name} ne peut pas être mis KO`);
     return false;
   }
