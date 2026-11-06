@@ -698,6 +698,7 @@ export function koCharacter(s: GameState, uid: number, cause: 'battle' | 'effect
   const f = removeFromField(s, uid, 'trash');
   if (!f) return false;
   log(s, f.player, `${d.name} est mis KO${cause === 'effect' ? ' par un effet' : ''}`);
+  s.players[f.player].charKoTurn = s.turn;
   const onKO: PendingEffect[] = triggers ? [{ kind: 'onKO', source: uid, num: f.card.num, controller: f.player, answers: [] }] : [];
   emit(s, { type: 'ko', player: f.player, uid, num: f.card.num, zone: 'character', cause, by, sourceNum }, onKO);
   return true;
@@ -777,7 +778,7 @@ export const koByEffect = (ctx: EffectCtx, uid: number) => removeByEffect(ctx, u
 
 // Place un Personnage sur le terrain (zone pleine : le joueur en défausse un, 3-7-6-1) et met son effet [Jouée]
 // en attente
-export function playCharacter(ctx: EffectCtx, p: PlayerId, card: Card, opts: { rested?: boolean } = {}) {
+export function playCharacter(ctx: EffectCtx, p: PlayerId, card: Card, opts: { rested?: boolean; from?: 'hand' | 'trash' } = {}) {
   const { s } = ctx;
   const P = s.players[p];
   if (def(card.num).category === 'STAGE') {
@@ -797,16 +798,17 @@ export function playCharacter(ctx: EffectCtx, p: PlayerId, card: Card, opts: { r
   }
   P.chars.push({ uid: card.uid, num: card.num, rested: Boolean(opts.rested), don: 0, playedTurn: s.turn, usedOpt: [] });
   log(s, p, `joue ${def(card.num).name}${opts.rested ? ' (épuisé)' : ''}`);
-  announcePlay(ctx, p, card, 'character');
+  announcePlay(ctx, p, card, 'character', opts.from);
 }
 
 // Carte jouée : effet [Jouée] et effets « quand ... est joué » (jouée de la main en payant son coût, ou par un effet)
-function announcePlay(ctx: EffectCtx, p: PlayerId, card: Card, zone: 'character' | 'stage') {
+function announcePlay(ctx: EffectCtx, p: PlayerId, card: Card, zone: 'character' | 'stage', from?: 'hand' | 'trash') {
   const onPlay: PendingEffect[] = def(card.num).onPlay ? [{ kind: 'onPlay', source: card.uid, num: card.num, controller: p, answers: [] }] : [];
   const byEffect = !(ctx.pending.kind === 'system' && ctx.pending.action === 'playFromHand');
   emit(ctx.s, {
     type: 'play', player: p, uid: card.uid, num: card.num, zone, by: ctx.me,
     ...(byEffect ? { cause: 'effect' as const, sourceNum: ctx.num } : {}),
+    ...(from ? { from } : {}),
   }, onPlay);
 }
 

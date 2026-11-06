@@ -84,6 +84,8 @@ export interface PlayerState {
   restDonAtMain?: number;
   // « vous ne pouvez pas ajouter de cartes de Vie à votre main avec vos propres effets pour tout le tour » (Atmos ST15-001)
   noLifeToHandTurn?: number;
+  // dernier tour où un de ses Personnages a été mis KO (« si un Personnage adverse a été mis KO durant ce tour », OP16-100)
+  charKoTurn?: number;
   koGuardTurn?: number;   // tour pendant lequel ses Personnages mis KO en combat peuvent être sauvés en défaussant (EB02-030)
   // tour pendant lequel aucun de ses Personnages ne peut être mis KO, en combat ou par un effet, y compris ceux joués
   // ensuite (White Out ST06-016)
@@ -197,6 +199,9 @@ export interface GameEvent {
   count?: number;            // cartes défaussées, DON!! renvoyées, dégâts infligés
   target?: number;           // 'attack' : carte attaquée ; 'damage' : Leader touché
   timing?: 'main' | 'counter';  // 'event' : [Principale] ou [Contre]
+  // 'play' : zone d'où la carte a été jouée par un effet, quand la brique la connaît (« joué depuis votre Défausse »,
+  // Yamato OP16-079 ; seules les briques communes la donnent, pas le code à la main plus ancien)
+  from?: 'hand' | 'trash';
 }
 
 // Effet « quand ... » (automatique) : la condition est vérifiée au moment de l'événement ; si elle est vraie, l'effet est

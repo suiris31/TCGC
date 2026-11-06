@@ -196,7 +196,11 @@ export function matches(s: GameState, c: FieldCard, spec: CharSpec): boolean {
   const d = def(c.num);
   const f = findField(s, c.uid);
   const cost = f && !f.leader ? fieldCost(s, c.uid) : d.cost ?? 0;
-  return fits(d, cost, f ? power(s, c.uid) : d.power ?? 0, f ? basePower(s, c.uid) : d.power ?? 0, c.rested, spec)
+  // La puissance actuelle n'est lue que si le filtre en parle : une puissance permanente qui dépend d'un compte de
+  // Personnages filtré par le coût (« si vous n'avez pas de Personnage de coût 8 ou plus, ce Personnage −4000 »,
+  // OP16-017) relirait sinon sa propre puissance sans fin (tâche S2 ; même résultat pour tous les autres filtres)
+  const needPower = spec.powerMax !== undefined || spec.powerMin !== undefined;
+  return fits(d, cost, f && needPower ? power(s, c.uid) : d.power ?? 0,f ? basePower(s, c.uid) : d.power ?? 0, c.rested, spec)
     && (spec.keyword === undefined || (f ? hasKeyword(s, f.player, c, spec.keyword) : d.keywords.includes(spec.keyword)))
     && (spec.noKeyword === undefined || !(f ? hasKeyword(s, f.player, c, spec.noKeyword) : d.keywords.includes(spec.noKeyword)))
     && (spec.donMin === undefined || (f ? c.don : 0) >= spec.donMin)
@@ -692,7 +696,7 @@ const playFrom = (zone: 'hand' | 'trash') => (spec: CharSpec, source: string, op
       });
       if (answer === 'none') return;
       const [card] = list.splice(list.findIndex((c) => c.uid === Number(answer.split(':')[1])), 1);
-      playCharacter(ctx, ctx.me, card, opts);
+      playCharacter(ctx, ctx.me, card, { ...opts, from: zone });
     },
     useful: (s, p) => canPlayCharacters(s, p) && (zone === 'hand' ? s.players[p].hand : s.players[p].trash).some(eligible),
   };
@@ -963,7 +967,7 @@ export const playSelfFromTrash = (source: string, opts: { rested?: boolean } = {
   if (i < 0 || !canPlayCharacters(ctx.s, ctx.me, P.trash[i].num)) return;
   const [self] = P.trash.splice(i, 1);
   log(ctx.s, ctx.me, `joue ${def(self.num).name} depuis sa Défausse (${source})`);
-  playCharacter(ctx, ctx.me, self, opts);
+  playCharacter(ctx, ctx.me, self, { ...opts, from: 'trash' });
 }, (s, p, self) => canPlayCharacters(s, p) && s.players[p].trash.some((c) => c.uid === self));
 
 // ---------- Deck, Vie, coût (OP03, ST-01 : tâche 1.1) ----------
