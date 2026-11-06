@@ -25,7 +25,7 @@ const BOUNCE = 'OP08-042';     // Personnage coût 4 : [DON!! x1] [En attaquant]
 const VIVI_COUNTER = 'EB03-011'; // Événement coût 1 : [Contre] sous condition de Leader ; [Déclenchement] puissance adverse
 const MINUS_COST = 'EB01-048'; // Personnage coût 4 : [Activation : Principale] épuiser cette carte : coût adverse
 const MINUS_POWER = 'OP13-020'; // Événement coût 3 : [Principale] puissance adverse ; [Déclenchement] son effet [Principale]
-const RESTED_POWER = 'OP14-026'; // Personnage : [Tour adverse] épuisé, +2000 de puissance
+const RESTED_POWER = 'OP01-039'; // Personnage (recette d'essai : [Tour adverse] épuisé, +2000) ; OP14-026, jouable depuis S5, remplacé
 const VIVI_L = 'OP04-001';     // un Leader [Nefeltari Vivi]
 // adversaire ST-21
 const O_BONNEY = 'ST21-004';   // coût 1, 3000
@@ -260,11 +260,11 @@ test('recettes : le code à la main l\'emporte sur une recette', () => {
 });
 
 test('recettes : une carte generated ou doubt n\'est jamais jouable ; un doute l\'emporte aussi sur le code à la main', () => {
-  const GEN = 'OP14-059';
+  const GEN = 'OP01-029';   // Événement « à faire » (OP14-059, jouable depuis S5, remplacé)
   const DOUBT = 'OP04-056';
   assert.equal(confidence(GEN), 'todo');
   addRecipeSet({
-    set: 'OP14',
+    set: 'OP01',
     entries: {
       [GEN]: { level: 'generated', recipe: { num: GEN, abilities: [ability({ timing: 'main', steps: [{ action: { kind: 'draw', n: 2 } }] })] } },
       [DOUBT]: {
