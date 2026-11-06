@@ -109,7 +109,7 @@ const FR_DURATIONS: [RegExp, string][] = [
 const EN_VERBS: Record<string, string> = {
   ko: 'KO', "ko'd": 'KO', rest: 'rest', return: 'return', returns: 'return', place: 'place', places: 'place', trash: 'trash',
   trashes: 'trash', trashed: 'trash', give: 'give', gains: 'give', gain: 'give', draw: 'draw', look: 'look', reveal: 'reveal',
-  play: 'play', plays: 'play', add: 'add', negate: 'negate', cannot: 'cannot', set: 'set', activate: 'activate',
+  play: 'play', plays: 'play', add: 'add', negate: 'negate', negated: 'negate', cannot: 'cannot', set: 'set', activate: 'activate',
 };
 const COLORS = ['red', 'green', 'blue', 'purple', 'black', 'yellow'];
 

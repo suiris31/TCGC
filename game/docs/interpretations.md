@@ -1078,6 +1078,43 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
       X Characters » et « the only Characters on your field are X Characters » sont les mêmes faits ; « was played on
       this turn » n'est pas une durée ; « Up to 1 of your Characters or [X] » n'ajoute plus « Leader or Character cards ».
 
+## OP14 et ST29 (tâche S5), choix faits sans validation
+
+2400. **« Quand une carte de votre main est placée dans la Défausse par un effet »** (Kuroobi OP14-045, Jinbe OP14-049,
+      Wadatsumi OP14-056) : comme le n° 1904, le coût d'un effet compte (« vous pouvez défausser 1 carte : », Leader
+      Jinbe OP14-040), et aussi « défaussez toute votre main » (Shiliew OP14-048) et la défausse de fin de tour de
+      Fisher Tiger OP14-054. L'effet de Wadatsumi annulé pour le tour lève aussi son « ne peut pas attaquer ».
+2401. **Capone "Gang" Bege (OP14-003)** : « un effet d'un Personnage adverse de 5000 de puissance de base ou moins » se
+      lit sur la puissance **imprimée** de la carte dont vient l'effet (elle a souvent quitté le terrain, [En cas de
+      KO]) ; un effet d'un Leader ou d'un Événement adverse peut le mettre KO.
+2402. **« Échangez la puissance de base des cartes choisies »** (Trafalgar Law OP14-001, OP14-009, Shambles OP14-017) :
+      chacune prend la puissance de base de l'autre au moment de l'échange (celle fixée par un effet, s'il y en a une) ;
+      « choisissez 2 ... » : sans 2 cartes possibles, rien ne se passe. Law OP14-009 : « votre Leader et 1 Personnage »
+      est un de **vos** Personnages (la VF le dit ; la VO ne répète pas « your »).
+2403. **Don Quijote Doflamingo (Leader OP14-060)** : la nouvelle cible de l'attaque est son Leader ou un de ses
+      Personnages {Donquixote Pirates}, épuisé ou non, autre que la cible du moment ; le combat continue ensuite
+      normalement ([Bloqueur], [Contre]).
+2404. **Crocodile (Leader OP14-079)** : aucun effet de son joueur (Leader, Personnages, Événements, Lieux) ne fait
+      quitter le terrain à un Personnage adverse : ni KO par effet, ni main, ni deck, ni Vie, ni Défausse. Le KO en combat
+      reste possible, comme les coûts « mettez KO 1 de vos Personnages » (ses propres cartes).
+2405. **Remplacements « s'il devait quitter le terrain à cause d'un effet adverse »** (X-Drake OP14-016, Tashigi
+      OP14-029, Vergo OP14-061) : proposés au propriétaire quand l'effet adverse met KO, renvoie en main, au-dessous du
+      deck ou dans la Vie (comme Koshiro et Ivankov) ; X-Drake et Vergo couvrent aussi le Personnage qui porte l'effet.
+      Tashigi : « épuisez 1 de vos cartes » (Leader, Personnage, Lieu ou DON!! redressée), elle comprise.
+2406. **Mr 3 (OP14-092)** : « s'il devait être mis KO » couvre le KO en combat et par n'importe quel effet, au tour
+      adverse seulement, une fois par tour ; les 3 cartes vont au-dessous du deck dans l'ordre choisi.
+2407. **Sœurs gorgones (OP14-105)** : « jusqu'à 1 DON!! épuisée chacun » : chaque carte (Leader et Personnages) en reçoit
+      une ; sans assez de DON!! épuisées, le joueur choisit lesquelles.
+2408. **Rindo (OP14-115)** : « vous subissez 1 dégât » se joue comme un dégât de combat (carte de Vie en main,
+      [Déclenchement] au choix ; sans Vie, la partie est perdue).
+2409. **« S'il y a un Personnage ayant un coût de 0 ou de 8 ou plus »** (Mr 1 OP14-090, Mr 5 OP14-094, Barchan
+      OP14-098) : sur le terrain de l'un ou l'autre joueur, coût du moment (un coût négatif vaut 0, n° 1-3-6-2) ;
+      Crocodile OP14-120 : seulement les Personnages adverses (VO et VF).
+2410. **Gecko Moria (OP14-104)** : la carte choisie dans la Défausse est jouée ou placée face visible au-dessus de la
+      Vie, au choix (seulement la Vie si un Personnage ne peut pas être joué ce tour).
+2411. **Ground Death (OP14-096) et autres [Contre] « si vous avez N cartes dans votre Défausse »** : l'Événement activé
+      est déjà dans la Défausse quand la condition est lue (comme toutes les cartes du moteur).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

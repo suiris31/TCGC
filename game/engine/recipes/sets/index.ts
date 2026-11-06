@@ -5,9 +5,13 @@ import type { RecipeSet } from '../types.ts';
 import { RECIPES_OP16 } from './op16.ts';
 import { RECIPES_EB03 } from './eb03.ts';
 import { RECIPES_EB04 } from './eb04.ts';
+import { RECIPES_OP14 } from './op14.ts';
+import { RECIPES_ST29 } from './st29.ts';
 
 export const RECIPE_SETS: RecipeSet[] = [
   RECIPES_OP16,
   RECIPES_EB03,
   RECIPES_EB04,
+  RECIPES_OP14,
+  RECIPES_ST29,
 ];

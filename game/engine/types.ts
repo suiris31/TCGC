@@ -355,13 +355,17 @@ export interface CardBehavior {
   cantAttack?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
   // « Ce Personnage ne peut pas attaquer de Leader ... » (« le tour où il est joué », Curiel OP03-004)
   cantAttackLeader?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
-  // « ne peut pas être mis KO » (en combat, par un effet ; `by` : joueur qui attaque ou dont l'effet met KO)
-  cantBeKO?: (s: GameState, owner: PlayerId, self: FieldCard, cause: 'battle' | 'effect', by: PlayerId) => boolean;
+  // « ne peut pas être mis KO » (en combat, par un effet ; `by` : joueur qui attaque ou dont l'effet met KO ;
+  // sourceNum, facultatif : la carte dont l'effet met KO, quand elle est connue, Capone Bege OP14-003)
+  cantBeKO?: (s: GameState, owner: PlayerId, self: FieldCard, cause: 'battle' | 'effect', by: PlayerId, sourceNum?: string) => boolean;
   // « ne peut pas quitter le terrain à cause d'un effet adverse »
   cantLeave?: (s: GameState, owner: PlayerId, self: FieldCard) => boolean;
   // même chose, donné par cette carte (sur le terrain) à une carte du même joueur, elle comprise (« tous vos Personnages
   // {Scientist} jaunes ne peuvent pas quitter le terrain à cause d'un effet adverse », Végapunk EB04-057)
   leaveShield?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => boolean;
+  // « Les Personnages adverses ne peuvent pas quitter le terrain à cause de vos effets » (Crocodile OP14-079) : donné par
+  // cette carte (sur le terrain) aux Personnages adverses `target` contre les effets de son propriétaire
+  oppCantLeave?: (s: GameState, owner: PlayerId, source: FieldCard, target: FieldCard) => boolean;
   // Règles changées par un Leader (effets permanents valables « selon les règles du jeu », 5-1-2-4)
   rules?: LeaderRules;
   onPlay?: (ctx: EffectCtx) => void;
