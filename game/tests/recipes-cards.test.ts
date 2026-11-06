@@ -404,13 +404,14 @@ const actionsOf = (steps: Step[]): Action[] => steps.flatMap((st) => ('action' i
   : 'group' in st ? actionsOf(st.group) : 'may' in st ? actionsOf(st.may) : st.chooseOne.flatMap(actionsOf)));
 
 // Écarts bloquants de l'aller-retour, une fois toutes les familles de la vague C2 réunies (intégration C2, mesuré le
-// 6 novembre 2026 : 74 cartes sur 2 275 traduites sans reste). Tous viennent de la rédaction redite (describe) ou lue
+// 6 novembre 2026 : 74 cartes sur 2 275 traduites sans reste ; 70 après S1, « up to 1 of your Leader or up to 1 of your
+// Characters » et « to 1 of your Leader » lus par compare.ts). Tous viennent de la rédaction redite (describe) ou lue
 // (compare), pas de la recette : « 1 of your Leader » / « your Leader », « this card » / « this Character », « can attack
 // Characters on the turn in which it is played » / [Rush: Character], « played on this turn » / « during this turn »,
 // « your X type Characters » / « all of your ... » (n° 1581), deux gains d'une même phrase redits en deux, « place » /
 // « add » dans la Vie et « the owner's » (n° 1509), P-008 (obligatoire en VO, « jusqu'à » en VF)... Une carte en écart
 // n'atteint jamais `verified` : la tâche de son set relit la recette. Le plafond ne doit que baisser.
-const MAX_GAPS = 74;
+const MAX_GAPS = 70;
 
 test('catalogue : cartes restantes toujours écrites, « that card » toujours après une révélation, aller-retour sans écart', () => {
   let searches = 0;

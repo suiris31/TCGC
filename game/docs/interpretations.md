@@ -996,6 +996,35 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 1907. **[Une fois par tour] d'un effet « Quand ... »** : l'effet compte comme utilisé dès qu'il se déclenche (comme
       les effets « quand ... » codés à la main), même si son coût facultatif est ensuite refusé.
 
+## EB05 et OP17 (tâche S1), choix faits sans validation
+
+2000. **Miss Monday (EB05-045)** : son [Jouée] peut la mettre KO elle-même (elle est un de vos Personnages
+      « Baroque Works ») ; son [En cas de KO] se résout alors.
+2001. **« Mettez KO ou épuisez jusqu'à 1 Personnage ... » (Perona EB05-043)** : un choix entre les deux actions, sur
+      les mêmes cibles possibles.
+2002. **« ... ayant N de puissance » (EB05-054, EB05-059)** : exactement N (ni plus ni moins), la puissance imprimée pour
+      une carte de la main, la puissance de base pour un Personnage du terrain quand le texte dit « de base ».
+2003. **« Renvoyez 1 de vos cartes DON!! redressées à votre deck DON!! » (EB05-040)** : une DON!! redressée de la zone
+      de Coût seulement (pas une DON!! épuisée ni une DON!! donnée), contrairement à DON!! −N.
+2004. **« Défaussez 1 carte de votre main ou épuisez 1 de vos DON!! » (Shanks OP17-020)** : le joueur choisit le coût
+      qu'il paie parmi ceux qu'il peut payer.
+2005. **Cage Extensible (EB05-029)** : les effets du Personnage visé sont annulés d'abord, puis il est renvoyé dans la
+      main de son propriétaire ; ses effets de remplacement (« s'il devait quitter le terrain ... ») ne s'appliquent
+      donc plus.
+2006. **Stinger Hedgehog (EB05-048)** : les Personnages adverses de coût 0 au moment où l'effet se résout ne peuvent pas
+      activer [Bloqueur] pour le tour (un Personnage dont le coût tombe à 0 ensuite n'est pas visé).
+2007. **Charlotte Linlin (OP17-099, Leader)** : « défaussez 1 carte de la main adverse » : prise au hasard (le joueur ne
+      voit pas la main adverse), comme X-Drake (OP17-075) ; l'adversaire choisit l'effet (n° 1901).
+2008. **Sabre Maser (OP17-117) [Déclenchement]** : l'adversaire doit défausser 3 cartes pour éviter le KO ; s'il en a
+      moins de 3, il ne peut pas, et le KO s'applique.
+2009. **Mamie Olly (OP17-021)** : « épuisez 1 de vos cartes » : votre Leader, un Personnage (le Personnage menacé
+      compris), votre Lieu ou une DON!! redressée (comme les coûts « épuisez N de vos cartes », n° 1003).
+2010. **Monkey D. Luffy (OP17-079, Leader)** : [Bloqueur] pour vos Personnages de coût 12 ou plus selon leur coût du
+      moment (effets compris), pas pour le Leader.
+2011. **Nami (EB05-061)**, **en doute** (question à l'utilisateur) : « à cause de votre adversaire » est codé comme les
+      effets adverses **et** la mise KO en combat par une attaque adverse ; la carte reste non jouable tant que la
+      question n'est pas tranchée.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
