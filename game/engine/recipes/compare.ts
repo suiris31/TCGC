@@ -132,6 +132,12 @@ export function factsEn(text: string): Fact[] {
   // only Characters on your field are X Characters » (condition onlyChars) : les mêmes faits
   s = s.replace(/\byour 1 active Leader\b/g, 'your active Leader');
   s = s.replace(/\byou only have (?=[^,.:]*\bCharacters\b)/g, 'the only Characters on your field are ');
+  // S1 : « up to 1 of your Leader or up to 1 of your Characters » (EB05) : la même cible que « up to 1 of your Leader or
+  // Characters » (un seul choix parmi le Leader et les Personnages)
+  s = s.replace(/\bup to (\d+) of your Leader or up to \1 of your Characters\b/g, 'up to $1 of your Leader or Characters');
+  // « give 1 active DON!! card to 1 of your Leader » : le Leader, sans choix (describe écrit « to your Leader ») ; pas
+  // « up to 1 of your Leader » (un choix)
+  s = s.replace(/(?<![Uu]p )\bto 1 of your Leader\b(?!s| or)/g, 'to your Leader');
   s = s.replace(/\[([^\]]+)\]/g, (_, tag: string) => {
     let m: RegExpMatchArray | null;
     if (EN_TAGS[tag]) add('moment', EN_TAGS[tag]);
