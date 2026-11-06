@@ -854,6 +854,35 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 1595. **« can attack Characters on the turn in which it is played »** : [Initiative : Personnage].
 1596. **« Negate the effect of ... »** sans durée : pas traduit (deux lectures : le tour, ou tant que la carte reste) ;
       « ... during this turn » : la carte perd ses effets pour le tour.
+## Traducteur, famille « Vie » (tâche C2.5), choix faits sans validation
+
+1820. **« Jusqu'à N » cartes du dessus du deck vers sa Vie, et « jusqu'à N » cartes de la Vie adverse** (vers la main de
+      son propriétaire ou sa Défausse) : sans question, toutes les cartes possibles, comme les cartes codées à la main
+      (n° 381 ; Charlotte Linlin OP03-114, Eustass Kidd OP10-112, OP10-109) ; deck ou Vie vide : rien.
+1821. **« from your Life area »** (vieilles cartes : OP01-008, OP01-013, P-009, sans « top ») : lu « la carte du dessus »,
+      comme le prototype de l'étude C0. **Tournure douteuse**, à vérifier par la tâche « set » (règles complètes, Q&A)
+      avant de passer ces cartes `verified`.
+1822. **« Jusqu'à N » cartes de sa propre Vie** (vers sa main ou sa Défausse) : une question par carte (« Oui » / « Non,
+      s'arrêter ») ; sans « jusqu'à », pas de question.
+1823. **« Du dessus ou du dessous »** : une question par carte, la carte du dessus proposée en premier ; avec une seule
+      carte de Vie, pas de question.
+1824. **« Votre adversaire ajoute à sa main N cartes du dessus de sa Vie »** : même jeu que « ajoutez à la main de son
+      propriétaire N cartes du dessus de la Vie adverse » (c'est l'effet du joueur : une interdiction « par vos propres
+      effets » de l'adversaire n'y fait rien). « Du dessus ou du dessous » choisi par l'adversaire n'est pas lu (aucune
+      brique).
+1825. **Cartes ajoutées à la Vie** : face visible, elles sont publiques ; face cachée depuis la main, seul leur
+      propriétaire les connaît ; face cachée depuis le deck, personne.
+1826. **« Regardez toutes vos cartes de Vie (de votre adversaire) et replacez-les dans l'ordre de votre choix »** : le
+      joueur choisit la carte du dessus, puis la suivante... ; il connaît ensuite chacune (et sa place). Pour la Vie
+      adverse, l'adversaire ne les connaît pas (elles restent face cachée).
+1827. **« Si vous ou votre adversaire avez N cartes de Vie »** (« either you or your opponent ») : l'un OU l'autre.
+1828. **« you have a total of N or less cards in your Life area »** (vieille tournure) : sa Vie seulement ; « in your Life
+      area and hand » (la Vie et la main ensemble, OP04-040) n'est pas lu.
+1829. **« Placez dans la Défausse la carte du dessus de votre Vie et de la Vie adverse »** (OP11-102) : la sienne, puis
+      celle de l'adversaire (sans choix, pas de [Déclenchement] : l'ordre ne change rien).
+1830. **Coûts de Vie** (prendre en main, placer dans la Défausse, retourner) : une seule carte, comme les briques de coût ;
+      « turn 2 cards ... face-up » (OP08-058) n'est pas lu. « Retourner face cachée » ne se paie qu'avec une carte du
+      dessus face visible (brique `flipTopLife`).
 
 ## Comment c'est vérifié
 
