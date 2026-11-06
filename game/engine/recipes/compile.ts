@@ -13,6 +13,7 @@
 // Point d'entrée sûr : cards/index.ts d'abord (les fichiers de cartes et le moteur s'importent l'un l'autre).
 import '../cards/index.ts';
 import * as B from '../cards/bricks.ts';
+import * as R from '../cards/bricks-removal.ts';
 import { addMod, allField, def, donOnField, findField, log, other, untilOpponentsNextEnd } from '../rules.ts';
 import type { CardBehavior, Category, EffectCtx, FieldCard, GameState, PlayerId } from '../types.ts';
 import type {
@@ -120,6 +121,19 @@ class Compiler {
     return t.count;
   }
 
+  // Combien de cartes pour les briques de la famille « retraits » (C2.1) : « jusqu'à N », N obligatoires, toutes
+  amount(t: Target): R.Amount {
+    return t.count === 'all' ? { all: true } : { n: t.count, forced: !t.upTo };
+  }
+
+  // La brique « jusqu'à N » de bricks.ts quand la cible le permet (même jeu, mêmes questions), sinon celle de la
+  // famille « retraits » (cible obligatoire, « tous »)
+  removal(t: Target, k: string, to: R.RemovalTo, upTo: (t: B.Targets, src: string, n: number) => B.Effect): B.Effect {
+    const tg = this.targets(t, k);
+    if (t.count !== 'all' && t.upTo) return upTo(tg, this.src, t.count);
+    return R.removeChars(tg, to, this.src, this.amount(t));
+  }
+
   // Le Leader du joueur, sans choix (« votre Leader gagne ... »)
   ownLeaderOnly = (t: Target) => t.zone === 'field' && !t.self && t.side === 'own' && t.leader && !t.characters && !t.stage
     && !Object.keys(t.filter).length && t.count === 1;
@@ -197,13 +211,21 @@ class Compiler {
       case 'lifeToHand': return B.lifeToHandCost(c.from === 'top' ? 'top' : 'both');
       case 'flipLife': return B.flipTopLife(c.faceUp);
       case 'trashOwnChar': return B.trashOwnCharCost(this.spec(c.filter, 'field'), c.n);
+      case 'koOwnChar': return R.koOwnCharCost(this.spec(c.filter, 'field'), c.n);
+      case 'bottomOwn': {
+        const { category, ...rest } = c.filter;
+        if (category?.length !== 1 || (category[0] !== 'CHARACTER' && category[0] !== 'STAGE')) return this.no('coût bottomOwn : catégorie', none);
+        return R.bottomOwnCost(c.n, category[0], this.spec(rest, 'field'));
+      }
       case 'returnOwnChar':
-        if (c.n !== 1 || Object.keys(c.filter).length) return this.no('coût returnOwnChar filtré ou plusieurs', none);
-        return B.returnOwnChar();
+        if (c.n === 1 && !Object.keys(c.filter).length) return B.returnOwnChar();
+        return R.returnOwnChars(c.n, this.spec(c.filter, 'field'));
       case 'restOwn':
         if (c.what === 'cards' && !c.filter) return B.restCost(c.n, 'cards');
         if (c.what === 'characters') return B.restCost(c.n, 'characters', c.filter ? this.spec(c.filter, 'field') : undefined);
-        return this.no(`coût restOwn ${c.what}${c.filter ? ' filtré' : ''}`, none);
+        // un filtre exclut les DON!! (restCost) ; « votre Leader », « votre Lieu » : une carte de cette catégorie
+        if (c.what === 'cards') return B.restCost(c.n, 'cards', this.spec(c.filter!, 'field'));
+        return B.restCost(c.n, 'cards', { ...(c.filter ? this.spec(c.filter, 'field') : {}), categories: [c.what === 'leader' ? 'LEADER' : 'STAGE'] });
       case 'giveDon':
         if (c.n !== 1) return this.no('coût giveDon plusieurs', none);
         return B.giveActiveDon(this.targets(c.target, 'coût giveDon'));
@@ -214,7 +236,7 @@ class Compiler {
         return { label: `donner −${c.n} de puissance à ton Leader pour le tour`, can: () => true, pay: (ctx) => { minus.run(ctx); return true; } };
       }
       case 'selfToBottom': return B.selfToDeckBottom();
-      case 'bounceSelf': return this.no('coût bounceSelf', none);
+      case 'bounceSelf': return R.bounceSelfCost();
       case 'manual': {
         const m = this.manual?.costs?.[c.reason];
         if (!m) return this.no(`coût manual:${c.reason} absent`, none);
@@ -236,31 +258,43 @@ class Compiler {
     const k = `action ${a.kind}`;
     switch (a.kind) {
       case 'ko':
-        if (a.target.self) return this.no(`${k} : soi-même`, NOTHING);
+        if (a.target.self) return a.target.leader || a.target.stage ? this.no(`${k} : ce Leader ou ce Lieu`, NOTHING) : R.removeSelf('ko');
         if (a.target.stage && !a.target.leader && !a.target.characters) {
           const f = a.target.filter;
           if (a.target.side !== 'opp' || a.target.count !== 1 || !a.target.upTo || f.costMax === undefined || Object.keys(f).length > 1) return this.no(`${k} : Lieu`, NOTHING);
           return B.koOppStage(f.costMax, src);
         }
-        return B.ko(this.targets(a.target, k), src, this.upToN(a.target, k));
+        if (a.target.leader || a.target.stage) return this.no(`${k} : un Leader ou un Lieu`, NOTHING);
+        return this.removal(a.target, k, 'ko', B.ko);
       case 'rest':
         if (a.target.self) return B.restThis();
         if (a.target.count === 'all') return B.restAll(this.targets(a.target, k));
+        if (!a.target.upTo) return R.restTargets(this.targets(a.target, k), src, this.amount(a.target));
         return B.rest(this.targets(a.target, k), src, this.upToN(a.target, k));
       case 'setActive':
         if (a.target.self) return B.readySelf();
+        if (a.target.count === 'all' || !a.target.upTo) return R.readyTargets(this.targets(a.target, k), src, this.amount(a.target));
         return B.setActiveTargets(this.targets(a.target, k), src, this.upToN(a.target, k));
       case 'bounce':
-        if (a.target.self) return this.no(`${k} : soi-même`, NOTHING);
-        return B.bounce(this.targets(a.target, k), src, this.upToN(a.target, k));
+        if (a.target.self) return a.target.leader || a.target.stage ? this.no(`${k} : ce Leader ou ce Lieu`, NOTHING) : R.removeSelf('hand');
+        if (a.target.leader || a.target.stage) return this.no(`${k} : un Leader ou un Lieu`, NOTHING);
+        return this.removal(a.target, k, 'hand', B.bounce);
       case 'bottom':
-        if (a.target.self) return this.no(`${k} : soi-même`, NOTHING);
-        return B.bottomOfDeck(this.targets(a.target, k), src, this.upToN(a.target, k));
-      case 'toLife':
-        // la brique demande « au-dessus ou au-dessous » : seulement si la recette le dit (champ where, C1.1)
-        if (a.target.self || a.where !== 'topOrBottom' || this.upToN(a.target, k) !== 1) return this.no(`${k} : ${a.target.self ? 'soi-même' : a.where === 'topOrBottom' ? 'plusieurs' : 'dessus seulement'}`, NOTHING);
-        return B.toOwnersLife(this.targets(a.target, k), src, a.faceUp);
-      case 'trashChar': return this.no(k, NOTHING);
+        if (a.target.self) return a.target.leader || a.target.stage ? this.no(`${k} : ce Leader ou ce Lieu`, NOTHING) : R.removeSelf('deckBottom');
+        if (a.target.leader || a.target.stage) return this.no(`${k} : un Leader ou un Lieu`, NOTHING);
+        return this.removal(a.target, k, 'deckBottom', B.bottomOfDeck);
+      case 'toLife': {
+        if (a.target.self || a.target.leader || a.target.stage) return this.no(`${k} : ${a.target.self ? 'soi-même' : 'un Leader ou un Lieu'}`, NOTHING);
+        // sans « where » (recette écrite avant C2.1) : la brique ne devine pas
+        if (!a.where) return this.no(`${k} : dessus ou dessous non précisé`, NOTHING);
+        // « jusqu'à 1 ... au-dessus ou au-dessous » : la brique de bricks.ts (Charlotte Katakuri OP03-123)
+        if (a.where === 'topOrBottom' && a.target.upTo && a.target.count === 1) return B.toOwnersLife(this.targets(a.target, k), src, a.faceUp);
+        return R.removeChars(this.targets(a.target, k), { life: a.where, faceUp: a.faceUp }, src, this.amount(a.target));
+      }
+      case 'trashChar':
+        if (a.target.self) return a.target.leader || a.target.stage ? this.no(`${k} : ce Leader ou ce Lieu`, NOTHING) : B.trashThis();
+        if (a.target.leader || a.target.stage) return this.no(`${k} : un Leader ou un Lieu`, NOTHING);
+        return R.removeChars(this.targets(a.target, k), 'trash', src, this.amount(a.target));
       case 'power': {
         if (a.until === 'permanent') return this.no(`${k} : permanent hors effet permanent`, NOTHING);
         const u = this.until(a.until, k);
