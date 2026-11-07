@@ -132,6 +132,12 @@ export function factsEn(text: string): Fact[] {
   // only Characters on your field are X Characters » (condition onlyChars) : les mêmes faits
   s = s.replace(/\byour 1 active Leader\b/g, 'your active Leader');
   s = s.replace(/\byou only have (?=[^,.:]*\bCharacters\b)/g, 'the only Characters on your field are ');
+  // S9 : « your Leader has the {T} type or is [X] » : « ... or your Leader is [X] » (EB02-006) ; « If you have a [X], » :
+  // un Personnage [X] (EB02-012, aucun Leader de ce nom) ; « If you don't have [X], » : aucun Personnage [X] (OP10-008,
+  // OP10-017, aucun Leader de ce nom ; describe écrit « If you have no [X] Characters »)
+  s = s.replace(/\b(your Leader has the \{[^}]+\} type) or is (\[[^\]]+\])/g, '$1 or your Leader is $2');
+  s = s.replace(/\b([Ii]f you have a) (\[[^\]]+\])(?= *,)/g, '$1 $2 Character');
+  s = s.replace(/\b([Ii]f you) don't have (\[[^\]]+\])(?= *,)/g, '$1 have no $2 Characters');
   // S1 : « up to 1 of your Leader or up to 1 of your Characters » (EB05) : la même cible que « up to 1 of your Leader or
   // Characters » (un seul choix parmi le Leader et les Personnages)
   s = s.replace(/\bup to (\d+) of your Leader or up to \1 of your Characters\b/g, 'up to $1 of your Leader or Characters');

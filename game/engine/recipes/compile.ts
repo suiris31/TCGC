@@ -195,7 +195,8 @@ class Compiler {
       case 'leaderType': return c.mode === 'all' ? B.all(...c.types.map(B.leaderType)) : B.any(...c.types.map(B.leaderType));
       case 'leaderTypeIncludes': return B.leaderTypeIncludes(c.part);
       case 'leaderColor': {
-        const color = B.any(...c.colors.map(B.leaderColor));
+        // « your Leader is multicolored » seul : aucune couleur demandée (B.any() sans condition serait toujours faux)
+        const color = c.colors.length ? B.any(...c.colors.map(B.leaderColor)) : () => true;
         return c.multicolor ? B.all(color, (s, p) => def(s.players[p].leader.num).colors.length > 1) : color;
       }
       case 'leaderAttribute': return B.leaderAttribute(c.attribute);
