@@ -128,6 +128,13 @@ export function factsEn(text: string): Fact[] {
   // it » : le même effet (le traducteur lit les deux en addDon)
   s = s.replace(/\b([Aa]dd (?:up to )?(\d+) DON!! cards?) as (active|rested) from your DON!! deck\b/g,
     (_, head: string, n: string, st: string) => `${head} from your DON!! deck and ${st === 'active' ? 'set' : 'rest'} ${n === '1' ? 'it' : 'them'}${st === 'active' ? ' as active' : ''}`);
+  // S8 : « this Character can attack Characters on the turn in which it is played » : [Rush: Character] donné à la carte
+  // (OP11-027) ; « If you have [X] » : un Personnage [X] (OP11-109 ; la question du Leader est posée à part, EB04-056) ;
+  // « ... of your opponent's Characters ... of the owner's Life cards » : la Vie adverse (OP11-116, describe écrit
+  // « your opponent's »)
+  s = s.replace(/\bthis Character can attack Characters on the turn in which it is played\b/g, 'this Character gains [Rush: Character]');
+  s = s.replace(/\b([Ii]f you have) (\[[^\]]+\])(?= *[,.])/g, '$1 a $2 Character');
+  s = s.replace(/(\bof your opponent's Characters\b[^.]*?\bof )the owner's Life\b/g, "$1your opponent's Life");
   // S4 : « your 1 active Leader » / « your active Leader » (coût leaderPowerMinus) ; « you only have X Characters » / « the
   // only Characters on your field are X Characters » (condition onlyChars) : les mêmes faits
   s = s.replace(/\byour 1 active Leader\b/g, 'your active Leader');
@@ -178,6 +185,8 @@ export function factsFr(text: string): Fact[] {
   const out: Fact[] = [];
   const add = (kind: EcartKind, value: string) => out.push({ kind, value });
   let s = ` ${text} `;
+  // S8 : « ce Personnage peut attaquer un Personnage durant le tour où il est joué » : [Initiative : Personnage] (OP11-027)
+  s = s.replace(/\bce Personnage peut attaquer (?:un|des|les) Personnages? (?:durant|pendant|lors de) le tour où il est joué/g, 'ce Personnage gagne [Initiative : Personnage]');
   s = s.replace(/\[([^\]]+)\]/g, (_, tag: string) => {
     let m: RegExpMatchArray | null;
     if (FR_TAGS[tag]) add('moment', FR_TAGS[tag]);

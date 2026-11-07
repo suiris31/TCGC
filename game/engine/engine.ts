@@ -115,6 +115,7 @@ export function advance(s: GameState, chooser?: Chooser): GameState {
       else applyDecision(s, choice);
       continue;
     }
+    if (lifeWatch(s)) continue;
     if (s.pending.length) {
       resolvePending(s, chooser);
       continue;
@@ -194,6 +195,29 @@ function endOfTurnDefeat(s: GameState) {
       return;
     }
   }
+}
+
+// « Quand une carte quitte la Vie d'un joueur » (Nami OP11-041) : le moteur n'a pas d'événement à chaque endroit où une
+// carte de Vie sort (dégâts, effets, coûts, code à la main) ; le nombre de cartes de Vie est relevé entre deux effets,
+// et une baisse est annoncée ('lifeRemoved'), comme un effet « quand ... » déclenché par l'effet qui vient de se résoudre.
+// Rien n'est relevé ni annoncé tant qu'aucune carte du terrain n'y réagit : les autres parties ne changent pas. Limite :
+// un même effet qui retire puis ajoute autant de cartes de Vie n'est pas vu. Seul le nombre est gardé (les identifiants
+// des cartes de Vie face cachée sont secrets, voir view.ts).
+function lifeWatch(s: GameState): boolean {
+  const listens = ([0, 1] as PlayerId[]).some((p) => allField(s, p).some((c) => def(c.num).when?.some((w) => w.on === 'lifeRemoved')));
+  if (!listens) {
+    if (s.lifeSeen) delete s.lifeSeen;
+    return false;
+  }
+  const now: [number, number] = [s.players[0].life.length, s.players[1].life.length];
+  const before = s.lifeSeen;
+  s.lifeSeen = now;
+  if (!before) return false;
+  const queued = s.pending.length;
+  for (const p of [s.active, other(s.active)]) {
+    if (now[p] < before[p]) emit(s, { type: 'lifeRemoved', player: p, count: before[p] - now[p] });
+  }
+  return s.pending.length > queued;
 }
 
 // ---------- Résolution des effets ----------
@@ -458,6 +482,8 @@ const SYSTEM: Record<string, (ctx: EffectCtx, p: PendingEffect) => void> = {
         });
         if (answer === 'trigger') {
           log(s, ctx.me, `perd 1 Vie, révèle ${d.name} et active son [Déclenchement]`);
+          // « quand un [Déclenchement] est activé » (Conney OP13-106) : résolu après le [Déclenchement]
+          emit(s, { type: 'trigger', player: ctx.me, uid: card.uid, num: card.num });
           // la carte n'est dans aucune zone pendant son [Déclenchement], puis va dans la Défausse (10-1-5-3), sauf si
           // l'effet l'a jouée ou ajoutée à la main
           const trigger = { card, moved: false };
