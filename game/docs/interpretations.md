@@ -1181,6 +1181,56 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 2211. **Bobby Funk (OP15-050)** : « si vous avez [Kelly Funk] » = un Personnage [Kelly Funk] (aucun Leader ne porte ce
       nom : la question ouverte « If you have [Nom] » ne change rien ici).
 
+## EB02 et OP10 (tâche S9), choix faits sans validation
+
+2800. **Carrot (EB02-013) et Icebarg (EB02-032)** : [Zou] et [Galley-La Company] sont des Lieux (codé à la main, le
+      compilateur refuse « jouez [nom d'un Lieu] ») ; la condition « 3 DON!! ou plus » ne couvre que la recherche :
+      le Lieu de la main se joue même sans elle (règle de portée « Si C, A. Puis, B »).
+2801. **Klabautermann (EB02-033)** : [Merry Go] est un Lieu (Vogue Merry) ; [Bloqueur] seulement si son Lieu porte ce
+      nom. Le traducteur lisait « un Personnage [Merry Go] » (jamais vrai) : codé à la main, signalé au chef de projet.
+2802. **GERMA 66 (EB02-039)** : « même nom » : la carte jouée partage un nom avec la carte défaussée ; puissance imprimée
+      de 5000 à 7000 ; la comparaison des DON!! se fait après le coût ; le coût n'est proposé que si un Personnage peut
+      être joué (n° 1000).
+2803. **Crocodile (EB02-023)** : n'importe lequel de ses effets qui renvoie un Personnage adverse dans la main de son
+      propriétaire ; [Une fois par tour] pris au déclenchement ; chaque carte regardée va au-dessus ou au-dessous, dans
+      l'ordre choisi (comme n° 50).
+2804. **Baggy (EB02-018)** : « pas d'autre Personnage [Baggy] » : aucun autre de ses Personnages ne porte ce nom (le
+      Leader ne compte pas, la VO dit « Characters ») ; « jusqu'à 1 de vos Leaders » : [Double attaque] donnée sans
+      question (elle ne gêne jamais).
+2805. **« If you have [Nom] » / « If you don't have [Nom] »** (Gaimon EB02-012, Scotch OP10-008, Rock OP10-017) : aucun
+      Leader ne porte ces noms, les deux lectures de la question EB04-056 donnent le même jeu : recettes vérifiées.
+2806. **Trafalgar Law (Leader OP10-022)** : coût total des Personnages au moment d'activer (coûts actuels, un coût
+      négatif compte 0) ; la carte révélée qui n'est pas jouée reste au-dessus de la Vie, connue des deux joueurs.
+2807. **Kin'emon (OP10-026, OP10-027)** : « de 0 / de 1000 de puissance » : puissance imprimée exacte (sans puissance :
+      0) ; les deux cartes vont sous le deck dans l'ordre choisi ; proposé seulement avec un [Kin'emon] de coût 6 en
+      main (n° 1000).
+2808. **Smoker (OP10-030)** : comme L'Oiseau (EB04-016) : la restriction vaut aussi pour lui ; une deuxième activation
+      ne redresserait rien, elle n'est plus proposée.
+2809. **Tashigi (OP10-032)** : un autre Personnage vert qui ne s'appelle pas [Tashigi], retiré par un effet adverse (KO
+      compris) ; Tashigi doit être redressée ; pas de limite par tour.
+2810. **Lim (OP10-037)** : le Personnage {ODYSSEY} épuisé peut être Lim elle-même (si elle est redressée) ; toute sortie
+      du terrain par un effet adverse, KO compris ; une fois par tour.
+2811. **Usopp (Leader OP10-042)** : « de coût 2 ou plus » se lit avec les autres modifications du coût, mais sans le +1
+      d'Usopp lui-même (sinon la règle se lirait elle-même) ; « mis KO » : en combat ou par n'importe quel effet ;
+      « quitte le terrain » : par un effet adverse ; la main (5 cartes ou moins) est comptée à la résolution.
+2812. **Sabo (OP10-049)** : coût de base imprimé ; « autre que [Sabo] » : par le nom ; il se renvoie lui-même par son
+      propre effet ; pas de limite par tour.
+2813. **Léo (OP10-057)** : le Leader ou le Lieu, de n'importe quel type ; la défausse qui suit « Puis » se fait même sans
+      le Leader [Usopp], mais sans lui le coût n'est pas proposé (n° 1000).
+2814. **Rebecca (OP10-058)** : « un Personnage de coût 8 ou plus » : de l'un ou l'autre camp, coût actuel ; une des
+      cartes révélées est forcément jouée (redressée), l'autre épuisée si son coût imprimé est de 4 ou moins, sinon elle
+      reste dans la main.
+2815. **Pica (OP10-074)** : seulement le KO par un effet adverse (pas en combat, pas un autre retrait) ; une fois par tour.
+2816. **Libération (OP10-098)** : les deux KO sont choisis l'un après l'autre (coût de base 6 ou moins, puis un autre de
+      coût de base 4 ou moins) ; [Déclenchement] : jusqu'à 1 Leader adverse et jusqu'à 1 Personnage adverse perdent
+      leurs effets pour le tour.
+2817. **Recettes écrites à la main** (le traducteur bute sur la phrase) : God Thread OP10-079 (« a cost 5 or less » sans
+      « of »), Little Black Bears OP10-080 (deux conditions jointes), Shiliew OP10-086 (deuxième condition « joué ce tour »
+      après le type du Leader).
+2818. **Monkey D. Luffy (Leader EB02-010)** : **en doute**, même question que OP16-022 (n° 1902) : « seuls des
+      Personnages {Straw Hat Crew} » est-il rempli sans aucun Personnage ? Le +1000 qui suit « Puis » ne dépend pas de la
+      condition.
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).

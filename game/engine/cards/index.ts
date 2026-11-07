@@ -49,6 +49,8 @@ import { OP14 } from './op14.ts';
 import { EB05, MANUAL_EB05 } from './eb05.ts';
 import { MANUAL_OP17, OP17 } from './op17.ts';
 import { MANUAL_OP15, OP15 } from './op15.ts';
+import { EB02, MANUAL_EB02 } from './eb02.ts';
+import { MANUAL_OP10, OP10 } from './op10.ts';
 // Recettes (étape C) : importées après les fichiers de cartes (le compilateur se sert de leurs briques)
 import { compileRecipe, type CompileResult } from '../recipes/compile.ts';
 import { confidence } from '../recipes/confidence.ts';
@@ -77,6 +79,8 @@ const BEHAVIORS: Record<string, CardBehavior> = {
   ...EB05,
   ...OP17,
   ...OP15,
+  ...EB02,
+  ...OP10,
 };
 
 // Code à la main appelé par les recettes (sortie « manual », 01-contrats.md § 15.2) : point d'enregistrement, chaque
@@ -86,6 +90,8 @@ const MANUAL: ManualRegistry = {
   ...MANUAL_EB05,
   ...MANUAL_OP17,
   ...MANUAL_OP15,
+  ...MANUAL_EB02,
+  ...MANUAL_OP10,
 };
 
 // Carte cachée, telle qu'un joueur la voit dans une partie en ligne (main adverse, decks, Vies face cachée : voir
