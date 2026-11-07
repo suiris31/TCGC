@@ -22,11 +22,11 @@ import { attack, choose, coherent, expectTag, logHas, play, scenario, setChars, 
 // Cartes réelles « à faire » (avant ce test)
 const KO2 = 'EB01-049';        // Personnage coût 5 : [Jouée] KO adverse coût 2 ou moins
 const BOUNCE = 'OP08-042';     // Personnage coût 4 : [DON!! x1] [En attaquant] renvoie en main un Personnage coût 3 ou moins
-const VIVI_COUNTER = 'OP11-115'; // Événement coût 1 : [Contre] sous condition de Leader ; [Déclenchement] KO adverse (EB03-011 jusqu'à S4)
+const VIVI_COUNTER = 'OP01-058'; // Événement coût 2 (recette d'essai : [Contre] sous condition de Leader ; [Déclenchement] épuiser) ; OP11-115, jouable depuis S8, remplacé
 const MINUS_COST = 'EB01-048'; // Personnage coût 4 : [Activation : Principale] épuiser cette carte : coût adverse
 const MINUS_POWER = 'OP13-020'; // Événement coût 3 : [Principale] puissance adverse ; [Déclenchement] son effet [Principale]
 const RESTED_POWER = 'OP01-039'; // Personnage (recette d'essai : [Tour adverse] épuisé, +2000) ; OP14-026, jouable depuis S5, remplacé
-const VIVI_L = 'OP11-022';     // un Leader [Shirahoshi] (le nom VIVI est resté de l'exemple EB03-011, jouable depuis S4)
+const VIVI_L = 'OP11-022';     // un Leader [Shirahoshi] (le nom VIVI est resté de l'exemple EB03-011, jouable depuis S4 ; ce Leader l'est depuis S8)
 // adversaire ST-21
 const O_BONNEY = 'ST21-004';   // coût 1, 3000
 const O_STUSSY = 'ST21-006';   // coût 3, 5000
@@ -86,7 +86,7 @@ const OTHERS: RecipeSet = {
           timing: 'counter', condition: { kind: 'leaderIs', names: ['Shirahoshi'] },
           steps: [{ action: { kind: 'power', target: { side: 'own', zone: 'field', leader: true, characters: true, count: 1, upTo: true, filter: {} }, amount: 4000, until: 'battle' } }],
         })],
-        trigger: ability({ timing: 'trigger', steps: [{ action: { kind: 'ko', target: oppChar({ costMax: 2 }) } }] }),
+        trigger: ability({ timing: 'trigger', steps: [{ action: { kind: 'rest', target: oppChar({}) } }] }),
       },
     },
     [MINUS_POWER]: {

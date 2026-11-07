@@ -1181,6 +1181,45 @@ Puissance, coût, puissance de base, mots-clés accordés, interdits, protection
 2211. **Bobby Funk (OP15-050)** : « si vous avez [Kelly Funk] » = un Personnage [Kelly Funk] (aucun Leader ne porte ce
       nom : la question ouverte « If you have [Nom] » ne change rien ici).
 
+## OP11 (tâche S8), choix faits sans validation
+
+2700. **X Calibur (OP11-020)** : le texte anglais du catalogue est celui de Toile argileuse (OP11-019), mot pour mot ;
+      la VF est différente et cohérente avec la carte (Événement {Navy} {Drake Pirates}). La carte est codée d'après la
+      VF : [Principale] jusqu'à 2 Personnages adverses −2000 pour le tour, puis jusqu'à 1 de vos Personnages {Navy}
+      +1000 pour le tour ; [Déclenchement] KO d'un Personnage adverse de 4000 de puissance ou moins. À revoir si le
+      catalogue corrige la VO.
+2701. **Prince Grus (OP11-013)** : les Personnages adverses visés sont ceux qui ont 2000 de puissance ou moins quand
+      l'effet se résout ; ils ne peuvent pas activer [Bloqueur] jusqu'à la fin du tour, même si leur puissance monte
+      ensuite (effet ponctuel, comme les autres « tous les ... »).
+2702. **Jinbe (Leader OP11-021)** : la DON!! « jusqu'à 1 » est redressée sans question (en redresser une ne peut jamais
+      gêner : elle reste utilisable pour les [Contre]) ; le Personnage, lui, est choisi (ou aucun).
+2703. **Monkey D. Luffy (Leader OP11-040)** : « au début de votre tour » = au début de la phase de Recharge, avant que
+      les DON!! données reviennent (elles comptent dans les 8 DON!! du terrain) ; les cartes restantes vont chacune
+      au-dessus ou au-dessous du deck (n° 1660).
+2704. **Nami (Leader OP11-041)** : « quand une carte quitte la Vie d'un joueur » couvre toute carte qui quitte une Vie
+      (dégâts, effet, coût, la sienne ou celle de l'adversaire) ; le moteur relève le nombre de cartes de Vie entre deux
+      effets (`lifeWatch`, engine.ts) : un même effet qui retire puis ajoute autant de cartes de Vie n'est pas vu.
+      [Une fois par tour] compté dès le déclenchement, même avec plus de 7 cartes en main (n° 1907).
+2705. **Yonji (OP11-046) et Ichiji (OP11-043) Vinsmoke** : « si tous vos Personnages incluent "GERMA" » : la carte est
+      elle-même un Personnage {GERMA 66}, il y a donc toujours au moins un Personnage ; la question ouverte n° 1902
+      (terrain sans Personnage) ne change rien pour ces deux cartes, elles ne sont pas mises en doute. « Épuisé par un
+      effet adverse » : seulement les effets de l'adversaire (pas un coût, pas ses propres effets).
+2706. **Shu (OP11-088)** : [Une fois par tour] compté à la première attaque d'un Personnage adverse, même sans
+      <Tranche> (la condition « si celui-ci a l'attribut <Tranche> » est lue à la résolution, n° 1586 et 1907) ; le
+      +5000 vaut pour le combat, qu'il soit ou non la cible.
+2707. **Verygood (OP11-091)** : c'est l'adversaire qui choisit les 3 Événements et leur ordre ; avec 3 Événements ou
+      moins dans sa Défausse, ils y vont tous.
+2708. **Keimi (OP11-102)** : « active un Événement » = un Événement joué ([Principale] ou [Contre]) ; « [Déclenchement] »
+      = un [Déclenchement] activé depuis sa Vie (évènement `trigger` du moteur, repris de S6). Une seule fois par tour
+      pour les deux ; les 2 Vies de l'adversaire sont lues à la résolution.
+2709. **Shirahoshi (Leader OP11-022)** : « une carte Personnage {Neptunian} ou [Megalo] » : (Personnage {Neptunian}) ou
+      [Megalo] (Mégalo est {Animal}, pas {Neptunian}) ; la recette générée lisait {Neptunian} et (Personnage ou
+      [Megalo]), corrigée à la main.
+2710. **Fukaboshi (OP11-110)** : son remplacement vaut pour tout KO (combat ou effet) ; la carte épuisée doit être
+      redressée : son Lieu [Fish-Man Island] ou son Leader [Shirahoshi]. **Le Chignon (OP11-107)** : redressé à la fin du
+      tour où l'effet est utilisé, s'il est encore sur le terrain. **Hermep (OP11-092)** : seul le Personnage joué par
+      l'effet va sous le deck à la fin du tour (oublié s'il a quitté le terrain avant).
+
 ## Comment c'est vérifié
 
 - `tests/cards-st3x.test.ts` : un test par carte à effet (situation construite, effet joué, résultat vérifié).
